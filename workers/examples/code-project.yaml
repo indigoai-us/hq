@@ -1,0 +1,96 @@
+# Example: Code Worker for a Project
+# Copy this to workers/code/{project}/worker.yaml and customize
+
+worker:
+  id: myproject-coder
+  name: "MyProject Code Worker"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on-demand
+  max_runtime: 30m
+  retry_attempts: 2
+
+context:
+  base:
+    - knowledge/Ralph/  # Ralph methodology
+    - projects/{project}/prd.json
+  dynamic:
+    - "{repo-path}/"  # Your project repo
+  exclude:
+    - node_modules/
+    - dist/
+    - build/
+    - "*.log"
+    - ".git/"
+
+verification:
+  pre_execute: []
+  post_execute:
+    # Customize these for your tech stack
+    - check: typecheck
+      command: npm run typecheck
+      must_pass: true
+    - check: build
+      command: npm run build
+      must_pass: true
+    # Optional: Add tests
+    # - check: test
+    #   command: npm run test
+    #   must_pass: true
+  approval_required: false  # Ralph loop handles verification
+
+tasks:
+  source: projects/{project}/prd.json
+  format: prd
+  one_at_a_time: true  # Always true - core Ralph principle
+
+output:
+  format: git_commit
+  # Commits go directly to repo with format:
+  # feat({feature-id}): {description}
+
+instructions: |
+  Implement features following Ralph methodology.
+
+  ## Process
+  1. Read the feature from PRD
+  2. Understand acceptance criteria
+  3. Read relevant existing code
+  4. Implement the feature
+  5. Run back pressure (typecheck, build, tests)
+  6. If passing, commit with proper message
+  7. Write checkpoint
+
+  ## Commit Format
+  feat({id}): {brief description}
+
+  Examples:
+  - feat(F1): Add user authentication endpoints
+  - feat(F2): Implement rate limiting middleware
+  - fix(F3): Handle edge case in payment flow
+
+  ## Back Pressure
+  Every change must pass verification before committing.
+  If checks fail:
+  1. Analyze the error
+  2. Fix the issue
+  3. Re-run checks
+  4. Only commit when passing
+
+  ## Checkpoints
+  Write to workspace/checkpoints/{feature-id}.json:
+  {
+    "task_id": "{feature-id}",
+    "completed_at": "ISO8601",
+    "summary": "what was implemented",
+    "files_touched": ["paths"],
+    "build_passed": true
+  }
+
+  ## Never
+  - Skip verification checks
+  - Commit failing code
+  - Work on multiple features at once
+  - Modify code outside feature scope

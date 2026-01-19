@@ -1,0 +1,129 @@
+---
+description: Build out a content idea into posts, threads, articles, and potentially microsites
+allowed-tools: Task, Read, Glob, Grep, Edit, Write, Bash, WebSearch, WebFetch, AskUserQuestion, TodoWrite
+argument-hint: [idea description]
+---
+
+# /contentidea - Content Idea Builder
+
+Transform a raw content idea into a full content suite.
+
+**Input idea:** $ARGUMENTS
+
+## Step 0: Log Raw Idea
+
+**Before doing anything else**, append the raw idea to the inbox:
+
+1. Generate a slug from the idea (e.g., "ai-workflow-automation")
+2. Create a unique ID: `idea-{timestamp}`
+3. Append to `workspace/content-ideas/inbox.jsonl`:
+
+```jsonl
+{"id":"idea-{timestamp}","raw":"$ARGUMENTS","created":"{ISO8601}","status":"processing","tags":[],"processed_to":null}
+```
+
+This ensures every idea is captured, even if processing is interrupted.
+
+## Context to Load
+
+1. `knowledge/{your-name}/voice-style.md` - Voice, formats, patterns
+2. `knowledge/{your-name}/profile.md` - Identity, positioning
+3. `social-content/drafts/INDEX.md` - Current draft inventory (if exists)
+
+## Process
+
+### 1. Understand the Idea
+- What's the core insight?
+- Who's the audience? (X followers, LinkedIn professionals, broader public)
+- What action should the reader take?
+- Is this timely or evergreen?
+
+### 2. Assess Scope
+Ask: How profound is this idea?
+
+| Scope | Output |
+|-------|--------|
+| **Quick take** | One-liner + short post |
+| **Medium depth** | Above + thread OR article |
+| **Deep insight** | Full suite: one-liner, short, thread, article, LinkedIn |
+| **Foundational** | All above + consider microsite/repo for OS |
+
+### 3. Generate Content Suite
+
+Based on scope, create drafts in this order:
+
+**Always:**
+- X one-liner (< 280 chars) - the hook
+- X short post (< 280 chars) - slightly expanded
+
+**If medium+:**
+- X article (1500-3000 words)
+  - Structure: Title → Hook → Numbered sections → Protocol → Choice/CTA
+
+**If deep+:**
+- LinkedIn long post (~300-500 words)
+
+**If foundational:**
+- Suggest: "This idea could become a {microsite/repo/project}. Want me to scaffold it?"
+- Location would be: `projects/{idea-slug}/`
+
+### 4. Store Drafts
+
+Save all drafts to `social-content/drafts/`:
+- X content → `x/{date}-{slug}-{type}.md`
+- LinkedIn → `linkedin/{date}-{slug}.md`
+
+Create `social-content/drafts/INDEX.md` if it doesn't exist, and update with new entries.
+
+### 5. Update Queue
+
+If social worker exists, add to `workers/social/{platform}/queue.json`:
+```json
+{
+  "id": "{slug}-{type}-001",
+  "type": "post|article",
+  "topic": "{description}",
+  "status": "draft_ready",
+  "created": "{date}",
+  "draft_file": "social-content/drafts/x/{filename}"
+}
+```
+
+### 6. Report
+
+Show user:
+- Summary of what was created
+- Links to draft files
+- Suggested posting order
+- If foundational: ask about microsite/project expansion
+
+## Content Formats Reference
+
+**X One-liner:** Hook that makes people stop scrolling. Provocative or insightful.
+
+**X Short Post:** Slightly expanded take. Still punchy.
+
+**X Article:**
+1. Bold title with transformative promise
+2. Personal, contrarian opening hook
+3. Numbered sections (I, II, III...) with bold subheadings
+4. Short paragraphs, italics for emphasis
+5. "Protocol" or actionable steps near end
+6. Choice/call-to-action closing
+
+**LinkedIn:** Professional but direct. Can be longer. Often more reflective.
+
+## Voice Reminders
+
+- Match your voice-style.md
+- No hedging or corporate jargon
+- Humor: strategic, not forced
+- Emojis: minimal
+
+## Step 7: Mark Idea as Processed
+
+After all drafts are saved, update the inbox entry:
+
+1. Find the entry in `workspace/content-ideas/inbox.jsonl` by ID
+2. Update status to "processed"
+3. Add `processed_to` array with paths to created drafts

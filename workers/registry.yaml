@@ -1,0 +1,29 @@
+# Workers Registry
+# Index of all workers in your HQ
+#
+# Add workers here as you create them with /newworker
+# or via /setup
+
+version: "1.0"
+updated: "2026-01-19"
+
+workers: []
+# Example entries (uncomment and modify):
+#
+# - id: email-digest
+#   path: workers/assistant/email/
+#   type: AssistantWorker
+#   status: active
+#   description: "Daily email digest in PDB format"
+#
+# - id: x-personal
+#   path: workers/social/x-personal/
+#   type: SocialWorker
+#   status: active
+#   description: "X/Twitter content drafting"
+#
+# - id: myproject-coder
+#   path: workers/code/myproject/
+#   type: CodeWorker
+#   status: active
+#   description: "Ralph loop implementation for myproject"
