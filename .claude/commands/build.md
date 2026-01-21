@@ -60,3 +60,5 @@ Write checkpoint to `workspace/checkpoints/{task-id}.json`
 - Consider reusability across workers/projects
 - Never commit secrets
 - Always show diff before suggesting commit
+- **Do NOT use EnterPlanMode** - for complex builds, suggest `/newproject` to create a PRD first
+- **Do NOT use TodoWrite** - PRD features track tasks persistently

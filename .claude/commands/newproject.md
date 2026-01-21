@@ -82,6 +82,8 @@ Create `projects/{project-name}/prd.json`:
 - Keep features atomic (one thing per feature)
 - Every feature starts with `passes: false`
 - Save PRD to `projects/{name}/prd.json`
+- **Do NOT use EnterPlanMode** - this skill creates the persistent PRD that replaces session planning
+- **Do NOT use TodoWrite** - PRD features are the task list
 
 ## After PRD Created
 

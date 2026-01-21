@@ -77,6 +77,8 @@ Write checkpoint to `workspace/checkpoints/{task-slug}.json`:
 - Don't modify infrastructure unless necessary (that's BUILD mode)
 - Always checkpoint - context is precious
 - If drifting from goal, use `/reanchor`
+- **Do NOT use EnterPlanMode** - for complex tasks, suggest `/newproject` to create a PRD first
+- **Do NOT use TodoWrite** - PRD features track tasks persistently
 
 ## When to Switch to BUILD Mode
 

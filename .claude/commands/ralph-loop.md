@@ -75,6 +75,8 @@ Set `passes: true` for completed task
 - Never implement code yourself in orchestrator mode
 - Always wait for checkpoint before continuing
 - If sub-agent fails, report to user and pause
+- **Do NOT use TodoWrite** - PRD features are the authoritative task list
+- **Do NOT use EnterPlanMode** - the PRD is the plan, you're executing it
 
 ## Start Now
 1. Locate the PRD file
