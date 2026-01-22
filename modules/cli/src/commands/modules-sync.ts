@@ -124,6 +124,7 @@ function cloneOrFetch(module: Module, syncedDir: string): { cloned: boolean; rep
 
 /**
  * Apply 'link' strategy - create symlinks from source to destination
+ * Uses relative symlinks for portability across machines
  */
 function applyLinkStrategy(module: Module, repoPath: string, hqRoot: string): void {
   for (const [srcPath, destPath] of Object.entries(module.paths)) {
@@ -135,11 +136,25 @@ function applyLinkStrategy(module: Module, repoPath: string, hqRoot: string): vo
       continue;
     }
 
-    // Remove existing destination if it's a symlink or empty directory
-    if (fs.existsSync(dest) || fs.lstatSync(dest).isSymbolicLink()) {
+    // Check if destination already exists
+    let destExists = false;
+    let isSymlink = false;
+    try {
       const stat = fs.lstatSync(dest);
-      if (stat.isSymbolicLink()) {
+      destExists = true;
+      isSymlink = stat.isSymbolicLink();
+    } catch {
+      // dest does not exist
+    }
+
+    if (destExists) {
+      if (isSymlink) {
+        // Remove existing symlink and recreate
         fs.unlinkSync(dest);
+      } else {
+        // Real file/directory exists - warn and skip
+        console.log(`    Warning: Skipping ${destPath} - real file exists (not a symlink). Remove manually to sync.`);
+        continue;
       }
     }
 
@@ -149,8 +164,9 @@ function applyLinkStrategy(module: Module, repoPath: string, hqRoot: string): vo
       fs.mkdirSync(destParent, { recursive: true });
     }
 
-    // Create symlink
-    fs.symlinkSync(source, dest);
+    // Create relative symlink for portability
+    const relativeSource = path.relative(destParent, source);
+    fs.symlinkSync(relativeSource, dest);
     console.log(`    Linked: ${srcPath} -> ${destPath}`);
   }
 }
