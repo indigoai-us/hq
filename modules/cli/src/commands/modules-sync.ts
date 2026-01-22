@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { parse } from 'yaml';
 
@@ -22,6 +23,42 @@ interface SyncResult {
   module: string;
   success: boolean;
   message: string;
+}
+
+/**
+ * File sync state for conflict detection
+ */
+interface FileSyncState {
+  /** Hash of file content when last synced */
+  hash: string;
+  /** Timestamp of last sync */
+  syncedAt: string;
+  /** Source path in module repo */
+  srcPath: string;
+}
+
+/**
+ * Sync state for a single module
+ */
+interface ModuleSyncState {
+  /** Module name */
+  name: string;
+  /** Commit hash when last synced */
+  commit: string;
+  /** Timestamp of last sync */
+  syncedAt: string;
+  /** File states keyed by destination path */
+  files: Record<string, FileSyncState>;
+}
+
+/**
+ * Root sync state structure
+ */
+interface SyncState {
+  /** Schema version */
+  version: string;
+  /** Module states keyed by module name */
+  modules: Record<string, ModuleSyncState>;
 }
 
 /**
@@ -88,6 +125,66 @@ function ensureSyncedModulesDir(hqRoot: string): string {
   }
 
   return syncedDir;
+}
+
+/**
+ * Get path to .hq-sync-state.json
+ */
+function getSyncStatePath(hqRoot: string): string {
+  return path.join(hqRoot, '.hq-sync-state.json');
+}
+
+/**
+ * Load sync state from file
+ */
+function loadSyncState(hqRoot: string): SyncState {
+  const statePath = getSyncStatePath(hqRoot);
+  if (fs.existsSync(statePath)) {
+    const content = fs.readFileSync(statePath, 'utf-8');
+    return JSON.parse(content) as SyncState;
+  }
+  return { version: '1', modules: {} };
+}
+
+/**
+ * Save sync state to file
+ */
+function saveSyncState(hqRoot: string, state: SyncState): void {
+  const statePath = getSyncStatePath(hqRoot);
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+}
+
+/**
+ * Compute SHA-256 hash of file content
+ */
+function hashFile(filePath: string): string {
+  const content = fs.readFileSync(filePath);
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+/**
+ * Get current commit hash of a repo
+ */
+function getRepoCommit(repoPath: string): string {
+  return execSync('git rev-parse HEAD', { cwd: repoPath, encoding: 'utf-8' }).trim();
+}
+
+/**
+ * Recursively get all files in a directory
+ */
+function getAllFiles(dir: string, base: string = ''): string[] {
+  const files: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const relativePath = base ? path.join(base, entry.name) : entry.name;
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...getAllFiles(fullPath, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files;
 }
 
 /**
@@ -172,32 +269,149 @@ function applyLinkStrategy(module: Module, repoPath: string, hqRoot: string): vo
 }
 
 /**
- * Apply 'merge' strategy - copy files, preserving local modifications
- * Uses git merge for tracked files
+ * Apply 'merge' strategy - copy files, tracking state for conflict detection
+ * Only overwrites files that haven't been modified locally since last sync
  */
-function applyMergeStrategy(module: Module, repoPath: string, hqRoot: string): void {
+function applyMergeStrategy(
+  module: Module,
+  repoPath: string,
+  hqRoot: string,
+  syncState: SyncState
+): { copied: number; skipped: number; conflicts: string[] } {
+  const now = new Date().toISOString();
+  const commit = getRepoCommit(repoPath);
+
+  // Initialize module state if not exists
+  if (!syncState.modules[module.name]) {
+    syncState.modules[module.name] = {
+      name: module.name,
+      commit: '',
+      syncedAt: '',
+      files: {},
+    };
+  }
+  const moduleState = syncState.modules[module.name];
+
+  let copied = 0;
+  let skipped = 0;
+  const conflicts: string[] = [];
+
   for (const [srcPath, destPath] of Object.entries(module.paths)) {
     const source = path.join(repoPath, srcPath);
-    const dest = path.join(hqRoot, destPath);
 
     if (!fs.existsSync(source)) {
       console.log(`    Warning: Source path does not exist: ${srcPath}`);
       continue;
     }
 
-    // Ensure parent directory exists
-    const destParent = path.dirname(dest);
-    if (!fs.existsSync(destParent)) {
-      fs.mkdirSync(destParent, { recursive: true });
-    }
+    const sourceStat = fs.statSync(source);
 
-    // Copy with rsync to preserve structure and handle updates
-    // --update flag ensures we don't overwrite newer local files
-    execSync(`rsync -av --update "${source}/" "${dest}/"`, {
-      stdio: 'pipe',
-    });
-    console.log(`    Merged: ${srcPath} -> ${destPath}`);
+    if (sourceStat.isDirectory()) {
+      // Handle directory: get all files and process each
+      const files = getAllFiles(source);
+      for (const relFile of files) {
+        const srcFile = path.join(source, relFile);
+        const destFile = path.join(hqRoot, destPath, relFile);
+        const destRelative = path.join(destPath, relFile);
+        const srcRelative = path.join(srcPath, relFile);
+
+        const result = syncSingleFile(srcFile, destFile, destRelative, srcRelative, moduleState, now);
+        if (result === 'copied') {
+          copied++;
+          console.log(`    Copied: ${srcRelative} -> ${destRelative}`);
+        } else if (result === 'skipped') {
+          skipped++;
+        } else if (result === 'conflict') {
+          conflicts.push(destRelative);
+          console.log(`    Conflict: ${destRelative} has local changes, skipping`);
+        }
+      }
+    } else {
+      // Handle single file
+      const destFile = path.join(hqRoot, destPath);
+      const result = syncSingleFile(source, destFile, destPath, srcPath, moduleState, now);
+      if (result === 'copied') {
+        copied++;
+        console.log(`    Copied: ${srcPath} -> ${destPath}`);
+      } else if (result === 'skipped') {
+        skipped++;
+      } else if (result === 'conflict') {
+        conflicts.push(destPath);
+        console.log(`    Conflict: ${destPath} has local changes, skipping`);
+      }
+    }
   }
+
+  // Update module state
+  moduleState.commit = commit;
+  moduleState.syncedAt = now;
+
+  return { copied, skipped, conflicts };
+}
+
+/**
+ * Sync a single file with conflict detection
+ * Returns: 'copied' | 'skipped' | 'conflict'
+ */
+function syncSingleFile(
+  srcFile: string,
+  destFile: string,
+  destRelative: string,
+  srcRelative: string,
+  moduleState: ModuleSyncState,
+  now: string
+): 'copied' | 'skipped' | 'conflict' {
+  const srcHash = hashFile(srcFile);
+  const previousState = moduleState.files[destRelative];
+
+  // Ensure parent directory exists
+  const destParent = path.dirname(destFile);
+  if (!fs.existsSync(destParent)) {
+    fs.mkdirSync(destParent, { recursive: true });
+  }
+
+  if (!fs.existsSync(destFile)) {
+    // Destination doesn't exist - copy it
+    fs.copyFileSync(srcFile, destFile);
+    moduleState.files[destRelative] = {
+      hash: srcHash,
+      syncedAt: now,
+      srcPath: srcRelative,
+    };
+    return 'copied';
+  }
+
+  const destHash = hashFile(destFile);
+
+  if (destHash === srcHash) {
+    // Files are identical - update state but don't copy
+    moduleState.files[destRelative] = {
+      hash: srcHash,
+      syncedAt: now,
+      srcPath: srcRelative,
+    };
+    return 'skipped';
+  }
+
+  if (!previousState) {
+    // No previous state - this is a conflict (local file exists but wasn't tracked)
+    // Don't overwrite user's file
+    return 'conflict';
+  }
+
+  if (destHash === previousState.hash) {
+    // Local file unchanged since last sync - safe to overwrite
+    fs.copyFileSync(srcFile, destFile);
+    moduleState.files[destRelative] = {
+      hash: srcHash,
+      syncedAt: now,
+      srcPath: srcRelative,
+    };
+    return 'copied';
+  }
+
+  // Local file has been modified since last sync - conflict
+  return 'conflict';
 }
 
 /**
@@ -235,7 +449,7 @@ function applyCopyStrategy(module: Module, repoPath: string, hqRoot: string): vo
 /**
  * Sync a single module
  */
-function syncModule(module: Module, syncedDir: string, hqRoot: string): SyncResult {
+function syncModule(module: Module, syncedDir: string, hqRoot: string, syncState: SyncState): SyncResult {
   try {
     console.log(`\nSyncing module: ${module.name}`);
 
@@ -254,24 +468,37 @@ function syncModule(module: Module, syncedDir: string, hqRoot: string): SyncResu
 
     // Apply sync strategy
     console.log(`  Applying ${module.strategy} strategy...`);
+    let mergeResult: { copied: number; skipped: number; conflicts: string[] } | null = null;
+
     switch (module.strategy) {
       case 'link':
         applyLinkStrategy(module, repoPath, hqRoot);
         break;
       case 'merge':
-        applyMergeStrategy(module, repoPath, hqRoot);
+        mergeResult = applyMergeStrategy(module, repoPath, hqRoot, syncState);
         break;
       case 'copy':
         applyCopyStrategy(module, repoPath, hqRoot);
         break;
     }
 
-    const strategyPastTense = module.strategy === 'copy' ? 'copied' :
-      module.strategy === 'link' ? 'linked' : 'merged';
+    // Build result message
+    let message: string;
+    if (module.strategy === 'merge' && mergeResult) {
+      const parts = [`${cloned ? 'Cloned' : 'Updated'}`];
+      if (mergeResult.copied > 0) parts.push(`${mergeResult.copied} copied`);
+      if (mergeResult.skipped > 0) parts.push(`${mergeResult.skipped} unchanged`);
+      if (mergeResult.conflicts.length > 0) parts.push(`${mergeResult.conflicts.length} conflicts`);
+      message = parts.join(', ');
+    } else {
+      const strategyPastTense = module.strategy === 'copy' ? 'copied' : 'linked';
+      message = `${cloned ? 'Cloned' : 'Updated'} and ${strategyPastTense}`;
+    }
+
     return {
       module: module.name,
       success: true,
-      message: `${cloned ? 'Cloned' : 'Updated'} and ${strategyPastTense}`,
+      message,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -332,12 +559,18 @@ export const modulesSyncCommand = new Command('sync')
     const syncedDir = ensureSyncedModulesDir(hqRoot);
     console.log(`Synced repos: ${syncedDir}`);
 
+    // Load sync state for merge strategy conflict detection
+    const syncState = loadSyncState(hqRoot);
+
     // Sync each module
     const results: SyncResult[] = [];
     for (const module of modulesToSync) {
-      const result = syncModule(module, syncedDir, hqRoot);
+      const result = syncModule(module, syncedDir, hqRoot, syncState);
       results.push(result);
     }
+
+    // Save sync state after all modules are synced
+    saveSyncState(hqRoot, syncState);
 
     // Print summary
     console.log('\n--- Sync Summary ---\n');
