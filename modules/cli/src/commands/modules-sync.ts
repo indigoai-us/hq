@@ -2,7 +2,8 @@ import { Command } from 'commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
-import { execSync } from 'node:child_process';
+import * as readline from 'node:readline';
+import { execSync, spawnSync } from 'node:child_process';
 import { parse, stringify } from 'yaml';
 
 interface Module {
@@ -52,6 +53,25 @@ interface ModuleSyncState {
 }
 
 /**
+ * Conflict resolution choice
+ */
+type ConflictResolution = 'keep' | 'take' | 'skip';
+
+/**
+ * Recorded conflict resolution to avoid re-prompting
+ */
+interface ConflictResolutionRecord {
+  /** Resolution choice made by user */
+  resolution: ConflictResolution;
+  /** Hash of local file when resolution was made */
+  localHash: string;
+  /** Hash of source file when resolution was made */
+  sourceHash: string;
+  /** Timestamp of resolution */
+  resolvedAt: string;
+}
+
+/**
  * Root sync state structure
  */
 interface SyncState {
@@ -59,6 +79,8 @@ interface SyncState {
   version: string;
   /** Module states keyed by module name */
   modules: Record<string, ModuleSyncState>;
+  /** Recorded conflict resolutions keyed by module:filePath */
+  resolutions?: Record<string, ConflictResolutionRecord>;
 }
 
 /**
@@ -215,6 +237,188 @@ function hashFile(filePath: string): string {
 }
 
 /**
+ * Get resolution key for a conflict
+ */
+function getResolutionKey(moduleName: string, filePath: string): string {
+  return `${moduleName}:${filePath}`;
+}
+
+/**
+ * Show diff between local and source file
+ */
+function showDiff(localFile: string, sourceFile: string, destPath: string): void {
+  console.log(`\n--- Diff for ${destPath} ---`);
+  console.log('(< local file, > incoming from module)\n');
+
+  // Try to use diff command if available
+  const result = spawnSync('diff', ['-u', localFile, sourceFile], {
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  if (result.status !== null && result.stdout) {
+    // diff exits with 1 when files differ, which is expected
+    const lines = result.stdout.split('\n');
+    // Show limited diff output (first 50 lines)
+    const maxLines = 50;
+    const truncated = lines.length > maxLines;
+    console.log(lines.slice(0, maxLines).join('\n'));
+    if (truncated) {
+      console.log(`\n... (${lines.length - maxLines} more lines truncated)`);
+    }
+  } else {
+    // Fallback: show file sizes
+    const localStat = fs.statSync(localFile);
+    const sourceStat = fs.statSync(sourceFile);
+    console.log(`  Local file: ${localStat.size} bytes`);
+    console.log(`  Source file: ${sourceStat.size} bytes`);
+  }
+  console.log('');
+}
+
+/**
+ * Prompt user for conflict resolution
+ */
+async function promptConflictResolution(
+  destPath: string,
+  localFile: string,
+  sourceFile: string
+): Promise<ConflictResolution> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    const askQuestion = (): void => {
+      console.log(`\nConflict: ${destPath}`);
+      console.log('  Local file has been modified since last sync.');
+      console.log('  Options:');
+      console.log('    [k]eep   - Keep your local version, skip this file');
+      console.log('    [t]ake   - Overwrite with incoming version from module');
+      console.log('    [d]iff   - Show diff between versions');
+      console.log('    [m]anual - Open in editor for manual merge');
+
+      rl.question('  Choice [k/t/d/m]: ', (answer) => {
+        const choice = answer.toLowerCase().trim();
+
+        switch (choice) {
+          case 'k':
+          case 'keep':
+            rl.close();
+            resolve('keep');
+            break;
+          case 't':
+          case 'take':
+            rl.close();
+            resolve('take');
+            break;
+          case 'd':
+          case 'diff':
+            showDiff(localFile, sourceFile, destPath);
+            askQuestion(); // Ask again after showing diff
+            break;
+          case 'm':
+          case 'manual':
+            openInEditor(localFile, sourceFile, destPath);
+            rl.close();
+            // After manual edit, treat as 'keep' since user handled it
+            resolve('skip');
+            break;
+          default:
+            console.log('  Invalid choice. Please enter k, t, d, or m.');
+            askQuestion();
+        }
+      });
+    };
+
+    askQuestion();
+  });
+}
+
+/**
+ * Open files in editor for manual merge
+ */
+function openInEditor(localFile: string, sourceFile: string, destPath: string): void {
+  const editor = process.env.EDITOR || process.env.VISUAL || 'vi';
+
+  console.log(`\nOpening files in ${editor} for manual merge...`);
+  console.log(`  Local: ${localFile}`);
+  console.log(`  Source: ${sourceFile}`);
+  console.log('\nMerge the changes manually, save the local file, then close the editor.');
+
+  // Open both files - different editors handle multiple files differently
+  try {
+    // For VS Code and similar, open both files
+    if (editor.includes('code')) {
+      spawnSync(editor, ['--diff', sourceFile, localFile, '--wait'], {
+        stdio: 'inherit',
+      });
+    } else {
+      // For vim/emacs/nano, open local file with source as reference
+      console.log(`Reference source file: ${sourceFile}`);
+      spawnSync(editor, [localFile], {
+        stdio: 'inherit',
+      });
+    }
+    console.log('Manual merge complete.');
+  } catch (error) {
+    console.log(`Warning: Could not open editor (${editor}). Please merge manually.`);
+  }
+}
+
+/**
+ * Check if a previous resolution applies to current conflict
+ */
+function checkPreviousResolution(
+  syncState: SyncState,
+  moduleName: string,
+  destPath: string,
+  localHash: string,
+  sourceHash: string
+): ConflictResolution | null {
+  const key = getResolutionKey(moduleName, destPath);
+  const record = syncState.resolutions?.[key];
+
+  if (!record) {
+    return null;
+  }
+
+  // Resolution only applies if the file hashes match what was recorded
+  // This means user chose to 'keep' their version and neither file has changed
+  if (record.localHash === localHash && record.sourceHash === sourceHash) {
+    return record.resolution;
+  }
+
+  // If files have changed, resolution no longer applies
+  return null;
+}
+
+/**
+ * Record a conflict resolution
+ */
+function recordResolution(
+  syncState: SyncState,
+  moduleName: string,
+  destPath: string,
+  resolution: ConflictResolution,
+  localHash: string,
+  sourceHash: string
+): void {
+  if (!syncState.resolutions) {
+    syncState.resolutions = {};
+  }
+
+  const key = getResolutionKey(moduleName, destPath);
+  syncState.resolutions[key] = {
+    resolution,
+    localHash,
+    sourceHash,
+    resolvedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Get current commit hash of a repo
  */
 function getRepoCommit(repoPath: string): string {
@@ -346,15 +550,28 @@ function applyLinkStrategy(module: Module, repoPath: string, hqRoot: string): vo
 }
 
 /**
+ * Info about a detected conflict for later resolution
+ */
+interface ConflictInfo {
+  srcFile: string;
+  destFile: string;
+  destRelative: string;
+  srcRelative: string;
+  srcHash: string;
+  destHash: string;
+}
+
+/**
  * Apply 'merge' strategy - copy files, tracking state for conflict detection
  * Only overwrites files that haven't been modified locally since last sync
  */
-function applyMergeStrategy(
+async function applyMergeStrategy(
   module: Module,
   repoPath: string,
   hqRoot: string,
-  syncState: SyncState
-): { copied: number; skipped: number; conflicts: string[] } {
+  syncState: SyncState,
+  interactive: boolean
+): Promise<{ copied: number; skipped: number; kept: number; conflicts: string[] }> {
   const now = new Date().toISOString();
   const commit = getRepoCommit(repoPath);
 
@@ -371,7 +588,9 @@ function applyMergeStrategy(
 
   let copied = 0;
   let skipped = 0;
+  let kept = 0;
   const conflicts: string[] = [];
+  const pendingConflicts: ConflictInfo[] = [];
 
   for (const [srcPath, destPath] of Object.entries(module.paths)) {
     const source = path.join(repoPath, srcPath);
@@ -392,29 +611,129 @@ function applyMergeStrategy(
         const destRelative = path.join(destPath, relFile);
         const srcRelative = path.join(srcPath, relFile);
 
-        const result = syncSingleFile(srcFile, destFile, destRelative, srcRelative, moduleState, now);
-        if (result === 'copied') {
+        const result = detectFileSync(srcFile, destFile, destRelative, srcRelative, moduleState);
+        if (result.action === 'copy') {
+          fs.mkdirSync(path.dirname(destFile), { recursive: true });
+          fs.copyFileSync(srcFile, destFile);
+          moduleState.files[destRelative] = {
+            hash: result.srcHash!,
+            syncedAt: now,
+            srcPath: srcRelative,
+          };
           copied++;
           console.log(`    Copied: ${srcRelative} -> ${destRelative}`);
-        } else if (result === 'skipped') {
+        } else if (result.action === 'skip') {
+          moduleState.files[destRelative] = {
+            hash: result.srcHash!,
+            syncedAt: now,
+            srcPath: srcRelative,
+          };
           skipped++;
-        } else if (result === 'conflict') {
-          conflicts.push(destRelative);
-          console.log(`    Conflict: ${destRelative} has local changes, skipping`);
+        } else if (result.action === 'conflict') {
+          pendingConflicts.push({
+            srcFile,
+            destFile,
+            destRelative,
+            srcRelative,
+            srcHash: result.srcHash!,
+            destHash: result.destHash!,
+          });
         }
       }
     } else {
       // Handle single file
       const destFile = path.join(hqRoot, destPath);
-      const result = syncSingleFile(source, destFile, destPath, srcPath, moduleState, now);
-      if (result === 'copied') {
+      const result = detectFileSync(source, destFile, destPath, srcPath, moduleState);
+      if (result.action === 'copy') {
+        fs.mkdirSync(path.dirname(destFile), { recursive: true });
+        fs.copyFileSync(source, destFile);
+        moduleState.files[destPath] = {
+          hash: result.srcHash!,
+          syncedAt: now,
+          srcPath: srcPath,
+        };
         copied++;
         console.log(`    Copied: ${srcPath} -> ${destPath}`);
-      } else if (result === 'skipped') {
+      } else if (result.action === 'skip') {
+        moduleState.files[destPath] = {
+          hash: result.srcHash!,
+          syncedAt: now,
+          srcPath: srcPath,
+        };
         skipped++;
-      } else if (result === 'conflict') {
-        conflicts.push(destPath);
-        console.log(`    Conflict: ${destPath} has local changes, skipping`);
+      } else if (result.action === 'conflict') {
+        pendingConflicts.push({
+          srcFile: source,
+          destFile,
+          destRelative: destPath,
+          srcRelative: srcPath,
+          srcHash: result.srcHash!,
+          destHash: result.destHash!,
+        });
+      }
+    }
+  }
+
+  // Handle conflicts
+  if (pendingConflicts.length > 0) {
+    console.log(`\n  Found ${pendingConflicts.length} conflict(s):`);
+
+    for (const conflict of pendingConflicts) {
+      // Check for previous resolution
+      const previousResolution = checkPreviousResolution(
+        syncState,
+        module.name,
+        conflict.destRelative,
+        conflict.destHash,
+        conflict.srcHash
+      );
+
+      let resolution: ConflictResolution;
+
+      if (previousResolution) {
+        console.log(`    ${conflict.destRelative}: using previous resolution (${previousResolution})`);
+        resolution = previousResolution;
+      } else if (interactive) {
+        // Prompt user for resolution
+        resolution = await promptConflictResolution(
+          conflict.destRelative,
+          conflict.destFile,
+          conflict.srcFile
+        );
+        // Record the resolution
+        recordResolution(
+          syncState,
+          module.name,
+          conflict.destRelative,
+          resolution,
+          conflict.destHash,
+          conflict.srcHash
+        );
+      } else {
+        // Non-interactive: skip (keep local)
+        console.log(`    Conflict: ${conflict.destRelative} has local changes, skipping`);
+        resolution = 'keep';
+      }
+
+      // Apply resolution
+      if (resolution === 'take') {
+        fs.copyFileSync(conflict.srcFile, conflict.destFile);
+        moduleState.files[conflict.destRelative] = {
+          hash: conflict.srcHash,
+          syncedAt: now,
+          srcPath: conflict.srcRelative,
+        };
+        copied++;
+        console.log(`    Overwrote: ${conflict.destRelative}`);
+      } else if (resolution === 'keep' || resolution === 'skip') {
+        // Keep local version - update state to track current local hash
+        // so we don't prompt again until something changes
+        kept++;
+        if (resolution === 'keep') {
+          console.log(`    Kept local: ${conflict.destRelative}`);
+        }
+      } else {
+        conflicts.push(conflict.destRelative);
       }
     }
   }
@@ -423,72 +742,56 @@ function applyMergeStrategy(
   moduleState.commit = commit;
   moduleState.syncedAt = now;
 
-  return { copied, skipped, conflicts };
+  return { copied, skipped, kept, conflicts };
 }
 
 /**
- * Sync a single file with conflict detection
- * Returns: 'copied' | 'skipped' | 'conflict'
+ * Result of detecting file sync action
  */
-function syncSingleFile(
+interface FileSyncDetection {
+  action: 'copy' | 'skip' | 'conflict';
+  srcHash?: string;
+  destHash?: string;
+}
+
+/**
+ * Detect what action is needed for syncing a single file
+ * Does not modify files - just determines the action
+ */
+function detectFileSync(
   srcFile: string,
   destFile: string,
   destRelative: string,
-  srcRelative: string,
-  moduleState: ModuleSyncState,
-  now: string
-): 'copied' | 'skipped' | 'conflict' {
+  _srcRelative: string,
+  moduleState: ModuleSyncState
+): FileSyncDetection {
   const srcHash = hashFile(srcFile);
   const previousState = moduleState.files[destRelative];
 
-  // Ensure parent directory exists
-  const destParent = path.dirname(destFile);
-  if (!fs.existsSync(destParent)) {
-    fs.mkdirSync(destParent, { recursive: true });
-  }
-
   if (!fs.existsSync(destFile)) {
     // Destination doesn't exist - copy it
-    fs.copyFileSync(srcFile, destFile);
-    moduleState.files[destRelative] = {
-      hash: srcHash,
-      syncedAt: now,
-      srcPath: srcRelative,
-    };
-    return 'copied';
+    return { action: 'copy', srcHash };
   }
 
   const destHash = hashFile(destFile);
 
   if (destHash === srcHash) {
-    // Files are identical - update state but don't copy
-    moduleState.files[destRelative] = {
-      hash: srcHash,
-      syncedAt: now,
-      srcPath: srcRelative,
-    };
-    return 'skipped';
+    // Files are identical - skip
+    return { action: 'skip', srcHash };
   }
 
   if (!previousState) {
     // No previous state - this is a conflict (local file exists but wasn't tracked)
-    // Don't overwrite user's file
-    return 'conflict';
+    return { action: 'conflict', srcHash, destHash };
   }
 
   if (destHash === previousState.hash) {
     // Local file unchanged since last sync - safe to overwrite
-    fs.copyFileSync(srcFile, destFile);
-    moduleState.files[destRelative] = {
-      hash: srcHash,
-      syncedAt: now,
-      srcPath: srcRelative,
-    };
-    return 'copied';
+    return { action: 'copy', srcHash };
   }
 
   // Local file has been modified since last sync - conflict
-  return 'conflict';
+  return { action: 'conflict', srcHash, destHash };
 }
 
 /**
@@ -533,14 +836,16 @@ interface SyncResultWithCommit extends SyncResult {
 /**
  * Sync a single module
  * @param lockedCommit - If provided, checkout this specific commit instead of branch HEAD
+ * @param interactive - If true, prompt user for conflict resolution
  */
-function syncModule(
+async function syncModule(
   module: Module,
   syncedDir: string,
   hqRoot: string,
   syncState: SyncState,
-  lockedCommit?: string
-): SyncResultWithCommit {
+  lockedCommit?: string,
+  interactive: boolean = true
+): Promise<SyncResultWithCommit> {
   try {
     console.log(`\nSyncing module: ${module.name}`);
 
@@ -563,14 +868,14 @@ function syncModule(
 
     // Apply sync strategy
     console.log(`  Applying ${module.strategy} strategy...`);
-    let mergeResult: { copied: number; skipped: number; conflicts: string[] } | null = null;
+    let mergeResult: { copied: number; skipped: number; kept: number; conflicts: string[] } | null = null;
 
     switch (module.strategy) {
       case 'link':
         applyLinkStrategy(module, repoPath, hqRoot);
         break;
       case 'merge':
-        mergeResult = applyMergeStrategy(module, repoPath, hqRoot, syncState);
+        mergeResult = await applyMergeStrategy(module, repoPath, hqRoot, syncState, interactive);
         break;
       case 'copy':
         applyCopyStrategy(module, repoPath, hqRoot);
@@ -583,7 +888,8 @@ function syncModule(
       const parts = [`${cloned ? 'Cloned' : 'Updated'}`];
       if (mergeResult.copied > 0) parts.push(`${mergeResult.copied} copied`);
       if (mergeResult.skipped > 0) parts.push(`${mergeResult.skipped} unchanged`);
-      if (mergeResult.conflicts.length > 0) parts.push(`${mergeResult.conflicts.length} conflicts`);
+      if (mergeResult.kept > 0) parts.push(`${mergeResult.kept} kept local`);
+      if (mergeResult.conflicts.length > 0) parts.push(`${mergeResult.conflicts.length} unresolved`);
       message = parts.join(', ');
     } else {
       const strategyPastTense = module.strategy === 'copy' ? 'copied' : 'linked';
@@ -611,7 +917,8 @@ export const modulesSyncCommand = new Command('sync')
   .option('--module <name>', 'Sync only a specific module')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('--locked', 'Use exact versions from modules.lock for reproducible installs')
-  .action((options: { module?: string; dryRun?: boolean; locked?: boolean }) => {
+  .option('--no-interactive', 'Skip interactive conflict prompts (keep local files on conflict)')
+  .action(async (options: { module?: string; dryRun?: boolean; locked?: boolean; interactive?: boolean }) => {
     // Find and load manifest
     const manifestPath = findManifestPath();
     if (!manifestPath) {
@@ -671,6 +978,9 @@ export const modulesSyncCommand = new Command('sync')
     // Load sync state for merge strategy conflict detection
     const syncState = loadSyncState(hqRoot);
 
+    // Determine if interactive mode (default true, --no-interactive sets to false)
+    const interactive = options.interactive !== false;
+
     // Sync each module
     const results: SyncResultWithCommit[] = [];
     const now = new Date().toISOString();
@@ -680,7 +990,7 @@ export const modulesSyncCommand = new Command('sync')
       if (options.locked && !lockedCommit) {
         console.warn(`  Warning: Module "${module.name}" not found in lock file, syncing latest`);
       }
-      const result = syncModule(module, syncedDir, hqRoot, syncState, lockedCommit);
+      const result = await syncModule(module, syncedDir, hqRoot, syncState, lockedCommit, interactive);
       results.push(result);
     }
 
