@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { modulesAddCommand } from './commands/modules-add.js';
+import { modulesSyncCommand } from './commands/modules-sync.js';
 
 const program = new Command();
 
@@ -14,6 +15,7 @@ const modulesCommand = new Command('modules')
   .description('Manage HQ modules');
 
 modulesCommand.addCommand(modulesAddCommand);
+modulesCommand.addCommand(modulesSyncCommand);
 program.addCommand(modulesCommand);
 
 program.parse();
