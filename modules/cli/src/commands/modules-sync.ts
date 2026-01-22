@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 
 interface Module {
   name: string;
@@ -59,6 +59,26 @@ interface SyncState {
   version: string;
   /** Module states keyed by module name */
   modules: Record<string, ModuleSyncState>;
+}
+
+/**
+ * Lock file entry for a single module
+ */
+interface LockEntry {
+  /** Git commit SHA */
+  commit: string;
+  /** Timestamp when locked */
+  lockedAt: string;
+}
+
+/**
+ * Lock file structure (modules.lock)
+ */
+interface LockFile {
+  /** Lock file version */
+  version: string;
+  /** Module locks keyed by module name */
+  modules: Record<string, LockEntry>;
 }
 
 /**
@@ -155,6 +175,38 @@ function saveSyncState(hqRoot: string, state: SyncState): void {
 }
 
 /**
+ * Get path to modules.lock
+ */
+function getLockFilePath(hqRoot: string): string {
+  return path.join(hqRoot, 'modules', 'modules.lock');
+}
+
+/**
+ * Load lock file from disk
+ */
+function loadLockFile(hqRoot: string): LockFile | null {
+  const lockPath = getLockFilePath(hqRoot);
+  if (fs.existsSync(lockPath)) {
+    const content = fs.readFileSync(lockPath, 'utf-8');
+    return parse(content) as LockFile;
+  }
+  return null;
+}
+
+/**
+ * Save lock file to disk as human-readable YAML
+ */
+function saveLockFile(hqRoot: string, lockFile: LockFile): void {
+  const lockPath = getLockFilePath(hqRoot);
+  const header = `# HQ Modules Lock File
+# This file tracks pinned module versions for reproducible installs.
+# Do not edit manually - use 'hq modules update <name>' to update.
+
+`;
+  fs.writeFileSync(lockPath, header + stringify(lockFile, { lineWidth: 0 }));
+}
+
+/**
  * Compute SHA-256 hash of file content
  */
 function hashFile(filePath: string): string {
@@ -189,8 +241,13 @@ function getAllFiles(dir: string, base: string = ''): string[] {
 
 /**
  * Clone or fetch a module repository
+ * @param lockedCommit - If provided, checkout this specific commit instead of branch HEAD
  */
-function cloneOrFetch(module: Module, syncedDir: string): { cloned: boolean; repoPath: string } {
+function cloneOrFetch(
+  module: Module,
+  syncedDir: string,
+  lockedCommit?: string
+): { cloned: boolean; repoPath: string } {
   const repoPath = path.join(syncedDir, module.name);
 
   if (fs.existsSync(repoPath)) {
@@ -200,14 +257,25 @@ function cloneOrFetch(module: Module, syncedDir: string): { cloned: boolean; rep
       cwd: repoPath,
       stdio: 'pipe',
     });
-    execSync(`git checkout ${module.branch}`, {
-      cwd: repoPath,
-      stdio: 'pipe',
-    });
-    execSync(`git pull origin ${module.branch}`, {
-      cwd: repoPath,
-      stdio: 'pipe',
-    });
+
+    if (lockedCommit) {
+      // Checkout specific locked commit
+      console.log(`  Checking out locked commit: ${lockedCommit.substring(0, 8)}...`);
+      execSync(`git checkout ${lockedCommit}`, {
+        cwd: repoPath,
+        stdio: 'pipe',
+      });
+    } else {
+      // Checkout branch and pull latest
+      execSync(`git checkout ${module.branch}`, {
+        cwd: repoPath,
+        stdio: 'pipe',
+      });
+      execSync(`git pull origin ${module.branch}`, {
+        cwd: repoPath,
+        stdio: 'pipe',
+      });
+    }
     return { cloned: false, repoPath };
   } else {
     // Clone fresh
@@ -215,6 +283,15 @@ function cloneOrFetch(module: Module, syncedDir: string): { cloned: boolean; rep
     execSync(`git clone --branch ${module.branch} ${module.repo} ${repoPath}`, {
       stdio: 'pipe',
     });
+
+    if (lockedCommit) {
+      // Checkout specific locked commit after clone
+      console.log(`  Checking out locked commit: ${lockedCommit.substring(0, 8)}...`);
+      execSync(`git checkout ${lockedCommit}`, {
+        cwd: repoPath,
+        stdio: 'pipe',
+      });
+    }
     return { cloned: true, repoPath };
   }
 }
@@ -447,15 +524,32 @@ function applyCopyStrategy(module: Module, repoPath: string, hqRoot: string): vo
 }
 
 /**
- * Sync a single module
+ * Extended sync result that includes commit hash for lock file
  */
-function syncModule(module: Module, syncedDir: string, hqRoot: string, syncState: SyncState): SyncResult {
+interface SyncResultWithCommit extends SyncResult {
+  commit?: string;
+}
+
+/**
+ * Sync a single module
+ * @param lockedCommit - If provided, checkout this specific commit instead of branch HEAD
+ */
+function syncModule(
+  module: Module,
+  syncedDir: string,
+  hqRoot: string,
+  syncState: SyncState,
+  lockedCommit?: string
+): SyncResultWithCommit {
   try {
     console.log(`\nSyncing module: ${module.name}`);
 
     // Clone or fetch repository
-    const { cloned, repoPath } = cloneOrFetch(module, syncedDir);
+    const { cloned, repoPath } = cloneOrFetch(module, syncedDir, lockedCommit);
     console.log(`  ${cloned ? 'Cloned' : 'Updated'} from ${module.repo}`);
+
+    // Get current commit hash for lock file
+    const commit = getRepoCommit(repoPath);
 
     // Check if there are any path mappings
     if (Object.keys(module.paths).length === 0) {
@@ -463,6 +557,7 @@ function syncModule(module: Module, syncedDir: string, hqRoot: string, syncState
         module: module.name,
         success: true,
         message: `${cloned ? 'Cloned' : 'Updated'} (no path mappings)`,
+        commit,
       };
     }
 
@@ -499,6 +594,7 @@ function syncModule(module: Module, syncedDir: string, hqRoot: string, syncState
       module: module.name,
       success: true,
       message,
+      commit,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -514,7 +610,8 @@ export const modulesSyncCommand = new Command('sync')
   .description('Sync all modules from modules.yaml')
   .option('--module <name>', 'Sync only a specific module')
   .option('--dry-run', 'Show what would be synced without making changes')
-  .action((options: { module?: string; dryRun?: boolean }) => {
+  .option('--locked', 'Use exact versions from modules.lock for reproducible installs')
+  .action((options: { module?: string; dryRun?: boolean; locked?: boolean }) => {
     // Find and load manifest
     const manifestPath = findManifestPath();
     if (!manifestPath) {
@@ -529,6 +626,18 @@ export const modulesSyncCommand = new Command('sync')
     console.log(`HQ root: ${hqRoot}`);
     console.log(`Manifest: ${manifestPath}`);
     console.log(`Modules to sync: ${manifest.modules.length}`);
+
+    // Load lock file if --locked flag is provided
+    let lockFile: LockFile | null = null;
+    if (options.locked) {
+      lockFile = loadLockFile(hqRoot);
+      if (!lockFile) {
+        console.error('Error: --locked flag requires modules.lock file.');
+        console.error('Run "hq modules sync" first to generate the lock file.');
+        process.exit(1);
+      }
+      console.log('Using locked versions from modules.lock');
+    }
 
     // Filter modules if --module flag is provided
     let modulesToSync = manifest.modules;
@@ -563,14 +672,56 @@ export const modulesSyncCommand = new Command('sync')
     const syncState = loadSyncState(hqRoot);
 
     // Sync each module
-    const results: SyncResult[] = [];
+    const results: SyncResultWithCommit[] = [];
+    const now = new Date().toISOString();
     for (const module of modulesToSync) {
-      const result = syncModule(module, syncedDir, hqRoot, syncState);
+      // Get locked commit if using --locked flag
+      const lockedCommit = lockFile?.modules[module.name]?.commit;
+      if (options.locked && !lockedCommit) {
+        console.warn(`  Warning: Module "${module.name}" not found in lock file, syncing latest`);
+      }
+      const result = syncModule(module, syncedDir, hqRoot, syncState, lockedCommit);
       results.push(result);
     }
 
     // Save sync state after all modules are synced
     saveSyncState(hqRoot, syncState);
+
+    // Generate/update modules.lock after successful sync (not in locked mode)
+    if (!options.locked) {
+      const newLockFile: LockFile = {
+        version: '1',
+        modules: {},
+      };
+
+      // Add successful syncs to lock file
+      for (const result of results) {
+        if (result.success && result.commit) {
+          newLockFile.modules[result.module] = {
+            commit: result.commit,
+            lockedAt: now,
+          };
+        }
+      }
+
+      // Preserve locks for modules not synced (when using --module flag)
+      if (options.module) {
+        const existingLockFile = loadLockFile(hqRoot);
+        if (existingLockFile) {
+          for (const [name, entry] of Object.entries(existingLockFile.modules)) {
+            if (!newLockFile.modules[name]) {
+              newLockFile.modules[name] = entry;
+            }
+          }
+        }
+      }
+
+      // Only write lock file if there are entries
+      if (Object.keys(newLockFile.modules).length > 0) {
+        saveLockFile(hqRoot, newLockFile);
+        console.log(`\nLock file updated: ${getLockFilePath(hqRoot)}`);
+      }
+    }
 
     // Print summary
     console.log('\n--- Sync Summary ---\n');

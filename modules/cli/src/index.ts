@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { modulesAddCommand } from './commands/modules-add.js';
 import { modulesListCommand } from './commands/modules-list.js';
 import { modulesSyncCommand } from './commands/modules-sync.js';
+import { modulesUpdateCommand } from './commands/modules-update.js';
 
 const program = new Command();
 
@@ -18,6 +19,7 @@ const modulesCommand = new Command('modules')
 modulesCommand.addCommand(modulesAddCommand);
 modulesCommand.addCommand(modulesListCommand);
 modulesCommand.addCommand(modulesSyncCommand);
+modulesCommand.addCommand(modulesUpdateCommand);
 program.addCommand(modulesCommand);
 
 program.parse();
