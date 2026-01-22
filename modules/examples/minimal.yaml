@@ -1,0 +1,14 @@
+# Example: Minimal modules.yaml
+# Just the essentials for getting started
+
+version: "1.0"
+
+modules:
+  - name: hq-core
+    repo: https://github.com/coreyepstein/hq-starter-kit.git
+    branch: main
+    strategy: merge
+    access: public
+    paths:
+      knowledge/Ralph: knowledge/Ralph
+      .claude/commands: .claude/commands

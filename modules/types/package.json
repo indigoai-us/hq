@@ -1,0 +1,23 @@
+{
+  "name": "@hq/module-types",
+  "version": "1.0.0",
+  "description": "TypeScript types for HQ module manifest parsing",
+  "main": "dist/manifest.js",
+  "types": "dist/manifest.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "hq",
+    "modules",
+    "types"
+  ],
+  "license": "MIT"
+}
