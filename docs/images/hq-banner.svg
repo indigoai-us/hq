@@ -1,0 +1,69 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#161b22;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#58a6ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a371f7;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="200" fill="url(#bgGrad)" rx="12"/>
+
+  <!-- Hexagon grid pattern -->
+  <g opacity="0.08" stroke="#58a6ff" stroke-width="1" fill="none">
+    <polygon points="30,20 50,10 70,20 70,40 50,50 30,40"/>
+    <polygon points="70,20 90,10 110,20 110,40 90,50 70,40"/>
+    <polygon points="50,50 70,40 90,50 90,70 70,80 50,70"/>
+    <polygon points="530,120 550,110 570,120 570,140 550,150 530,140"/>
+    <polygon points="550,150 570,140 590,150 590,170 570,180 550,170"/>
+  </g>
+
+  <!-- HQ Logo/Icon -->
+  <g transform="translate(60, 55)">
+    <rect width="80" height="80" fill="none" stroke="url(#accentGrad)" stroke-width="3" rx="12" filter="url(#glow)"/>
+    <text x="40" y="55" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="800">HQ</text>
+  </g>
+
+  <!-- Title -->
+  <text x="170" y="80" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="38" font-weight="700">Starter Kit</text>
+
+  <!-- Tagline -->
+  <text x="170" y="110" fill="#8b949e" font-family="system-ui, -apple-system, sans-serif" font-size="15">Your Personal Operating System</text>
+
+  <!-- Feature pills -->
+  <g transform="translate(170, 130)">
+    <rect width="70" height="24" fill="#238636" fill-opacity="0.2" stroke="#238636" stroke-width="1" rx="12"/>
+    <text x="35" y="16" text-anchor="middle" fill="#3fb950" font-family="system-ui" font-size="11">Workers</text>
+
+    <rect x="80" width="80" height="24" fill="#1f6feb" fill-opacity="0.2" stroke="#1f6feb" stroke-width="1" rx="12"/>
+    <text x="120" y="16" text-anchor="middle" fill="#58a6ff" font-family="system-ui" font-size="11">Knowledge</text>
+
+    <rect x="170" width="80" height="24" fill="#8957e5" fill-opacity="0.2" stroke="#8957e5" stroke-width="1" rx="12"/>
+    <text x="210" y="16" text-anchor="middle" fill="#a371f7" font-family="system-ui" font-size="11">Commands</text>
+
+    <rect x="260" width="90" height="24" fill="#f0883e" fill-opacity="0.2" stroke="#f0883e" stroke-width="1" rx="12"/>
+    <text x="305" y="16" text-anchor="middle" fill="#f0883e" font-family="system-ui" font-size="11">Checkpoints</text>
+  </g>
+
+  <!-- Connection lines decoration -->
+  <g stroke="#30363d" stroke-width="1" opacity="0.5">
+    <line x1="500" y1="50" x2="550" y2="50"/>
+    <line x1="550" y1="50" x2="550" y2="80"/>
+    <circle cx="550" cy="80" r="3" fill="#58a6ff"/>
+
+    <line x1="520" y1="70" x2="570" y2="70"/>
+    <line x1="570" y1="70" x2="570" y2="100"/>
+    <circle cx="570" cy="100" r="3" fill="#a371f7"/>
+  </g>
+</svg>
