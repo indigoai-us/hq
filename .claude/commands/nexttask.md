@@ -1,82 +1,66 @@
 ---
 description: Scan HQ and suggest next tasks or projects to work on
-allowed-tools: Read, Glob, Grep, AskUserQuestion
+allowed-tools: Read, Glob, Bash, AskUserQuestion
 ---
 
-# Next Task Finder
+# /nexttask - Find Work
 
-Scan HQ to surface actionable work. Prioritize by urgency, impact, and readiness.
+Scan HQ to surface actionable work. Prioritize by: beads tasks, checkpoints, projects.
 
-## Scan These Sources
+## Process
 
-### 1. In-Progress Checkpoints
+### 1. Check Beads (Primary Source)
+```bash
+bd list --status open --limit 10
+```
+Beads is the canonical task tracker. Open issues are the primary work queue.
+
+### 2. Check Checkpoints (In-Progress Work)
 ```
 workspace/checkpoints/*.json
 ```
-Look for `"status": "in_progress"` or `"status": "partially_complete"`.
-These are **hot** - work was started but not finished.
+Look for recent checkpoints with `next_steps`. These are work that was started.
 
-### 2. Project READMEs
-```
-projects/*/README.md
-```
-Scan for:
-- `[ ]` unchecked tasks
-- `Status:` lines showing incomplete work
-- `Next Steps:` sections
-- `Pending` items
+Also check `workspace/checkpoints/handoff.json` for explicit handoffs.
 
-### 3. Worker Registry
+### 3. Check Projects (Secondary)
 ```
-workers/registry.yaml
+projects/*/prd.json
 ```
-Look for `status: planned` workers that could be built.
-
-### 4. HQ Journal (Recent)
-```
-data/journal/hq-journal.jsonl
-```
-Check last 5-10 entries for `"outcome": "in_progress"` or `"outcome": "blocked"`.
-
-### 5. Content Queues
-```
-workers/social/*/queue.json
-workspace/content-ideas/
-workspace/social-drafts/
-```
-Pending posts or content that needs work.
+Scan for projects with incomplete features (beads syncs from PRDs, so this is backup).
 
 ## Output Format
 
-Present findings as a prioritized list:
-
 ```
-## 🔥 Hot (In-Progress Work)
-1. [CHECKPOINT] {task} - {one-line summary}
-   Source: workspace/checkpoints/{file}
+Next Tasks:
 
-## 📋 Ready to Execute
-2. [PROJECT] {project name} - {specific next step}
-   Source: projects/{name}/README.md
+BEADS (open issues):
+  1. [PROJECT-123] Task title
+  2. [PROJECT-456] Another task
 
-## 🏗️ Infrastructure (Build Mode)
-3. [WORKER] {worker name} - status: planned
-   Source: workers/registry.yaml
+IN PROGRESS (checkpoints):
+  3. skills-redesign - "Rewriting HQ skills per plan"
+     Next: Move content skills to worker
+
+PROJECTS (with work):
+  4. customer-cube - 3 features remaining
+
+Pick a number, or:
+  /run {worker}           Run a worker skill
+  /launch-ralph {project} Start PRD execution
 ```
 
 ## Priority Rules
 
-1. **In-progress checkpoints** > everything else (finish what's started)
-2. **Blocked work** that can now be unblocked
-3. **Projects with clear next steps** > vague projects
-4. **Revenue-generating work** > infrastructure
-5. **Quick wins** > large efforts (unless user has blocked time)
+1. **Handoff work** - explicit continuations from last session
+2. **Beads open issues** - canonical task queue
+3. **In-progress checkpoints** - finish what was started
+4. **Projects with defined features** - clear work to do
 
 ## After Presenting
 
-Ask user:
-- Which task to work on?
-- Any context changes that affect priority?
-- Time available for this session?
+Use AskUserQuestion:
+- "Which task to work on?"
+- Options: numbered list + "Something else"
 
-Then offer to run `/work` or `/build` as appropriate.
+Then execute the chosen work or spawn mr-burns.

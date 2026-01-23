@@ -1,43 +1,48 @@
 ---
 description: Hand off to fresh session, work continues from checkpoint
-allowed-tools: Write
+allowed-tools: Write, Read, Bash
 argument-hint: [message]
 ---
 
-Hand off work to a fresh session.
+# /handoff - Fresh Session Continuity
 
-User's handoff message (if any): $ARGUMENTS
+Prepare for a new session to continue this work.
 
-## Steps
+**User's message (optional):** $ARGUMENTS
 
-1. **Ensure checkpoint exists** - If no recent checkpoint, run `/checkpoint` first
+## Process
 
-2. **Write handoff note** to `workspace/checkpoints/handoff.json`:
+1. **Ensure checkpoint exists**
+   - Check `workspace/checkpoints/` for recent checkpoint
+   - If none, run checkpoint first
+
+2. **Update INDEX.md**
+   - Regenerate `INDEX.md` at HQ root (same as checkpoint)
+
+3. **Write handoff note** to `workspace/checkpoints/handoff.json`:
    ```json
    {
      "created_at": "ISO8601 timestamp",
      "message": "user's handoff message if provided",
      "last_checkpoint": "path to most recent checkpoint",
-     "context_notes": "any important context for next session"
+     "context_notes": "important context for next session"
    }
    ```
 
-3. **Inform user**:
+3. **Report**
    ```
-   Handoff ready!
+   Handoff ready.
 
-   Your work is saved to: workspace/checkpoints/{checkpoint-id}.json
+   Checkpoint: workspace/checkpoints/{checkpoint-id}.json
 
    To continue in a fresh session:
-   1. Start a new Claude Code session
-   2. Run: `/nexttask` (it will find your checkpoint)
+   1. Start new Claude Code session
+   2. Run: /nexttask (it will find your checkpoint)
 
-   Or manually resume:
-   - Read workspace/checkpoints/{checkpoint-id}.json
-   - Continue from next_steps
+   Or manually: read workspace/checkpoints/handoff.json
    ```
 
-## Why Handoff?
+## Why Fresh Sessions
 
 Fresh context means:
 - No accumulated noise from previous work
@@ -45,6 +50,6 @@ Fresh context means:
 - Follows Ralph methodology (fresh agent per task)
 
 Use `/handoff` when:
-- Context usage is >50% (check with `/checkpoint`)
+- Session has been running a while
 - Switching to a different type of task
 - Want cleaner separation between work chunks

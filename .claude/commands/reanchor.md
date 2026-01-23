@@ -1,34 +1,43 @@
 ---
 description: Force reanchoring conversation before next task
-allowed-tools: AskUserQuestion
+allowed-tools: Read, Bash, AskUserQuestion
 argument-hint:
 ---
 
-Force a reanchoring checkpoint. Use this when you want to ensure alignment before the agent continues.
+# /reanchor - Pause and Realign
 
-## Steps
+Stop and realign before continuing. Use when you want to ensure the agent is on track.
 
-1. **Review** - Summarize what was just built/changed:
-   - Files modified
-   - Key decisions made
-   - Current state of the work
+## Process
 
-2. **Ask clarifying questions** using AskUserQuestion:
-   - "Any issues with what was built?"
-   - "Anything to adjust before continuing?"
-   - "What should be the priority for the next task?"
+1. **Show recent state**
+   - Read last checkpoint if exists (`workspace/checkpoints/`)
+   - Run `git log --oneline -5` for recent commits
+   - Summarize current working state
 
-3. **Wait for response** - Do NOT proceed until user responds
+2. **Display summary**
+   ```
+   Recent commits:
+   - abc123: feat: add /run skill
+   - def456: refactor: simplify checkpoint
 
-4. **Update plan** - If user provides feedback, incorporate it before moving on
+   Last checkpoint: {task-id}
+   Summary: {checkpoint summary}
+   Next steps: {from checkpoint}
+   ```
 
-5. **Confirm next step** - Only then proceed to the next task
+3. **Ask for focus**
+   Use AskUserQuestion:
+   - "What's the focus for the next stretch?"
+   - Options based on checkpoint next_steps + "Something else"
 
-## Why This Matters
+4. **Wait for response** before proceeding
+
+## Why Reanchor
 
 Reanchoring prevents:
 - Context drift (agent goes off-track)
 - Wasted work (building wrong thing)
-- Compounding errors (small misunderstanding becomes big problem)
+- Compounding errors
 
-This is core Ralph methodology: small loops with human checkpoints.
+Core Ralph methodology: small loops with human checkpoints.
