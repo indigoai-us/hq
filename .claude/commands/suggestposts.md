@@ -1,17 +1,19 @@
 ---
-description: Research and suggest posts aligned with your goals
+description: Research and suggest posts aligned with life/OS goals
 allowed-tools: Task, Read, Glob, Grep, WebSearch, WebFetch, AskUserQuestion
 ---
 
 # /suggestposts - Strategic Content Suggestions
 
-Research what you should be posting to progress your overall goals.
+Research what Corey should be posting to progress overall life and OS goals.
 
 ## Context to Load
 
-1. `knowledge/{your-name}/profile.md` - Identity, goals, audience
-2. `knowledge/{your-name}/voice-style.md` - Content style, themes
-3. `social-content/drafts/INDEX.md` - What's already in the pipeline
+1. `agents.md` - Current roles, companies, strategic positioning
+2. `knowledge/corey-epstein/profile.md` - Identity, goals, audience
+3. `knowledge/corey-epstein/social-calendar.md` - Content strategy, themes
+4. `social-content/drafts/INDEX.md` - What's already in the pipeline
+5. `projects/social-presence-strategy/` - Lulu Meservey framework if exists
 
 ## Research Process
 
@@ -19,34 +21,35 @@ Research what you should be posting to progress your overall goals.
 
 **Check what's in queue:**
 - `social-content/drafts/` - Pending drafts
-- `workers/social/{platform}/queue.json` - Queued tasks
+- `workers/social/x-corey/queue.json` - Queued tasks
 
 **Check recent activity:**
-- What have you posted recently? (if tracking exists)
+- What has Corey posted recently? (if tracking exists)
 - Any gaps in content themes?
 
 ### 2. Research External Context
 
 **Scan relevant sources:**
-- News in your domain (what's trending?)
-- Competitor/peer activity (what are others posting?)
+- AI/tech news (what's trending in Corey's space?)
+- Competitor/peer activity (what are other founders posting?)
 - Industry events (anything timely to react to?)
 
 Use WebSearch for:
-- "{your industry} news today"
-- Trending topics in your space
-- Topics from your profile.md
+- "AI agents news today"
+- "startup founder twitter trending"
+- Topics from `knowledge/corey-epstein/social-calendar.md`
 
 ### 3. Align with Strategic Goals
 
-Cross-reference your positioning from profile.md:
+Reference Corey's positioning:
 
 | Goal | Content Angle |
 |------|---------------|
-| **Thought leadership** | Posts about your expertise, unique insights |
-| **Network building** | Engagement-focused, conversation starters |
-| **Brand building** | Consistent voice, values-aligned content |
-| **Product/service awareness** | Subtle mentions, case studies |
+| **Ralph methodology thought leader** | Posts about autonomous AI, loops, building infrastructure |
+| **e/acc identity** | Pro-technology, abundance mindset, forward-looking |
+| **LiveRecover/Voyage CEO** | SMS, e-commerce, AI for brands |
+| **Startup ecosystem voice** | Disruption observations, founder insights |
+| **Human value in AI age** | Taste, creativity, agency themes |
 
 ### 4. Generate Suggestions
 
@@ -54,7 +57,7 @@ Provide 3-5 post ideas ranked by:
 1. **Timeliness** - Is there a news hook?
 2. **Alignment** - Does it progress strategic goals?
 3. **Engagement potential** - Will it resonate with audience?
-4. **Originality** - Are you uniquely positioned to say this?
+4. **Originality** - Is Corey uniquely positioned to say this?
 
 For each suggestion, provide:
 ```
@@ -72,7 +75,7 @@ For each suggestion, provide:
 
 ### 5. Cross-reference Existing Content
 
-Check if you already have relevant drafts:
+Check if we already have relevant drafts:
 - Could an existing draft be adapted?
 - Is there a queued item that addresses this?
 
@@ -80,26 +83,27 @@ Check if you already have relevant drafts:
 
 Ask user:
 - "Want me to build out any of these with `/contentidea`?"
-- "Should I check what's happening now for real-time opportunities?"
+- "Should I check what's happening on X right now for real-time opportunities?"
 - "Any of these feel off-brand or should be skipped?"
 
-## Weekly Theme Reference (customize in social-calendar.md)
+## Weekly Theme Reference
 
-- **Monday:** Professional/industry
+From social-calendar.md:
+- **Monday:** AI/Tech trends
 - **Tuesday:** Business insights
 - **Wednesday:** Flex
-- **Thursday:** Future-focused
+- **Thursday:** Future of work
 - **Friday:** Lighter content
 - **Weekend:** Opportunistic
 
-## Evergreen Themes That Often Work
+## Evergreen Themes That Always Work
 
-- Behind-the-scenes observations
-- Contrarian takes (when authentic)
-- Industry predictions
-- Lessons learned
-- Useful frameworks
-- Hot takes on trending topics
+- Taste, creativity, agency observations
+- "X industry is gonna cook" format
+- Platform vs brand dynamics
+- Ralph/autonomous AI insights
+- E-commerce/SMS strategy
+- Disruption predictions
 
 ## Output Format
 

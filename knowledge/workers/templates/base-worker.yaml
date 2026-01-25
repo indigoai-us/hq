@@ -9,9 +9,9 @@ worker:
 
 identity:
   # Choose one:
-  # persona: {your-name}
-  # company_context: companies/{company}/
-  # voice_guide: knowledge/{your-name}/voice-style.md
+  # persona: corey-epstein
+  # company_context: companies/acme/
+  # voice_guide: knowledge/my-brand/voice-style.md
 
 execution:
   mode: on-demand            # on-demand, scheduled, event-triggered
@@ -46,6 +46,19 @@ output:
 audit:
   log: workers/logs/my-worker.log
   progress: workers/progress/my-worker.txt
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+
+  hooks:
+    post_execute:
+      - auto_checkpoint          # save thread to workspace/threads/
+      - log_metrics              # append to workspace/metrics/metrics.jsonl
+    on_error:
+      - log_error
+      - checkpoint_error_state
 
 instructions: |
   Worker-specific instructions go here.

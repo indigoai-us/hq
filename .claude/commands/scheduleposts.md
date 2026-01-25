@@ -1,17 +1,17 @@
 ---
 description: Choose what to post right now based on content inventory and current context
-allowed-tools: Task, Read, Glob, Grep, WebSearch, WebFetch, AskUserQuestion
+allowed-tools: Task, Read, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, mcp__Claude_in_Chrome__tabs_context_mcp, mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__computer, mcp__Claude_in_Chrome__get_page_text
 ---
 
 # /scheduleposts - Smart Post Scheduling
 
-Analyze available content, current context, and world events to recommend what to post RIGHT NOW.
+Analyze available content, current feed state, and world events to recommend what to post RIGHT NOW.
 
 ## Context to Load
 
 1. `social-content/drafts/INDEX.md` - All available drafts
-2. `workers/social/{platform}/queue.json` - Queue with status
-3. `knowledge/{your-name}/social-calendar.md` - Timing strategy (if exists)
+2. `workers/social/x-corey/queue.json` - Queue with status
+3. `knowledge/corey-epstein/social-calendar.md` - Timing strategy
 
 ## Process
 
@@ -25,14 +25,20 @@ Read all ready drafts from `social-content/drafts/`:
 ### 2. Check Current Context
 
 **Time-based factors:**
-- What day is it? (Monday = professional, Friday = lighter, etc.)
-- What time? (Morning, afternoon, evening optimal windows)
+- What day is it? (Monday = AI/Tech, Friday = lighter, etc.)
+- What time? (9am, 2pm, 7pm MT are optimal)
 - Any relevant dates/events?
 
 **World context (WebSearch):**
-- Major news in your domain today?
-- Anything you should react to?
-- Competitor/peer activity?
+- Major AI/tech news today?
+- Anything Corey should react to?
+- Competitor activity?
+
+**Feed context (if browser available):**
+- Use Chrome MCP to check Corey's X feed
+- What's the current conversation?
+- Any threads to jump into?
+- What have similar accounts posted recently?
 
 ### 3. Match Content to Moment
 
@@ -87,6 +93,7 @@ For threads, show post-by-post.
 
 Ask user:
 - "Ready to post the primary recommendation?"
+- "Want me to open X and help you post it?" (if browser MCP available)
 - "Should I hold this and suggest something else?"
 - "Want to tweak the content first?"
 
@@ -95,26 +102,39 @@ Ask user:
 If user confirms posting:
 1. Update draft status in INDEX.md → move to "Posted" section
 2. Update queue.json status → "posted"
-3. Note the post for future "what did we post recently" queries
+3. Log to `workers/social/logs/x-corey.log`
+4. Note the post for future "what did we post recently" queries
 
 ## Timing Guidelines
 
-**Optimal posting times:**
-- Morning (8-10am local) - Morning engagement
-- Afternoon (1-3pm local) - Afternoon peak
-- Evening (6-8pm local) - Evening scroll
+**Optimal posting times (MT):**
+- 9am - Morning engagement
+- 2pm - Afternoon peak
+- 7pm - Evening scroll
 
-**Day themes (customize in social-calendar.md):**
-- Monday: Industry/professional topics
+**Day themes:**
+- Monday: AI/Tech trends
 - Tuesday: Business insights
 - Wednesday: Flex
-- Thursday: Future-focused
+- Thursday: Future of work
 - Friday: Lighter content
 
 **Avoid:**
 - Posting similar content same day
 - Back-to-back articles (space them out)
 - Threads when news is breaking (short posts cut through)
+
+## Feed Analysis (if browser available)
+
+When checking X feed:
+1. Navigate to twitter.com/home
+2. Screenshot and analyze:
+   - What's dominating the feed?
+   - Any breaking news?
+   - What's the mood? (serious, playful, outraged)
+3. Check @coreyepstein profile:
+   - When was last post?
+   - What got engagement?
 
 ## Output Format
 
@@ -123,7 +143,7 @@ If user confirms posting:
 
 ## Current Context
 - Day: {day} → Theme: {theme}
-- Time: {time} → {optimal/suboptimal}
+- Time: {time} MT → {optimal/suboptimal}
 - Last post: {when, if known}
 - Breaking news: {yes/no - summary if yes}
 

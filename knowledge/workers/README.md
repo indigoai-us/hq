@@ -20,11 +20,10 @@ Workers are autonomous AI assistants with specialized roles. This knowledge base
 
 | Type | Purpose | Example |
 |------|---------|---------|
-| **AssistantWorker** | Email, calendar, personal ops | email-digest |
-| **CodeWorker** | Implement features, fix bugs | myproject-coder |
-| **SocialWorker** | Draft posts, maintain presence | x-personal |
-| **ResearchWorker** | Competitive analysis, market research | competitive |
-| **OpsWorker** | Monitoring, automation, reports | ads-monitor |
+| **CodeWorker** | Implement features, fix bugs | liverecover, abacus |
+| **SocialWorker** | Draft posts, maintain presence | x-corey |
+| **ResearchWorker** | Competitive analysis, market research | liverecover-analyst |
+| **OpsWorker** | Monitoring, automation, reports | cfo-liverecover |
 
 ## Building Workers (Build Mode)
 
@@ -84,8 +83,8 @@ workers/
 ### On-Demand Execution
 
 ```
-"Run the email digest worker"
-"Execute media-buyer performance report"
+"Run the liverecover-analyst anomaly check"
+"Execute cfo-liverecover monthly report"
 ```
 
 The agent will:
@@ -189,4 +188,8 @@ workers:
 
 - [Ralph Methodology](../Ralph/) - Core principles
 - [ralph-loop-pattern.md](./ralph-loop-pattern.md) - Detailed loop docs
+- [state-machine.md](./state-machine.md) - Worker state machine (Loom pattern)
+- [skill-schema.md](./skill-schema.md) - Skill interface specification
+- [Thread Schema](../hq-core/thread-schema.md) - Thread persistence format
+- [Loom Patterns](../loom/) - Reference implementation
 - Individual worker docs in `workers/{category}/{id}/`

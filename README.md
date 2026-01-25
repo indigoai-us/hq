@@ -2,33 +2,40 @@
   <img src="docs/images/hq-banner.svg" alt="HQ - Your Personal Operating System" width="600">
 </p>
 
-<h1 align="center">HQ Starter Kit</h1>
+<h1 align="center">HQ - Personal OS for AI Workers</h1>
 
 <p align="center">
-  <strong>A personal operating system for orchestrating AI workers.</strong>
+  <strong>Build your AI team. Ship projects autonomously. Never lose context.</strong>
 </p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/coreyepstein/mr-burns"><img src="https://img.shields.io/badge/Powered%20by-Mr.%20Burns-yellow.svg" alt="Powered by Mr. Burns"></a>
+  <a href="https://github.com/coreyepstein/hq-cli"><img src="https://img.shields.io/badge/CLI-hq--cli-green.svg" alt="HQ CLI"></a>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#what-you-get">What You Get</a> •
+  <a href="#whats-new-in-v20">What's New</a> •
+  <a href="#core-concepts">Core Concepts</a> •
   <a href="#commands">Commands</a> •
-  <a href="#the-ralph-methodology">Ralph Methodology</a>
+  <a href="#workers">Workers</a>
 </p>
 
 ---
 
 ## What is HQ?
 
-HQ is infrastructure for a **personal operating system** - not just files, but active systems that execute, learn, and scale.
+HQ is infrastructure for orchestrating **AI workers** - autonomous agents that code, write content, research, and automate tasks.
+
+Not just files. Active systems that:
+- **Execute** - Workers do real work autonomously
+- **Learn** - Knowledge bases grow smarter over time
+- **Scale** - Add workers for new domains
+- **Survive** - Checkpoints persist across sessions
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                           YOUR HQ                                │
+│                           YOUR HQ                               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
@@ -48,169 +55,293 @@ HQ is infrastructure for a **personal operating system** - not just files, but a
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Think of it as:
-- **Workers** that do things autonomously (code, content, research, ops)
-- **Knowledge bases** that workers learn from and contribute to
-- **Checkpoints** that let work survive across context limits
-- **Commands** that orchestrate everything from Claude Code
-
 ## Quick Start
 
 ```bash
-# 1. Clone this repo
+# 1. Clone
 git clone https://github.com/coreyepstein/hq-starter-kit.git my-hq
 cd my-hq
 
-# 2. Open in Claude Code and run setup
-/setup
+# 2. Open in Claude Code
+claude
 
-# 3. Follow the wizard to configure your HQ
+# 3. Run setup wizard
+/setup
 ```
 
-That's it. You now have a personal OS.
+That's it. You now have a personal OS with 18 workers ready to deploy.
 
-## What You Get
+## What's New in v2.0
 
-### Commands
+### Project Orchestration
+Execute entire projects autonomously with the Ralph loop:
+```bash
+/prd "Build a dashboard"     # Create PRD through discovery
+/run-project my-dashboard    # Execute all tasks via workers
+```
 
-| Command | What it does |
-|---------|--------------|
-| `/checkpoint` | Save your work, survive context limits |
-| `/handoff` | Continue work in a fresh session |
-| `/reanchor` | Pause and realign before continuing |
-| `/nexttask` | Find the next thing to work on |
-| `/newproject` | Create a PRD for autonomous execution |
-| `/newworker` | Build a new AI worker |
-| `/hq-sync` | Pull framework updates |
+### Content Pipeline
+Full content workflow from idea to publish:
+```bash
+/contentidea "AI agents"     # Build out idea → drafts
+/suggestposts               # Research-driven suggestions
+/scheduleposts              # Smart timing for posting
+```
 
-### Worker Framework
+### Dev Team (13 Workers)
+Complete development team for autonomous coding:
+- `project-manager` - PRD lifecycle
+- `task-executor` - Route tasks to workers
+- `architect` - System design
+- `backend-dev` / `frontend-dev` / `database-dev`
+- `qa-tester` - Testing & validation
+- `code-reviewer` - PR management
+- And more...
 
-Workers are autonomous agents with defined skills. They *do things*.
+### Auto-Checkpoint
+Never lose work. Sessions auto-save to `workspace/threads/`.
 
-| Type | Purpose |
-|------|---------|
-| **Code Workers** | Implement features, fix bugs |
-| **Content Workers** | Draft posts, maintain voice |
-| **Research Workers** | Analyze markets, competitors |
-| **Ops Workers** | Monitor systems, automate tasks |
+### Design Iteration
+A/B test designs with git branches:
+```bash
+/design-iterate hero-section  # Create variations
+# Review, compare, choose winner
+```
+
+---
+
+## Core Concepts
+
+### Workers
+Autonomous agents with defined skills. They *do things*.
+
+| Type | Purpose | Examples |
+|------|---------|----------|
+| **CodeWorker** | Implement features, fix bugs | frontend-dev, backend-dev |
+| **ContentWorker** | Draft content, maintain voice | content-brand, content-sales |
+| **SocialWorker** | Post to platforms | x-worker, linkedin-worker |
+| **ResearchWorker** | Analyze data, markets | analyst, researcher |
+| **OpsWorker** | Reports, automation | cfo-worker, cmo-worker |
 
 ### Knowledge Bases
+Workers learn from and contribute to shared knowledge:
 
-Pre-loaded knowledge for you and your workers:
+- `knowledge/Ralph/` - Autonomous coding methodology
+- `knowledge/workers/` - Worker patterns & templates
+- `knowledge/ai-security-framework/` - Security best practices
+- `knowledge/dev-team/` - Development patterns
+- `knowledge/design-styles/` - Design guidelines
 
-- **Ralph Methodology** - Complete guide to autonomous AI coding
-- **Worker Framework** - Patterns for building effective workers
-- **Your Profile** - Created during setup for voice/style consistency
-
-### Checkpoint System
-
-Never lose work to context limits again.
+### Commands
+Slash commands orchestrate everything:
 
 ```bash
-# Save state before context fills up
-/checkpoint feature-x
-
-# Later, in a fresh session
-/nexttask  # Finds your checkpoint automatically
+/run worker-name skill    # Execute a worker skill
+/checkpoint my-work       # Save session state
+/handoff                  # Prepare for fresh session
 ```
 
-## The Ralph Methodology
+### Checkpoints
+Work survives context limits:
 
-HQ is built on **Ralph** - a methodology for autonomous AI coding that actually works.
+```bash
+/checkpoint feature-x     # Save state
+# ... context fills up ...
+/nexttask                 # Finds checkpoint, continues work
+```
 
-### The Core Loop
+---
+
+## Commands
+
+### Session Management
+| Command | What it does |
+|---------|--------------|
+| `/checkpoint` | Save progress, survive context limits |
+| `/handoff` | Prepare handoff for fresh session |
+| `/reanchor` | Pause, show state, realign |
+| `/nexttask` | Find next thing to work on |
+
+### Workers
+| Command | What it does |
+|---------|--------------|
+| `/run` | List all workers |
+| `/run {worker}` | Show worker's skills |
+| `/run {worker} {skill}` | Execute a skill |
+| `/newworker` | Create a new worker |
+| `/metrics` | View worker execution metrics |
+
+### Projects
+| Command | What it does |
+|---------|--------------|
+| `/prd` | Generate PRD through discovery |
+| `/run-project` | Execute project via Ralph loop |
+| `/execute-task` | Run single task with workers |
+
+### Content
+| Command | What it does |
+|---------|--------------|
+| `/contentidea` | Build idea into full content suite |
+| `/suggestposts` | Research-driven post suggestions |
+| `/scheduleposts` | Choose what to post now |
+
+### System
+| Command | What it does |
+|---------|--------------|
+| `/search` | Full-text search across HQ |
+| `/hq-sync` | Sync modules from manifest |
+| `/cleanup` | Audit and clean HQ |
+| `/design-iterate` | Manage design A/B tests |
+
+---
+
+## Workers
+
+### Dev Team (13 workers)
+Full development team for autonomous project execution:
+
+```yaml
+project-manager    → PRD lifecycle, task selection
+task-executor      → Analyze & route to workers
+architect          → System design, API design
+backend-dev        → API endpoints, business logic
+frontend-dev       → React/Next components
+database-dev       → Schema, migrations
+qa-tester          → Testing, validation
+motion-designer    → Animations, polish
+infra-dev          → CI/CD, deployment
+code-reviewer      → PR review, quality gates
+knowledge-curator  → Update knowledge bases
+product-planner    → Technical specs
+```
+
+### Content Team (5 workers)
+Specialized content analysis:
+
+```yaml
+content-brand     → Voice, messaging, tone
+content-sales     → Conversion copy, CTAs
+content-product   → Technical accuracy
+content-legal     → Compliance, claims
+content-shared    → Shared utilities (library)
+```
+
+### Creating Your Own
+
+```bash
+/newworker  # Interactive scaffold
+```
+
+Or manually create `workers/my-worker/worker.yaml`:
+
+```yaml
+worker:
+  id: my-worker
+  name: "My Worker"
+  type: OpsWorker
+
+skills:
+  - name: do-thing
+    description: "Does the thing"
+    execution:
+      steps:
+        - "Step 1"
+        - "Step 2"
+```
+
+---
+
+## Project Execution
+
+HQ uses the **Ralph Methodology** for autonomous coding.
+
+### The Loop
 
 ```
-1. Pick a task from PRD (where passes: false)
-2. Implement in fresh context
+1. Pick task from PRD (passes: false)
+2. Execute in fresh context
 3. Run back pressure (tests, lint, typecheck)
-4. If passing, commit and mark complete
-5. Repeat until all tasks pass
+4. If passing → commit, mark complete
+5. Repeat until done
 ```
-
-**Key insight:** A simple for loop beats complex orchestration.
 
 ### Why It Works
 
 - **Fresh context per task** - No accumulated confusion
 - **Back pressure validates** - Code that doesn't pass isn't done
-- **Atomic commits** - Each task = one commit
-- **PRD is source of truth** - Simple JSON, easy to inspect
+- **Atomic commits** - One task = one commit
+- **PRD is truth** - Simple JSON, easy to inspect
 
-See the full methodology in `knowledge/Ralph/`.
+### Running a Project
+
+```bash
+# 1. Create PRD
+/prd "Build user authentication"
+
+# 2. Execute via Ralph loop
+/run-project auth-system
+
+# 3. Monitor progress
+/run-project auth-system --status
+```
+
+---
 
 ## Directory Structure
 
 ```
 my-hq/
 ├── .claude/
-│   ├── CLAUDE.md           # Session protocol
-│   └── commands/           # Slash commands
+│   ├── CLAUDE.md              # Session protocol
+│   └── commands/              # 22 slash commands
 ├── knowledge/
-│   ├── Ralph/              # Coding methodology
-│   ├── workers/            # Worker framework
-│   └── {your-name}/        # Your profile (after /setup)
+│   ├── Ralph/                 # Coding methodology
+│   ├── workers/               # Worker framework + templates
+│   ├── ai-security-framework/ # Security practices
+│   ├── dev-team/              # Development patterns
+│   ├── design-styles/         # Design guidelines
+│   └── loom/                  # Agent patterns
 ├── workers/
-│   ├── registry.yaml       # Worker index
-│   └── examples/           # Example workers
-├── projects/               # Your PRDs live here
+│   ├── registry.yaml          # Worker index
+│   ├── dev-team/              # 13 dev workers
+│   └── content-*/             # Content workers
+├── projects/                  # Your PRDs
+├── social-content/
+│   └── drafts/                # Content drafts (x/, linkedin/)
 ├── workspace/
-│   ├── checkpoints/        # Session saves
-│   ├── orchestrator/       # Project state
-│   └── scratch/            # Working area
-└── companies/              # Optional: multi-company setup
+│   ├── checkpoints/           # Manual saves
+│   ├── threads/               # Auto-saved sessions
+│   ├── orchestrator/          # Project state
+│   └── learnings/             # Captured insights
+└── companies/                 # Multi-company setup
 ```
 
-## Workflow Examples
-
-### Daily Flow
-
-```bash
-/nexttask                    # What needs attention?
-# Work on the task...
-/checkpoint my-task          # Save progress
-```
-
-### Starting a Project
-
-```bash
-/newproject                  # Creates PRD through discovery
-# Answer the questions...
-ralph-tui run --prd ./projects/my-project/prd.json
-```
-
-### Building a Worker
-
-```bash
-/newworker                   # Scaffold a new worker
-# Configure skills...
-/run my-worker               # Execute it
-```
+---
 
 ## Part of the HQ Framework
 
-This starter kit is part of the larger **HQ Framework**:
-
 | Component | Purpose |
 |-----------|---------|
-| **[mr-burns](https://github.com/coreyepstein/mr-burns)** | PRD executor - runs tasks autonomously |
 | **hq-starter-kit** | This repo - personal OS template |
 | **[hq-cli](https://github.com/coreyepstein/hq-cli)** | Module management CLI |
 
+---
+
 ## Customization
 
-This is a **template**. Fork it, customize it, make it yours.
+This is a **template**. Make it yours:
 
-- Add workers for your specific workflows
+- Add workers for your workflows
 - Build knowledge bases for your domains
 - Create commands for your patterns
-- Connect to your tools via MCP
+- Connect tools via MCP
+
+---
 
 ## Credits
 
 - **Ralph Methodology** by [Geoffrey Huntley](https://ghuntley.com/ralph/)
-- **ralph-tui** by [subsy](https://github.com/subsy)
-- Inspired by personal knowledge management systems and AI workflow patterns
+- Inspired by personal knowledge systems and AI workflow patterns
 
 ## License
 

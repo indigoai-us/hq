@@ -7,6 +7,12 @@ allowed-tools: Read, Write, Edit, AskUserQuestion
 
 Create a new worker with proper structure, skills, and verification.
 
+**Technology:** All HQ workers use TypeScript + Node.js (ESM). No Python for new workers.
+
+**PRDs live in `projects/`** - Workers reference them, don't create their own. If the worker needs a PRD:
+1. Run `/newproject {worker-name}` first to create the PRD
+2. Then return to `/newworker` to create the worker that references it
+
 ## Context to Load First
 
 1. `knowledge/workers/README.md` - Worker framework
@@ -18,8 +24,8 @@ Create a new worker with proper structure, skills, and verification.
 Ask these questions (can batch related ones):
 
 ### 1. Identity
-- **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker, AssistantWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-personal")
+- **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
+- **What's its name/id?** (e.g., "competitive-researcher", "x-corey")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -42,7 +48,7 @@ Ask these questions (can batch related ones):
 
 ## Generate Worker
 
-Create folder: `workers/{category}/{worker-id}/`
+Create folder: `workers/{worker-id}/` (flat structure, no categories)
 
 ### worker.yaml
 
@@ -54,7 +60,7 @@ worker:
   version: "1.0"
 
 identity:
-  voice_guide: knowledge/{your-name}/voice-style.md
+  persona: corey-epstein  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}
@@ -77,7 +83,7 @@ verification:
   approval_required: {true|false}
 
 tasks:
-  source: workers/{category}/{worker-id}/queue.json
+  source: projects/{associated-project}/prd.json  # Or queue.json for simple task queues
   one_at_a_time: true
 
 output:
@@ -94,22 +100,31 @@ Add to `workers/registry.yaml`:
 
 ```yaml
   - id: {worker-id}
-    path: workers/{category}/{worker-id}/
+    path: workers/{worker-id}/
     type: {WorkerType}
     status: active
     description: "{1-sentence description}"
 ```
 
-### Create Task Source
+### Task Source Options
 
-If needed, create `queue.json` or `prd.json`:
+Workers can get tasks from:
 
-```json
-{
-  "worker": "{worker-id}",
-  "tasks": []
-}
-```
+1. **Project PRD** (recommended): `projects/{project-name}/prd.json`
+   - For workers that implement features
+   - Reference existing project or create one with `/newproject`
+
+2. **Queue file**: `workers/{worker-id}/queue.json`
+   - For workers with simple, repeating tasks (posting, monitoring)
+   - Create with:
+     ```json
+     {
+       "worker": "{worker-id}",
+       "tasks": []
+     }
+     ```
+
+**Do NOT create prd.json inside worker directories.** PRDs belong in `projects/`.
 
 ## Rules
 
@@ -121,6 +136,7 @@ If needed, create `queue.json` or `prd.json`:
 ## After Creation
 
 Provide next steps:
-1. "Worker created at `workers/{category}/{worker-id}/`"
+1. "Worker created at `workers/{worker-id}/`"
 2. "Test with on-demand execution first"
-3. "Add tasks to queue.json to get started"
+3. If using queue: "Add tasks to queue.json to get started"
+4. If using PRD: "Run `/newproject {project-name}` to create the PRD, then link it in worker.yaml"

@@ -46,8 +46,8 @@ PROJECTS (with work):
   4. customer-cube - 3 features remaining
 
 Pick a number, or:
-  /run {worker}           Run a worker skill
-  /launch-ralph {project} Start PRD execution
+  /run {worker}    Run a worker skill
+  /newproject      Create a new project
 ```
 
 ## Priority Rules
@@ -63,4 +63,4 @@ Use AskUserQuestion:
 - "Which task to work on?"
 - Options: numbered list + "Something else"
 
-Then execute the chosen work or spawn mr-burns.
+Then execute the chosen work in the current session.
