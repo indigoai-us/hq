@@ -20,10 +20,10 @@ Workers are autonomous AI assistants with specialized roles. This knowledge base
 
 | Type | Purpose | Example |
 |------|---------|---------|
-| **CodeWorker** | Implement features, fix bugs | liverecover, abacus |
-| **SocialWorker** | Draft posts, maintain presence | x-corey |
-| **ResearchWorker** | Competitive analysis, market research | liverecover-analyst |
-| **OpsWorker** | Monitoring, automation, reports | cfo-liverecover |
+| **CodeWorker** | Implement features, fix bugs | example-company, marketing-co |
+| **SocialWorker** | Draft posts, maintain presence | x-personal |
+| **ResearchWorker** | Competitive analysis, market research | example-company-analyst |
+| **OpsWorker** | Monitoring, automation, reports | cfo-example-company |
 
 ## Building Workers (Build Mode)
 
@@ -83,8 +83,8 @@ workers/
 ### On-Demand Execution
 
 ```
-"Run the liverecover-analyst anomaly check"
-"Execute cfo-liverecover monthly report"
+"Run the example-company-analyst anomaly check"
+"Execute cfo-example-company monthly report"
 ```
 
 The agent will:

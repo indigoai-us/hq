@@ -1,6 +1,6 @@
 # Content Worker: Regulatory Compliance
 
-Regulatory compliance analysis worker for Abacus content.
+Regulatory compliance analysis worker for content review.
 
 ## Purpose
 

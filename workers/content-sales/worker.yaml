@@ -12,8 +12,8 @@ context:
   base:
     - workers/content-sales/
     - workers/content-shared/
-    - companies/abacus/knowledge/verticals/
-    - companies/abacus/knowledge/campaign-playbook.md
+    - companies/example-company/knowledge/verticals/
+    - companies/example-company/knowledge/campaign-playbook.md
   exclude:
     - node_modules/
     - dist/
@@ -29,7 +29,7 @@ skills:
   - value-prop-check
 
 instructions: |
-  Conversion Copy Analyst for Abacus
+  Conversion Copy Analyst for ExampleCo
 
   Purpose: Analyze content for conversion optimization, CTA effectiveness, and value proposition clarity.
 

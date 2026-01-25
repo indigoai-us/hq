@@ -39,7 +39,7 @@ Save current work state as a thread to survive context loss.
      "created_at": "ISO8601",
      "updated_at": "ISO8601",
 
-     "workspace_root": "/Users/coreyepstein/Documents/HQ",
+     "workspace_root": "/Users/{username}/Documents/HQ",
      "cwd": "current/working/dir",
 
      "git": {

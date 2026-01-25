@@ -103,7 +103,7 @@ Claude:
 2. [makes changes - bigger text, more padding]
 3. git commit -m "design: navbar v1 - larger text, more visible"
 4. vercel --yes
-5. Preview: https://abacus-site-xyz.vercel.app
+5. Preview: https://marketing-co-site-xyz.vercel.app
 
 Want to create v2 with a different approach, or compare this to main?
 ```

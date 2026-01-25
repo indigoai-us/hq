@@ -26,8 +26,8 @@ This ensures every idea is captured, even if processing is interrupted.
 
 ## Context to Load
 
-1. `knowledge/corey-epstein/voice-style.md` - Voice, formats, patterns
-2. `knowledge/corey-epstein/profile.md` - Identity, companies, positioning
+1. `knowledge/{your-name}/voice-style.md` - Voice, formats, patterns
+2. `knowledge/{your-name}/profile.md` - Identity, companies, positioning
 3. `social-content/drafts/INDEX.md` - Current draft inventory
 4. `knowledge/Ralph/` - If idea relates to Ralph methodology
 
@@ -60,7 +60,7 @@ Based on scope, create drafts in this order:
 **If medium+:**
 - X article (1500-3000 words, Dan Koe style)
   - Structure: Title → Hook → Numbered sections → Protocol → Choice/CTA
-  - See `knowledge/corey-epstein/voice-style.md` for X Article format
+  - See `knowledge/{your-name}/voice-style.md` for X Article format
 
 **If deep+:**
 - LinkedIn long post (~300-500 words)

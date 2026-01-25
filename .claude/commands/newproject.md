@@ -43,8 +43,8 @@ Present findings:
 ```
 Scanned HQ. Relevant context found:
 
-Workers: x-corey, cfo-liverecover (could contribute)
-Knowledge: knowledge/corey-epstein/, knowledge/abacus-marketing/
+Workers: x-personal, cfo-example-company (could contribute)
+Knowledge: knowledge/{your-name}/, knowledge/marketing-co-marketing/
 Related projects: None found (or: "customer-cube" has similar scope)
 
 This project appears to be: [company-specific | cross-company | personal | HQ infrastructure]

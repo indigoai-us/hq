@@ -1,6 +1,6 @@
 # Content Worker: Conversion Copy
 
-Conversion optimization analysis worker for Abacus content.
+Conversion optimization analysis worker for ExampleCo content.
 
 ## Purpose
 
@@ -16,8 +16,8 @@ Analyzes website content for conversion effectiveness, CTA quality, and value pr
 
 ## Knowledge Sources
 
-- `companies/abacus/knowledge/verticals/` - Vertical-specific messaging
-- `companies/abacus/knowledge/campaign-playbook.md` - Campaign strategy
+- `companies/example-company/knowledge/verticals/` - Vertical-specific messaging
+- `companies/example-company/knowledge/campaign-playbook.md` - Campaign strategy
 
 ## Scoring Categories
 

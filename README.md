@@ -341,6 +341,7 @@ This is a **template**. Make it yours:
 ## Credits
 
 - **Ralph Methodology** by [Geoffrey Huntley](https://ghuntley.com/ralph/)
+- **Loom Agent Architecture** by [Geoffrey Huntley](https://github.com/ghuntley/loom) - Thread system, state machine, and agent patterns
 - Inspired by personal knowledge systems and AI workflow patterns
 
 ## License

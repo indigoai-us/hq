@@ -11,7 +11,7 @@ Analyze available content, current feed state, and world events to recommend wha
 
 1. `social-content/drafts/INDEX.md` - All available drafts
 2. `workers/social/x-corey/queue.json` - Queue with status
-3. `knowledge/corey-epstein/social-calendar.md` - Timing strategy
+3. `knowledge/{your-name}/social-calendar.md` - Timing strategy
 
 ## Process
 
@@ -132,7 +132,7 @@ When checking X feed:
    - What's dominating the feed?
    - Any breaking news?
    - What's the mood? (serious, playful, outraged)
-3. Check @coreyepstein profile:
+3. Check @{username} profile:
    - When was last post?
    - What got engagement?
 

@@ -4,7 +4,7 @@
   "meta": {
     "description": "Secure, compliant document management for enterprises. SOC 2 certified with HIPAA-ready infrastructure.",
     "keywords": ["document management", "enterprise", "SOC 2", "compliance"],
-    "ogTitle": "Enterprise Document Management | Abacus",
+    "ogTitle": "Enterprise Document Management | ExampleCo",
     "ogDescription": "Join 10,000+ companies using our leading document platform"
   },
   "sections": [
@@ -102,7 +102,7 @@
   "images": [
     {
       "src": "/images/hero-dashboard.png",
-      "alt": "Abacus dashboard showing document workflows",
+      "alt": "Example dashboard showing document workflows",
       "context": "hero"
     },
     {

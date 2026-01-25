@@ -349,7 +349,7 @@ function inferSectionType(heading: string): ContentSection['type'] {
 }
 
 /**
- * Parse content from CMS JSON format (matches abacus-cms schema)
+ * Parse content from CMS JSON format (matches example-company-cms schema)
  * Handles the structure: { page: { slug, title, sections, ... } }
  */
 export function parseCMSContent(json: unknown): PageContent {

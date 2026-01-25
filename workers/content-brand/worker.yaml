@@ -12,8 +12,8 @@ context:
   base:
     - workers/content-brand/
     - workers/content-shared/
-    - companies/abacus/knowledge/brand-guidelines.md
-    - companies/abacus/knowledge/messaging/
+    - companies/example-company/knowledge/brand-guidelines.md
+    - companies/example-company/knowledge/messaging/
   exclude:
     - node_modules/
     - dist/
@@ -29,9 +29,9 @@ skills:
   - messaging-alignment
 
 instructions: |
-  Brand Voice Analyst for Abacus
+  Brand Voice Analyst for ExampleCo
 
-  Purpose: Ensure all content aligns with Abacus brand voice and messaging guidelines.
+  Purpose: Ensure all content aligns with ExampleCo brand voice and messaging guidelines.
 
   ## Analysis Process
   1. Load page content from content/ directory (JSON format)

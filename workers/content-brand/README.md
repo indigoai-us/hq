@@ -1,10 +1,10 @@
 # Content Worker: Brand Voice
 
-Brand voice analysis worker for Abacus content.
+Brand voice analysis worker for ExampleCo content.
 
 ## Purpose
 
-Analyzes website content for brand voice consistency, tone alignment, and messaging effectiveness. Ensures all content reflects Abacus's professional-yet-approachable brand identity.
+Analyzes website content for brand voice consistency, tone alignment, and messaging effectiveness. Ensures all content reflects ExampleCo's professional-yet-approachable brand identity.
 
 ## Skills
 
@@ -16,8 +16,8 @@ Analyzes website content for brand voice consistency, tone alignment, and messag
 
 ## Knowledge Sources
 
-- `companies/abacus/knowledge/brand-guidelines.md` - Core brand voice guide
-- `companies/abacus/knowledge/messaging/` - Messaging by audience/vertical
+- `companies/example-company/knowledge/brand-guidelines.md` - Core brand voice guide
+- `companies/example-company/knowledge/messaging/` - Messaging by audience/vertical
 
 ## Scoring Categories
 

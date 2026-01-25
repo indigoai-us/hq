@@ -10,8 +10,8 @@ Research what Corey should be posting to progress overall life and OS goals.
 ## Context to Load
 
 1. `agents.md` - Current roles, companies, strategic positioning
-2. `knowledge/corey-epstein/profile.md` - Identity, goals, audience
-3. `knowledge/corey-epstein/social-calendar.md` - Content strategy, themes
+2. `knowledge/{your-name}/profile.md` - Identity, goals, audience
+3. `knowledge/{your-name}/social-calendar.md` - Content strategy, themes
 4. `social-content/drafts/INDEX.md` - What's already in the pipeline
 5. `projects/social-presence-strategy/` - Lulu Meservey framework if exists
 
@@ -37,7 +37,7 @@ Research what Corey should be posting to progress overall life and OS goals.
 Use WebSearch for:
 - "AI agents news today"
 - "startup founder twitter trending"
-- Topics from `knowledge/corey-epstein/social-calendar.md`
+- Topics from `knowledge/{your-name}/social-calendar.md`
 
 ### 3. Align with Strategic Goals
 
@@ -47,7 +47,7 @@ Reference Corey's positioning:
 |------|---------------|
 | **Ralph methodology thought leader** | Posts about autonomous AI, loops, building infrastructure |
 | **e/acc identity** | Pro-technology, abundance mindset, forward-looking |
-| **LiveRecover/Voyage CEO** | SMS, e-commerce, AI for brands |
+| **ExampleCo/Voyage CEO** | SMS, e-commerce, AI for brands |
 | **Startup ecosystem voice** | Disruption observations, founder insights |
 | **Human value in AI age** | Taste, creativity, agency themes |
 

@@ -39,7 +39,7 @@
     "shared",
     "typescript"
   ],
-  "author": "Corey Epstein",
+  "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.10.0",

@@ -12,8 +12,8 @@ context:
   base:
     - workers/content-product/
     - workers/content-shared/
-    - companies/abacus/knowledge/products/
-    - companies/liverecover/knowledge/metrics.md
+    - companies/example-company/knowledge/products/
+    - companies/example-company/knowledge/metrics.md
   exclude:
     - node_modules/
     - dist/
@@ -29,7 +29,7 @@ skills:
   - feature-accuracy
 
 instructions: |
-  Product Accuracy Analyst for Abacus
+  Product Accuracy Analyst for ExampleCo
 
   Purpose: Verify product claims, feature accuracy, and statistics validity across website content.
 

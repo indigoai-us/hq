@@ -35,7 +35,7 @@ Verify content aligns with approved brand messaging and key messages.
 ## Key Message Categories
 
 ### Core Value Proposition
-- What Abacus does
+- What ExampleCo does
 - Who it's for
 - Why it matters
 - How it's different
@@ -83,7 +83,7 @@ key_messages:
       issue: "Claim not substantiated on page"
 terminology:
   consistent:
-    - "Abacus OS" (used 4x)
+    - "ExampleCo OS" (used 4x)
   inconsistent:
     - term: "AI assistant"
       variants: ["AI helper", "virtual assistant", "bot"]

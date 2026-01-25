@@ -1,6 +1,6 @@
 # Content Worker: Product Accuracy
 
-Product accuracy verification worker for Abacus content.
+Product accuracy verification worker for ExampleCo content.
 
 ## Purpose
 
@@ -16,8 +16,8 @@ Verifies product claims, feature descriptions, and statistics across website con
 
 ## Knowledge Sources
 
-- `companies/abacus/knowledge/products/` - Official product documentation
-- `companies/liverecover/knowledge/metrics.md` - Verified company metrics
+- `companies/example-company/knowledge/products/` - Official product documentation
+- `companies/example-company/knowledge/metrics.md` - Verified company metrics
 
 ## Scoring Categories
 
