@@ -145,6 +145,17 @@ workers:
     description: "Shared utilities for content workers"
 
   # ===================
+  # Security & Ops (1 worker)
+  # ===================
+  # Pre-deployment security scanning
+
+  - id: security-scanner
+    path: workers/security-scanner/
+    type: OpsWorker
+    status: active
+    description: "Pre-deploy PII/credential scanning for public repos"
+
+  # ===================
   # Example Workers (Add your own!)
   # ===================
   # Uncomment and customize these templates
