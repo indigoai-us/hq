@@ -5,14 +5,14 @@ allowed-tools: Task, Read, Glob, Grep, WebSearch, WebFetch, AskUserQuestion
 
 # /suggestposts - Strategic Content Suggestions
 
-Research what Corey should be posting to progress overall life and OS goals.
+Research what you should be posting to progress overall life and OS goals.
 
 ## Context to Load
 
 1. `agents.md` - Current roles, companies, strategic positioning
-2. `knowledge/{your-name}/profile.md` - Identity, goals, audience
-3. `knowledge/{your-name}/social-calendar.md` - Content strategy, themes
-4. `social-content/drafts/INDEX.md` - What's already in the pipeline
+2. `companies/personal/knowledge/profile.md` - Identity, goals, audience
+3. `companies/personal/knowledge/social-calendar.md` - Content strategy, themes
+4. `workspace/social-drafts/INDEX.md` - What's already in the pipeline
 5. `projects/social-presence-strategy/` - Lulu Meservey framework if exists
 
 ## Research Process
@@ -20,34 +20,34 @@ Research what Corey should be posting to progress overall life and OS goals.
 ### 1. Audit Current State
 
 **Check what's in queue:**
-- `social-content/drafts/` - Pending drafts
-- `workers/social/x-corey/queue.json` - Queued tasks
+- `workspace/social-drafts/` - Pending drafts
+- `workers/x-{your-name}/queue.json` - Queued tasks
 
 **Check recent activity:**
-- What has Corey posted recently? (if tracking exists)
+- What have you posted recently? (if tracking exists)
 - Any gaps in content themes?
 
 ### 2. Research External Context
 
 **Scan relevant sources:**
-- AI/tech news (what's trending in Corey's space?)
+- AI/tech news (what's trending in your space?)
 - Competitor/peer activity (what are other founders posting?)
 - Industry events (anything timely to react to?)
 
 Use WebSearch for:
 - "AI agents news today"
 - "startup founder twitter trending"
-- Topics from `knowledge/{your-name}/social-calendar.md`
+- Topics from `companies/personal/knowledge/social-calendar.md`
 
 ### 3. Align with Strategic Goals
 
-Reference Corey's positioning:
+Reference your positioning:
 
 | Goal | Content Angle |
 |------|---------------|
 | **Ralph methodology thought leader** | Posts about autonomous AI, loops, building infrastructure |
 | **e/acc identity** | Pro-technology, abundance mindset, forward-looking |
-| **ExampleCo/Voyage CEO** | SMS, e-commerce, AI for brands |
+| **{Company} CEO** | SMS, e-commerce, AI for brands |
 | **Startup ecosystem voice** | Disruption observations, founder insights |
 | **Human value in AI age** | Taste, creativity, agency themes |
 
@@ -57,7 +57,7 @@ Provide 3-5 post ideas ranked by:
 1. **Timeliness** - Is there a news hook?
 2. **Alignment** - Does it progress strategic goals?
 3. **Engagement potential** - Will it resonate with audience?
-4. **Originality** - Is Corey uniquely positioned to say this?
+4. **Originality** - Are you uniquely positioned to say this?
 
 For each suggestion, provide:
 ```

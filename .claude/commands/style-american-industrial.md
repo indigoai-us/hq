@@ -1,8 +1,8 @@
 # American Industrial Style
 
-Load the American Industrial design style for frontend/design work.
+Default UI style for personal projects. Monochrome variant.
 
-Style by Kyle Anthony Miller (@kyleanthony / brasshands.com)
+Style inspired by Kyle Anthony Miller (@kyleanthony / brasshands.com)
 
 ## Instructions
 
@@ -12,30 +12,47 @@ Style by Kyle Anthony Miller (@kyleanthony / brasshands.com)
 
 ## Quick Reference
 
-### Colors
-- Primary accent: `#FF5200` (international orange)
-- Backgrounds: `#000000` (dark) or `#F5F5F0` (cream)
-- Neutrals: charcoal, silver/gray metallics
+### Colors (MONOCHROME - Corey's preference)
+- **Primary**: Pure black `#000000`
+- **Accent**: Pure white `#FFFFFF`
+- **Grays**: `#0A0A0A`, `#1A1A1A`, `#333333`, `#666666`, `#F0F0F0`
+- **NO colors** - strictly black/white/gray only
 
 ### Typography
-- Headlines: Bold geometric sans-serif, all-caps
-- Body: Clean sans-serif
-- Specs/data: Monospace
+- Headlines: Bold geometric sans-serif, all-caps (Inter 900)
+- Body: Clean sans-serif (Inter)
+- Specs/data: Monospace (JetBrains Mono)
 
 ### Key Elements
 - Corner brackets `[ ]` as framing devices
-- Crosshairs and targeting graphics
-- Orbital diagrams, circular schematics
-- Technical callouts with arrows
-- Status indicators (ACTIVE, ONLINE)
-- Diagonal stripe patterns
-- Document chrome (CONFIDENTIAL, FIELD TESTING)
+- Section labels with `+` prefix
+- Unit IDs and serial numbers
+- Status indicators (dots + uppercase labels)
+- Technical callouts
+- Left-border accent on cards
 
 ### Layout
 - Asymmetric grids
 - Generous whitespace
-- Split-screen compositions
 - Modular card systems
+- Header with status block
+
+### CSS Variables
+```css
+:root {
+    --accent: #FFFFFF;
+    --black: #000000;
+    --charcoal: #0A0A0A;
+    --gray-dark: #1A1A1A;
+    --gray-mid: #333333;
+    --gray-light: #666666;
+    --cream: #F0F0F0;
+    --white: #FFFFFF;
+}
+```
+
+## Reference Implementation
+See: `repos/private/social-drafts/index.html`
 
 ## Best For
-AI/ML, defense, aerospace, industrial, robotics, enterprise SaaS
+Personal UIs, dashboards, admin tools, command centers

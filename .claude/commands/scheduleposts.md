@@ -1,171 +1,134 @@
 ---
 description: Choose what to post right now based on content inventory and current context
-allowed-tools: Task, Read, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, mcp__Claude_in_Chrome__tabs_context_mcp, mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__computer, mcp__Claude_in_Chrome__get_page_text
+allowed-tools: Task, Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, TodoWrite, mcp__Claude_in_Chrome__tabs_context_mcp, mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__computer, mcp__Claude_in_Chrome__get_page_text
 ---
 
 # /scheduleposts - Smart Post Scheduling
 
-Analyze available content, current feed state, and world events to recommend what to post RIGHT NOW.
+Analyze available content, generate images, and post.
 
-## Context to Load
-
-1. `social-content/drafts/INDEX.md` - All available drafts
-2. `workers/social/x-corey/queue.json` - Queue with status
-3. `knowledge/{your-name}/social-calendar.md` - Timing strategy
+## Queue File
+`workspace/social-drafts/queue.json`
 
 ## Process
 
-### 1. Inventory Check
-
-Read all ready drafts from `social-content/drafts/`:
-- List each by type (one-liner, short, thread, article)
-- Note which are marked "Ready" vs "Draft"
-- Check last posted date if tracked
-
-### 2. Check Current Context
-
-**Time-based factors:**
-- What day is it? (Monday = AI/Tech, Friday = lighter, etc.)
-- What time? (9am, 2pm, 7pm MT are optimal)
-- Any relevant dates/events?
-
-**World context (WebSearch):**
-- Major AI/tech news today?
-- Anything Corey should react to?
-- Competitor activity?
-
-**Feed context (if browser available):**
-- Use Chrome MCP to check Corey's X feed
-- What's the current conversation?
-- Any threads to jump into?
-- What have similar accounts posted recently?
-
-### 3. Match Content to Moment
-
-Score each ready draft:
-
-| Factor | Weight | Question |
-|--------|--------|----------|
-| **Timeliness** | 30% | Does this connect to what's happening now? |
-| **Freshness** | 25% | How long has this been in queue? |
-| **Day alignment** | 20% | Does it match today's theme? |
-| **Engagement potential** | 15% | Will this spark conversation? |
-| **Variety** | 10% | Have we posted similar content recently? |
-
-### 4. Recommend Post(s)
-
-Provide top 1-3 recommendations:
+### 1. Load Queue
+Read `workspace/social-drafts/queue.json` and show summary:
 
 ```
-## Recommended to Post NOW
+QUEUE STATUS
+============
+Ready to post (has image): X
+Need images: X
+In draft: X
+Scheduled: X
+Posted: X
 
-### Primary: {draft title}
-**File:** {path}
-**Type:** {one-liner/short/article}
-**Why now:**
-- {reason 1}
-- {reason 2}
+READY TO POST NOW:
+1. [post-XXX] X oneliner: "The best AGI..."
+2. [post-XXX] X short: "Everyone's waiting..."
 
-**Content preview:**
-> {first 100 chars or hook}
-
-**Post to:** X / LinkedIn / Both
-
----
-
-### Alternative: {draft title}
+NEED IMAGES:
+1. [post-XXX] X article: "Your AGI Will Beat..." → suggest: woodcut
 ...
 ```
 
-### 5. Show Quick-Copy
+### 2. Ask User
+Present options:
+1. **Post now** - which post?
+2. **Generate images** - batch generate for posts needing images
+3. **Schedule posts** - set times for future posting
+4. **View full queue**
+5. **Update status** - mark posts as draft/ready/approved
 
-For the top recommendation, provide copy-paste ready content:
+### 3. If Generating Images
 
-```
-## Quick Copy (ready to paste)
+For each post, extract visual metaphor and generate:
 
-{exact content to post}
-```
-
-For threads, show post-by-post.
-
-### 6. Execution Options
-
-Ask user:
-- "Ready to post the primary recommendation?"
-- "Want me to open X and help you post it?" (if browser MCP available)
-- "Should I hold this and suggest something else?"
-- "Want to tweak the content first?"
-
-### 7. Post-Selection Actions
-
-If user confirms posting:
-1. Update draft status in INDEX.md → move to "Posted" section
-2. Update queue.json status → "posted"
-3. Log to `workers/social/logs/x-corey.log`
-4. Note the post for future "what did we post recently" queries
-
-## Timing Guidelines
-
-**Optimal posting times (MT):**
-- 9am - Morning engagement
-- 2pm - Afternoon peak
-- 7pm - Evening scroll
-
-**Day themes:**
-- Monday: AI/Tech trends
-- Tuesday: Business insights
-- Wednesday: Flex
-- Thursday: Future of work
-- Friday: Lighter content
-
-**Avoid:**
-- Posting similar content same day
-- Back-to-back articles (space them out)
-- Threads when news is breaking (short posts cut through)
-
-## Feed Analysis (if browser available)
-
-When checking X feed:
-1. Navigate to twitter.com/home
-2. Screenshot and analyze:
-   - What's dominating the feed?
-   - Any breaking news?
-   - What's the mood? (serious, playful, outraged)
-3. Check @{username} profile:
-   - When was last post?
-   - What got engagement?
-
-## Output Format
-
-```
-# Post Scheduling - {date} {time}
-
-## Current Context
-- Day: {day} → Theme: {theme}
-- Time: {time} MT → {optimal/suboptimal}
-- Last post: {when, if known}
-- Breaking news: {yes/no - summary if yes}
-
-## Content Inventory
-| Draft | Type | Status | Days in Queue |
-|-------|------|--------|---------------|
-| ... | ... | ... | ... |
-
-## Recommendation
-
-### Post This Now: {title}
-
-**Why:**
-- {reason}
-
-**Quick Copy:**
-```
-{content}
+```bash
+cd ~/Documents/HQ/repos/private/gemini-nano-banana && \
+node dist/index.js social "<visual metaphor>" \
+--style <selected-style> \
+--variants 3 \
+--output ~/Documents/HQ/workspace/social-drafts/images/<post-id> \
+--metadata
 ```
 
-**Platform:** X / LinkedIn
-
-## Next Up
-After this, consider posting: {next recommendation}
+Then sync to preview site:
+```bash
+cp -r ~/Documents/HQ/workspace/social-drafts/images/<post-id> \
+  ~/Documents/HQ/repos/private/social-drafts/images/
+cd ~/Documents/HQ/repos/private/social-drafts && \
+git add images/<post-id> && git commit -m "Add images for <post-id>" && git push
 ```
+
+Update queue.json with imageFile path and add to preview site index.html.
+
+### 4. If Posting Now
+
+1. Confirm the post content
+2. Verify image (if applicable)
+3. Use X API credentials from `.env`:
+   - X_API_KEY, X_API_SECRET
+   - X_ACCESS_TOKEN, X_ACCESS_SECRET
+4. Post via API or open browser to post manually
+5. Update queue.json: status → posted, postedAt, postUrl
+
+### 5. If Scheduling
+
+- Ask for date/time or slot (morning 9am / afternoon 2pm / evening 7pm)
+- Update queue.json scheduledFor field
+- Show confirmation with full schedule
+
+## Approved Image Styles
+
+| Style | Best For | Aesthetic |
+|-------|----------|-----------|
+| **woodcut** | Philosophical, timeless | B&W engraving, 1800s encyclopedia |
+| **grainy** | Action, energy, nostalgia | 35mm film grain, orange/teal, lo-fi |
+| **minimal** | Clean concepts, focus | White negative space, sparse |
+| **blackprint** | Technical, systems | Black ink on white, patent illustration |
+| **polaroid** | Personal, casual | Instant camera, warm overexposed |
+| **vaporwave** | Retro-futurism, ironic | Pink/cyan, 80s computer |
+| **duotone** | Bold statements | Two-color halftone, poster quality |
+
+## Style Recommendations by Content Type
+
+| Content Theme | Recommended Styles |
+|---------------|-------------------|
+| AI/Tech/Systems | blackprint, minimal, woodcut |
+| Personal journey | grainy, polaroid |
+| Philosophy/deep | woodcut, duotone |
+| Future/vision | vaporwave, minimal |
+| Action/energy | grainy, duotone |
+
+## Post Best Practices
+
+- **X one-liners**: Usually no image, pure text hook
+- **X short posts**: Optional image, can boost engagement
+- **X articles**: Image recommended (appears in preview card)
+- **LinkedIn**: Image strongly recommended
+
+## Optimal Posting Times (ET)
+
+| Time | Slot | Best For |
+|------|------|----------|
+| 9:00 AM | Morning | Professional content |
+| 12:00 PM | Noon | Quick hits, engagement |
+| 5:00 PM | Evening | Threads, longer content |
+
+## Day Themes
+
+- **Monday**: AI/Tech trends
+- **Tuesday**: Business insights
+- **Wednesday**: Flex
+- **Thursday**: Future of work
+- **Friday**: Lighter content, personal
+
+## Queue Status Values
+
+- `draft` - Still being written/edited
+- `ready` - Content approved, needs image
+- `approved` - Has content + image, ready to post
+- `scheduled` - Set for specific time
+- `posted` - Live on platform

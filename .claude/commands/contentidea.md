@@ -26,9 +26,9 @@ This ensures every idea is captured, even if processing is interrupted.
 
 ## Context to Load
 
-1. `knowledge/{your-name}/voice-style.md` - Voice, formats, patterns
-2. `knowledge/{your-name}/profile.md` - Identity, companies, positioning
-3. `social-content/drafts/INDEX.md` - Current draft inventory
+1. `companies/personal/knowledge/voice-style.md` - Voice, formats, patterns
+2. `companies/personal/knowledge/profile.md` - Identity, companies, positioning
+3. `workspace/social-drafts/INDEX.md` - Current draft inventory
 4. `knowledge/Ralph/` - If idea relates to Ralph methodology
 
 ## Process
@@ -71,15 +71,15 @@ Based on scope, create drafts in this order:
 
 ### 4. Store Drafts
 
-Save all drafts to `social-content/drafts/`:
+Save all drafts to `workspace/social-drafts/`:
 - X content → `x/{date}-{slug}-{type}.md`
 - LinkedIn → `linkedin/{date}-{slug}.md`
 
-Update `social-content/drafts/INDEX.md` with new entries.
+Update `workspace/social-drafts/INDEX.md` with new entries.
 
 ### 5. Update Queue
 
-Add to `workers/social/x-corey/queue.json`:
+Add to `workers/x-{your-name}/queue.json`:
 ```json
 {
   "id": "{slug}-{type}-001",
@@ -91,29 +91,94 @@ Add to `workers/social/x-corey/queue.json`:
 }
 ```
 
-### 6. Generate Images (After Content Approval)
+### 6. Generate Images (REQUIRED)
 
-Once user approves the written content, generate 10 image variants using gnb:
+**ALWAYS generate images as part of content creation.** This happens automatically after writing drafts—do not skip.
+
+1. Create output directory: `workspace/social-drafts/images/{date}-{slug}/`
+2. Generate one image per style (7 total) for variety:
 
 ```bash
-cd apps/gemini-nano-banana && node dist/index.js generate "<visual prompt>" --landscape --output ./output --metadata
+cd ~/Documents/HQ/repos/private/gemini-nano-banana
+
+# Generate one image per approved style
+for style in woodcut grainy minimal blackprint duotone vaporwave liminal; do
+  node dist/index.js social "<visual metaphor prompt>" \
+    --style $style \
+    --variants 1 \
+    --output ~/Documents/HQ/workspace/social-drafts/images/{date}-{slug} \
+    --metadata
+done
 ```
 
-**Image Generation Guidelines:**
-- Generate 10 variants exploring different visual concepts
-- Style: realistic/dreamy (Midjourney/Perplexity aesthetic), NOT pure fantasy
-- Use metaphors that visualize the core concept
-- Run generations in parallel (background with &)
-- Open all for user to review and select
+3. Wait for completion, then sync to preview site (Step 6b)
 
-**Visual Prompt Patterns:**
-- Person orchestrating/observing autonomous work
-- Architectural metaphors (city, building, rooms)
-- Nature metaphors (garden, ecosystem, constellation)
-- Professional settings with ethereal elements
-- Magic realism over high fantasy
+**Approved Styles:**
 
-Save selected image to `social-content/images/{date}-{slug}.png`
+| Style | Best For | Aesthetic |
+|-------|----------|-----------|
+| `woodcut` | Philosophy, timeless ideas | B&W engraving, 1800s encyclopedia |
+| `grainy` | Action, energy, nostalgia | 35mm film grain, orange/teal, lo-fi |
+| `minimal` | Clean concepts, focus | White negative space, sparse |
+| `blackprint` | Technical, systems | Black ink on white, patent illustration |
+| `duotone` | Bold statements | Two-color halftone, poster quality |
+| `vaporwave` | Retro-futurism, ironic | Pink/cyan, 80s computer |
+| `liminal` | Future, transformation | Dark thresholds, warm portals |
+| `cinematic` | Epic scale, vision | Silhouette against dramatic sky |
+
+**Visual Prompt Patterns by Theme:**
+
+AI/Workforce themes:
+- "A single person at a glowing control panel, robotic arms working in synchronization behind them"
+- "A conductor's baton leaving trails of light that become working machinery"
+- "Mission control with one person and a hundred screens showing autonomous operations"
+
+Creativity/Capitol themes:
+- "People in gray suits walking through a doorway, emerging as elaborately dressed artists"
+- "A factory production line where the product is beauty"
+- "Human hands releasing origami birds that transform into real ones mid-flight"
+
+Tools/Precision themes:
+- "A Swiss Army knife next to a master craftsman's single perfect tool"
+- "A surgeon's hands performing an operation with a single ray of light"
+- "A cluttered toolbox versus a single gleaming instrument on velvet"
+
+Systems/Infrastructure themes:
+- "A city's power grid visualized as glowing arteries beneath glass streets"
+- "A neural network that looks like a city at night, each node a lit window"
+- "A clock face with visible gears, each gear a different system in harmony"
+
+Transformation/Future themes:
+- "A horizon where old tools set like the sun while new ones rise"
+- "A caterpillar cocoon that's actually a server, butterfly emerging as pure capability"
+- "The present moment as a door between the old world and the new"
+
+Leverage/Scale themes:
+- "A single finger pushing a domino that triggers a massive chain reaction"
+- "A person's desk that extends infinitely in all directions, work happening everywhere"
+- "A small match lighting a signal fire visible from space"
+
+### 6b. Sync to Preview Site (REQUIRED)
+
+After images are generated, sync them to the preview site for approval:
+
+```bash
+# Copy images to preview site
+cp -r ~/Documents/HQ/workspace/social-drafts/images/{date}-{slug} \
+  ~/Documents/HQ/repos/private/social-drafts/images/
+
+# Deploy to Vercel
+cd ~/Documents/HQ/repos/private/social-drafts && \
+git add images/{date}-{slug} && \
+git commit -m "Add images for {slug}" && \
+git push
+```
+
+Then update `repos/private/social-drafts/index.html` to include the new images in the drafts array.
+
+User reviews images at preview site, selects best variant, and approves for posting.
+
+Save selected image to `workspace/social-drafts/images/{date}-{slug}/selected.png`
 
 ### 7. Report
 
@@ -157,6 +222,62 @@ Show user:
 - No hedging
 - Humor: strategic, not forced
 - Emojis: minimal (🫡 occasionally)
+
+## CRITICAL: Humanizer Rules (Anti-AI Slop)
+
+**ALWAYS apply these rules to all content.** Based on Wikipedia's AI writing patterns guide.
+
+### Never Use These Patterns:
+
+**Rhetorical questions** - Don't ask "Sound familiar?" or "Where do you think...?" Just state things.
+
+**Significance inflation** - No "pivotal", "testament", "vital role", "marking a shift", "underscores", "highlights its importance"
+
+**Superficial -ing endings** - No "highlighting...", "underscoring...", "reflecting...", "symbolizing...", "showcasing..."
+
+**Promotional language** - No "groundbreaking", "vibrant", "nestled", "breathtaking", "stunning"
+
+**Em dash overuse** - Use commas and periods instead. One em dash per article max.
+
+**Rule of three** - Don't force ideas into groups of three
+
+**AI vocabulary words** - Avoid: additionally, crucial, delve, enhance, fostering, garner, interplay, intricate, landscape (abstract), pivotal, showcase, tapestry, underscore, vibrant
+
+**Copula avoidance** - Use "is/are/has" not "serves as/stands as/marks/represents/boasts/features"
+
+**Negative parallelisms** - No "It's not just X, it's Y" or "Not only...but..."
+
+**Title Case headings** - Use sentence case: "Strategic negotiations" not "Strategic Negotiations"
+
+**Generic positive conclusions** - No "The future looks bright" or "Exciting times lie ahead"
+
+### Do This Instead:
+
+**Have opinions** - React to facts, don't just report them
+
+**Use first person** - "I keep thinking about..." "I don't know why..." "I'm running three companies..."
+
+**Be specific** - Name sources, give numbers, cite examples
+
+**Vary rhythm** - Mix short punchy sentences with longer ones
+
+**Acknowledge complexity** - "I don't know" is human
+
+**Let some mess in** - Perfect structure feels algorithmic
+
+### Before/After Examples:
+
+❌ "This serves as a pivotal moment in the evolution of AI, underscoring its vital role in reshaping how we work."
+
+✅ "AI changed how I work. I don't think we're going back."
+
+❌ "Have you ever wondered what happens when automation takes over? Sound familiar?"
+
+✅ "Automation took over my boring work. Now I do something else with that time."
+
+❌ "It's not just about the technology — it's about the mindset shift that comes with embracing these groundbreaking tools."
+
+✅ "The technology matters less than deciding to use it differently."
 
 ## Step 8: Mark Idea as Processed
 

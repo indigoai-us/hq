@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.1.0 (2026-01-26)
+
+### Added
+- **`/generateimage`** - Generate images via Gemini Nano Banana (gnb)
+- **`/post-now`** - Post approved content to X or LinkedIn immediately
+- **`/preview-post`** - Preview social drafts, select images, approve for posting
+- **`/publish-kit`** - Sync HQ → hq-starter-kit with PII scrubbing
+
+### Changed
+- **`/contentidea`** - Enhanced multi-platform workflow with:
+  - Image generation per approved style (7 styles)
+  - Visual prompt patterns by theme
+  - Anti-AI slop rules (humanizer)
+  - Preview site sync
+- **`/scheduleposts`** - Improved queue management and image generation workflow
+- **`/style-american-industrial`** - Expanded monochrome variant with CSS variables
+- **`/metrics`** - Updated example worker names
+- **`/run`** - Updated example worker names
+- **`/search`** - Updated example worker names
+- **`/suggestposts`** - Generalized for any user
+
+### Fixed
+- Consistent PII scrubbing across all skills
+
+---
+
 ## v2.0.0 (2026-01-25)
 
 Major release: Project orchestration, content pipeline, and 18 production workers.

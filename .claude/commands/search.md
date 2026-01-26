@@ -62,7 +62,7 @@ Search across threads, checkpoints, PRDs, reports, and workers.
      T-20260120-160000-dashboard     3 days ago    "Dashboard updates"
 
    Workers (1 match):
-     workers/cfo-example-company/        "CFO Worker - ExampleCo"
+     workers/cfo-{company}/        "CFO Worker - {company}"
 
    PRDs (1 match):
      projects/customer-cube/prd.json "Customer Cube Analytics"
@@ -79,7 +79,7 @@ Search across threads, checkpoints, PRDs, reports, and workers.
 ```bash
 /search mrr                    # Find anything mentioning MRR
 /search "customer cube"        # Exact phrase
-/search example-company finance    # Multiple terms (AND)
+/search {company} finance      # Multiple terms (AND)
 /search T-2026                 # Find threads by ID prefix
 ```
 
