@@ -297,15 +297,42 @@ After completing a task, you MUST edit the PRD JSON:
 {
   "id": "TASK-001",
   "passes": true,  // ← Set this
-  "notes": "Created auth middleware using JWT. Files: src/auth/middleware.ts"  // ← Add this
+  "notes": "Worker: backend-dev. Selection reason: API endpoint implementation in src/api/. Created auth middleware using JWT. Files: src/auth/middleware.ts"  // ← Add this
 }
 ```
 
-The `notes` field should capture:
-- What you implemented
+### Notes Format (Required)
+
+The `notes` field MUST include worker audit information:
+
+1. **Worker:** `{worker-id}` - Which worker executed the task
+2. **Selection reason:** Brief explanation of why this worker was chosen
+3. **Implementation summary:** What you did, decisions made, files modified
+
+**Format:**
+```
+Worker: {worker-id}. Selection reason: {brief explanation}. {implementation details}
+```
+
+**Examples:**
+```
+Worker: backend-dev. Selection reason: API endpoint in src/services/. Implemented REST endpoints for user CRUD. Files: src/services/user.ts
+```
+
+```
+Worker: frontend-dev. Selection reason: React component task (.tsx files). Created UserProfile component with form validation. Files: src/components/UserProfile.tsx
+```
+
+```
+Worker: knowledge-curator. Selection reason: Documentation update task. Added API reference docs. Files: knowledge/api-patterns.md
+```
+
+### Additional Context (Optional)
+
+Beyond the required worker audit info, notes can include:
 - Key decisions made
-- Files created/modified
 - Anything the next task might need to know
+- Blockers encountered and how they were resolved
 
 ---
 

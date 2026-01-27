@@ -62,8 +62,8 @@
       ],
       "files": ["prompts/pure-ralph-base.md"],
       "dependsOn": ["US-001"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Notes Format (Required)' subsection to PRD Updates with: required format spec (Worker + Selection reason + summary), three concrete examples for different worker types (backend-dev, frontend-dev, knowledge-curator), and separated required vs optional note content."
     },
     {
       "id": "US-005",
