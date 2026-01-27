@@ -71,6 +71,8 @@
       "id": "US-004",
       "title": "Add context discovery to /prd command",
       "description": "After PRD creation, prompt user to populate project context using hybrid discovery",
+      "status": "completed",
+      "completed_at": "2026-01-28T00:10:00Z",
       "acceptance_criteria": [
         ".claude/commands/prd.md updated with new Step 6: Populate Project Context",
         "Step offers three discovery modes: manual, automatic, conversational",
