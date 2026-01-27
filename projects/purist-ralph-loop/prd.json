@@ -1,0 +1,135 @@
+{
+  "project": "purist-ralph-loop",
+  "goal": "Create an external terminal orchestrator that runs a canonical Ralph loop with fresh context per task and self-improving prompts",
+  "success_criteria": "/pure-ralph my-project opens terminal, executes PRD autonomously, completes with zero intervention, evolves prompts with learnings",
+  "target_repo": "C:/my-hq",
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Create base prompt file",
+      "description": "Create a low-fi base prompt that instructs Claude on Ralph principles so each spawned session knows the methodology",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md exists in my-hq",
+        "Contains Ralph principles: one task, fresh context, update PRD, commit",
+        "Includes instructions for self-modification (how to update this file)",
+        "Under 500 lines (minimal, focused)"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create terminal settings mechanism",
+      "description": "Create a settings file that stores terminal preference, prompting user on first run and remembering for subsequent runs",
+      "acceptance_criteria": [
+        "settings/pure-ralph.json stores terminal preference",
+        "First run prompts user to choose terminal type",
+        "Supports: PowerShell (Windows), Windows Terminal, bash (Mac/Linux), iTerm (Mac)",
+        "Setting persists across sessions"
+      ],
+      "files": ["settings/pure-ralph.json"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create PowerShell loop script",
+      "description": "Create a PowerShell script that runs the canonical Ralph loop for Windows users",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.ps1 exists",
+        "Reads PRD path and target repo as arguments",
+        "Spawns fresh claude -p per task with base prompt",
+        "Updates PRD passes and notes fields",
+        "Creates git commit per completed task",
+        "Logs to workspace/orchestrator/{project}/pure-ralph.log"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1"],
+      "dependsOn": ["US-001", "US-002"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create bash loop script",
+      "description": "Create a bash script that runs the canonical Ralph loop for Mac/Linux users",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.sh exists",
+        "Same functionality as PowerShell version",
+        "Works on macOS and Linux",
+        "Executable permissions set"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-001", "US-002"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create /pure-ralph slash command",
+      "description": "Create the slash command that launches the external orchestrator",
+      "acceptance_criteria": [
+        ".claude/commands/pure-ralph.md exists",
+        "Accepts project name as argument",
+        "Prompts for target repo if not in PRD metadata",
+        "Checks terminal preference, prompts if not set",
+        "Spawns appropriate terminal with loop script",
+        "Provides feedback on how to monitor progress"
+      ],
+      "files": [".claude/commands/pure-ralph.md"],
+      "dependsOn": ["US-003", "US-004"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add self-modification capability",
+      "description": "Enable the loop to improve its own prompts based on learnings",
+      "acceptance_criteria": [
+        "Base prompt includes section for Learned Patterns",
+        "Each task completion can append to learned patterns",
+        "CLAUDE.md gets updated with cross-project learnings",
+        "Changes are committed with clear messages"
+      ],
+      "files": ["prompts/pure-ralph-base.md", ".claude/CLAUDE.md"],
+      "dependsOn": ["US-005"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add learnings aggregation",
+      "description": "Aggregate learnings from completed projects into knowledge base",
+      "acceptance_criteria": [
+        "On project completion, learnings extracted from all task notes",
+        "Written to knowledge/pure-ralph/learnings.md",
+        "Patterns categorized (workflow, technical, gotchas)",
+        "Base prompt updated with high-value patterns"
+      ],
+      "files": ["knowledge/pure-ralph/learnings.md", "prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-006"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add beads integration",
+      "description": "Sync with beads CLI for task tracking visibility",
+      "acceptance_criteria": [
+        "Loop checks if bd CLI is available",
+        "If available, syncs PRD tasks to beads on start",
+        "Updates bead status as tasks complete",
+        "Graceful fallback if beads not installed"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-005"],
+      "passes": false,
+      "notes": ""
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T15:30:00Z",
+    "quality_gates": "none",
+    "verification": "passes + notes + git commit"
+  }
+}
