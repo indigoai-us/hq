@@ -113,6 +113,7 @@ BASE_PROMPT_PATH="$HQ_PATH/prompts/pure-ralph-base.md"
 PROJECT_NAME=$(basename "$(dirname "$PRD_PATH")")
 LOG_DIR="$HQ_PATH/workspace/orchestrator/$PROJECT_NAME"
 LOG_FILE="$LOG_DIR/pure-ralph.log"
+LOCK_FILE="$TARGET_REPO/.pure-ralph.lock"
 
 # ============================================================================
 # Color Output
@@ -145,6 +146,36 @@ initialize_logging() {
         echo ""
     } >> "$LOG_FILE"
 }
+
+# ============================================================================
+# Lock File Functions
+# ============================================================================
+
+create_lock_file() {
+    local timestamp
+    timestamp=$(date -Iseconds)
+    cat > "$LOCK_FILE" <<EOF
+{
+  "project": "$PROJECT_NAME",
+  "pid": $$,
+  "started_at": "$timestamp"
+}
+EOF
+    write_log "Lock file created: $LOCK_FILE"
+}
+
+remove_lock_file() {
+    if [[ -f "$LOCK_FILE" ]]; then
+        rm -f "$LOCK_FILE"
+        write_log "Lock file removed: $LOCK_FILE"
+    fi
+}
+
+# Trap to ensure lock file is removed on exit (success or failure)
+cleanup_on_exit() {
+    remove_lock_file
+}
+trap cleanup_on_exit EXIT
 
 write_log() {
     local message="$1"
@@ -606,6 +637,9 @@ $log_entry" "$LEARNINGS_PATH" 2>/dev/null || \
 
 start_ralph_loop() {
     initialize_logging
+
+    # Create lock file to prevent concurrent execution
+    create_lock_file
 
     echo ""
     echo -e "${CYAN}=== Pure Ralph Loop ===${NC}"

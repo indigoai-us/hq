@@ -64,8 +64,8 @@
         ".claude/scripts/pure-ralph-loop.sh has same behavior"
       ],
       "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added lock file mechanism to both scripts. PowerShell: Create-LockFile and Remove-LockFile functions with try/finally for cleanup. Bash: create_lock_file and remove_lock_file functions with EXIT trap for cleanup. Lock file at {target_repo}/.pure-ralph.lock contains JSON with project name, PID, and ISO timestamp."
     },
     {
       "id": "US-005",

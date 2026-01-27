@@ -44,6 +44,7 @@ $BasePromptPath = Join-Path $HqPath "prompts/pure-ralph-base.md"
 $ProjectName = (Split-Path (Split-Path $PrdPath -Parent) -Leaf)
 $LogDir = Join-Path $HqPath "workspace/orchestrator/$ProjectName"
 $LogFile = Join-Path $LogDir "pure-ralph.log"
+$LockFile = Join-Path $TargetRepo ".pure-ralph.lock"
 
 # Create log directory
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -63,6 +64,23 @@ function Write-Log {
         "WARN"    { Write-Host $entry -ForegroundColor Yellow }
         "SUCCESS" { Write-Host $entry -ForegroundColor Green }
         default   { Write-Host $entry }
+    }
+}
+
+function Create-LockFile {
+    $lockContent = @{
+        project = $ProjectName
+        pid = $PID
+        started_at = (Get-Date -Format "o")
+    } | ConvertTo-Json
+    $lockContent | Out-File -FilePath $LockFile -Encoding utf8
+    Write-Log "Lock file created: $LockFile"
+}
+
+function Remove-LockFile {
+    if (Test-Path $LockFile) {
+        Remove-Item -Path $LockFile -Force
+        Write-Log "Lock file removed: $LockFile"
     }
 }
 
@@ -124,17 +142,22 @@ Write-Log "PRD: $PrdPath"
 Write-Log "Target: $TargetRepo"
 Write-Log "Mode: $modeLabel"
 
-# Build the prompt ONCE (only PRD_PATH and TARGET_REPO substituted)
-$prompt = Build-Prompt -IsManual $Manual
-$promptFile = Join-Path $LogDir "current-prompt.md"
-$prompt | Out-File -FilePath $promptFile -Encoding utf8
+# Create lock file to prevent concurrent execution
+Create-LockFile
 
-Write-Log "Prompt built and saved to $promptFile"
+# Ensure lock file is removed on exit (success or failure)
+try {
+    # Build the prompt ONCE (only PRD_PATH and TARGET_REPO substituted)
+    $prompt = Build-Prompt -IsManual $Manual
+    $promptFile = Join-Path $LogDir "current-prompt.md"
+    $prompt | Out-File -FilePath $promptFile -Encoding utf8
 
-$iteration = 0
-$maxIterations = 50
+    Write-Log "Prompt built and saved to $promptFile"
 
-while ($iteration -lt $maxIterations) {
+    $iteration = 0
+    $maxIterations = 50
+
+    while ($iteration -lt $maxIterations) {
     $iteration++
 
     $progress = Get-TaskProgress
@@ -203,15 +226,20 @@ exit
     Start-Sleep -Seconds 2
 }
 
-if ($iteration -ge $maxIterations) {
-    Write-Log "Safety limit reached ($maxIterations iterations)" "WARN"
+    if ($iteration -ge $maxIterations) {
+        Write-Log "Safety limit reached ($maxIterations iterations)" "WARN"
+    }
+
+    # Final summary
+    $progress = Get-TaskProgress
+    Write-Host ""
+    Write-Host "=== Final Summary ===" -ForegroundColor Cyan
+    Write-Host "Completed: $($progress.Complete)/$($progress.Total) tasks" -ForegroundColor $(if ($progress.Remaining -eq 0) { "Green" } else { "Yellow" })
+    Write-Host "Log: $LogFile" -ForegroundColor Gray
+
+    Write-Log "Loop ended. Final: $($progress.Complete)/$($progress.Total) complete"
 }
-
-# Final summary
-$progress = Get-TaskProgress
-Write-Host ""
-Write-Host "=== Final Summary ===" -ForegroundColor Cyan
-Write-Host "Completed: $($progress.Complete)/$($progress.Total) tasks" -ForegroundColor $(if ($progress.Remaining -eq 0) { "Green" } else { "Yellow" })
-Write-Host "Log: $LogFile" -ForegroundColor Gray
-
-Write-Log "Loop ended. Final: $($progress.Complete)/$($progress.Total) complete"
+finally {
+    # Always remove lock file on exit (success or failure)
+    Remove-LockFile
+}
