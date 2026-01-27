@@ -3,7 +3,7 @@
 # Pure Ralph Loop - External terminal orchestrator for autonomous PRD execution
 #
 # SYNOPSIS
-#   ./pure-ralph-loop.sh --prd-path <path> --target-repo <path> [--hq-path <path>]
+#   ./pure-ralph-loop.sh --prd-path <path> --target-repo <path> [--hq-path <path>] [--manual]
 #
 # DESCRIPTION
 #   Runs the canonical Ralph loop: one task per fresh Claude session,
@@ -13,9 +13,15 @@
 #   --prd-path      Full path to the PRD JSON file (required)
 #   --target-repo   Full path to the target repository (required)
 #   --hq-path       Path to HQ directory (defaults to ~/my-hq or C:/my-hq)
+#   --manual, -m    Run in manual mode (interactive TUI, close windows manually)
+#                   Default is auto mode (uses -p flag, auto-exits)
 #
 # EXAMPLE
+#   # Auto mode (default) - fully autonomous
 #   ./pure-ralph-loop.sh --prd-path ~/my-hq/projects/my-project/prd.json --target-repo ~/my-project
+#
+#   # Manual mode - see chain of thought, close windows manually
+#   ./pure-ralph-loop.sh --prd-path ~/my-hq/projects/my-project/prd.json --target-repo ~/my-project --manual
 #
 
 set -euo pipefail
@@ -27,6 +33,7 @@ set -euo pipefail
 PRD_PATH=""
 TARGET_REPO=""
 HQ_PATH=""
+MANUAL_MODE=false
 
 # Detect default HQ path based on OS
 if [[ -d "$HOME/my-hq" ]]; then
@@ -53,13 +60,22 @@ while [[ $# -gt 0 ]]; do
             HQ_PATH="$2"
             shift 2
             ;;
+        --manual|-m)
+            MANUAL_MODE=true
+            shift
+            ;;
         -h|--help)
-            echo "Usage: $0 --prd-path <path> --target-repo <path> [--hq-path <path>]"
+            echo "Usage: $0 --prd-path <path> --target-repo <path> [--hq-path <path>] [--manual]"
             echo ""
             echo "Arguments:"
             echo "  --prd-path     Full path to the PRD JSON file (required)"
             echo "  --target-repo  Full path to the target repository (required)"
             echo "  --hq-path      Path to HQ directory (default: ~/my-hq)"
+            echo "  --manual, -m   Interactive mode (see chain of thought, close windows manually)"
+            echo ""
+            echo "Modes:"
+            echo "  Auto (default) - Uses -p flag, auto-exits, fully autonomous"
+            echo "  Manual (-m)    - Interactive TUI, close windows manually"
             exit 0
             ;;
         *)
@@ -78,6 +94,15 @@ fi
 if [[ -z "$TARGET_REPO" ]]; then
     echo "Error: --target-repo is required"
     exit 1
+fi
+
+# Set Claude flags based on mode
+if [[ "$MANUAL_MODE" == "true" ]]; then
+    CLAUDE_FLAGS="--permission-mode bypassPermissions"
+    MODE_LABEL="MANUAL (interactive)"
+else
+    CLAUDE_FLAGS="-p --permission-mode bypassPermissions"
+    MODE_LABEL="AUTO (autonomous)"
 fi
 
 # ============================================================================
@@ -337,7 +362,7 @@ invoke_task() {
     write_log "Detected OS: $os, Terminal: $terminal_app"
 
     # Build the command to run in the new terminal
-    local claude_cmd="cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
+    local claude_cmd="cd '$TARGET_REPO' && claude $CLAUDE_FLAGS \"\$(cat '$prompt_file')\""
 
     case "$os" in
         macos)
@@ -347,7 +372,7 @@ invoke_task() {
 tell application "iTerm"
     create window with default profile
     tell current session of current window
-        write text "cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
+        write text "cd '$TARGET_REPO' && claude $CLAUDE_FLAGS \"\$(cat '$prompt_file')\""
     end tell
 end tell
 EOF
@@ -368,7 +393,7 @@ EOF
                 # Terminal.app
                 osascript <<EOF
 tell application "Terminal"
-    do script "cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
+    do script "cd '$TARGET_REPO' && claude $CLAUDE_FLAGS \"\$(cat '$prompt_file')\""
     activate
 end tell
 EOF
@@ -408,7 +433,7 @@ EOF
             # Fallback - run inline (not ideal but works)
             write_log "Unknown OS - running inline"
             cd "$TARGET_REPO"
-            claude --permission-mode bypassPermissions "$(cat "$prompt_file")"
+            claude $CLAUDE_FLAGS "$(cat "$prompt_file")"
             cd -
             ;;
     esac

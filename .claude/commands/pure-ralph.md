@@ -1,7 +1,7 @@
 ---
 description: Launch Pure Ralph Loop - external terminal orchestrator for autonomous PRD execution
 allowed-tools: Read, Write, Bash, AskUserQuestion, Glob
-argument-hint: <project-name> [--target-repo <path>]
+argument-hint: <project-name> [-m] [--target-repo <path>]
 ---
 
 # /pure-ralph - Pure Ralph Loop Launcher
@@ -23,24 +23,36 @@ The terminal runs independently, freeing you to continue other work while PRD ex
 ## Usage
 
 ```bash
-# Execute a project PRD
+# Execute a project PRD (auto mode - loops automatically)
 /pure-ralph my-project
+
+# Execute in manual mode (interactive TUI, close windows manually)
+/pure-ralph my-project -m
 
 # Execute with explicit target repo
 /pure-ralph my-project --target-repo C:/workspace/my-app
 ```
 
+## Modes
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| **Auto** (default) | none | Uses `-p` flag, auto-exits after each task, fully autonomous |
+| **Manual** | `-m` | Interactive TUI, see chain of thought, manually close windows |
+
 ## Process
 
 ### 1. Parse Arguments
 
-Extract project name and optional target repo from `$ARGUMENTS`.
+Extract project name, manual mode flag, and optional target repo from `$ARGUMENTS`.
 
 ```javascript
 const args = "$ARGUMENTS".trim().split(/\s+/)
-const projectName = args[0]
-const targetRepoIndex = args.indexOf('--target-repo')
-const targetRepo = targetRepoIndex >= 0 ? args[targetRepoIndex + 1] : null
+const manualMode = args.includes('-m')
+const filteredArgs = args.filter(a => a !== '-m')
+const projectName = filteredArgs[0]
+const targetRepoIndex = filteredArgs.indexOf('--target-repo')
+const targetRepo = targetRepoIndex >= 0 ? filteredArgs[targetRepoIndex + 1] : null
 ```
 
 If no project name provided, **scan for PRDs with incomplete tasks**:
@@ -180,30 +192,40 @@ Update `settings/pure-ralph.json`:
 
 ### 6. Build Launch Command
 
-Based on terminal type and platform:
+Based on terminal type, platform, and manual mode flag:
+
+**If manual mode (`-m` flag):** Add `-Manual` (PowerShell) or `--manual` (bash) to the command.
 
 **PowerShell (Windows):**
 ```powershell
+# Auto mode (default)
 Start-Process powershell -ArgumentList "-NoExit", "-File", "C:/my-hq/.claude/scripts/pure-ralph-loop.ps1", "-PrdPath", "{prd_path}", "-TargetRepo", "{target_repo}"
+
+# Manual mode (-m flag)
+Start-Process powershell -ArgumentList "-NoExit", "-File", "C:/my-hq/.claude/scripts/pure-ralph-loop.ps1", "-PrdPath", "{prd_path}", "-TargetRepo", "{target_repo}", "-Manual"
 ```
 
 **Windows Terminal (Windows):**
 ```powershell
+# Auto mode (default)
 Start-Process wt -ArgumentList "powershell", "-NoExit", "-File", "C:/my-hq/.claude/scripts/pure-ralph-loop.ps1", "-PrdPath", "{prd_path}", "-TargetRepo", "{target_repo}"
+
+# Manual mode (-m flag)
+Start-Process wt -ArgumentList "powershell", "-NoExit", "-File", "C:/my-hq/.claude/scripts/pure-ralph-loop.ps1", "-PrdPath", "{prd_path}", "-TargetRepo", "{target_repo}", "-Manual"
 ```
 
 **Bash (macOS/Linux):**
 ```bash
-# macOS - open new Terminal.app window
-osascript -e 'tell app "Terminal" to do script "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo}"'
+# macOS - open new Terminal.app window (add --manual if -m flag)
+osascript -e 'tell app "Terminal" to do script "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo} [--manual]"'
 
 # Linux - use x-terminal-emulator or gnome-terminal
-gnome-terminal -- bash -c "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo}; exec bash"
+gnome-terminal -- bash -c "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo} [--manual]; exec bash"
 ```
 
 **iTerm (macOS):**
 ```bash
-osascript -e 'tell app "iTerm" to create window with default profile command "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo}"'
+osascript -e 'tell app "iTerm" to create window with default profile command "{hq_path}/.claude/scripts/pure-ralph-loop.sh --prd-path {prd_path} --target-repo {target_repo} [--manual]"'
 ```
 
 ### 7. Execute Launch

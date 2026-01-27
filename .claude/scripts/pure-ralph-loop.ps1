@@ -12,8 +12,16 @@
 .PARAMETER TargetRepo
     Full path to the target repository
 
+.PARAMETER Manual
+    Run in manual mode (interactive TUI, manually close windows)
+    Default is auto mode (uses -p flag, auto-exits)
+
 .EXAMPLE
+    # Auto mode (default) - fully autonomous
     .\pure-ralph-loop.ps1 -PrdPath "C:/my-hq/projects/my-project/prd.json" -TargetRepo "C:/my-hq"
+
+    # Manual mode - see chain of thought, close windows manually
+    .\pure-ralph-loop.ps1 -PrdPath "C:/my-hq/projects/my-project/prd.json" -TargetRepo "C:/my-hq" -Manual
 #>
 
 param(
@@ -23,7 +31,9 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$TargetRepo,
 
-    [string]$HqPath = "C:/my-hq"
+    [string]$HqPath = "C:/my-hq",
+
+    [switch]$Manual
 )
 
 # ============================================================================
@@ -64,10 +74,32 @@ function Get-TaskProgress {
 }
 
 function Build-Prompt {
+    param([bool]$IsManual)
+
     # Read base prompt and substitute only PRD_PATH and TARGET_REPO
     $prompt = Get-Content $BasePromptPath -Raw
     $prompt = $prompt -replace '\{\{PRD_PATH\}\}', $PrdPath
     $prompt = $prompt -replace '\{\{TARGET_REPO\}\}', $TargetRepo
+
+    # In manual mode, add instruction for user to close window
+    if ($IsManual) {
+        $prompt += @"
+
+
+---
+
+## IMPORTANT: Manual Mode
+
+When you have completed the task and updated the PRD, output this message:
+
+```
+TASK COMPLETE - Please close this window to continue to the next task.
+```
+
+Do NOT exit automatically. Wait for the user to close the window.
+"@
+    }
+
     return $prompt
 }
 
@@ -75,11 +107,14 @@ function Build-Prompt {
 # Main Loop
 # ============================================================================
 
+$modeLabel = if ($Manual) { "MANUAL (interactive)" } else { "AUTO (autonomous)" }
+
 Write-Host ""
 Write-Host "=== Pure Ralph Loop ===" -ForegroundColor Cyan
 Write-Host "PRD: $PrdPath" -ForegroundColor Gray
 Write-Host "Target: $TargetRepo" -ForegroundColor Gray
 Write-Host "Log: $LogFile" -ForegroundColor Gray
+Write-Host "Mode: $modeLabel" -ForegroundColor $(if ($Manual) { "Yellow" } else { "Green" })
 Write-Host ""
 Write-Host "Same prompt every iteration. Claude picks the task." -ForegroundColor Yellow
 Write-Host ""
@@ -87,9 +122,10 @@ Write-Host ""
 Write-Log "Pure Ralph Loop started"
 Write-Log "PRD: $PrdPath"
 Write-Log "Target: $TargetRepo"
+Write-Log "Mode: $modeLabel"
 
 # Build the prompt ONCE (only PRD_PATH and TARGET_REPO substituted)
-$prompt = Build-Prompt
+$prompt = Build-Prompt -IsManual $Manual
 $promptFile = Join-Path $LogDir "current-prompt.md"
 $prompt | Out-File -FilePath $promptFile -Encoding utf8
 
@@ -117,25 +153,43 @@ while ($iteration -lt $maxIterations) {
 
     Write-Host "Tasks remaining: $($progress.Remaining)" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Opening Claude in new window..." -ForegroundColor Cyan
-    Write-Host ">>> WATCH CLAUDE WORK IN THE NEW WINDOW <<<" -ForegroundColor Green
+
+    if ($Manual) {
+        Write-Host "Opening Claude in new window (MANUAL MODE)..." -ForegroundColor Cyan
+        Write-Host ">>> Close the window when task completes to continue <<<" -ForegroundColor Yellow
+    } else {
+        Write-Host "Opening Claude in new window (AUTO MODE)..." -ForegroundColor Cyan
+        Write-Host ">>> Window will close automatically when done <<<" -ForegroundColor Green
+    }
     Write-Host ""
 
     Write-Log "Spawning Claude session"
 
-    # Launch Claude in a NEW window with the SAME prompt
-    # The window will close automatically when Claude exits
-    $claudeCmd = @"
+    # Build the Claude command based on mode
+    if ($Manual) {
+        # Manual mode: interactive TUI, user closes window
+        $claudeCmd = @"
 cd '$TargetRepo'
-Write-Host '=== Pure Ralph Session ===' -ForegroundColor Cyan
+Write-Host '=== Pure Ralph Session (MANUAL MODE) ===' -ForegroundColor Cyan
 Write-Host 'Reading PRD, picking task, implementing...' -ForegroundColor Gray
+Write-Host 'Close this window when done to continue the loop.' -ForegroundColor Yellow
 Write-Host ''
 claude --permission-mode bypassPermissions (Get-Content '$promptFile' -Raw)
+"@
+    } else {
+        # Auto mode: -p flag, auto-exits
+        $claudeCmd = @"
+cd '$TargetRepo'
+Write-Host '=== Pure Ralph Session (AUTO MODE) ===' -ForegroundColor Cyan
+Write-Host 'Reading PRD, picking task, implementing...' -ForegroundColor Gray
+Write-Host ''
+claude -p --permission-mode bypassPermissions (Get-Content '$promptFile' -Raw)
 Write-Host ''
 Write-Host 'Session complete. Window closing in 3 seconds...' -ForegroundColor Green
 Start-Sleep -Seconds 3
 exit
 "@
+    }
 
     # Start new window and WAIT for it to close
     $proc = Start-Process powershell -ArgumentList "-Command", $claudeCmd -PassThru

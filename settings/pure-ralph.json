@@ -1,7 +1,7 @@
 {
   "terminal": {
-    "type": null,
-    "configured_at": null
+    "type": "powershell",
+    "configured_at": "2026-01-26T17:15:00Z"
   },
   "supported_terminals": {
     "powershell": {

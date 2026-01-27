@@ -176,6 +176,7 @@ Work survives context limits:
 |---------|--------------|
 | `/prd` | Generate PRD through discovery |
 | `/run-project` | Execute project via Ralph loop |
+| `/pure-ralph` | External terminal loop (fully autonomous) |
 | `/execute-task` | Run single task with workers |
 
 ### Content
@@ -284,6 +285,24 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 # 3. Monitor progress
 /run-project auth-system --status
 ```
+
+### Pure Ralph Mode
+
+For fully autonomous execution, use `/pure-ralph` to spawn an external terminal that runs the loop independently:
+
+```bash
+# Auto mode (default) - fully autonomous, no intervention needed
+/pure-ralph my-project
+
+# Manual mode - see chain of thought, close windows between tasks
+/pure-ralph my-project -m
+```
+
+**Why Pure Ralph?**
+- **Fresh context every task** - Each task runs in a new Claude session, preventing context rot
+- **External orchestrator** - Loop runs outside Claude, immune to context compression
+- **Self-improving** - Claude can update its own prompt as it learns
+- **Watchable** - See progress in a visible terminal window
 
 ---
 
