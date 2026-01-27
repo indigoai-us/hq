@@ -31,6 +31,33 @@ Extract the project name from the PRD path (e.g., `projects/my-feature/prd.json`
 
 ---
 
+## Commit Safety
+
+**HARD BLOCK: Never commit to main/master**
+
+Before EVERY commit, you MUST verify the current branch:
+
+```bash
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+    echo "ERROR: Cannot commit to main"
+    exit 1
+fi
+```
+
+### If on main/master:
+1. **STOP** - Do not commit under any circumstances
+2. **ERROR MESSAGE:** `ERROR: Cannot commit to main. Switch to feature/{{PROJECT_NAME}} first.`
+3. **RECOVERY:**
+   - Stash changes: `git stash`
+   - Switch to feature branch: `git checkout feature/{{PROJECT_NAME}}` (create if needed)
+   - Apply changes: `git stash pop`
+   - Then commit
+
+This is a **HARD BLOCK**, not a warning. Committing to main is NEVER acceptable in Pure Ralph.
+
+---
+
 ## Your Job (Every Session)
 
 1. **BRANCH** - Ensure you're on `feature/{{PROJECT_NAME}}` (create if needed)
@@ -105,6 +132,10 @@ Only add patterns that:
 ### [Branch] Always Verify Branch First
 **Pattern:** First action in any session: verify you're on `feature/{project-name}`
 **Why:** Commits to main are dangerous and require cleanup; prevention is easier than recovery
+
+### [Commit] Verify Branch Before Every Commit
+**Pattern:** Check `git branch --show-current` immediately before committing; abort if on main/master
+**Why:** Hard block prevents accidental commits to main; recovery after commit is harder than prevention
 
 ---
 

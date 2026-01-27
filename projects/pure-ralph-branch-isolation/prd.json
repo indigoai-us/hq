@@ -32,8 +32,8 @@
       ],
       "files": ["prompts/pure-ralph-base.md"],
       "dependsOn": ["US-001"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added 'Commit Safety' section with hard block for main/master commits. Includes: bash check script, clear ERROR message, recovery steps (stash, switch branch, pop, commit). Added learned pattern about verifying branch before every commit."
     },
     {
       "id": "US-003",
