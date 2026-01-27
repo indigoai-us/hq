@@ -130,6 +130,89 @@ When picking which task to do:
 
 ---
 
+## Worker Selection
+
+After picking a task, determine the best dev-team worker for implementation.
+
+### Selection Criteria
+
+1. **PRD Hints** - Check if task has a `worker` field (manual override)
+2. **Target Files** - Match file extensions/paths to worker specialties
+3. **Task Keywords** - Match keywords in title/description to worker domains
+
+### Available Workers
+
+| Worker | Specialty | Keywords | File Patterns |
+|--------|-----------|----------|---------------|
+| **architect** | System design, planning, API contracts | design, architecture, plan, contract, refactor | ADR, specs, diagrams |
+| **backend-dev** | API endpoints, business logic, services | API, endpoint, service, middleware, server | `.ts` (src/api/), `.ts` (services/) |
+| **frontend-dev** | React/Next.js components, pages, forms | component, page, form, UI, button, modal | `.tsx`, `.jsx`, `.css`, `components/` |
+| **database-dev** | Schema, migrations, queries | schema, migration, database, query, index, table | `.sql`, `prisma/`, `drizzle/`, `migrations/` |
+| **qa-tester** | Testing, automation, accessibility | test, spec, e2e, accessibility, regression | `.test.ts`, `.spec.ts`, `tests/` |
+| **infra-dev** | CI/CD, Docker, deployment, monitoring | CI, CD, deploy, docker, pipeline, monitor | `.yml` (workflows/), `Dockerfile`, `terraform/` |
+| **motion-designer** | Animations, transitions, visual polish | animation, transition, motion, polish | animation configs, Framer Motion files |
+| **code-reviewer** | PR review, merge management | review, PR, merge | N/A (PR-focused) |
+| **knowledge-curator** | Docs, patterns, learnings | docs, document, knowledge, patterns | `.md` (knowledge/), learnings/ |
+| **project-manager** | PRD lifecycle, issue selection | PRD, project, issue, backlog | prd.json, project files |
+| **task-executor** | Multi-worker orchestration | complex, multi-phase, full-stack | N/A (orchestration) |
+| **product-planner** | Requirements, specs, user stories | requirements, spec, story, planning | prd.md, technical-spec.md |
+
+### When to Use Each Worker
+
+- **Single-file code changes**: Match file extension to specialist (backend-dev, frontend-dev, database-dev)
+- **New feature implementation**: Start with architect for design, then specialist workers
+- **Bug fixes**: Route to the worker matching the file type (backend-dev for API bugs, frontend-dev for UI bugs)
+- **Documentation changes**: knowledge-curator
+- **Testing tasks**: qa-tester
+- **Infrastructure/CI changes**: infra-dev
+- **Complex multi-step tasks**: task-executor (will orchestrate multiple workers)
+
+### Selection Process
+
+1. Read task title, description, and acceptance criteria
+2. Check for `worker` field in task JSON (if present, use that worker)
+3. If no override, analyze target files and keywords
+4. Select the most specific worker that matches
+
+---
+
+## PRD Task Schema
+
+Each task in the PRD can include these fields:
+
+```json
+{
+  "id": "TASK-001",
+  "title": "Implement user authentication",
+  "description": "Add JWT-based auth middleware",
+  "acceptance_criteria": ["..."],
+  "files": ["src/auth/middleware.ts"],
+  "dependsOn": ["TASK-000"],
+  "worker": "backend-dev",      // ← Optional: override auto-selection
+  "passes": false,
+  "notes": ""
+}
+```
+
+### Optional Worker Override
+
+The `worker` field allows PRD authors to specify which worker should handle a task:
+
+- **If `worker` field is present:** Use that worker (e.g., `"worker": "backend-dev"`)
+- **If `worker` field is absent:** Claude auto-selects based on Worker Selection criteria
+
+This is useful when:
+- A task requires specific expertise that keywords don't capture
+- You want consistent worker assignment across related tasks
+- Auto-selection has picked the wrong worker in the past
+
+**Example overrides:**
+- `"worker": "architect"` - Force architectural review before implementation
+- `"worker": "qa-tester"` - Ensure testing focus even for code changes
+- `"worker": "task-executor"` - Complex task needing multi-worker orchestration
+
+---
+
 ## PRD Updates
 
 After completing a task, you MUST edit the PRD JSON:
