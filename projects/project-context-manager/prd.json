@@ -106,6 +106,8 @@
       "id": "US-006",
       "title": "Implement repo analysis discovery",
       "description": "Context-manager skill to automatically extract context from repository structure",
+      "status": "completed",
+      "completed_at": "2026-01-27T01:00:00Z",
       "acceptance_criteria": [
         "discover skill in context-manager can analyze a repo path",
         "Extracts from: README.md, package.json, directory structure, code comments, .env.example",
