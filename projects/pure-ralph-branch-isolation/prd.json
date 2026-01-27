@@ -17,8 +17,8 @@
         "All commits go to the feature branch, never main"
       ],
       "files": ["prompts/pure-ralph-base.md"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added Branch Management section to pure-ralph-base.md. Section includes: session start instructions for checking/creating feature branch, branch rules (never commit to main, naming convention, branch from main), and updated job steps to include BRANCH as step 1. Also added learned pattern about verifying branch first."
     },
     {
       "id": "US-002",

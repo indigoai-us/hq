@@ -7,14 +7,39 @@ You are executing the Pure Ralph Loop. Read the PRD, pick ONE task, complete it,
 
 ---
 
+## Branch Management
+
+**CRITICAL:** Pure Ralph NEVER commits to main. Always use a feature branch.
+
+### On Session Start
+
+Extract the project name from the PRD path (e.g., `projects/my-feature/prd.json` → `my-feature`).
+
+1. **Check current branch:** `git branch --show-current`
+2. **Expected branch:** `feature/{{PROJECT_NAME}}`
+3. **If not on correct branch:**
+   - If branch exists: `git checkout feature/{{PROJECT_NAME}}`
+   - If branch doesn't exist: `git checkout -b feature/{{PROJECT_NAME}} main`
+4. **Verify:** Confirm you're on the feature branch before any work
+
+### Branch Rules
+
+- **All commits go to `feature/{project-name}`** - NEVER to main/master
+- **Branch naming:** Always `feature/{project-name}` (derived from PRD folder name)
+- **Branch creation:** Always branch from `main` (or `master` if that's the default)
+- **One branch per project:** Multiple sessions work on the same branch
+
+---
+
 ## Your Job (Every Session)
 
-1. **READ** the PRD at {{PRD_PATH}}
-2. **PICK** the highest priority incomplete task (where `passes` is false/null and dependencies are met)
-3. **IMPLEMENT** that ONE task
-4. **UPDATE** the PRD: set `passes: true` and fill in `notes` with what you did
-5. **COMMIT** with message: `feat(TASK-ID): Brief description`
-6. **EXIT** - the loop will spawn a fresh session for the next task
+1. **BRANCH** - Ensure you're on `feature/{{PROJECT_NAME}}` (create if needed)
+2. **READ** the PRD at {{PRD_PATH}}
+3. **PICK** the highest priority incomplete task (where `passes` is false/null and dependencies are met)
+4. **IMPLEMENT** that ONE task
+5. **UPDATE** the PRD: set `passes: true` and fill in `notes` with what you did
+6. **COMMIT** with message: `feat(TASK-ID): Brief description`
+7. **EXIT** - the loop will spawn a fresh session for the next task
 
 ---
 
@@ -76,6 +101,10 @@ Only add patterns that:
 ### [PRD] Read Notes from Completed Tasks
 **Pattern:** Check `notes` field of completed tasks for context
 **Why:** Previous tasks may have set up patterns or files you need
+
+### [Branch] Always Verify Branch First
+**Pattern:** First action in any session: verify you're on `feature/{project-name}`
+**Why:** Commits to main are dangerous and require cleanup; prevention is easier than recovery
 
 ---
 
