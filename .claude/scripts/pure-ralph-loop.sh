@@ -319,6 +319,83 @@ invoke_task() {
 }
 
 # ============================================================================
+# Beads Integration
+# ============================================================================
+
+BEADS_AVAILABLE=false
+
+check_beads_cli() {
+    # Check if beads CLI (bd) is available
+    if command -v bd &> /dev/null; then
+        BEADS_AVAILABLE=true
+        return 0
+    else
+        BEADS_AVAILABLE=false
+        return 1
+    fi
+}
+
+initialize_beads() {
+    local prd="$1"
+
+    if [[ "$BEADS_AVAILABLE" != "true" ]]; then
+        return
+    fi
+
+    write_log "Syncing PRD tasks to beads..."
+
+    # Iterate through all tasks and sync to beads
+    local task_count
+    task_count=$(echo "$prd" | jq '.features | length')
+
+    for ((i=0; i<task_count; i++)); do
+        local task
+        task=$(echo "$prd" | jq -c ".features[$i]")
+
+        local task_id
+        local task_title
+        local passes
+        task_id=$(echo "$task" | jq -r '.id')
+        task_title=$(echo "$task" | jq -r '.title')
+        passes=$(echo "$task" | jq -r '.passes')
+
+        local bead_id="${PROJECT_NAME}-${task_id}"
+        local status
+        if [[ "$passes" == "true" ]]; then
+            status="done"
+        else
+            status="todo"
+        fi
+
+        # Create or update bead for this task
+        if bd add --id "$bead_id" --title "$task_id: $task_title" --status "$status" 2>/dev/null; then
+            write_log "  Synced bead: $bead_id ($status)"
+        else
+            write_log "  Failed to sync bead: $bead_id" "WARN"
+        fi
+    done
+
+    write_log "Beads sync complete" "SUCCESS"
+}
+
+update_bead_status() {
+    local task_id="$1"
+    local status="$2"  # "in-progress", "done", "blocked"
+
+    if [[ "$BEADS_AVAILABLE" != "true" ]]; then
+        return
+    fi
+
+    local bead_id="${PROJECT_NAME}-${task_id}"
+
+    if bd update "$bead_id" --status "$status" 2>/dev/null; then
+        write_log "Updated bead $bead_id to $status"
+    else
+        write_log "Failed to update bead: $bead_id" "WARN"
+    fi
+}
+
+# ============================================================================
 # Learnings Aggregation
 # ============================================================================
 
@@ -400,6 +477,21 @@ start_ralph_loop() {
     echo -e "${GRAY}PRD: $PRD_PATH${NC}"
     echo -e "${GRAY}Target: $TARGET_REPO${NC}"
     echo -e "${GRAY}Log: $LOG_FILE${NC}"
+
+    # Check for beads CLI availability
+    if check_beads_cli; then
+        echo -e "${GRAY}Beads CLI: ${GREEN}available${NC}"
+        write_log "Beads CLI (bd) detected - task tracking enabled"
+
+        # Initial sync of PRD tasks to beads
+        local prd
+        prd=$(get_prd)
+        initialize_beads "$prd"
+    else
+        echo -e "${GRAY}Beads CLI: ${YELLOW}not installed (optional)${NC}"
+        write_log "Beads CLI (bd) not found - continuing without task tracking"
+    fi
+
     echo ""
 
     local loop_count=0
@@ -456,14 +548,21 @@ start_ralph_loop() {
         echo ""
         echo -e "${YELLOW}Executing: $task_id - $task_title${NC}"
 
+        # Update bead to in-progress
+        update_bead_status "$task_id" "in-progress"
+
         # Execute the task
         local result
         result=$(invoke_task "$task" "$prd")
 
         if [[ "$result" == "SUCCESS" ]]; then
             write_log "Task $task_id execution completed" "SUCCESS"
+            # Update bead to done (PRD update happens in Claude session)
+            update_bead_status "$task_id" "done"
         else
             write_log "Task $task_id execution had issues" "WARN"
+            # Update bead to blocked
+            update_bead_status "$task_id" "blocked"
         fi
 
         # Brief pause between tasks

@@ -123,8 +123,8 @@
       ],
       "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
       "dependsOn": ["US-005"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added beads CLI integration to both PowerShell and bash loop scripts: (1) Test-BeadsCli/check_beads_cli functions detect if bd command is available; (2) Initialize-Beads/initialize_beads functions sync all PRD tasks to beads on loop start using bd add with --id for idempotent creation, setting status to 'done' for passing tasks and 'todo' for pending; (3) Update-BeadStatus/update_bead_status functions update bead status to 'in-progress' before task execution and 'done'/'blocked' after; (4) Graceful fallback with BEADS_AVAILABLE flag - all bead functions check this and silently skip if bd CLI not installed. Bead IDs use format '{project-name}-{task-id}' for uniqueness."
     }
   ],
   "metadata": {

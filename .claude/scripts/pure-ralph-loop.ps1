@@ -254,6 +254,82 @@ function Invoke-Task {
 }
 
 # ============================================================================
+# Beads Integration
+# ============================================================================
+
+$BeadsAvailable = $false
+
+function Test-BeadsCli {
+    <#
+    .SYNOPSIS
+        Checks if the beads CLI (bd) is available
+    #>
+    try {
+        $null = Get-Command "bd" -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-Beads {
+    param($Prd)
+    <#
+    .SYNOPSIS
+        Syncs PRD tasks to beads on loop start
+    #>
+
+    if (-not $script:BeadsAvailable) {
+        return
+    }
+
+    Write-Log "Syncing PRD tasks to beads..."
+
+    foreach ($task in $Prd.features) {
+        $beadId = "$ProjectName-$($task.id)"
+        $status = if ($task.passes -eq $true) { "done" } else { "todo" }
+
+        try {
+            # Create or update bead for this task
+            # Using bd add with --id for idempotent creation
+            $null = bd add --id $beadId --title "$($task.id): $($task.title)" --status $status 2>&1
+            Write-Log "  Synced bead: $beadId ($status)"
+        }
+        catch {
+            Write-Log "  Failed to sync bead: $beadId - $_" "WARN"
+        }
+    }
+
+    Write-Log "Beads sync complete" "SUCCESS"
+}
+
+function Update-BeadStatus {
+    param(
+        [string]$TaskId,
+        [string]$Status  # "in-progress", "done", "blocked"
+    )
+    <#
+    .SYNOPSIS
+        Updates a bead's status when task state changes
+    #>
+
+    if (-not $script:BeadsAvailable) {
+        return
+    }
+
+    $beadId = "$ProjectName-$TaskId"
+
+    try {
+        $null = bd update $beadId --status $status 2>&1
+        Write-Log "Updated bead $beadId to $Status"
+    }
+    catch {
+        Write-Log "Failed to update bead: $beadId - $_" "WARN"
+    }
+}
+
+# ============================================================================
 # Learnings Aggregation
 # ============================================================================
 
@@ -339,6 +415,23 @@ function Start-RalphLoop {
     Write-Host "PRD: $PrdPath" -ForegroundColor Gray
     Write-Host "Target: $TargetRepo" -ForegroundColor Gray
     Write-Host "Log: $LogFile" -ForegroundColor Gray
+
+    # Check for beads CLI availability
+    $script:BeadsAvailable = Test-BeadsCli
+    if ($script:BeadsAvailable) {
+        Write-Host "Beads CLI: " -NoNewline -ForegroundColor Gray
+        Write-Host "available" -ForegroundColor Green
+        Write-Log "Beads CLI (bd) detected - task tracking enabled"
+
+        # Initial sync of PRD tasks to beads
+        $prd = Get-Prd
+        Initialize-Beads -Prd $prd
+    } else {
+        Write-Host "Beads CLI: " -NoNewline -ForegroundColor Gray
+        Write-Host "not installed (optional)" -ForegroundColor Yellow
+        Write-Log "Beads CLI (bd) not found - continuing without task tracking"
+    }
+
     Write-Host ""
 
     $loopCount = 0
@@ -378,13 +471,20 @@ function Start-RalphLoop {
 
         Write-Host "`nExecuting: $($task.id) - $($task.title)" -ForegroundColor Yellow
 
+        # Update bead to in-progress
+        Update-BeadStatus -TaskId $task.id -Status "in-progress"
+
         # Execute the task
         $result = Invoke-Task -Task $task -Prd $prd
 
         if ($result.Success) {
             Write-Log "Task $($task.id) execution completed" "SUCCESS"
+            # Update bead to done (PRD update happens in Claude session)
+            Update-BeadStatus -TaskId $task.id -Status "done"
         } else {
             Write-Log "Task $($task.id) execution had issues" "WARN"
+            # Update bead to blocked
+            Update-BeadStatus -TaskId $task.id -Status "blocked"
         }
 
         # Brief pause between tasks
