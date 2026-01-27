@@ -1,0 +1,123 @@
+{
+  "project": "pure-ralph-branch-isolation",
+  "goal": "Ensure pure-ralph never commits to main, always uses feature branches, creates PRs on completion, and prevents concurrent execution conflicts",
+  "success_criteria": "Safe parallel execution of multiple pure-ralph loops on different PRDs without conflicts, with clean PR workflow",
+  "target_repo": "C:/my-hq",
+  "has_ui": false,
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Add branch creation to pure-ralph prompt",
+      "description": "Automatically create and use feature branch so main stays clean",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes Branch Management section",
+        "On session start: check if on feature branch for this project",
+        "If not on correct branch: create feature/{project-name} from main and switch to it",
+        "If branch exists: switch to it",
+        "All commits go to the feature branch, never main"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": true,
+      "notes": "Added Branch Management section to pure-ralph-base.md. Section includes: session start instructions for checking/creating feature branch, branch rules (never commit to main, naming convention, branch from main), and updated job steps to include BRANCH as step 1. Also added learned pattern about verifying branch first."
+    },
+    {
+      "id": "US-002",
+      "title": "Add main branch protection to prompt",
+      "description": "Refuse to commit to main/master branch",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes check before commit",
+        "If current branch is main/master: ERROR, do not commit",
+        "Provide clear error message: Cannot commit to main",
+        "This is a hard block, not a warning"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": true,
+      "notes": "Added 'Commit Safety' section with hard block for main/master commits. Includes: bash check script, clear ERROR message, recovery steps (stash, switch branch, pop, commit). Added learned pattern about verifying branch before every commit."
+    },
+    {
+      "id": "US-003",
+      "title": "Add PR creation on project completion",
+      "description": "Automatically create PR when all tasks complete",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes PR creation step",
+        "When all tasks pass: push branch to origin",
+        "Create PR using gh pr create if available",
+        "PR title format: feat: {project-name}",
+        "PR body: list of completed tasks with notes",
+        "If gh not available: output manual instructions"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": true,
+      "notes": "Added 'PR Creation (When All Tasks Complete)' section with: push to origin instructions, gh pr create command with title format 'feat: {project-name}', PR body format including summary from PRD goal and list of completed tasks with notes, manual instructions fallback if gh CLI not available, updated step 7 in 'Your Job' to include PR creation check when all tasks complete."
+    },
+    {
+      "id": "US-004",
+      "title": "Add lock file mechanism to orchestrator scripts",
+      "description": "Prevent concurrent runs on same target repo using lock file",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.ps1 creates lock file on start",
+        "Lock file location: {target_repo}/.pure-ralph.lock",
+        "Lock file contains: project name, PID, start timestamp",
+        "On exit (success or failure): remove lock file",
+        ".claude/scripts/pure-ralph-loop.sh has same behavior"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "passes": true,
+      "notes": "Added lock file mechanism to both scripts. PowerShell: Create-LockFile and Remove-LockFile functions with try/finally for cleanup. Bash: create_lock_file and remove_lock_file functions with EXIT trap for cleanup. Lock file at {target_repo}/.pure-ralph.lock contains JSON with project name, PID, and ISO timestamp."
+    },
+    {
+      "id": "US-005",
+      "title": "Add conflict detection on loop start",
+      "description": "Warn if another loop is already running on same repo",
+      "acceptance_criteria": [
+        "On loop start: check for existing .pure-ralph.lock in target repo",
+        "If lock exists: read contents, show warning with project name and duration",
+        "Prompt user: Another pure-ralph is running. Continue anyway? (y/N)",
+        "Default to N (abort)",
+        "If user chooses to continue: proceed but log warning"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-004"],
+      "passes": true,
+      "notes": "Added Check-ExistingLock function to PowerShell and check_existing_lock function to Bash. Both: (1) parse lock file JSON for project/PID/timestamp, (2) calculate and display duration, (3) check if process is still running (shows 'RUNNING' or 'stale lock'), (4) prompt user with y/N defaulting to abort, (5) log warning if user continues. Called before Create-LockFile in both scripts."
+    },
+    {
+      "id": "US-006",
+      "title": "Update pure-ralph prompt with conflict awareness",
+      "description": "Make Claude sessions aware of potential conflicts",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md mentions checking for lock file",
+        "If lock file found during session: warn and check if process still running",
+        "If lock is stale (process dead): safe to remove and continue",
+        "Add learned pattern about conflict handling"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-004"],
+      "passes": true,
+      "notes": "Added 'Conflict Awareness' section with: lock file location, session start check instructions, handling logic for lock file detection (read contents, check PID running status), stale lock removal instructions, important notes clarifying orchestrator vs Claude responsibilities. Added learned pattern '[Conflict] Stale Lock Detection' for distinguishing active vs stale locks."
+    },
+    {
+      "id": "US-007",
+      "title": "Document branch workflow in knowledge base",
+      "description": "Create documentation on the branch workflow",
+      "acceptance_criteria": [
+        "knowledge/pure-ralph/branch-workflow.md created",
+        "Documents: automatic branch creation",
+        "Documents: PR creation process",
+        "Documents: lock file mechanism",
+        "Documents: handling concurrent execution attempts",
+        "Documents: manual recovery if lock file becomes stale"
+      ],
+      "files": ["knowledge/pure-ralph/branch-workflow.md"],
+      "passes": true,
+      "notes": "Created comprehensive branch-workflow.md documentation covering: (1) Automatic branch creation with naming convention and session start process, (2) PR creation process including gh CLI commands and manual fallback, (3) Lock file mechanism with location, contents, and lifecycle, (4) Concurrent execution handling with detection and user prompts, (5) Manual recovery for stale locks with verification steps for both bash and PowerShell. Includes summary diagram and related files reference."
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T20:30:00Z",
+    "created_by": "stefan",
+    "purpose": "Add branch isolation and conflict prevention to pure-ralph"
+  }
+}

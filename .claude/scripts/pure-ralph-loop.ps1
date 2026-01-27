@@ -44,6 +44,7 @@ $BasePromptPath = Join-Path $HqPath "prompts/pure-ralph-base.md"
 $ProjectName = (Split-Path (Split-Path $PrdPath -Parent) -Leaf)
 $LogDir = Join-Path $HqPath "workspace/orchestrator/$ProjectName"
 $LogFile = Join-Path $LogDir "pure-ralph.log"
+$LockFile = Join-Path $TargetRepo ".pure-ralph.lock"
 
 # Create log directory
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -64,6 +65,85 @@ function Write-Log {
         "SUCCESS" { Write-Host $entry -ForegroundColor Green }
         default   { Write-Host $entry }
     }
+}
+
+function Create-LockFile {
+    $lockContent = @{
+        project = $ProjectName
+        pid = $PID
+        started_at = (Get-Date -Format "o")
+    } | ConvertTo-Json
+    $lockContent | Out-File -FilePath $LockFile -Encoding utf8
+    Write-Log "Lock file created: $LockFile"
+}
+
+function Remove-LockFile {
+    if (Test-Path $LockFile) {
+        Remove-Item -Path $LockFile -Force
+        Write-Log "Lock file removed: $LockFile"
+    }
+}
+
+function Check-ExistingLock {
+    if (Test-Path $LockFile) {
+        try {
+            $lockContent = Get-Content $LockFile -Raw | ConvertFrom-Json
+            $lockProject = $lockContent.project
+            $lockPid = $lockContent.pid
+            $lockStarted = [DateTime]::Parse($lockContent.started_at)
+            $duration = (Get-Date) - $lockStarted
+            $durationStr = "{0:hh\:mm\:ss}" -f $duration
+
+            Write-Host ""
+            Write-Host "=== WARNING: Lock File Detected ===" -ForegroundColor Yellow
+            Write-Host "Another pure-ralph loop may be running on this repo." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  Project: $lockProject" -ForegroundColor Gray
+            Write-Host "  PID: $lockPid" -ForegroundColor Gray
+            Write-Host "  Started: $($lockContent.started_at)" -ForegroundColor Gray
+            Write-Host "  Duration: $durationStr" -ForegroundColor Gray
+            Write-Host ""
+
+            # Check if process is still running
+            $processRunning = $false
+            try {
+                $proc = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+                if ($proc) {
+                    $processRunning = $true
+                    Write-Host "  Process Status: RUNNING" -ForegroundColor Red
+                } else {
+                    Write-Host "  Process Status: NOT RUNNING (stale lock)" -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "  Process Status: NOT RUNNING (stale lock)" -ForegroundColor Yellow
+            }
+            Write-Host ""
+
+            Write-Log "Existing lock file found for project '$lockProject' (PID: $lockPid, Duration: $durationStr)" "WARN"
+
+            # Prompt user
+            $response = Read-Host "Another pure-ralph is running. Continue anyway? (y/N)"
+            if ($response -match "^[Yy]$") {
+                Write-Log "User chose to continue despite existing lock" "WARN"
+                Write-Host "Continuing... (existing lock will be overwritten)" -ForegroundColor Yellow
+                return $true
+            } else {
+                Write-Log "User chose to abort due to existing lock" "INFO"
+                Write-Host "Aborting." -ForegroundColor Red
+                return $false
+            }
+        } catch {
+            Write-Log "Could not parse lock file: $_" "WARN"
+            # If we can't parse the lock file, ask the user
+            $response = Read-Host "Lock file exists but couldn't be read. Continue anyway? (y/N)"
+            if ($response -match "^[Yy]$") {
+                return $true
+            } else {
+                return $false
+            }
+        }
+    }
+    return $true
 }
 
 function Get-TaskProgress {
@@ -124,17 +204,27 @@ Write-Log "PRD: $PrdPath"
 Write-Log "Target: $TargetRepo"
 Write-Log "Mode: $modeLabel"
 
-# Build the prompt ONCE (only PRD_PATH and TARGET_REPO substituted)
-$prompt = Build-Prompt -IsManual $Manual
-$promptFile = Join-Path $LogDir "current-prompt.md"
-$prompt | Out-File -FilePath $promptFile -Encoding utf8
+# Check for existing lock file (conflict detection)
+if (-not (Check-ExistingLock)) {
+    exit 1
+}
 
-Write-Log "Prompt built and saved to $promptFile"
+# Create lock file to prevent concurrent execution
+Create-LockFile
 
-$iteration = 0
-$maxIterations = 50
+# Ensure lock file is removed on exit (success or failure)
+try {
+    # Build the prompt ONCE (only PRD_PATH and TARGET_REPO substituted)
+    $prompt = Build-Prompt -IsManual $Manual
+    $promptFile = Join-Path $LogDir "current-prompt.md"
+    $prompt | Out-File -FilePath $promptFile -Encoding utf8
 
-while ($iteration -lt $maxIterations) {
+    Write-Log "Prompt built and saved to $promptFile"
+
+    $iteration = 0
+    $maxIterations = 50
+
+    while ($iteration -lt $maxIterations) {
     $iteration++
 
     $progress = Get-TaskProgress
@@ -203,15 +293,20 @@ exit
     Start-Sleep -Seconds 2
 }
 
-if ($iteration -ge $maxIterations) {
-    Write-Log "Safety limit reached ($maxIterations iterations)" "WARN"
+    if ($iteration -ge $maxIterations) {
+        Write-Log "Safety limit reached ($maxIterations iterations)" "WARN"
+    }
+
+    # Final summary
+    $progress = Get-TaskProgress
+    Write-Host ""
+    Write-Host "=== Final Summary ===" -ForegroundColor Cyan
+    Write-Host "Completed: $($progress.Complete)/$($progress.Total) tasks" -ForegroundColor $(if ($progress.Remaining -eq 0) { "Green" } else { "Yellow" })
+    Write-Host "Log: $LogFile" -ForegroundColor Gray
+
+    Write-Log "Loop ended. Final: $($progress.Complete)/$($progress.Total) complete"
 }
-
-# Final summary
-$progress = Get-TaskProgress
-Write-Host ""
-Write-Host "=== Final Summary ===" -ForegroundColor Cyan
-Write-Host "Completed: $($progress.Complete)/$($progress.Total) tasks" -ForegroundColor $(if ($progress.Remaining -eq 0) { "Green" } else { "Yellow" })
-Write-Host "Log: $LogFile" -ForegroundColor Gray
-
-Write-Log "Loop ended. Final: $($progress.Complete)/$($progress.Total) complete"
+finally {
+    # Always remove lock file on exit (success or failure)
+    Remove-LockFile
+}

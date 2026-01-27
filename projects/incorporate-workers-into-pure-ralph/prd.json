@@ -1,0 +1,88 @@
+{
+  "project": "incorporate-workers-into-pure-ralph",
+  "goal": "Enhance pure-ralph to select and invoke the appropriate dev-team worker for each task",
+  "success_criteria": "Each task executed by specialist worker with audit trail and optional PRD overrides",
+  "target_repo": "C:/my-hq",
+  "has_ui": false,
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Add worker selection logic to pure-ralph-base.md",
+      "description": "Add instructions for selecting the appropriate dev-team worker for each task based on keywords, files, and PRD hints",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes Worker Selection section",
+        "Instructions specify: after picking task, determine best worker",
+        "Selection criteria documented: task keywords, target files, PRD hints",
+        "Lists available dev-team workers with their specialties",
+        "Explains when each worker type applies"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added Worker Selection section with: selection criteria (PRD hints, target files, keywords), table of all 12 dev-team workers with specialties/keywords/file patterns, usage guidelines for when to use each worker, and 4-step selection process."
+    },
+    {
+      "id": "US-002",
+      "title": "Add PRD worker override support",
+      "description": "Document optional worker field in PRD task JSON for manual override of automatic selection",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md documents optional worker field in task JSON",
+        "If worker field present, use that worker instead of auto-selecting",
+        "If worker field absent, Claude selects based on criteria",
+        "Example shown in prompt: worker: backend-dev"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added PRD Task Schema section with full JSON schema showing optional worker field. Documented override behavior (present=use it, absent=auto-select). Added use cases and example overrides including backend-dev."
+    },
+    {
+      "id": "US-003",
+      "title": "Add worker invocation instructions to prompt",
+      "description": "Document how to fully invoke a worker within the loop - loading worker.yaml and following skills",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes Worker Invocation section",
+        "Instructions: read worker.yaml from workers/dev-team/{worker}/",
+        "Instructions: follow worker's skills and execution patterns",
+        "Instructions: apply worker's knowledge base if referenced",
+        "Worker context is used for implementation, not just reference"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added Worker Invocation section with: 4-step invocation process (load definition, load context, apply instructions, use skills), YAML examples showing context.base and instructions fields, checklist for pre-implementation verification, emphasis that worker context shapes HOW to implement."
+    },
+    {
+      "id": "US-004",
+      "title": "Add worker selection reasoning to task notes",
+      "description": "Specify that task notes must include which worker was selected and why for audit trail",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md specifies notes format includes worker info",
+        "Notes must include: Worker: {worker-id}",
+        "Notes must include: Selection reason: {brief explanation}",
+        "Example provided in prompt"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Notes Format (Required)' subsection to PRD Updates with: required format spec (Worker + Selection reason + summary), three concrete examples for different worker types (backend-dev, frontend-dev, knowledge-curator), and separated required vs optional note content."
+    },
+    {
+      "id": "US-005",
+      "title": "Create worker selection reference table",
+      "description": "Add quick reference table mapping keywords and file patterns to recommended workers",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes worker reference table",
+        "Table maps: keywords/patterns to recommended worker",
+        "Covers all 12 dev-team workers",
+        "Includes file extension hints (e.g., .tsx to frontend-dev, .sql to database-dev)"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Worker Quick Reference' section with three tables: (1) By File Extension - 17 extension patterns mapped to workers including .tsx to frontend-dev, .sql to database-dev, .test.ts to qa-tester, etc. (2) By Directory Pattern - 12 directory patterns mapped to workers. (3) By Keyword Pattern - 35 keyword patterns mapped to all 12 dev-team workers. Covers architect, backend-dev, frontend-dev, database-dev, qa-tester, infra-dev, motion-designer, code-reviewer, knowledge-curator, project-manager, task-executor, and product-planner."
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T20:15:00Z",
+    "created_by": "stefan",
+    "purpose": "Integrate dev-team workers into pure-ralph loop"
+  }
+}
