@@ -253,9 +253,31 @@ try {
             # Get current branch
             $currentBranch = git branch --show-current
 
-            # Push branch if not already pushed
-            Write-Host "Pushing branch $currentBranch..." -ForegroundColor Gray
-            git push -u origin $currentBranch 2>&1 | Out-Null
+            # Check for fork remote (prefer fork over origin for PRs)
+            $remotes = git remote
+            $pushRemote = "origin"
+            $upstreamRepo = $null
+
+            if ($remotes -contains "myfork") {
+                $pushRemote = "myfork"
+                # Get upstream repo URL from origin for PR target
+                $originUrl = git remote get-url origin 2>$null
+                if ($originUrl -match "github\.com[/:]([^/]+/[^/.]+)") {
+                    $upstreamRepo = $matches[1] -replace "\.git$", ""
+                }
+                Write-Host "Fork detected - pushing to '$pushRemote', PR to '$upstreamRepo'" -ForegroundColor Gray
+            } elseif ($remotes -contains "fork") {
+                $pushRemote = "fork"
+                $originUrl = git remote get-url origin 2>$null
+                if ($originUrl -match "github\.com[/:]([^/]+/[^/.]+)") {
+                    $upstreamRepo = $matches[1] -replace "\.git$", ""
+                }
+                Write-Host "Fork detected - pushing to '$pushRemote', PR to '$upstreamRepo'" -ForegroundColor Gray
+            }
+
+            # Push branch
+            Write-Host "Pushing branch $currentBranch to $pushRemote..." -ForegroundColor Gray
+            git push -u $pushRemote $currentBranch 2>&1 | Out-Null
 
             # Check if gh is available
             $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
@@ -281,8 +303,12 @@ $taskList
 *Created by Pure Ralph*
 "@
 
-                # Create PR
-                $prUrl = gh pr create --title $prTitle --body $prBody 2>&1
+                # Create PR (specify upstream repo if using fork)
+                if ($upstreamRepo) {
+                    $prUrl = gh pr create --repo $upstreamRepo --title $prTitle --body $prBody 2>&1
+                } else {
+                    $prUrl = gh pr create --title $prTitle --body $prBody 2>&1
+                }
 
                 if ($LASTEXITCODE -eq 0) {
                     Write-Host "PR Created: $prUrl" -ForegroundColor Green

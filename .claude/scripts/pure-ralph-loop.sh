@@ -791,9 +791,34 @@ start_ralph_loop() {
             local current_branch
             current_branch=$(git branch --show-current)
 
-            # Push branch if not already pushed
-            echo -e "${GRAY}Pushing branch $current_branch...${NC}"
-            git push -u origin "$current_branch" 2>/dev/null || true
+            # Check for fork remote (prefer fork over origin for PRs)
+            local push_remote="origin"
+            local upstream_repo=""
+
+            if git remote | grep -q "^myfork$"; then
+                push_remote="myfork"
+                # Get upstream repo from origin URL
+                local origin_url
+                origin_url=$(git remote get-url origin 2>/dev/null)
+                if [[ "$origin_url" =~ github\.com[/:]([^/]+/[^/.]+) ]]; then
+                    upstream_repo="${BASH_REMATCH[1]}"
+                    upstream_repo="${upstream_repo%.git}"
+                fi
+                echo -e "${GRAY}Fork detected - pushing to '$push_remote', PR to '$upstream_repo'${NC}"
+            elif git remote | grep -q "^fork$"; then
+                push_remote="fork"
+                local origin_url
+                origin_url=$(git remote get-url origin 2>/dev/null)
+                if [[ "$origin_url" =~ github\.com[/:]([^/]+/[^/.]+) ]]; then
+                    upstream_repo="${BASH_REMATCH[1]}"
+                    upstream_repo="${upstream_repo%.git}"
+                fi
+                echo -e "${GRAY}Fork detected - pushing to '$push_remote', PR to '$upstream_repo'${NC}"
+            fi
+
+            # Push branch
+            echo -e "${GRAY}Pushing branch $current_branch to $push_remote...${NC}"
+            git push -u "$push_remote" "$current_branch" 2>/dev/null || true
 
             # Check if gh is available
             if command -v gh &> /dev/null; then
@@ -819,9 +844,13 @@ $task_list
 PRBODY
 )
 
-                # Create PR
+                # Create PR (specify upstream repo if using fork)
                 local pr_url
-                pr_url=$(gh pr create --title "$pr_title" --body "$pr_body" 2>&1)
+                if [[ -n "$upstream_repo" ]]; then
+                    pr_url=$(gh pr create --repo "$upstream_repo" --title "$pr_title" --body "$pr_body" 2>&1)
+                else
+                    pr_url=$(gh pr create --title "$pr_title" --body "$pr_body" 2>&1)
+                fi
 
                 if [[ $? -eq 0 ]]; then
                     echo -e "${GREEN}PR Created: $pr_url${NC}"
