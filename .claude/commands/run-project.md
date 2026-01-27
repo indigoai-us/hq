@@ -269,7 +269,37 @@ Write to `knowledge/workers/{project}-learnings.md`:
 - {aggregated for_next_time}
 ```
 
-#### 8c. Update State
+#### 8c. Audit Project Context
+
+After PRD completion, trigger context-manager to audit the project's context for staleness:
+
+```
+1. Check if project has context directory:
+   projects/{project}/context/
+
+2. If context exists:
+   - Spawn context-manager audit skill:
+     Task({
+       subagent_type: "general-purpose",
+       prompt: "/run context-manager audit --project {project}",
+       description: "audit context {project}"
+     })
+
+   - Report written to: workspace/context-audits/{project}-{date}.md
+
+   - If issues found, log to progress.txt:
+     [{timestamp}] Context audit: {N} warnings, {M} errors
+     Run /run context-manager audit --fix --project {project} to address
+
+3. If no context exists:
+   - Log suggestion to progress.txt:
+     [{timestamp}] Note: No project context found. Consider running:
+     /run context-manager discover --project {project}
+```
+
+This ensures project context stays current as the codebase evolves during PRD execution.
+
+#### 8d. Update State
 
 ```json
 {
@@ -284,7 +314,7 @@ Write to `knowledge/workers/{project}-learnings.md`:
 }
 ```
 
-#### 8d. Final Log
+#### 8e. Final Log
 
 Append to progress.txt:
 ```
