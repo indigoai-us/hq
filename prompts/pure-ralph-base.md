@@ -176,6 +176,82 @@ After picking a task, determine the best dev-team worker for implementation.
 
 ---
 
+## Worker Invocation
+
+After selecting a worker, invoke it to leverage its specialized knowledge and patterns.
+
+### Step 1: Load Worker Definition
+
+Read the worker's configuration file:
+
+```
+workers/dev-team/{worker-id}/worker.yaml
+```
+
+Key fields to extract:
+- `context.base` - Knowledge paths to load
+- `skills` - Available skill definitions
+- `instructions` - Worker-specific guidance
+- `external_skills` - External skill references (if any)
+
+### Step 2: Load Worker Context
+
+Read the files specified in `context.base`:
+
+```yaml
+# Example from worker.yaml
+context:
+  base:
+    - workers/dev-team/backend-dev/
+    - workers/dev-team/backend-dev/skills/
+    - knowledge/dev-team/patterns/backend/
+```
+
+For each path:
+1. If it's a directory, read relevant files (README.md, *.md patterns)
+2. If it's a file, read it directly
+3. Apply the knowledge to your implementation approach
+
+### Step 3: Apply Worker Instructions
+
+The `instructions` field contains worker-specific guidance:
+
+```yaml
+instructions: |
+  # Backend Developer
+
+  API implementation, business logic, and server-side integrations.
+
+  ## Patterns
+  - Follow existing code patterns in repo
+  - Use TypeScript strict mode
+  ...
+```
+
+Follow these instructions as you implement the task.
+
+### Step 4: Use Relevant Skills
+
+If a skill matches the task, read the skill file for detailed process:
+
+```
+workers/dev-team/{worker-id}/skills/{skill-id}.md
+```
+
+Skills define step-by-step processes (e.g., `implement-endpoint.md` for API tasks).
+
+### Invocation Checklist
+
+Before implementing:
+- [ ] Read `workers/dev-team/{worker-id}/worker.yaml`
+- [ ] Load knowledge from `context.base` paths
+- [ ] Review `instructions` for worker-specific patterns
+- [ ] Check if a specific skill file applies to the task
+
+The worker context shapes HOW you implement, not just WHAT you implement.
+
+---
+
 ## PRD Task Schema
 
 Each task in the PRD can include these fields:
