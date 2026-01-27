@@ -54,6 +54,8 @@
       "id": "US-003",
       "title": "Create worker context needs registry",
       "description": "Central registry documenting what context each worker type needs to do their best work",
+      "status": "completed",
+      "completed_at": "2026-01-27T23:55:00Z",
       "acceptance_criteria": [
         "knowledge/context-needs/registry.yaml created",
         "Documents context needs for existing worker types",
