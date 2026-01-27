@@ -89,6 +89,8 @@
       "id": "US-005",
       "title": "Add context needs capture to /newworker command",
       "description": "When creating a new worker, capture what context it needs to do its job",
+      "status": "completed",
+      "completed_at": "2026-01-28T00:25:00Z",
       "acceptance_criteria": [
         ".claude/commands/newworker.md updated with context needs question",
         "Question asks what project context the worker needs",
