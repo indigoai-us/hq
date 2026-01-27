@@ -14,7 +14,7 @@
       ],
       "files": ["workspace/ralph-test/hello.txt"],
       "passes": true,
-      "notes": "File created with required content. Verified: hello.txt exists and contains 'Hello from Ralph Loop!'"
+      "notes": "Created hello.txt with greeting message"
     },
     {
       "id": "TEST-002",
@@ -27,7 +27,7 @@
       "files": ["workspace/ralph-test/hello.txt"],
       "dependsOn": ["TEST-001"],
       "passes": true,
-      "notes": "Added timestamp line to hello.txt. Verified: file now has second line 'Executed at: 2026-01-26T19:15:00Z'"
+      "notes": "Added timestamp line to hello.txt"
     },
     {
       "id": "TEST-003",
@@ -39,8 +39,8 @@
       ],
       "files": ["workspace/ralph-test/COMPLETE.md"],
       "dependsOn": ["TEST-002"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created COMPLETE.md with test summary"
     }
   ],
   "metadata": {
