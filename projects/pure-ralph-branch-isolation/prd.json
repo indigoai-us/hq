@@ -95,8 +95,8 @@
       ],
       "files": ["prompts/pure-ralph-base.md"],
       "dependsOn": ["US-004"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added 'Conflict Awareness' section with: lock file location, session start check instructions, handling logic for lock file detection (read contents, check PID running status), stale lock removal instructions, important notes clarifying orchestrator vs Claude responsibilities. Added learned pattern '[Conflict] Stale Lock Detection' for distinguishing active vs stale locks."
     },
     {
       "id": "US-007",

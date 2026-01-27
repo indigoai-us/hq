@@ -31,6 +31,54 @@ Extract the project name from the PRD path (e.g., `projects/my-feature/prd.json`
 
 ---
 
+## Conflict Awareness
+
+Pure Ralph sessions may run concurrently. A lock file prevents conflicts.
+
+### Lock File Location
+
+```
+{target_repo}/.pure-ralph.lock
+```
+
+### On Session Start: Check for Lock File
+
+After switching to the feature branch, check if a lock file exists:
+
+```bash
+LOCK_FILE="{{TARGET_REPO}}/.pure-ralph.lock"
+if [ -f "$LOCK_FILE" ]; then
+    echo "WARNING: Lock file detected"
+    cat "$LOCK_FILE"
+fi
+```
+
+### If Lock File Found
+
+1. **Read the lock file** to see which project owns it:
+   ```json
+   {"project": "other-project", "pid": 12345, "started_at": "2026-01-26T..."}
+   ```
+
+2. **Check if the process is still running:**
+   - **Process running:** Another Pure Ralph is active. You should WAIT or inform the user.
+   - **Process NOT running:** This is a **stale lock**. Safe to remove and continue.
+
+3. **Removing a stale lock:**
+   ```bash
+   # Only if process is NOT running
+   rm "{{TARGET_REPO}}/.pure-ralph.lock"
+   ```
+
+### Important Notes
+
+- The orchestrator script creates/removes lock files automatically
+- Claude sessions don't create lock files - they only CHECK for them
+- If you see a lock from your OWN project (same project name), it's expected - the orchestrator is managing it
+- Only worry about locks from DIFFERENT projects on the same repo
+
+---
+
 ## Commit Safety
 
 **HARD BLOCK: Never commit to main/master**
@@ -138,6 +186,10 @@ Only add patterns that:
 ### [Commit] Verify Branch Before Every Commit
 **Pattern:** Check `git branch --show-current` immediately before committing; abort if on main/master
 **Why:** Hard block prevents accidental commits to main; recovery after commit is harder than prevention
+
+### [Conflict] Stale Lock Detection
+**Pattern:** If lock file exists but PID is not running, remove the stale lock and continue
+**Why:** Stale locks from crashed sessions shouldn't block future execution; checking process status distinguishes active vs stale locks
 
 ---
 
