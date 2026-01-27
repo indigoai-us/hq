@@ -1,6 +1,7 @@
 # Credentials and secrets
 settings/**/*.json
 !settings/.gitkeep
+!settings/pure-ralph.json
 *.credentials.json
 *.secret.*
 
