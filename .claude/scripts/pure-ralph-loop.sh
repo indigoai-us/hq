@@ -260,6 +260,41 @@ EOF
 # Task Execution
 # ============================================================================
 
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*)  echo "macos" ;;
+        Linux*)   echo "linux" ;;
+        MINGW*|MSYS*|CYGWIN*)  echo "windows" ;;
+        *)        echo "unknown" ;;
+    esac
+}
+
+detect_terminal_app() {
+    local os="$1"
+
+    if [[ "$os" == "macos" ]]; then
+        # Check if iTerm is installed
+        if [[ -d "/Applications/iTerm.app" ]]; then
+            echo "iterm"
+        else
+            echo "terminal"
+        fi
+    elif [[ "$os" == "linux" ]]; then
+        # Check for common terminal emulators
+        if command -v gnome-terminal &> /dev/null; then
+            echo "gnome-terminal"
+        elif command -v xterm &> /dev/null; then
+            echo "xterm"
+        elif command -v konsole &> /dev/null; then
+            echo "konsole"
+        else
+            echo "xterm"  # fallback
+        fi
+    else
+        echo "unknown"
+    fi
+}
+
 invoke_task() {
     local task="$1"
     local prd="$2"
@@ -281,41 +316,116 @@ invoke_task() {
     local prompt
     prompt=$(build_task_prompt "$task" "$prd")
 
-    # Create temp file for prompt (handles multi-line better)
-    local prompt_file
-    prompt_file=$(mktemp)
+    # Save prompt to persistent file so new terminal can read it
+    local prompt_file="$LOG_DIR/task-${task_id}-prompt.md"
     echo "$prompt" > "$prompt_file"
 
-    write_log "Spawning fresh Claude session..."
+    write_log "Spawning fresh Claude session (interactive mode)..."
 
-    # Save current directory
-    local original_dir
-    original_dir=$(pwd)
+    echo ""
+    echo -e "${CYAN}========================================"
+    echo -e "  LAUNCHING CLAUDE FOR: $task_id"
+    echo -e "  A new terminal window will open - watch Claude work there!"
+    echo -e "========================================${NC}"
+    echo ""
 
-    # Change to target repo directory
-    cd "$TARGET_REPO"
+    local os
+    local terminal_app
+    os=$(detect_os)
+    terminal_app=$(detect_terminal_app "$os")
 
-    local result
-    local exit_code=0
+    write_log "Detected OS: $os, Terminal: $terminal_app"
 
-    # Run claude with the prompt
-    result=$(claude -p "$(cat "$prompt_file")" 2>&1) || exit_code=$?
+    # Build the command to run in the new terminal
+    local claude_cmd="cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
 
-    # Return to original directory
-    cd "$original_dir"
+    case "$os" in
+        macos)
+            if [[ "$terminal_app" == "iterm" ]]; then
+                # iTerm2
+                osascript <<EOF
+tell application "iTerm"
+    create window with default profile
+    tell current session of current window
+        write text "cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
+    end tell
+end tell
+EOF
+                # Wait for iTerm window to close (poll for process)
+                write_log "Waiting for Claude session to complete in iTerm..."
+                echo -e "${YELLOW}>>> SWITCH TO THE iTerm WINDOW TO WATCH CLAUDE WORK <<<${NC}"
+                # Poll until the prompt file is removed or PRD is updated
+                while [[ -f "$prompt_file" ]]; do
+                    sleep 5
+                    # Check if PRD was updated for this task
+                    local task_passes
+                    task_passes=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | .passes")
+                    if [[ "$task_passes" == "true" ]]; then
+                        break
+                    fi
+                done
+            else
+                # Terminal.app
+                osascript <<EOF
+tell application "Terminal"
+    do script "cd '$TARGET_REPO' && claude --permission-mode bypassPermissions \"\$(cat '$prompt_file')\""
+    activate
+end tell
+EOF
+                write_log "Waiting for Claude session to complete in Terminal..."
+                echo -e "${YELLOW}>>> SWITCH TO THE Terminal WINDOW TO WATCH CLAUDE WORK <<<${NC}"
+                # Poll until PRD is updated
+                while true; do
+                    sleep 5
+                    local task_passes
+                    task_passes=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | .passes")
+                    if [[ "$task_passes" == "true" ]]; then
+                        break
+                    fi
+                done
+            fi
+            ;;
+        linux)
+            case "$terminal_app" in
+                gnome-terminal)
+                    gnome-terminal -- bash -c "$claude_cmd; exec bash" &
+                    local term_pid=$!
+                    ;;
+                konsole)
+                    konsole -e bash -c "$claude_cmd; exec bash" &
+                    local term_pid=$!
+                    ;;
+                *)
+                    xterm -e bash -c "$claude_cmd; exec bash" &
+                    local term_pid=$!
+                    ;;
+            esac
+            write_log "Waiting for Claude session to complete (Terminal PID: $term_pid)..."
+            echo -e "${YELLOW}>>> SWITCH TO THE NEW TERMINAL WINDOW TO WATCH CLAUDE WORK <<<${NC}"
+            wait $term_pid 2>/dev/null || true
+            ;;
+        *)
+            # Fallback - run inline (not ideal but works)
+            write_log "Unknown OS - running inline"
+            cd "$TARGET_REPO"
+            claude --permission-mode bypassPermissions "$(cat "$prompt_file")"
+            cd -
+            ;;
+    esac
 
-    # Log the result
+    echo ""
+    echo -e "${CYAN}========================================"
+    echo -e "  CLAUDE SESSION END: $task_id"
+    echo -e "========================================${NC}"
+    echo ""
+
+    # Log completion
     write_log "Claude session completed"
-    write_log "Output: $result"
 
-    # Clean up temp file
+    # Clean up prompt file
     rm -f "$prompt_file"
 
-    if [[ $exit_code -eq 0 ]]; then
-        echo "SUCCESS"
-    else
-        echo "FAILED"
-    fi
+    echo "SUCCESS"
 }
 
 # ============================================================================
