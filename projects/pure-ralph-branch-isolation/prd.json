@@ -49,8 +49,8 @@
       ],
       "files": ["prompts/pure-ralph-base.md"],
       "dependsOn": ["US-001"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added 'PR Creation (When All Tasks Complete)' section with: push to origin instructions, gh pr create command with title format 'feat: {project-name}', PR body format including summary from PRD goal and list of completed tasks with notes, manual instructions fallback if gh CLI not available, updated step 7 in 'Your Job' to include PR creation check when all tasks complete."
     },
     {
       "id": "US-004",

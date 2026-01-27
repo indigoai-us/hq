@@ -66,7 +66,9 @@ This is a **HARD BLOCK**, not a warning. Committing to main is NEVER acceptable 
 4. **IMPLEMENT** that ONE task
 5. **UPDATE** the PRD: set `passes: true` and fill in `notes` with what you did
 6. **COMMIT** with message: `feat(TASK-ID): Brief description`
-7. **EXIT** - the loop will spawn a fresh session for the next task
+7. **CHECK** if all tasks complete:
+   - **If more tasks remain:** EXIT - the loop will spawn a fresh session
+   - **If all tasks complete:** CREATE PR (see "PR Creation" section below), then EXIT
 
 ---
 
@@ -139,6 +141,87 @@ Only add patterns that:
 
 ---
 
+## PR Creation (When All Tasks Complete)
+
+When you complete the FINAL task and all tasks have `passes: true`:
+
+### 1. Push Branch to Origin
+
+```bash
+git push -u origin feature/{{PROJECT_NAME}}
+```
+
+### 2. Create PR Using gh CLI
+
+```bash
+# Check if gh is available
+if command -v gh &> /dev/null; then
+    # Generate PR body from completed tasks
+    gh pr create \
+        --title "feat: {{PROJECT_NAME}}" \
+        --body "$(cat <<'EOF'
+## Summary
+
+Automated PR from Pure Ralph loop.
+
+## Completed Tasks
+
+{{LIST_OF_TASKS_WITH_NOTES}}
+
+---
+*Created by Pure Ralph*
+EOF
+)"
+else
+    echo "gh CLI not available - see manual instructions below"
+fi
+```
+
+### 3. PR Body Format
+
+The PR body should include:
+- **Summary:** Brief description from PRD `goal` field
+- **Completed Tasks:** List each task ID, title, and notes
+
+Example:
+```markdown
+## Summary
+Add branch isolation and conflict prevention to pure-ralph
+
+## Completed Tasks
+- **US-001:** Add branch creation to pure-ralph prompt
+  - Added Branch Management section with auto-branch creation
+- **US-002:** Add main branch protection
+  - Added Commit Safety section with hard block
+```
+
+### 4. If gh CLI Not Available
+
+Output manual instructions:
+```
+MANUAL PR REQUIRED:
+1. Push: git push -u origin feature/{{PROJECT_NAME}}
+2. Visit: https://github.com/{{OWNER}}/{{REPO}}/pull/new/feature/{{PROJECT_NAME}}
+3. Title: feat: {{PROJECT_NAME}}
+4. Body: Copy the completed tasks summary above
+```
+
+### 5. Final Response
+
+After PR creation:
+```
+ALL TASKS COMPLETE
+PR Created: {{PR_URL}}
+```
+
+Or if manual:
+```
+ALL TASKS COMPLETE
+Manual PR required - see instructions above
+```
+
+---
+
 ## Response
 
 When done, briefly confirm what you did:
@@ -154,8 +237,9 @@ If blocked:
 BLOCKED on TASK-ID: Reason
 ```
 
-If all done:
+If all done (and PR created):
 
 ```
 ALL TASKS COMPLETE
+PR: {{PR_URL or "manual PR required"}}
 ```
