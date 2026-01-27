@@ -124,6 +124,8 @@
       "id": "US-007",
       "title": "Implement staleness detection and post-PRD trigger",
       "description": "Context-manager audits context freshness and runs automatically after PRD completion",
+      "status": "completed",
+      "completed_at": "2026-01-28T01:15:00Z",
       "acceptance_criteria": [
         "Each context file tracks last_updated and last_verified dates in frontmatter",
         "audit skill checks files older than 30 days, missing verification, PRD changes",
