@@ -43,20 +43,28 @@ const targetRepoIndex = args.indexOf('--target-repo')
 const targetRepo = targetRepoIndex >= 0 ? args[targetRepoIndex + 1] : null
 ```
 
-If no project name provided, show help:
-```
-Usage: /pure-ralph <project-name> [--target-repo <path>]
+If no project name provided, **scan for PRDs with incomplete tasks**:
 
-Launches external terminal running Pure Ralph loop.
+1. Use Glob to find all `projects/*/prd.json` files
+2. Read each PRD and check for tasks where `passes` is false/null
+3. Build a list of projects with remaining work:
+   ```
+   project-name: X/Y tasks complete
+   ```
+4. Use AskUserQuestion to let user pick which project to run:
+   ```
+   Which project would you like to execute?
 
-Arguments:
-  project-name     Name of project (must have PRD at projects/{name}/prd.json)
-  --target-repo    Target repository path (defaults to PRD metadata.target_repo)
+   1. ralph-test (0/3 tasks complete)
+   2. purist-ralph-loop (7/8 tasks complete)
+   3. other-project (2/5 tasks complete)
+   ```
+5. If no projects have incomplete tasks, show:
+   ```
+   All projects complete! No PRDs have remaining tasks.
 
-Examples:
-  /pure-ralph my-project
-  /pure-ralph my-project --target-repo C:/workspace/my-app
-```
+   To create a new project: /prd
+   ```
 
 ### 2. Validate Project
 
