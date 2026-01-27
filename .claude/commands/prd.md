@@ -132,12 +132,127 @@ Create `projects/{name}/` folder with:
 - Order: schema → backend → UI → integration
 - Keep stories atomic (one deliverable each)
 
-## Step 5: Complete
+## Step 5: Populate Project Context
+
+After creating the PRD, offer to populate project context using the schema from `knowledge/project-context/schema.md`.
+
+**Ask:**
+```
+Project PRD created. Would you like to populate project context?
+
+Context helps workers understand the project deeply, not just tasks.
+
+1. Manual - I'll create empty templates, you fill them in
+2. Automatic - Analyze target repo and extract context (if target_repo exists)
+3. Conversational - Interview you about the project
+4. Skip - Create PRD only (warning: workers may lack context)
+```
+
+### Option 1: Manual Mode
+
+Create `projects/{name}/context/` with template files:
+
+```bash
+mkdir -p projects/{name}/context
+```
+
+Copy templates from `knowledge/project-context/templates/`:
+- `overview.md` (required)
+- `architecture.md` (required)
+- `domain.md` (required)
+- `decisions.md` (recommended)
+- `stakeholders.md` (recommended)
+
+Update frontmatter with today's date:
+```yaml
+---
+last_updated: {today}
+last_verified: {today}
+verified_by: prd-command
+---
+```
+
+Tell user: "Templates created in `projects/{name}/context/`. Please fill in the sections."
+
+### Option 2: Automatic Mode
+
+If `target_repo` is specified in the PRD:
+
+1. **Scan for existing docs:**
+   - README.md, README, docs/*.md
+   - package.json, pyproject.toml, Cargo.toml
+   - .env.example, docker-compose.yml
+   - Directory structure
+
+2. **Extract and populate:**
+   - `overview.md`: From README.md purpose section
+   - `architecture.md`: From package.json deps, directory structure
+   - `domain.md`: From README terminology, code comments
+
+3. **Present draft for confirmation:**
+   ```
+   Extracted context from target repo:
+
+   overview.md:
+   - Purpose: [extracted]
+   - Goals: [extracted or "needs input"]
+
+   Confirm or edit? [Y/edit/skip]
+   ```
+
+4. Save confirmed context to `projects/{name}/context/`
+
+### Option 3: Conversational Mode
+
+Interview user in batches:
+
+**Batch 1: Overview**
+```
+1. What problem does this project solve?
+2. What are the main goals?
+3. What is explicitly NOT in scope?
+4. What's the current state? (planning/building/stable)
+```
+
+**Batch 2: Architecture**
+```
+1. What's the tech stack?
+   A. Node.js + TypeScript
+   B. Python
+   C. Other: [specify]
+
+2. Key architectural patterns?
+   A. Monolith
+   B. Microservices
+   C. Serverless
+   D. Other: [specify]
+```
+
+**Batch 3: Domain**
+```
+1. What are the 3-5 key domain terms someone needs to know?
+2. Any business rules or constraints?
+```
+
+Populate context files from responses.
+
+### Option 4: Skip
+
+Warn user:
+```
+⚠️ Skipping context population.
+
+Workers may lack project understanding. You can add context later:
+  /run context-manager discover {name}
+```
+
+## Step 6: Complete
 
 Tell user:
 ```
 Project **{name}** created with {N} user stories.
 Location: projects/{name}/README.md
+{If context populated: "Context: projects/{name}/context/"}
 
 Next: Run /execute to create tasks and assign workers.
 ```
