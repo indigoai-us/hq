@@ -1,5 +1,7 @@
 {
   "project": "project-context-manager",
+  "status": "completed",
+  "completed_at": "2026-01-27T03:30:00Z",
   "goal": "Enable all HQ workers to do their best work by providing accurate, concise, and current context about every project",
   "success_criteria": "Any worker can explain a project's purpose, architecture, and domain in 30 seconds; context stays current automatically; new workers declare their context needs at creation",
   "target_repo": "C:/my-hq",
