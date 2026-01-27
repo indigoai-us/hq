@@ -143,6 +143,8 @@
       "id": "US-008",
       "title": "Implement conversational discovery",
       "description": "Context-manager skill to interview users and extract project context from conversation",
+      "status": "completed",
+      "completed_at": "2026-01-28T02:00:00Z",
       "acceptance_criteria": [
         "discover --mode conversational triggers interview flow",
         "Interview batches questions by context section",
