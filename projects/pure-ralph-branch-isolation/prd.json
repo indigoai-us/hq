@@ -1,0 +1,123 @@
+{
+  "project": "pure-ralph-branch-isolation",
+  "goal": "Ensure pure-ralph never commits to main, always uses feature branches, creates PRs on completion, and prevents concurrent execution conflicts",
+  "success_criteria": "Safe parallel execution of multiple pure-ralph loops on different PRDs without conflicts, with clean PR workflow",
+  "target_repo": "C:/my-hq",
+  "has_ui": false,
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Add branch creation to pure-ralph prompt",
+      "description": "Automatically create and use feature branch so main stays clean",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes Branch Management section",
+        "On session start: check if on feature branch for this project",
+        "If not on correct branch: create feature/{project-name} from main and switch to it",
+        "If branch exists: switch to it",
+        "All commits go to the feature branch, never main"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Add main branch protection to prompt",
+      "description": "Refuse to commit to main/master branch",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes check before commit",
+        "If current branch is main/master: ERROR, do not commit",
+        "Provide clear error message: Cannot commit to main",
+        "This is a hard block, not a warning"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Add PR creation on project completion",
+      "description": "Automatically create PR when all tasks complete",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md includes PR creation step",
+        "When all tasks pass: push branch to origin",
+        "Create PR using gh pr create if available",
+        "PR title format: feat: {project-name}",
+        "PR body: list of completed tasks with notes",
+        "If gh not available: output manual instructions"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-001"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Add lock file mechanism to orchestrator scripts",
+      "description": "Prevent concurrent runs on same target repo using lock file",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.ps1 creates lock file on start",
+        "Lock file location: {target_repo}/.pure-ralph.lock",
+        "Lock file contains: project name, PID, start timestamp",
+        "On exit (success or failure): remove lock file",
+        ".claude/scripts/pure-ralph-loop.sh has same behavior"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add conflict detection on loop start",
+      "description": "Warn if another loop is already running on same repo",
+      "acceptance_criteria": [
+        "On loop start: check for existing .pure-ralph.lock in target repo",
+        "If lock exists: read contents, show warning with project name and duration",
+        "Prompt user: Another pure-ralph is running. Continue anyway? (y/N)",
+        "Default to N (abort)",
+        "If user chooses to continue: proceed but log warning"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-004"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Update pure-ralph prompt with conflict awareness",
+      "description": "Make Claude sessions aware of potential conflicts",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md mentions checking for lock file",
+        "If lock file found during session: warn and check if process still running",
+        "If lock is stale (process dead): safe to remove and continue",
+        "Add learned pattern about conflict handling"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-004"],
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Document branch workflow in knowledge base",
+      "description": "Create documentation on the branch workflow",
+      "acceptance_criteria": [
+        "knowledge/pure-ralph/branch-workflow.md created",
+        "Documents: automatic branch creation",
+        "Documents: PR creation process",
+        "Documents: lock file mechanism",
+        "Documents: handling concurrent execution attempts",
+        "Documents: manual recovery if lock file becomes stale"
+      ],
+      "files": ["knowledge/pure-ralph/branch-workflow.md"],
+      "passes": false,
+      "notes": ""
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T20:30:00Z",
+    "created_by": "stefan",
+    "purpose": "Add branch isolation and conflict prevention to pure-ralph"
+  }
+}
