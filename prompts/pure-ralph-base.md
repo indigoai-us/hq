@@ -174,6 +174,74 @@ After picking a task, determine the best dev-team worker for implementation.
 3. If no override, analyze target files and keywords
 4. Select the most specific worker that matches
 
+### Worker Quick Reference
+
+Use this table for rapid worker lookup by file extension or keyword pattern.
+
+#### By File Extension
+
+| Extension | Worker | Notes |
+|-----------|--------|-------|
+| `.ts` (src/api/, services/) | **backend-dev** | API endpoints, business logic |
+| `.ts` (other) | **backend-dev** or **frontend-dev** | Context-dependent |
+| `.tsx`, `.jsx` | **frontend-dev** | React components |
+| `.css`, `.scss`, `.module.css` | **frontend-dev** | Styling |
+| `.sql` | **database-dev** | Raw SQL queries |
+| `.prisma` | **database-dev** | Prisma schema |
+| `.test.ts`, `.spec.ts` | **qa-tester** | Unit/integration tests |
+| `.test.tsx`, `.spec.tsx` | **qa-tester** | Component tests |
+| `.e2e.ts`, `*.spec.ts` (e2e/) | **qa-tester** | End-to-end tests |
+| `.yml`, `.yaml` (workflows/) | **infra-dev** | CI/CD pipelines |
+| `Dockerfile`, `docker-compose.yml` | **infra-dev** | Containerization |
+| `.tf`, `.tfvars` | **infra-dev** | Terraform infrastructure |
+| `.md` (knowledge/) | **knowledge-curator** | Documentation |
+| `.md` (specs/, docs/) | **product-planner** | Technical specs |
+| `prd.json`, `prd.md` | **product-planner** | PRD files |
+| `*.adr.md` | **architect** | Architecture decisions |
+
+#### By Directory Pattern
+
+| Directory | Worker | Use Case |
+|-----------|--------|----------|
+| `src/api/`, `src/routes/` | **backend-dev** | API layer |
+| `src/services/` | **backend-dev** | Business logic |
+| `src/components/`, `components/` | **frontend-dev** | React components |
+| `src/pages/`, `app/` | **frontend-dev** | Next.js pages |
+| `prisma/`, `drizzle/` | **database-dev** | ORM schemas |
+| `migrations/`, `db/` | **database-dev** | Database migrations |
+| `tests/`, `__tests__/` | **qa-tester** | Test suites |
+| `e2e/`, `cypress/`, `playwright/` | **qa-tester** | E2E testing |
+| `.github/workflows/` | **infra-dev** | GitHub Actions |
+| `terraform/`, `infra/` | **infra-dev** | Infrastructure as code |
+| `knowledge/`, `docs/` | **knowledge-curator** | Documentation |
+| `specs/`, `adrs/` | **architect** | Architecture docs |
+
+#### By Keyword Pattern
+
+| Keywords in Task | Worker | Typical Tasks |
+|------------------|--------|---------------|
+| API, endpoint, REST, GraphQL | **backend-dev** | API implementation |
+| middleware, auth, service | **backend-dev** | Backend services |
+| component, page, form, modal | **frontend-dev** | UI development |
+| button, input, UI, layout | **frontend-dev** | UI elements |
+| animation, transition, motion | **motion-designer** | Visual effects |
+| schema, migration, query | **database-dev** | Database work |
+| table, index, foreign key | **database-dev** | Schema design |
+| test, spec, coverage | **qa-tester** | Testing |
+| accessibility, a11y, WCAG | **qa-tester** | Accessibility testing |
+| CI, CD, pipeline, deploy | **infra-dev** | DevOps |
+| docker, kubernetes, terraform | **infra-dev** | Infrastructure |
+| monitor, logging, metrics | **infra-dev** | Observability |
+| review, PR, merge | **code-reviewer** | Code review |
+| docs, knowledge, patterns | **knowledge-curator** | Documentation |
+| learning, playbook, guide | **knowledge-curator** | Knowledge capture |
+| PRD, requirements, story | **product-planner** | Product planning |
+| spec, contract, interface | **product-planner** | Specifications |
+| architecture, design, ADR | **architect** | System design |
+| refactor, restructure, plan | **architect** | Code architecture |
+| complex, multi-phase, orchestrate | **task-executor** | Multi-worker tasks |
+| issue, backlog, prioritize | **project-manager** | Project management |
+
 ---
 
 ## Worker Invocation

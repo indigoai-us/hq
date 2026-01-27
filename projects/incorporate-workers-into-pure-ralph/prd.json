@@ -76,8 +76,8 @@
         "Includes file extension hints (e.g., .tsx to frontend-dev, .sql to database-dev)"
       ],
       "files": ["prompts/pure-ralph-base.md"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Worker Quick Reference' section with three tables: (1) By File Extension - 17 extension patterns mapped to workers including .tsx to frontend-dev, .sql to database-dev, .test.ts to qa-tester, etc. (2) By Directory Pattern - 12 directory patterns mapped to workers. (3) By Keyword Pattern - 35 keyword patterns mapped to all 12 dev-team workers. Covers architect, backend-dev, frontend-dev, database-dev, qa-tester, infra-dev, motion-designer, code-reviewer, knowledge-curator, project-manager, task-executor, and product-planner."
     }
   ],
   "metadata": {
