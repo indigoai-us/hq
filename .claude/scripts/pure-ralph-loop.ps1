@@ -202,10 +202,26 @@ function Invoke-Task {
 
         Write-Host "`n========================================" -ForegroundColor Magenta
         Write-Host "  CLAUDE SESSION START: $($Task.id)" -ForegroundColor Magenta
+        Write-Host "  Watch Claude work in real-time below" -ForegroundColor Gray
         Write-Host "========================================`n" -ForegroundColor Magenta
 
-        # Run interactive Claude session - user can watch everything
-        & claude --permission-mode bypassPermissions $promptContent
+        # Write prompt to a file that claude can read
+        $taskPromptFile = Join-Path $TargetRepo ".claude-task-prompt.md"
+        @"
+# Task: $($Task.id) - $($Task.title)
+
+$promptContent
+"@ | Out-File -FilePath $taskPromptFile -Encoding utf8
+
+        # Run claude interactively - it will read the prompt file
+        # Using Start-Process to properly connect to console
+        $claudeArgs = "--permission-mode", "bypassPermissions", "--verbose", (Get-Content $taskPromptFile -Raw)
+
+        # Use direct invocation with output streaming
+        $process = Start-Process -FilePath "claude" -ArgumentList $claudeArgs -NoNewWindow -Wait -PassThru
+
+        # Clean up prompt file
+        Remove-Item $taskPromptFile -Force -ErrorAction SilentlyContinue
 
         Write-Host "`n========================================" -ForegroundColor Magenta
         Write-Host "  CLAUDE SESSION END: $($Task.id)" -ForegroundColor Magenta
@@ -234,6 +250,81 @@ function Invoke-Task {
             Output = $_.Exception.Message
         }
     }
+}
+
+# ============================================================================
+# Learnings Aggregation
+# ============================================================================
+
+$LearningsPath = Join-Path $HqPath "knowledge/pure-ralph/learnings.md"
+
+function Aggregate-Learnings {
+    param($Prd)
+
+    Write-Log "Aggregating learnings from completed project..."
+
+    # Extract learnings from task notes
+    $learnings = @{
+        Workflow = @()
+        Technical = @()
+        Gotchas = @()
+    }
+
+    foreach ($task in $Prd.features) {
+        if ($task.passes -eq $true -and $task.notes) {
+            $note = $task.notes
+
+            # Categorize based on keywords in notes
+            if ($note -match "workflow|process|method|approach|pattern") {
+                $learnings.Workflow += @{
+                    TaskId = $task.id
+                    Title = $task.title
+                    Note = $note
+                }
+            }
+            if ($note -match "implement|code|script|function|api|json|file") {
+                $learnings.Technical += @{
+                    TaskId = $task.id
+                    Title = $task.title
+                    Note = $note
+                }
+            }
+            if ($note -match "error|issue|gotcha|pitfall|careful|avoid|warning") {
+                $learnings.Gotchas += @{
+                    TaskId = $task.id
+                    Title = $task.title
+                    Note = $note
+                }
+            }
+        }
+    }
+
+    # Update learnings file if it exists
+    if (Test-Path $LearningsPath) {
+        $date = Get-Date -Format "yyyy-MM-dd"
+        $taskCount = $Prd.features.Count
+        $learningCount = $learnings.Workflow.Count + $learnings.Technical.Count + $learnings.Gotchas.Count
+
+        # Append to aggregation log
+        $logEntry = "| $date | $ProjectName | $taskCount | $learningCount patterns extracted |"
+
+        $content = Get-Content $LearningsPath -Raw
+        if ($content -match "<!-- Automatically updated when projects complete -->") {
+            # Find the table and append a new row
+            $tablePattern = "(\| Date \| Project \| Tasks \| Learnings Added \|[\r\n]+\|[-|]+\|[\r\n]+(?:\|[^\r\n]+\|[\r\n]+)*)"
+            if ($content -match $tablePattern) {
+                $newContent = $content -replace $tablePattern, "`$1$logEntry`n"
+                Set-Content -Path $LearningsPath -Value $newContent -NoNewline
+            }
+        }
+
+        Write-Log "Updated learnings aggregation log" "SUCCESS"
+    } else {
+        Write-Log "Learnings file not found at $LearningsPath - skipping aggregation" "WARN"
+    }
+
+    # Log summary
+    Write-Log "Learnings extracted - Workflow: $($learnings.Workflow.Count), Technical: $($learnings.Technical.Count), Gotchas: $($learnings.Gotchas.Count)"
 }
 
 # ============================================================================
@@ -267,6 +358,10 @@ function Start-RalphLoop {
             Write-Log "All tasks completed!" "SUCCESS"
             Write-Host "`n=== Project Complete ===" -ForegroundColor Green
             Write-Host "All $($progress.Total) tasks completed successfully." -ForegroundColor Green
+
+            # Aggregate learnings on project completion
+            Aggregate-Learnings -Prd $prd
+
             break
         }
 

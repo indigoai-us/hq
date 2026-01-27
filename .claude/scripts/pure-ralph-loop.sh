@@ -319,6 +319,76 @@ invoke_task() {
 }
 
 # ============================================================================
+# Learnings Aggregation
+# ============================================================================
+
+LEARNINGS_PATH="$HQ_PATH/knowledge/pure-ralph/learnings.md"
+
+aggregate_learnings() {
+    local prd="$1"
+
+    write_log "Aggregating learnings from completed project..."
+
+    # Count learnings by category based on keywords in notes
+    local workflow_count=0
+    local technical_count=0
+    local gotchas_count=0
+
+    # Extract notes and categorize
+    local notes
+    notes=$(echo "$prd" | jq -r '.features[] | select(.passes == true and .notes != null and .notes != "") | .notes')
+
+    while IFS= read -r note; do
+        [[ -z "$note" ]] && continue
+
+        # Check for workflow patterns
+        if echo "$note" | grep -qiE "workflow|process|method|approach|pattern"; then
+            ((workflow_count++))
+        fi
+
+        # Check for technical patterns
+        if echo "$note" | grep -qiE "implement|code|script|function|api|json|file"; then
+            ((technical_count++))
+        fi
+
+        # Check for gotchas
+        if echo "$note" | grep -qiE "error|issue|gotcha|pitfall|careful|avoid|warning"; then
+            ((gotchas_count++))
+        fi
+    done <<< "$notes"
+
+    local total_learnings=$((workflow_count + technical_count + gotchas_count))
+
+    # Update learnings file if it exists
+    if [[ -f "$LEARNINGS_PATH" ]]; then
+        local date
+        date=$(date '+%Y-%m-%d')
+        local task_count
+        task_count=$(echo "$prd" | jq '.features | length')
+
+        # Append to aggregation log table
+        local log_entry="| $date | $PROJECT_NAME | $task_count | $total_learnings patterns extracted |"
+
+        # Check if file has the marker and append
+        if grep -q "<!-- Automatically updated when projects complete -->" "$LEARNINGS_PATH"; then
+            # Append after the last table row
+            # Find the table and add new row
+            sed -i "/^| [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} |/a\\
+$log_entry" "$LEARNINGS_PATH" 2>/dev/null || \
+            # If sed fails (macOS), use different approach
+            echo "$log_entry" >> "$LEARNINGS_PATH"
+        fi
+
+        write_log "Updated learnings aggregation log" "SUCCESS"
+    else
+        write_log "Learnings file not found at $LEARNINGS_PATH - skipping aggregation" "WARN"
+    fi
+
+    # Log summary
+    write_log "Learnings extracted - Workflow: $workflow_count, Technical: $technical_count, Gotchas: $gotchas_count"
+}
+
+# ============================================================================
 # Main Loop
 # ============================================================================
 
@@ -359,6 +429,10 @@ start_ralph_loop() {
             echo ""
             echo -e "${GREEN}=== Project Complete ===${NC}"
             echo -e "${GREEN}All $total tasks completed successfully.${NC}"
+
+            # Aggregate learnings on project completion
+            aggregate_learnings "$prd"
+
             break
         fi
 

@@ -94,6 +94,19 @@ When you complete a PROJECT (all tasks pass) or discover insights that transcend
 2. Add to the "Pure Ralph Learnings" section
 3. Commit with message: `docs(hq): Add cross-project learning - brief description`
 
+### Level 3: Knowledge Base Aggregation (Automatic)
+On project completion, the loop automatically:
+1. Extracts learnings from all task notes
+2. Categorizes by type (Workflow, Technical, Gotchas)
+3. Updates `knowledge/pure-ralph/learnings.md`
+4. Logs aggregation to the tracking table
+
+**To Contribute High-Value Patterns:**
+If you discover a pattern that should be in the base prompt:
+1. Check `knowledge/pure-ralph/learnings.md` for existing patterns
+2. Add high-value patterns to "Learned Patterns" section below
+3. Reference source project for traceability
+
 ### What to Add
 - Patterns that prevented errors
 - Gotchas that cost time
@@ -133,6 +146,21 @@ Add learnings here in this format:
 **Context:** Starting any task
 **Pattern:** Read the complete task object including dependsOn and notes
 **Why:** Dependencies might not be met; notes might have context from planning
+
+### [PRD] Write Verifiable Acceptance Criteria
+**Context:** When writing or evaluating acceptance criteria
+**Pattern:** Ensure criteria can be checked programmatically or by reading specific files/outputs
+**Why:** Enables autonomous verification; vague criteria cause task failures
+
+### [Technical] Use Temp Files for Complex Prompts
+**Context:** When passing prompts to CLI tools
+**Pattern:** Write prompts to temp files rather than command line arguments
+**Why:** Avoids shell escaping issues with multi-line or special characters
+
+### [Workflow] Don't Batch Completions
+**Context:** After finishing any task
+**Pattern:** Mark tasks complete immediately, not in batches
+**Why:** Prevents lost progress if session is interrupted
 
 ---
 
