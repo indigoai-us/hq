@@ -37,6 +37,9 @@ skills:
   - id: update
     file: skills/update.md
     description: "Update specific context files with new information"
+  - id: learn
+    file: skills/learn.md
+    description: "Append learnings to project context as insights are discovered"
 
 verification:
   post_execute:
@@ -64,3 +67,4 @@ reporting:
     - context_files_updated
     - stale_files_found
     - coverage_score
+    - learnings_added

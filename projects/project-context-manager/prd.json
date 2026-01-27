@@ -161,6 +161,8 @@
       "id": "US-009",
       "title": "Add learnings accumulation",
       "description": "Workers can append learnings to project context as they work",
+      "status": "completed",
+      "completed_at": "2026-01-27T03:00:00Z",
       "acceptance_criteria": [
         "context/learnings.md added to schema as optional file",
         "Template includes sections: Patterns, Gotchas, Tips, Open Questions",
