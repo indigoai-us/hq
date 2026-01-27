@@ -149,7 +149,10 @@ function Check-ExistingLock {
 function Get-TaskProgress {
     $prd = Get-Content $PrdPath -Raw | ConvertFrom-Json
     $total = $prd.features.Count
-    $complete = ($prd.features | Where-Object { $_.passes -eq $true }).Count
+    # Check for both passes:true (old format) and status:"completed" (new format)
+    $complete = ($prd.features | Where-Object {
+        $_.passes -eq $true -or $_.status -eq "completed"
+    }).Count
     return @{ Total = $total; Complete = $complete; Remaining = $total - $complete }
 }
 
@@ -238,6 +241,69 @@ try {
         Write-Host ""
         Write-Host "=== ALL TASKS COMPLETE ===" -ForegroundColor Green
         Write-Log "All tasks complete!" "SUCCESS"
+
+        # Create PR using gh CLI
+        Write-Host ""
+        Write-Host "Creating pull request..." -ForegroundColor Cyan
+        Write-Log "Creating PR for completed project"
+
+        try {
+            Push-Location $TargetRepo
+
+            # Get current branch
+            $currentBranch = git branch --show-current
+
+            # Push branch if not already pushed
+            Write-Host "Pushing branch $currentBranch..." -ForegroundColor Gray
+            git push -u origin $currentBranch 2>&1 | Out-Null
+
+            # Check if gh is available
+            $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
+
+            if ($ghAvailable) {
+                # Build PR body from PRD
+                $prdContent = Get-Content $PrdPath -Raw | ConvertFrom-Json
+                $prTitle = "feat: $ProjectName"
+                $taskList = ($prdContent.features | ForEach-Object {
+                    "- **$($_.id):** $($_.title)"
+                }) -join "`n"
+
+                $prBody = @"
+## Summary
+
+$($prdContent.goal)
+
+## Completed Tasks
+
+$taskList
+
+---
+*Created by Pure Ralph*
+"@
+
+                # Create PR
+                $prUrl = gh pr create --title $prTitle --body $prBody 2>&1
+
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "PR Created: $prUrl" -ForegroundColor Green
+                    Write-Log "PR created: $prUrl" "SUCCESS"
+                } else {
+                    # PR might already exist
+                    Write-Host "PR creation note: $prUrl" -ForegroundColor Yellow
+                    Write-Log "PR creation returned: $prUrl" "WARN"
+                }
+            } else {
+                Write-Host "gh CLI not available - manual PR required" -ForegroundColor Yellow
+                Write-Host "Push complete. Create PR at: https://github.com" -ForegroundColor Gray
+                Write-Log "gh CLI not available, manual PR needed" "WARN"
+            }
+
+            Pop-Location
+        } catch {
+            Write-Log "PR creation failed: $_" "ERROR"
+            Write-Host "PR creation failed: $_" -ForegroundColor Red
+        }
+
         break
     }
 
@@ -282,7 +348,7 @@ exit
     }
 
     # Start new window and WAIT for it to close
-    $proc = Start-Process powershell -ArgumentList "-Command", $claudeCmd -PassThru
+    $proc = Start-Process powershell -ArgumentList "-NoExit", "-Command", $claudeCmd -PassThru
 
     Write-Host "Waiting for Claude session (PID: $($proc.Id))..." -ForegroundColor Gray
     $proc.WaitForExit()
