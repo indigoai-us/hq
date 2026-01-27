@@ -80,8 +80,8 @@
       ],
       "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
       "dependsOn": ["US-004"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added Check-ExistingLock function to PowerShell and check_existing_lock function to Bash. Both: (1) parse lock file JSON for project/PID/timestamp, (2) calculate and display duration, (3) check if process is still running (shows 'RUNNING' or 'stale lock'), (4) prompt user with y/N defaulting to abort, (5) log warning if user continues. Called before Create-LockFile in both scripts."
     },
     {
       "id": "US-006",

@@ -171,6 +171,78 @@ remove_lock_file() {
     fi
 }
 
+check_existing_lock() {
+    if [[ -f "$LOCK_FILE" ]]; then
+        # Read lock file contents
+        local lock_project
+        local lock_pid
+        local lock_started
+        lock_project=$(jq -r '.project' "$LOCK_FILE" 2>/dev/null || echo "unknown")
+        lock_pid=$(jq -r '.pid' "$LOCK_FILE" 2>/dev/null || echo "unknown")
+        lock_started=$(jq -r '.started_at' "$LOCK_FILE" 2>/dev/null || echo "unknown")
+
+        # Calculate duration if we can parse the timestamp
+        local duration_str="unknown"
+        if [[ "$lock_started" != "unknown" ]]; then
+            local start_epoch
+            local now_epoch
+            local diff_seconds
+            # Try to parse ISO timestamp
+            if command -v gdate &> /dev/null; then
+                start_epoch=$(gdate -d "$lock_started" +%s 2>/dev/null || echo "0")
+            else
+                start_epoch=$(date -d "$lock_started" +%s 2>/dev/null || echo "0")
+            fi
+            now_epoch=$(date +%s)
+            if [[ "$start_epoch" != "0" ]]; then
+                diff_seconds=$((now_epoch - start_epoch))
+                local hours=$((diff_seconds / 3600))
+                local minutes=$(((diff_seconds % 3600) / 60))
+                local seconds=$((diff_seconds % 60))
+                duration_str=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
+            fi
+        fi
+
+        echo ""
+        echo -e "${YELLOW}=== WARNING: Lock File Detected ===${NC}"
+        echo -e "${YELLOW}Another pure-ralph loop may be running on this repo.${NC}"
+        echo ""
+        echo -e "${GRAY}  Project: $lock_project${NC}"
+        echo -e "${GRAY}  PID: $lock_pid${NC}"
+        echo -e "${GRAY}  Started: $lock_started${NC}"
+        echo -e "${GRAY}  Duration: $duration_str${NC}"
+        echo ""
+
+        # Check if process is still running
+        local process_running=false
+        if [[ "$lock_pid" != "unknown" ]] && kill -0 "$lock_pid" 2>/dev/null; then
+            process_running=true
+            echo -e "  Process Status: ${RED}RUNNING${NC}"
+        else
+            echo -e "  Process Status: ${YELLOW}NOT RUNNING (stale lock)${NC}"
+        fi
+        echo ""
+
+        write_log "Existing lock file found for project '$lock_project' (PID: $lock_pid, Duration: $duration_str)" "WARN"
+
+        # Prompt user
+        read -r -p "Another pure-ralph is running. Continue anyway? (y/N) " response
+        case "$response" in
+            [Yy])
+                write_log "User chose to continue despite existing lock" "WARN"
+                echo -e "${YELLOW}Continuing... (existing lock will be overwritten)${NC}"
+                return 0
+                ;;
+            *)
+                write_log "User chose to abort due to existing lock" "INFO"
+                echo -e "${RED}Aborting.${NC}"
+                return 1
+                ;;
+        esac
+    fi
+    return 0
+}
+
 # Trap to ensure lock file is removed on exit (success or failure)
 cleanup_on_exit() {
     remove_lock_file
@@ -637,6 +709,11 @@ $log_entry" "$LEARNINGS_PATH" 2>/dev/null || \
 
 start_ralph_loop() {
     initialize_logging
+
+    # Check for existing lock file (conflict detection)
+    if ! check_existing_lock; then
+        exit 1
+    fi
 
     # Create lock file to prevent concurrent execution
     create_lock_file

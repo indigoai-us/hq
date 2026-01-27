@@ -84,6 +84,68 @@ function Remove-LockFile {
     }
 }
 
+function Check-ExistingLock {
+    if (Test-Path $LockFile) {
+        try {
+            $lockContent = Get-Content $LockFile -Raw | ConvertFrom-Json
+            $lockProject = $lockContent.project
+            $lockPid = $lockContent.pid
+            $lockStarted = [DateTime]::Parse($lockContent.started_at)
+            $duration = (Get-Date) - $lockStarted
+            $durationStr = "{0:hh\:mm\:ss}" -f $duration
+
+            Write-Host ""
+            Write-Host "=== WARNING: Lock File Detected ===" -ForegroundColor Yellow
+            Write-Host "Another pure-ralph loop may be running on this repo." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  Project: $lockProject" -ForegroundColor Gray
+            Write-Host "  PID: $lockPid" -ForegroundColor Gray
+            Write-Host "  Started: $($lockContent.started_at)" -ForegroundColor Gray
+            Write-Host "  Duration: $durationStr" -ForegroundColor Gray
+            Write-Host ""
+
+            # Check if process is still running
+            $processRunning = $false
+            try {
+                $proc = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+                if ($proc) {
+                    $processRunning = $true
+                    Write-Host "  Process Status: RUNNING" -ForegroundColor Red
+                } else {
+                    Write-Host "  Process Status: NOT RUNNING (stale lock)" -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "  Process Status: NOT RUNNING (stale lock)" -ForegroundColor Yellow
+            }
+            Write-Host ""
+
+            Write-Log "Existing lock file found for project '$lockProject' (PID: $lockPid, Duration: $durationStr)" "WARN"
+
+            # Prompt user
+            $response = Read-Host "Another pure-ralph is running. Continue anyway? (y/N)"
+            if ($response -match "^[Yy]$") {
+                Write-Log "User chose to continue despite existing lock" "WARN"
+                Write-Host "Continuing... (existing lock will be overwritten)" -ForegroundColor Yellow
+                return $true
+            } else {
+                Write-Log "User chose to abort due to existing lock" "INFO"
+                Write-Host "Aborting." -ForegroundColor Red
+                return $false
+            }
+        } catch {
+            Write-Log "Could not parse lock file: $_" "WARN"
+            # If we can't parse the lock file, ask the user
+            $response = Read-Host "Lock file exists but couldn't be read. Continue anyway? (y/N)"
+            if ($response -match "^[Yy]$") {
+                return $true
+            } else {
+                return $false
+            }
+        }
+    }
+    return $true
+}
+
 function Get-TaskProgress {
     $prd = Get-Content $PrdPath -Raw | ConvertFrom-Json
     $total = $prd.features.Count
@@ -141,6 +203,11 @@ Write-Log "Pure Ralph Loop started"
 Write-Log "PRD: $PrdPath"
 Write-Log "Target: $TargetRepo"
 Write-Log "Mode: $modeLabel"
+
+# Check for existing lock file (conflict detection)
+if (-not (Check-ExistingLock)) {
+    exit 1
+}
 
 # Create lock file to prevent concurrent execution
 Create-LockFile
