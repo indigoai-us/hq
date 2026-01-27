@@ -1,0 +1,169 @@
+{
+  "project": "project-context-manager",
+  "goal": "Enable all HQ workers to do their best work by providing accurate, concise, and current context about every project",
+  "success_criteria": "Any worker can explain a project's purpose, architecture, and domain in 30 seconds; context stays current automatically; new workers declare their context needs at creation",
+  "target_repo": "C:/my-hq",
+  "has_ui": false,
+  "quality_gates": {
+    "validate": "npx ajv validate -s knowledge/project-context/context-schema.json -d context.yaml"
+  },
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Define project context schema",
+      "description": "Create a standardized schema for project context that captures everything workers need to understand a project",
+      "status": "completed",
+      "completed_at": "2026-01-27T23:30:00Z",
+      "acceptance_criteria": [
+        "knowledge/project-context/schema.md documents the context structure",
+        "Core files defined: context/overview.md, context/architecture.md, context/domain.md",
+        "Recommended files defined: context/decisions.md, context/stakeholders.md",
+        "Each file has a template with required sections",
+        "JSON schema created at knowledge/project-context/context-schema.json for validation",
+        "Example context created for one existing project (indigo-nx or distributed-tracking)"
+      ],
+      "files": [
+        "knowledge/project-context/schema.md",
+        "knowledge/project-context/context-schema.json",
+        "knowledge/project-context/templates/overview.md",
+        "knowledge/project-context/templates/architecture.md",
+        "knowledge/project-context/templates/domain.md",
+        "knowledge/project-context/templates/decisions.md",
+        "knowledge/project-context/templates/stakeholders.md"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Create context-manager worker",
+      "description": "Create a new worker responsible for discovering, maintaining, and auditing project context",
+      "acceptance_criteria": [
+        "workers/dev-team/context-manager/worker.yaml created with worker definition",
+        "Worker added to workers/registry.yaml",
+        "Skills defined: discover, audit, update",
+        "Each skill has clear inputs, outputs, and verification",
+        "Worker type: CodeWorker"
+      ],
+      "files": [
+        "workers/dev-team/context-manager/worker.yaml",
+        "workers/registry.yaml"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Create worker context needs registry",
+      "description": "Central registry documenting what context each worker type needs to do their best work",
+      "acceptance_criteria": [
+        "knowledge/context-needs/registry.yaml created",
+        "Documents context needs for existing worker types",
+        "Schema defined for adding new worker needs",
+        "knowledge/context-needs/README.md explains how to declare needs"
+      ],
+      "files": [
+        "knowledge/context-needs/registry.yaml",
+        "knowledge/context-needs/README.md"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Add context discovery to /prd command",
+      "description": "After PRD creation, prompt user to populate project context using hybrid discovery",
+      "acceptance_criteria": [
+        ".claude/commands/prd.md updated with new Step 6: Populate Project Context",
+        "Step offers three discovery modes: manual, automatic, conversational",
+        "Creates projects/{name}/context/ directory with populated files",
+        "User can skip context population with warning",
+        "If target repo has existing docs, extracts and summarizes into context files"
+      ],
+      "files": [
+        ".claude/commands/prd.md"
+      ],
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-005",
+      "title": "Add context needs capture to /newworker command",
+      "description": "When creating a new worker, capture what context it needs to do its job",
+      "acceptance_criteria": [
+        ".claude/commands/newworker.md updated with context needs question",
+        "Question asks what project context the worker needs",
+        "New worker's needs added to knowledge/context-needs/registry.yaml",
+        "Worker's worker.yaml includes context_needs field referencing the registry"
+      ],
+      "files": [
+        ".claude/commands/newworker.md"
+      ],
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-006",
+      "title": "Implement repo analysis discovery",
+      "description": "Context-manager skill to automatically extract context from repository structure",
+      "acceptance_criteria": [
+        "discover skill in context-manager can analyze a repo path",
+        "Extracts from: README.md, package.json, directory structure, code comments, .env.example",
+        "Generates draft context files, asks user to confirm/edit",
+        "Works incrementally (can update existing context)"
+      ],
+      "files": [
+        "workers/dev-team/context-manager/worker.yaml",
+        "workers/dev-team/context-manager/skills/discover.md"
+      ],
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-007",
+      "title": "Implement staleness detection and post-PRD trigger",
+      "description": "Context-manager audits context freshness and runs automatically after PRD completion",
+      "acceptance_criteria": [
+        "Each context file tracks last_updated and last_verified dates in frontmatter",
+        "audit skill checks files older than 30 days, missing verification, PRD changes",
+        "/run-project triggers context-manager audit skill after PRD completion",
+        "Audit produces report: workspace/context-audits/{project}-{date}.md"
+      ],
+      "files": [
+        "workers/dev-team/context-manager/worker.yaml",
+        "workers/dev-team/context-manager/skills/audit.md",
+        ".claude/commands/run-project.md"
+      ],
+      "dependsOn": ["US-002", "US-006"]
+    },
+    {
+      "id": "US-008",
+      "title": "Implement conversational discovery",
+      "description": "Context-manager skill to interview users and extract project context from conversation",
+      "acceptance_criteria": [
+        "discover --mode conversational triggers interview flow",
+        "Interview batches questions by context section",
+        "Extracts structured context from user responses",
+        "Allows user to paste existing docs/specs for extraction",
+        "Saves conversation summary to context files with source attribution"
+      ],
+      "files": [
+        "workers/dev-team/context-manager/skills/discover.md"
+      ],
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-009",
+      "title": "Add learnings accumulation",
+      "description": "Workers can append learnings to project context as they work",
+      "acceptance_criteria": [
+        "context/learnings.md added to schema as optional file",
+        "Template includes sections: Patterns, Gotchas, Tips, Open Questions",
+        "context-manager has learn skill to append insights",
+        "Format: ### [Date] [Worker] [Task]: Learning title",
+        "Learnings tagged by category for filtering"
+      ],
+      "files": [
+        "knowledge/project-context/templates/learnings.md",
+        "workers/dev-team/context-manager/skills/learn.md"
+      ],
+      "dependsOn": ["US-001", "US-002"]
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-27T23:00:00Z",
+    "created_by": "stefan",
+    "purpose": "Enable workers to understand projects deeply, not just track tasks"
+  }
+}
