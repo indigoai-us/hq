@@ -36,6 +36,8 @@
       "id": "US-002",
       "title": "Create context-manager worker",
       "description": "Create a new worker responsible for discovering, maintaining, and auditing project context",
+      "status": "completed",
+      "completed_at": "2026-01-27T23:45:00Z",
       "acceptance_criteria": [
         "workers/dev-team/context-manager/worker.yaml created with worker definition",
         "Worker added to workers/registry.yaml",
