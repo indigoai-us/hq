@@ -201,27 +201,28 @@ function Invoke-Task {
         $promptContent = Get-Content $promptFile -Raw
 
         Write-Host "`n========================================" -ForegroundColor Magenta
-        Write-Host "  CLAUDE SESSION START: $($Task.id)" -ForegroundColor Magenta
-        Write-Host "  Watch Claude work in real-time below" -ForegroundColor Gray
+        Write-Host "  LAUNCHING CLAUDE FOR: $($Task.id)" -ForegroundColor Magenta
+        Write-Host "  A new terminal window will open - watch Claude work there!" -ForegroundColor Gray
         Write-Host "========================================`n" -ForegroundColor Magenta
 
-        # Write prompt to a file that claude can read
-        $taskPromptFile = Join-Path $TargetRepo ".claude-task-prompt.md"
-        @"
-# Task: $($Task.id) - $($Task.title)
+        # Write prompt to a persistent file so claude can read it
+        $taskPromptFile = Join-Path $LogDir "task-$($Task.id)-prompt.md"
+        $promptContent | Out-File -FilePath $taskPromptFile -Encoding utf8
 
-$promptContent
-"@ | Out-File -FilePath $taskPromptFile -Encoding utf8
+        # Launch claude in a NEW terminal window so user can watch the TUI
+        # The -NoExit keeps the window open after completion
+        $claudeCmd = "cd '$TargetRepo'; claude --permission-mode bypassPermissions (Get-Content '$taskPromptFile' -Raw)"
 
-        # Run claude interactively - it will read the prompt file
-        # Using Start-Process to properly connect to console
-        $claudeArgs = "--permission-mode", "bypassPermissions", "--verbose", (Get-Content $taskPromptFile -Raw)
+        Write-Host "Opening new terminal for Claude session..." -ForegroundColor Cyan
+        Write-Host "Prompt saved to: $taskPromptFile" -ForegroundColor Gray
 
-        # Use direct invocation with output streaming
-        $process = Start-Process -FilePath "claude" -ArgumentList $claudeArgs -NoNewWindow -Wait -PassThru
+        # Start new PowerShell window and WAIT for it to complete
+        $proc = Start-Process powershell -ArgumentList "-NoExit", "-Command", $claudeCmd -PassThru
 
-        # Clean up prompt file
-        Remove-Item $taskPromptFile -Force -ErrorAction SilentlyContinue
+        Write-Host "Waiting for Claude session to complete (PID: $($proc.Id))..." -ForegroundColor Yellow
+        Write-Host ">>> SWITCH TO THE NEW WINDOW TO WATCH CLAUDE WORK <<<" -ForegroundColor Green
+
+        $proc.WaitForExit()
 
         Write-Host "`n========================================" -ForegroundColor Magenta
         Write-Host "  CLAUDE SESSION END: $($Task.id)" -ForegroundColor Magenta
