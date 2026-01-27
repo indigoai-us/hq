@@ -190,22 +190,32 @@ function Invoke-Task {
     $promptFile = Join-Path $env:TEMP "pure-ralph-prompt-$(Get-Random).txt"
     $prompt | Out-File -FilePath $promptFile -Encoding utf8
 
-    Write-Log "Spawning fresh Claude session..."
+    Write-Log "Spawning fresh Claude session (interactive mode)..."
 
     try {
         # Change to target repo directory
         Push-Location $TargetRepo
 
-        # Run claude with the prompt
-        # Using -p flag to pass the prompt directly
+        # Run claude INTERACTIVELY (no -p flag) so user can watch
+        # Using --permission-mode bypassPermissions for autonomous execution
         $promptContent = Get-Content $promptFile -Raw
-        $result = & claude -p $promptContent 2>&1
+
+        Write-Host "`n========================================" -ForegroundColor Magenta
+        Write-Host "  CLAUDE SESSION START: $($Task.id)" -ForegroundColor Magenta
+        Write-Host "========================================`n" -ForegroundColor Magenta
+
+        # Run interactive Claude session - user can watch everything
+        & claude --permission-mode bypassPermissions $promptContent
+
+        Write-Host "`n========================================" -ForegroundColor Magenta
+        Write-Host "  CLAUDE SESSION END: $($Task.id)" -ForegroundColor Magenta
+        Write-Host "========================================`n" -ForegroundColor Magenta
 
         Pop-Location
 
-        # Log the result
+        # Log completion
         Write-Log "Claude session completed"
-        Write-Log "Output: $result"
+        $result = "Interactive session completed"
 
         # Clean up temp file
         Remove-Item $promptFile -Force -ErrorAction SilentlyContinue
