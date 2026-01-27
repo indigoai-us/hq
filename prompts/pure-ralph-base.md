@@ -56,13 +56,43 @@ Complete THIS task only.
 
 ## Self-Modification Instructions
 
-This prompt can be improved based on learnings. When you discover a pattern that would help future sessions:
+This prompt evolves based on learnings. The system improves itself at two levels:
 
-### How to Update This File
+### Level 1: Task-Level Learnings (This File)
+After completing ANY task, evaluate if you discovered something reusable:
+
+**When to Add a Learning:**
+- You hit an error that could have been prevented
+- You found a workflow that saved time
+- You discovered a gotcha that will recur
+- You found a pattern applicable to other tasks
+
+**How to Add:**
 1. Read this file: `prompts/pure-ralph-base.md`
 2. Add your learning to the "Learned Patterns" section below
-3. Keep additions minimal and actionable
-4. Commit with message: `chore(ralph): Add learning - brief description`
+3. Keep it minimal and actionable (under 5 lines)
+4. Include in your task commit (no separate commit needed)
+
+**Format:**
+```markdown
+### [Category] Brief Title
+**Context:** When this applies
+**Pattern:** What to do
+**Why:** Rationale
+```
+
+### Level 2: Cross-Project Learnings (CLAUDE.md)
+When you complete a PROJECT (all tasks pass) or discover insights that transcend this workflow:
+
+**When to Update CLAUDE.md:**
+- Pattern applies beyond Pure Ralph (affects all HQ operations)
+- Insight about project structure, workers, or commands
+- System-wide gotcha or best practice
+
+**How to Add:**
+1. Read `.claude/CLAUDE.md`
+2. Add to the "Pure Ralph Learnings" section
+3. Commit with message: `docs(hq): Add cross-project learning - brief description`
 
 ### What to Add
 - Patterns that prevented errors
@@ -74,6 +104,7 @@ This prompt can be improved based on learnings. When you discover a pattern that
 - Task-specific implementation details
 - Temporary workarounds
 - Preferences without rationale
+- Learnings that only apply once
 
 ---
 

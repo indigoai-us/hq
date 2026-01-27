@@ -104,3 +104,31 @@ Sessions auto-save to `workspace/threads/` after:
 2. **Workers should grow smarter** - Capture learnings in knowledge bases
 3. **Context is precious** - Checkpoint often, don't let work evaporate
 4. **Ship, then iterate** - Working > perfect
+
+## Pure Ralph Learnings
+
+Cross-project patterns discovered through `/pure-ralph` execution. These learnings transcend individual tasks and apply across HQ.
+
+<!--
+Format for adding learnings:
+
+### [Category] Title
+**Discovered:** Project name or context
+**Pattern:** What to do
+**Impact:** Why this matters across projects
+-->
+
+### [PRD] Keep Acceptance Criteria Verifiable
+**Discovered:** purist-ralph-loop project
+**Pattern:** Write acceptance criteria that can be checked programmatically or by reading specific files/outputs
+**Impact:** Enables autonomous verification; vague criteria cause task failures or require human intervention
+
+### [Workflow] Single-Task Focus Prevents Context Bloat
+**Discovered:** purist-ralph-loop project
+**Pattern:** Each Claude session handles exactly one task, reads only what's needed
+**Impact:** Fresh context per task prevents accumulated confusion; easier to debug failures
+
+### [Self-Improvement] Two-Level Learning System
+**Discovered:** purist-ralph-loop project
+**Pattern:** Task-level learnings go in workflow prompts; cross-project learnings go in CLAUDE.md
+**Impact:** Keeps learnings appropriately scoped; prevents prompt bloat while capturing valuable insights
