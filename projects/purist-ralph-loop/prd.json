@@ -29,8 +29,8 @@
         "Setting persists across sessions"
       ],
       "files": ["settings/pure-ralph.json"],
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created settings/pure-ralph.json with terminal.type field (null for first run prompting), terminal.configured_at for timestamps, and supported_terminals reference with platform-specific options (powershell/windows-terminal for Windows, bash for Mac/Linux, iterm for Mac). Includes _meta section documenting first_run_behavior for consuming scripts."
     },
     {
       "id": "US-003",
