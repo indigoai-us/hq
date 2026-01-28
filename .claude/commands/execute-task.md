@@ -183,7 +183,7 @@ For each worker in sequence:
 
 #### 6a. Load Worker Config
 
-Read `workers/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/worker.yaml` for non-dev-team):
+Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/worker.yaml` for non-dev-team):
 - `instructions` - Worker's role and process
 - `context.base` - Files worker always needs
 - `skills.installed` - Worker's skills

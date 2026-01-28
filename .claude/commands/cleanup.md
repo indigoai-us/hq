@@ -52,7 +52,7 @@ find companies apps -name "prd.json" 2>/dev/null
 
 ```bash
 # Find workers not in registry
-for dir in workers/*/; do
+for dir in workers/public/*/ workers/private/*/; do
   worker=$(basename "$dir")
   if ! grep -q "id: $worker" workers/registry.yaml; then
     echo "UNINDEXED: $worker"
@@ -103,7 +103,7 @@ find workspace/checkpoints -name "*.json" -mtime +30 2>/dev/null
 
 ```bash
 # Find workers without state_machine
-for f in workers/*/worker.yaml workers/dev-team/*/worker.yaml; do
+for f in workers/*/worker.yaml workers/public/dev-team/*/worker.yaml; do
   if [[ -f "$f" ]] && ! grep -q "state_machine:" "$f"; then
     echo "MISSING: $f lacks state_machine section"
   fi

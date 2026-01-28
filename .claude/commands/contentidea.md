@@ -29,7 +29,7 @@ This ensures every idea is captured, even if processing is interrupted.
 1. `companies/personal/knowledge/voice-style.md` - Voice, formats, patterns
 2. `companies/personal/knowledge/profile.md` - Identity, companies, positioning
 3. `workspace/social-drafts/INDEX.md` - Current draft inventory
-4. `knowledge/Ralph/` - If idea relates to Ralph methodology
+4. `knowledge/public/Ralph/` - If idea relates to Ralph methodology
 
 ## Process
 
@@ -60,7 +60,7 @@ Based on scope, create drafts in this order:
 **If medium+:**
 - X article (1500-3000 words, Dan Koe style)
   - Structure: Title → Hook → Numbered sections → Protocol → Choice/CTA
-  - See `companies/personal/knowledge/voice-style.md` for X Article format
+  - See `knowledge/{your-name}/voice-style.md` for X Article format
 
 **If deep+:**
 - LinkedIn long post (~300-500 words)
@@ -223,7 +223,7 @@ Show user:
 - No corporate jargon
 - No hedging
 - Humor: strategic, not forced
-- Emojis: minimal
+- Emojis: minimal (🫡 occasionally)
 
 ## CRITICAL: Humanizer Rules (Anti-AI Slop)
 
@@ -269,17 +269,17 @@ Show user:
 
 ### Before/After Examples:
 
-BAD: "This serves as a pivotal moment in the evolution of AI, underscoring its vital role in reshaping how we work."
+❌ "This serves as a pivotal moment in the evolution of AI, underscoring its vital role in reshaping how we work."
 
-GOOD: "AI changed how I work. I don't think we're going back."
+✅ "AI changed how I work. I don't think we're going back."
 
-BAD: "Have you ever wondered what happens when automation takes over? Sound familiar?"
+❌ "Have you ever wondered what happens when automation takes over? Sound familiar?"
 
-GOOD: "Automation took over my boring work. Now I do something else with that time."
+✅ "Automation took over my boring work. Now I do something else with that time."
 
-BAD: "It's not just about the technology — it's about the mindset shift that comes with embracing these groundbreaking tools."
+❌ "It's not just about the technology — it's about the mindset shift that comes with embracing these groundbreaking tools."
 
-GOOD: "The technology matters less than deciding to use it differently."
+✅ "The technology matters less than deciding to use it differently."
 
 ## Step 8: Mark Idea as Processed
 

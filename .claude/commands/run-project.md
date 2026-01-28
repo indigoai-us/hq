@@ -173,7 +173,7 @@ while (remaining tasks with passes: false):
         For each worker in sequence:
 
         i. LOAD worker config
-           Read workers/dev-team/{worker-id}/worker.yaml
+           Read workers/public/dev-team/{worker-id}/worker.yaml
            (or workers/{worker-id}/worker.yaml for non-dev-team)
            Extract: instructions, context.base files, verification.post_execute
 
@@ -316,7 +316,7 @@ Workers Used: {worker}: {N} tasks, ...
 Learnings: {count}
 ```
 
-**Aggregate learnings** from `workspace/learnings/{project}/*.json` into `knowledge/workers/{project}-learnings.md`.
+**Aggregate learnings** from `workspace/learnings/{project}/*.json` into `knowledge/public/workers/{project}-learnings.md`.
 
 **Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
 

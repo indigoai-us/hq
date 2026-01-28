@@ -45,13 +45,13 @@ Parse JSON output. Display:
 Search: "{query}" (mode: {mode})
 
 Results:
-  1. [0.92] knowledge/Ralph/02-core-concepts.md
+  1. [0.92] knowledge/public/Ralph/02-core-concepts.md
      "Ralph methodology emphasizes small loops with human checkpoints..."
 
   2. [0.84] .claude/commands/run-project.md
      "Run a project through the Ralph loop..."
 
-  3. [0.71] workers/dev-team/architect/skills/design-review.md
+  3. [0.71] workers/public/dev-team/architect/skills/design-review.md
      "Architecture review following Ralph back-pressure patterns..."
 
 {n} results. Use --full to show top result content.
@@ -84,7 +84,7 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                           # BM25 keyword search (default)
 /search "how do workers execute" --mode vsearch  # Semantic
-/search brand --mode query              # Hybrid with re-ranking
+/search {company} brand --mode query       # Hybrid with re-ranking
 /search stripe -n 20                    # More results
 /search authentication --full           # Show top match content
 ```

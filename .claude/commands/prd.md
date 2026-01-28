@@ -27,7 +27,7 @@ Before asking questions, explore HQ:
 
 **Workers:**
 - Read `workers/registry.yaml`
-- Glob `workers/*/worker.yaml`, `workers/dev-team/*/worker.yaml`
+- Glob `workers/*/worker.yaml`, `workers/public/dev-team/*/worker.yaml`
 
 **Existing Projects:**
 - `ls projects/`

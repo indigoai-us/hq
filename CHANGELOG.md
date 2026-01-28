@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.2.0 (2026-01-28)
+
+### Added
+- **`/remember`** - Capture learnings when things don't work right. Injects rules directly into relevant files (worker.yaml, commands, CLAUDE.md, skills) instead of a separate database. Supports deduplication via qmd search and Ralph integration for auto-capture on back-pressure failures.
+- `workers/registry.yaml` - Added `frontend-designer` and `qa-tester` standalone workers
+
+### Changed
+- All 28 existing public commands refreshed with latest improvements
+- `.claude/CLAUDE.md` - Command count 28 → 29, added `/remember` to session management
+- `workers/registry.yaml` - Version 2.0 → 3.0
+
+---
+
 ## v3.1.0 (2026-01-28)
 
 ### Changed

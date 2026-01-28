@@ -6,13 +6,13 @@ Style inspired by Kyle Anthony Miller (@kyleanthony / brasshands.com)
 
 ## Instructions
 
-1. Read the full style guide: `knowledge/design-styles/american-industrial.md`
-2. Review swipe images in: `knowledge/design-styles/swipes/american-industrial/`
+1. Read the full style guide: `knowledge/public/design-styles/american-industrial.md`
+2. Review swipe images in: `knowledge/public/design-styles/swipes/american-industrial/`
 3. Apply these principles to the current design task
 
 ## Quick Reference
 
-### Colors (MONOCHROME - Corey's preference)
+### Colors (MONOCHROME - Your preference)
 - **Primary**: Pure black `#000000`
 - **Accent**: Pure white `#FFFFFF`
 - **Grays**: `#0A0A0A`, `#1A1A1A`, `#333333`, `#666666`, `#F0F0F0`

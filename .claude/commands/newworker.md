@@ -15,8 +15,8 @@ Create a new worker with proper structure, skills, and verification.
 
 ## Context to Load First
 
-1. `knowledge/workers/README.md` - Worker framework
-2. `knowledge/workers/templates/` - Worker templates
+1. `knowledge/public/workers/README.md` - Worker framework
+2. `knowledge/public/workers/templates/` - Worker templates
 3. `workers/registry.yaml` - Existing workers
 
 ## Interactive Setup

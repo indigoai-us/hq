@@ -4,6 +4,28 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v3.2.0 (from v3.1.0)
+
+### New Skills
+Copy this file to `.claude/commands/`:
+- `remember.md` — Capture learnings when things don't work right
+
+### Updated Files
+All 28 existing commands have been refreshed. Copy from starter kit to your HQ:
+- `.claude/commands/*.md` (all public commands)
+- `.claude/CLAUDE.md`
+- `workers/registry.yaml`
+
+### Breaking Changes
+- (none)
+
+### Migration Steps
+1. Copy `.claude/commands/remember.md` to your HQ
+2. Optionally update other commands by copying from starter kit
+3. Run `/search-reindex` to include new command in search
+
+---
+
 ## Migrating to v3.1.0 (from v3.0.0)
 
 ### Breaking Changes

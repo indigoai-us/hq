@@ -1,8 +1,8 @@
 # Workers Registry
 # Index of all workers in this HQ
 
-version: "2.0"
-updated: "2026-01-25"
+version: "3.0"
+updated: "2026-01-28"
 
 # Worker Types:
 # - CodeWorker: Implements features, fixes bugs, refactors
@@ -145,9 +145,20 @@ workers:
     description: "Shared utilities for content workers"
 
   # ===================
-  # Security & Ops (1 worker)
+  # Standalone Workers (3)
   # ===================
-  # Pre-deployment security scanning
+
+  - id: frontend-designer
+    path: workers/frontend-designer/
+    type: OpsWorker
+    status: active
+    description: "Bold UI generation using Anthropic skill"
+
+  - id: qa-tester
+    path: workers/qa-tester/
+    type: OpsWorker
+    status: active
+    description: "Automated website testing with Playwright"
 
   - id: security-scanner
     path: workers/security-scanner/

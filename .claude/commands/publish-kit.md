@@ -21,18 +21,13 @@ Sync your HQ → hq-starter-kit with PII scrubbing, changelog, and migration gui
 
 | Category | Source | Notes |
 |----------|--------|-------|
-| Skills | `.claude/commands/*.md` | All skills |
-| Workers | `workers/dev-team/`, `workers/content-*/` | Generic workers only |
-| Knowledge | `knowledge/Ralph/`, `knowledge/workers/`, `knowledge/ai-security-framework/` | Public knowledge only |
+| Skills | `.claude/commands/*.md` where `visibility: public` | Filter by frontmatter |
+| Workers | `workers/public/` | Entire public dir |
+| Knowledge | `knowledge/public/` | Entire public dir |
 | Config | `.claude/CLAUDE.md` | Scrubbed version |
+| Registry | `workers/registry.yaml` | Filter to `visibility: public` entries only |
 
-### Exclude (PII/Private)
-- `companies/` - Company-specific data
-- `workers/cfo-*`, `workers/cmo-*`, `workers/x-*` - Personal workers
-- `settings/` - API credentials
-- `workspace/` - Personal work
-- `data/` - Personal data
-- `social-content/` - Personal content
+Everything else is excluded by default — only public/ dirs and public-visibility commands are synced.
 
 ## PII Scrubbing Rules
 
@@ -66,7 +61,7 @@ Compare HQ vs starter-kit:
 diff -rq .claude/commands/ repos/public/hq-starter-kit/.claude/commands/ 2>/dev/null || true
 
 # Workers diff
-diff -rq workers/dev-team/ repos/public/hq-starter-kit/workers/dev-team/ 2>/dev/null || true
+diff -rq workers/public/dev-team/ repos/public/hq-starter-kit/workers/public/dev-team/ 2>/dev/null || true
 ```
 
 Present changes:
