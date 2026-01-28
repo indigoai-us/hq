@@ -14,9 +14,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/{worker-id}/
-    - workers/dev-team/{worker-id}/skills/
-    - knowledge/dev-team/patterns/{category}/
+    - workers/public/dev-team/{worker-id}/
+    - workers/public/dev-team/{worker-id}/skills/
+    - knowledge/public/dev-team/patterns/{category}/
   dynamic:
     - pattern: "{target_repo}/"
       when: "task.type == 'implementation'"
@@ -44,7 +44,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/{worker-id}
+    cwd: workers/public/dev-team/{worker-id}
   tools: []  # Add worker-specific tools
 
 instructions: |
@@ -59,7 +59,7 @@ instructions: |
 
   ## CLI Usage
   ```bash
-  cd workers/dev-team/{worker-id}
+  cd workers/public/dev-team/{worker-id}
   node dist/index.js <skill> [options]
   ```
 

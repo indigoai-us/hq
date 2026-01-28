@@ -44,7 +44,7 @@ When saving a thread, capture current worker state:
 ```json
 {
   "worker": {
-    "id": "cfo-example-company",
+    "id": "{worker-id}",
     "skill": "mrr",
     "state": "completed",
     "started_at": "ISO8601",

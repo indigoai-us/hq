@@ -29,8 +29,8 @@ Optional:
 2. Categorize each learning:
    - **Project-specific**: Store in `projects/{name}/learnings/`
    - **Worker-specific**: Store in `workers/{worker}/knowledge/`
-   - **General pattern**: Store in `knowledge/dev-team/patterns/`
-   - **Troubleshooting**: Store in `knowledge/dev-team/troubleshooting/`
+   - **General pattern**: Store in `knowledge/public/dev-team/patterns/`
+   - **Troubleshooting**: Store in `knowledge/public/dev-team/troubleshooting/`
 3. Check for duplicates/conflicts with existing knowledge
 4. Format as markdown
 5. Present to human for approval
@@ -43,11 +43,11 @@ Optional:
 |----------|-------------|
 | Project conventions | `projects/{name}/learnings/conventions.md` |
 | Bug fixes | `projects/{name}/learnings/bugs-fixed.md` |
-| Backend patterns | `knowledge/dev-team/patterns/backend/` |
-| Frontend patterns | `knowledge/dev-team/patterns/frontend/` |
-| Database patterns | `knowledge/dev-team/patterns/database/` |
-| Worker tips | `workers/dev-team/{worker}/knowledge/` |
-| Error solutions | `knowledge/dev-team/troubleshooting/` |
+| Backend patterns | `knowledge/public/dev-team/patterns/backend/` |
+| Frontend patterns | `knowledge/public/dev-team/patterns/frontend/` |
+| Database patterns | `knowledge/public/dev-team/patterns/database/` |
+| Worker tips | `workers/public/dev-team/{worker}/knowledge/` |
+| Error solutions | `knowledge/public/dev-team/troubleshooting/` |
 
 ## Output
 

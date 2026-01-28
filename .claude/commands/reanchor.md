@@ -2,6 +2,7 @@
 description: Force reanchoring conversation before next task
 allowed-tools: Read, Bash, AskUserQuestion
 argument-hint:
+visibility: public
 ---
 
 # /reanchor - Pause and Realign

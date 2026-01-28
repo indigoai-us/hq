@@ -2,6 +2,7 @@
 description: Execute a single task through coordinated worker phases (Ralph pattern)
 allowed-tools: Task, Read, Write, Glob, Grep, Bash, AskUserQuestion
 argument-hint: [project/task-id]
+visibility: public
 ---
 
 # /execute-task - Worker-Coordinated Task Execution

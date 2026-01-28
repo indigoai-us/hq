@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/frontend-dev/
-    - workers/dev-team/frontend-dev/skills/
-    - knowledge/dev-team/patterns/frontend/
+    - workers/public/dev-team/frontend-dev/
+    - workers/public/dev-team/frontend-dev/skills/
+    - knowledge/public/dev-team/patterns/frontend/
   dynamic:
     - pattern: "{target_repo}/src/components/"
       when: always
@@ -53,7 +53,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/frontend-dev
+    cwd: workers/public/dev-team/frontend-dev
   tools:
     - create_component
     - create_page

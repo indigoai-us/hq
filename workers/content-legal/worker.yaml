@@ -10,8 +10,8 @@ execution:
 
 context:
   base:
-    - workers/content-legal/
-    - workers/content-shared/
+    - workers/public/content-legal/
+    - workers/public/content-shared/
   exclude:
     - node_modules/
     - dist/

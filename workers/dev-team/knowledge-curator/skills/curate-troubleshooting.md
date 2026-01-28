@@ -22,7 +22,7 @@ Optional:
    - Prevention
 4. Add relevant tags for searchability
 5. Present to human for approval
-6. Write to `knowledge/dev-team/troubleshooting/`
+6. Write to `knowledge/public/dev-team/troubleshooting/`
 
 ## Entry Format
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.3.0 (2026-01-28)
+
+### Added
+- **Auto-Handoff** — Claude now auto-runs `/handoff` when context usage hits 70%, preserving session continuity without manual intervention
+- `/setup` and `/exit-plan` now included in starter kit
+
+### Changed
+- **Command visibility overhaul** — 16 public commands (down from 29). Content, design, and company-specific commands moved to private
+- All 16 public commands refreshed with latest improvements
+- `.claude/CLAUDE.md` — Updated command tables, added Auto-Handoff section, count 29 → 16
+- `workers/registry.yaml` — Paths updated to flat structure (`workers/` not `workers/public/`)
+- Knowledge files PII-scrubbed
+
+### Removed
+- `/contentidea`, `/suggestposts`, `/scheduleposts`, `/preview-post`, `/post-now` — moved to private (content pipeline)
+- `/humanize` — moved to private (content polish)
+- `/generateimage`, `/svg`, `/style-american-industrial`, `/mj-abacus`, `/design-iterate` — moved to private (design tools)
+- `/publish-kit`, `/pure-ralph` — moved to private
+- `/hq-sync` — moved to private
+
+---
+
 ## v3.2.0 (2026-01-28)
 
 ### Added

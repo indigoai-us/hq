@@ -2,6 +2,7 @@
 description: Run a project through the Ralph loop - orchestrator for multi-task execution
 allowed-tools: Task, Read, Write, Glob, Grep, Bash, AskUserQuestion
 argument-hint: [project-name] or [--resume project] or [--status]
+visibility: public
 ---
 
 # /run-project - Project Orchestrator Loop

@@ -20,9 +20,9 @@ Optional:
    - **workflow**: Worker sequence that worked well
 3. Route to appropriate location:
    - Project-specific → `projects/{name}/learnings/`
-   - Pattern → `knowledge/dev-team/patterns/{category}/`
-   - Troubleshooting → `knowledge/dev-team/troubleshooting/`
-   - Workflow → `knowledge/dev-team/workflows/`
+   - Pattern → `knowledge/public/dev-team/patterns/{category}/`
+   - Troubleshooting → `knowledge/public/dev-team/troubleshooting/`
+   - Workflow → `knowledge/public/dev-team/workflows/`
 4. Format as markdown with standard template
 5. Present routing plan to human
 6. Write files after approval
@@ -33,9 +33,9 @@ Optional:
 | Category | Location | Example |
 |----------|----------|---------|
 | project | projects/{name}/learnings/ | "API uses custom auth header X-Token" |
-| pattern | knowledge/dev-team/patterns/ | "Retry pattern for flaky external APIs" |
-| troubleshoot | knowledge/dev-team/troubleshooting/ | "ESLint fails on CI but not local" |
-| workflow | knowledge/dev-team/workflows/ | "For DB-heavy: database-dev before architect" |
+| pattern | knowledge/public/dev-team/patterns/ | "Retry pattern for flaky external APIs" |
+| troubleshoot | knowledge/public/dev-team/troubleshooting/ | "ESLint fails on CI but not local" |
+| workflow | knowledge/public/dev-team/workflows/ | "For DB-heavy: database-dev before architect" |
 
 ## Output
 
@@ -58,8 +58,8 @@ node dist/index.js update-learnings --project auth-feature
 
 # Output:
 # Routing learnings:
-# - [pattern] → knowledge/dev-team/patterns/backend/jwt-session-tokens.md
-# - [troubleshoot] → knowledge/dev-team/troubleshooting/redis-auth-order.md
+# - [pattern] → knowledge/public/dev-team/patterns/backend/jwt-session-tokens.md
+# - [troubleshoot] → knowledge/public/dev-team/troubleshooting/redis-auth-order.md
 #
 # Approve routing? [y/n/edit]
 ```

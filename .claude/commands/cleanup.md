@@ -2,6 +2,7 @@
 description: Audit and clean HQ to enforce current policies and migrate outdated structures
 allowed-tools: Task, Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
 argument-hint: [--audit | --migrate | --fix]
+visibility: public
 ---
 
 # /cleanup - HQ Maintenance

@@ -1,6 +1,7 @@
 ---
 description: Interactive setup wizard for HQ Starter Kit
 allowed-tools: Read, Write, Edit, AskUserQuestion, Glob, Bash
+visibility: public
 ---
 
 # HQ Setup Wizard

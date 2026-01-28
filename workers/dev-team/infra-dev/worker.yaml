@@ -14,9 +14,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/infra-dev/skills/
-    - knowledge/dev-team/patterns/infra/
-    - knowledge/dev-team/workflows/deployment.md
+    - workers/public/dev-team/infra-dev/skills/
+    - knowledge/public/dev-team/patterns/infra/
+    - knowledge/public/dev-team/workflows/deployment.md
   dynamic:
     - pattern: "{target_repo}/.github/"
       when: always

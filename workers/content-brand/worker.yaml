@@ -10,8 +10,8 @@ execution:
 
 context:
   base:
-    - workers/content-brand/
-    - workers/content-shared/
+    - workers/public/content-brand/
+    - workers/public/content-shared/
     - companies/example-company/knowledge/brand-guidelines.md
     - companies/example-company/knowledge/messaging/
   exclude:

@@ -10,8 +10,8 @@ execution:
 
 context:
   base:
-    - workers/content-sales/
-    - workers/content-shared/
+    - workers/public/content-sales/
+    - workers/public/content-shared/
     - companies/example-company/knowledge/verticals/
     - companies/example-company/knowledge/campaign-playbook.md
   exclude:

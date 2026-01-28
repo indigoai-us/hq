@@ -2,6 +2,7 @@
 description: Plan a project and generate PRD for execution
 allowed-tools: Task, Read, Glob, Grep, Write, Bash, AskUserQuestion
 argument-hint: [project/feature description]
+visibility: public
 ---
 
 # /prd - Project Planning & PRD Generation

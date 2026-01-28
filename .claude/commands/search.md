@@ -2,6 +2,7 @@
 description: Search across HQ (qmd-powered semantic + full-text)
 allowed-tools: Bash, Read
 argument-hint: <query> [--mode search|vsearch|query] [-n count] [--full]
+visibility: public
 ---
 
 # /search - HQ Search (qmd)

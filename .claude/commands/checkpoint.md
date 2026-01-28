@@ -2,6 +2,7 @@
 description: Save checkpoint and check context status
 allowed-tools: Write, Bash, Read
 argument-hint: [task-id]
+visibility: public
 ---
 
 # /checkpoint - Save Progress

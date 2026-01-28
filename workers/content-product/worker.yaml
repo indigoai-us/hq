@@ -10,8 +10,8 @@ execution:
 
 context:
   base:
-    - workers/content-product/
-    - workers/content-shared/
+    - workers/public/content-product/
+    - workers/public/content-shared/
     - companies/example-company/knowledge/products/
     - companies/example-company/knowledge/metrics.md
   exclude:

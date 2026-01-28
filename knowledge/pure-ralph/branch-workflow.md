@@ -28,7 +28,7 @@ Where `{project-name}` is the folder name containing the PRD.
 ### Example
 
 ```
-PRD: ~/my-hq/projects/user-auth/prd.json
+PRD: C:/my-hq/projects/user-auth/prd.json
 Branch: feature/user-auth
 ```
 

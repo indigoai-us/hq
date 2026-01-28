@@ -14,9 +14,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/code-reviewer/skills/
-    - knowledge/dev-team/patterns/
-    - knowledge/dev-team/workflows/code-review.md
+    - workers/public/dev-team/code-reviewer/skills/
+    - knowledge/public/dev-team/patterns/
+    - knowledge/public/dev-team/workflows/code-review.md
   dynamic:
     - pattern: "{target_repo}/src/"
       when: always

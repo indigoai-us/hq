@@ -14,9 +14,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/knowledge-curator/skills/
-    - knowledge/dev-team/
-    - knowledge/workers/
+    - workers/public/dev-team/knowledge-curator/skills/
+    - knowledge/public/dev-team/
+    - knowledge/public/workers/
   dynamic:
     - pattern: "projects/{project}/learnings/"
       when: "task.has_project"

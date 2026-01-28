@@ -12,7 +12,7 @@ Personal OS for orchestrating AI workers, projects, and content.
 
 ```
 HQ/
-├── .claude/commands/   # 29 slash commands
+├── .claude/commands/   # 16 slash commands
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
@@ -64,15 +64,6 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/prd` | Generate PRD through discovery |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Run single task with workers |
-| `/pure-ralph` | External terminal orchestrator for autonomous PRD execution |
-
-### Content
-| Command | Purpose |
-|---------|---------|
-| `/contentidea` | Build idea into content suite |
-| `/suggestposts` | Research-driven suggestions |
-| `/scheduleposts` | Choose what to post |
-| `/humanize` | Remove AI writing patterns from drafts |
 
 ### Workers
 | Command | Purpose |
@@ -81,19 +72,14 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/newworker` | Create new worker |
 | `/metrics` | View execution metrics |
 
-### Design
-| Command | Purpose |
-|---------|---------|
-| `/svg` | Generate minimalist abstract white line SVG graphics |
-| `/design-iterate` | Design A/B testing |
-
 ### System
 | Command | Purpose |
 |---------|---------|
 | `/search` | Semantic + full-text search across HQ (qmd-powered) |
 | `/search-reindex` | Reindex and re-embed HQ for qmd search |
-| `/hq-sync` | Sync modules from manifest |
 | `/cleanup` | Audit and clean HQ |
+| `/setup` | Interactive setup wizard |
+| `/exit-plan` | Force exit from plan mode |
 
 ## Auto-Checkpoint (PostToolsHook)
 
@@ -106,6 +92,17 @@ Sessions auto-save to `workspace/threads/` after:
 **Thread Format:** `T-{timestamp}-{slug}.json`
 
 **Why:** Prevents lost work, enables session resumption, provides audit trail.
+
+## Auto-Handoff (Context Limit)
+
+When context usage reaches 70% (remaining drops to 30%), automatically run `/handoff`.
+
+**Rules:**
+- Check context status line — when `remaining_percentage` ≤ 30, trigger handoff
+- Before handoff, finish current atomic task (don't interrupt mid-edit)
+- Notify user: "Context at {X}% remaining. Running /handoff to preserve continuity."
+- Run `/handoff` with summary of remaining work
+- This overrides manual handoff — don't wait for user to request it
 
 ## Search (qmd)
 

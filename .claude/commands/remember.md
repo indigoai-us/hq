@@ -2,6 +2,7 @@
 description: Capture learnings when things don't work right
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [what went wrong]
+visibility: public
 ---
 
 # /remember - Capture Learnings
@@ -124,7 +125,7 @@ Match existing style in target file. Common patterns:
 
 ### Worker-specific
 User: "The CFO worker kept trying to write to Stripe instead of just reading"
-Target: `workers/private/cfo-worker/worker.yaml`
+Target: `workers/private/{worker-id}/worker.yaml`
 Rule: `- NEVER: Write or modify data in Stripe. All operations are read-only.`
 
 ### Command-specific

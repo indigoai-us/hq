@@ -2,6 +2,7 @@
 description: Hand off to fresh session, work continues from checkpoint
 allowed-tools: Write, Read, Bash
 argument-hint: [message]
+visibility: public
 ---
 
 # /handoff - Fresh Session Continuity

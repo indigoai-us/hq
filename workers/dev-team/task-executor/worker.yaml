@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/task-executor/
-    - workers/dev-team/task-executor/skills/
-    - knowledge/dev-team/workflows/
+    - workers/public/dev-team/task-executor/
+    - workers/public/dev-team/task-executor/skills/
+    - knowledge/public/dev-team/workflows/
   dynamic:
     - pattern: "projects/{project}/"
       when: always
@@ -40,7 +40,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/task-executor
+    cwd: workers/public/dev-team/task-executor
   tools:
     - execute
     - analyze_issue
@@ -76,7 +76,7 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  cd workers/dev-team/task-executor
+  cd workers/public/dev-team/task-executor
   node dist/index.js execute --issue US-001 --project my-feature
   node dist/index.js analyze-issue --issue US-001 --project my-feature
   ```

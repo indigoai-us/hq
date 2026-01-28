@@ -121,14 +121,14 @@ Extract learnings (what worked, what failed, patterns)
         ↓
 knowledge-curator routes to:
   - projects/{name}/learnings/
-  - knowledge/dev-team/patterns/
+  - knowledge/public/dev-team/patterns/
   - workers/{worker}/knowledge/
 ```
 
 ## Directory Structure
 
 ```
-workers/dev-team/
+workers/public/dev-team/
 ├── README.md
 ├── project-manager/
 ├── task-executor/
@@ -142,7 +142,7 @@ workers/dev-team/
 ├── code-reviewer/
 └── knowledge-curator/
 
-knowledge/dev-team/
+knowledge/public/dev-team/
 ├── patterns/
 ├── workflows/
 └── troubleshooting/
@@ -151,7 +151,7 @@ knowledge/dev-team/
 ## Building Workers
 
 ```bash
-cd workers/dev-team/<worker>
+cd workers/public/dev-team/<worker>
 npm install
 npm run build
 npm run typecheck

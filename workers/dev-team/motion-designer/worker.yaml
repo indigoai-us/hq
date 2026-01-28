@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/motion-designer/
-    - workers/dev-team/motion-designer/skills/
-    - knowledge/dev-team/patterns/motion/
+    - workers/public/dev-team/motion-designer/
+    - workers/public/dev-team/motion-designer/skills/
+    - knowledge/public/dev-team/patterns/motion/
   dynamic:
     - pattern: "{target_repo}/src/components/"
       when: always
@@ -37,7 +37,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/motion-designer
+    cwd: workers/public/dev-team/motion-designer
   tools:
     - add_animation
     - add_transition

@@ -2,6 +2,7 @@
 description: Run a worker or list available workers
 allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write, WebSearch, WebFetch, AskUserQuestion
 argument-hint: [worker-id] [skill] [args]
+visibility: public
 ---
 
 # /run - Worker Execution
@@ -27,9 +28,9 @@ If no arguments provided, read `workers/registry.yaml` and display:
 ```
 Available Workers:
 
-  x-poster            X/Twitter posting for Corey
-  cfo-{company}    Financial reporting
-  {company}-analyst LR/VYG data analysis
+  {worker-id}            X/Twitter posting for Corey
+  {worker-id}    Financial reporting
+  {worker-id} LR/VYG data analysis
   ...
 
 Usage: /run {worker-id} to see skills
@@ -43,7 +44,7 @@ If only worker-id provided:
 3. List available skills
 
 ```
-Worker: x-poster
+Worker: {worker-id}
 Description: X/Twitter posting for Corey
 
 Skills:
@@ -51,7 +52,7 @@ Skills:
   suggestposts  Research and suggest posts
   scheduleposts Choose what to post now
 
-Usage: /run x-poster {skill}
+Usage: /run {worker-id} {skill}
 ```
 
 ### Worker + Skill → Execute
@@ -96,10 +97,10 @@ Also append to metrics: `workspace/metrics/metrics.jsonl`
 
 ```
 /run                              # See all workers
-/run x-poster                      # See x-poster skills
-/run x-poster contentidea          # Run contentidea
-/run x-poster contentidea "AI workforce" # Run with topic
-/run cfo-{company} mrr          # Run MRR report
+/run {worker-id}                      # See {worker-id} skills
+/run {worker-id} contentidea          # Run contentidea
+/run {worker-id} contentidea "AI workforce" # Run with topic
+/run {worker-id} mrr          # Run MRR report
 ```
 
 ## Notes

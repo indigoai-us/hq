@@ -10,7 +10,7 @@ description: |
 
 context:
   base:
-    - knowledge/ai-security-framework/
+    - knowledge/public/ai-security-framework/
 
 skills:
   - name: pre-deploy-check

@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/project-manager/
-    - workers/dev-team/project-manager/skills/
-    - knowledge/dev-team/workflows/
+    - workers/public/dev-team/project-manager/
+    - workers/public/dev-team/project-manager/skills/
+    - knowledge/public/dev-team/workflows/
   dynamic:
     - pattern: "projects/{project}/"
       when: always
@@ -38,7 +38,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/project-manager
+    cwd: workers/public/dev-team/project-manager
   tools:
     - next_issue
     - create_prd
@@ -74,7 +74,7 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  cd workers/dev-team/project-manager
+  cd workers/public/dev-team/project-manager
   node dist/index.js next-issue --project my-feature
   node dist/index.js create-prd --name "New Feature" --input requirements.md
   node dist/index.js project-status --project my-feature

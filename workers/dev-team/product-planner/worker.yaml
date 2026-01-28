@@ -64,7 +64,7 @@ verification:
   approval_required: true
 
 tasks:
-  source: workers/dev-team/product-planner/queue.json
+  source: workers/public/dev-team/product-planner/queue.json
   one_at_a_time: true
 
 # State Machine (Loom pattern)

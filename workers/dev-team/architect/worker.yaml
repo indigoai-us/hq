@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/architect/
-    - workers/dev-team/architect/skills/
-    - knowledge/dev-team/patterns/
+    - workers/public/dev-team/architect/
+    - workers/public/dev-team/architect/skills/
+    - knowledge/public/dev-team/patterns/
   dynamic:
     - pattern: "{target_repo}/"
       when: always
@@ -48,7 +48,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/architect
+    cwd: workers/public/dev-team/architect
   tools:
     - system_design
     - api_design
@@ -84,7 +84,7 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  cd workers/dev-team/architect
+  cd workers/public/dev-team/architect
   node dist/index.js system-design --feature "user auth" --repo path/to/repo
   node dist/index.js api-design --endpoint "/api/users" --repo path/to/repo
   ```

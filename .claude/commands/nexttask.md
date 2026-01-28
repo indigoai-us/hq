@@ -1,6 +1,7 @@
 ---
 description: Scan HQ and suggest next tasks or projects to work on
 allowed-tools: Read, Glob, Bash, AskUserQuestion
+visibility: public
 ---
 
 # /nexttask - Find Work

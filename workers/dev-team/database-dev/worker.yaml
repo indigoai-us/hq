@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/dev-team/database-dev/
-    - workers/dev-team/database-dev/skills/
-    - knowledge/dev-team/patterns/database/
+    - workers/public/dev-team/database-dev/
+    - workers/public/dev-team/database-dev/skills/
+    - knowledge/public/dev-team/patterns/database/
   dynamic:
     - pattern: "{target_repo}/prisma/"
       when: "db.type == 'prisma'"
@@ -44,7 +44,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/dev-team/database-dev
+    cwd: workers/public/dev-team/database-dev
   tools:
     - create_schema
     - create_migration

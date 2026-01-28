@@ -62,9 +62,9 @@ If project has code:
 ## Examples
 
 Good project folders:
-- `projects/my-app/` - Mobile app
-- `projects/website-rebuild/` - Website migration
-- `projects/api-integration/` - API integration
+- `projects/sol-reader/` - iPad app
+- `projects/indigo-capital/` - Token launch
+- `projects/{company}-site/` - Website migration
 
 Not projects (too small):
 - Fix a typo in docs

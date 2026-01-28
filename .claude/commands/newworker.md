@@ -1,6 +1,7 @@
 ---
 description: Scaffold a new worker with skills, tools, and knowledge
 allowed-tools: Read, Write, Edit, AskUserQuestion
+visibility: public
 ---
 
 # New Worker Builder
@@ -25,7 +26,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-poster")
+- **What's its name/id?** (e.g., "competitive-researcher", "{worker-id}")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -60,7 +61,7 @@ worker:
   version: "1.0"
 
 identity:
-  persona: {your-name}  # or company_context, voice_guide
+  persona: corey-epstein  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}

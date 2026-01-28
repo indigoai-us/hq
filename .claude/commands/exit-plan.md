@@ -2,6 +2,7 @@
 description: Force exit from plan mode when stuck
 allowed-tools: ExitPlanMode, Read, Bash
 argument-hint:
+visibility: public
 ---
 
 # Force Exit Plan Mode

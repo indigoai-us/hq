@@ -4,6 +4,31 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v3.3.0 (from v3.2.0)
+
+### What Changed
+Commands split into public (16) and private (15). Only generic, reusable commands ship in the starter kit now. Content, design, and company-specific commands are private.
+
+### New Feature: Auto-Handoff
+Claude auto-runs `/handoff` at 70% context usage. This is in `.claude/CLAUDE.md` — copy the "Auto-Handoff (Context Limit)" section to yours.
+
+### Removed Commands (now private)
+If you use any of these, keep your existing copies — they just won't be in future starter kit releases:
+- Content: `contentidea`, `suggestposts`, `scheduleposts`, `preview-post`, `post-now`, `humanize`
+- Design: `generateimage`, `svg`, `style-american-industrial`, `mj-abacus`, `design-iterate`
+- System: `publish-kit`, `pure-ralph`, `hq-sync`
+
+### Migration Steps
+1. Copy `.claude/CLAUDE.md` from starter kit (or merge the Auto-Handoff section into yours)
+2. Copy refreshed `.claude/commands/*.md` for the 16 public commands
+3. Copy `workers/registry.yaml`
+4. Run `/search-reindex`
+
+### Breaking Changes
+- (none — removed commands still work if you keep your local copies)
+
+---
+
 ## Migrating to v3.2.0 (from v3.1.0)
 
 ### New Skills
