@@ -4,6 +4,29 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v3.1.0 (from v3.0.0)
+
+### Breaking Changes
+- **`/newproject` removed** -- Merged into `/prd`. Delete `.claude/commands/newproject.md` from your HQ.
+- **prd.json now required** -- `/run-project` and `/execute-task` require `projects/{name}/prd.json` with a `userStories` array. README.md is no longer accepted as a fallback.
+- **`features` key deprecated** -- If your prd.json files use `"features"` instead of `"userStories"`, rename the key. Also rename `"acceptance_criteria"` to `"acceptanceCriteria"` (camelCase).
+
+### Updated Skills
+Replace these files in `.claude/commands/`:
+- `prd.md` -- **Major rewrite.** Now outputs both `prd.json` (source of truth) and `README.md` (derived). Includes orchestrator registration, beads sync, and execution choice.
+- `run-project.md` -- Strict prd.json validation on load. Hard stop if missing.
+- `execute-task.md` -- Same strict validation.
+- `newworker.md` -- `/newproject` references updated to `/prd`
+- `nexttask.md` -- `/newproject` reference updated to `/prd`
+
+### Migration Steps
+1. Delete `.claude/commands/newproject.md`
+2. Copy updated `prd.md`, `run-project.md`, `execute-task.md`, `newworker.md`, `nexttask.md`
+3. If you have prd.json files using `"features"`, rename to `"userStories"` and `"acceptance_criteria"` to `"acceptanceCriteria"`
+4. If you have projects with only README.md (no prd.json), run `/prd {project}` to generate the JSON
+
+---
+
 ## Migrating to v3.0.0 (from v2.1.0)
 
 ### New Skills

@@ -47,7 +47,7 @@ PROJECTS (with work):
 
 Pick a number, or:
   /run {worker}    Run a worker skill
-  /newproject      Create a new project
+  /prd             Create a new project
 ```
 
 ## Priority Rules

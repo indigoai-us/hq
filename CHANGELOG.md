@@ -1,5 +1,24 @@
 # Changelog
 
+## v3.1.0 (2026-01-28)
+
+### Changed
+- **`/prd`** - Merged `/newproject` into `/prd`. Single command now handles discovery, PRD generation (prd.json + README.md), orchestrator registration, beads sync, and execution choice
+- **`/run-project`** - Strict prd.json validation: hard stop if missing, field validation on load, no README.md fallback
+- **`/execute-task`** - Same strict prd.json validation as `/run-project`
+- **`/newworker`** - Updated `/newproject` references to `/prd`
+- **`/nexttask`** - Updated `/newproject` reference to `/prd`
+- **`.claude/CLAUDE.md`** - Command count 29 → 28, removed `/newproject` from project commands
+
+### Removed
+- **`/newproject`** - Merged into `/prd`. Use `/prd` for all project planning
+
+### Breaking
+- `/newproject` no longer exists. Use `/prd` instead (same discovery flow + now outputs prd.json)
+- `/run-project` and `/execute-task` require `prd.json` with `userStories` array (not `features`). Legacy PRDs must be migrated.
+
+---
+
 ## v3.0.0 (2026-01-27)
 
 ### Added

@@ -14,9 +14,9 @@ View worker execution metrics and statistics.
 
 ```bash
 /metrics                      # Summary of all workers
-/metrics cfo-{company}        # Metrics for specific worker
+/metrics {worker-id}          # Metrics for specific worker
 /metrics --days 7             # Last 7 days only
-/metrics cfo-{company} mrr    # Specific worker + skill
+/metrics {worker-id} {skill}  # Specific worker + skill
 ```
 
 ## Metrics File
@@ -26,7 +26,7 @@ Location: `workspace/metrics/metrics.jsonl`
 Each line is a JSON object:
 
 ```json
-{"ts":"2026-01-23T14:30:52.000Z","worker":"cfo-{company}","skill":"mrr","duration_ms":5000,"status":"completed","files":1}
+{"ts":"2026-01-23T14:30:52.000Z","worker":"cfo","skill":"mrr","duration_ms":5000,"status":"completed","files":1}
 ```
 
 ## Fields
@@ -63,24 +63,22 @@ Each line is a JSON object:
 
    ```
    Worker Metrics (last 30 days)
-   ═══════════════════════════════════════════════════
 
-   cfo-{company}
+   {worker-id}
      Runs: 45 (98% success)
      Avg duration: 3.2s
      Top skills: mrr (20), pnl (12), cash-position (8)
 
-   x-{your-name}
+   {worker-id}
      Runs: 23 (100% success)
      Avg duration: 8.5s
      Top skills: suggestposts (15), scheduleposts (8)
 
-   {company}-analyst
+   {worker-id}
      Runs: 12 (92% success)
      Avg duration: 15.3s
      Top skills: anomaly-check (10), forecast (2)
 
-   ───────────────────────────────────────────────────
    Total: 80 runs | 97% success | 6.2s avg
    ```
 
@@ -89,10 +87,9 @@ Each line is a JSON object:
 For specific worker:
 
 ```
-/metrics cfo-{company}
+/metrics {worker-id}
 
-cfo-{company} Metrics (last 30 days)
-═══════════════════════════════════════════════════
+{worker-id} Metrics (last 30 days)
 
 Skills:
   mrr             20 runs   2.1s avg   100% success
@@ -107,7 +104,7 @@ Recent runs:
   2026-01-22 11:30   mrr           completed   2.3s
 
 Errors (1):
-  2026-01-22 16:00 cash-position: "QuickBooks token expired"
+  2026-01-22 16:00 cash-position: "API token expired"
 ```
 
 ## Notes

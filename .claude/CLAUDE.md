@@ -12,7 +12,7 @@ Personal OS for orchestrating AI workers, projects, and content.
 
 ```
 HQ/
-├── .claude/commands/   # 29 slash commands
+├── .claude/commands/   # 28 slash commands
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/

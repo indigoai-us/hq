@@ -34,12 +34,33 @@ Example: /execute-task campaign-migration/CAM-003
 
 ### 2. Load Task Spec
 
-Read `projects/{project}/prd.json` and find the task:
+Read and validate `projects/{project}/prd.json`:
 
 ```javascript
-const prd = read(`projects/${project}/prd.json`)
-const task = prd.userStories.find(s => s.id === taskId)
-// or prd.features.find(f => f.id === taskId)
+// Strict: prd.json required. No README.md fallback.
+const prdPath = `projects/${project}/prd.json`
+if (!fileExists(prdPath)) {
+  STOP: `ERROR: ${prdPath} not found. Run /prd ${project} first.`
+}
+
+const prd = JSON.parse(read(prdPath))
+
+// Strict: userStories required. No fallback.
+const stories = prd.userStories
+if (!stories || !Array.isArray(stories)) {
+  STOP: "prd.json missing userStories array. Migrate legacy 'features' key to 'userStories'."
+}
+
+// Validate required fields
+for (const story of stories) {
+  const required = ['id', 'title', 'description', 'passes']
+  const missing = required.filter(f => !(f in story))
+  if (missing.length > 0) {
+    STOP: `Story ${story.id || '?'} missing fields: ${missing.join(', ')}`
+  }
+}
+
+const task = stories.find(s => s.id === taskId)
 ```
 
 Extract:
@@ -124,9 +145,9 @@ Present plan:
 ```
 Execution Plan for {task.id}:
 
-Phase 1: backend-dev → Implement service
+Phase 1: backend-engineer → Implement service
 Phase 2: code-reviewer → Review changes
-Phase 3: dev-qa-tester → Verify implementation
+Phase 3: qa-tester → Verify implementation
 
 Proceed? [Y/n]
 ```
@@ -148,9 +169,9 @@ Write to `workspace/orchestrator/{project}/executions/{task-id}.json`:
   "status": "in_progress",
   "current_phase": 1,
   "phases": [
-    {"worker": "backend-dev", "status": "pending"},
+    {"worker": "backend-engineer", "status": "pending"},
     {"worker": "code-reviewer", "status": "pending"},
-    {"worker": "dev-qa-tester", "status": "pending"}
+    {"worker": "qa-tester", "status": "pending"}
   ],
   "handoffs": []
 }
@@ -240,13 +261,13 @@ After each phase:
 ```json
 {
   "phases": [
-    {"worker": "backend-dev", "status": "completed", "completed_at": "..."},
+    {"worker": "backend-engineer", "status": "completed", "completed_at": "..."},
     {"worker": "code-reviewer", "status": "in_progress"},
     ...
   ],
   "handoffs": [
     {
-      "from": "backend-dev",
+      "from": "backend-engineer",
       "to": "code-reviewer",
       "context": {...worker output...}
     }
@@ -331,7 +352,7 @@ Context passed between workers:
 
 ```json
 {
-  "from_worker": "backend-dev",
+  "from_worker": "backend-engineer",
   "to_worker": "code-reviewer",
   "timestamp": "ISO8601",
   "summary": "1-2 sentence description",
@@ -358,3 +379,5 @@ Context passed between workers:
 - **Capture learnings** - Every task generates learning entry
 - **Handoffs preserve context** - Next worker knows what happened
 - **Fail fast, fail loud** - Stop on errors, don't hide them
+- **prd.json is required** - never read or fall back to README.md
+- **Validate prd.json on load** - fail loudly on missing/malformed fields

@@ -13,7 +13,7 @@ Research what you should be posting to progress overall life and OS goals.
 2. `companies/personal/knowledge/profile.md` - Identity, goals, audience
 3. `companies/personal/knowledge/social-calendar.md` - Content strategy, themes
 4. `workspace/social-drafts/INDEX.md` - What's already in the pipeline
-5. `projects/social-presence-strategy/` - Lulu Meservey framework if exists
+5. `projects/social-presence-strategy/` - Social strategy framework if exists
 
 ## Research Process
 
@@ -21,7 +21,7 @@ Research what you should be posting to progress overall life and OS goals.
 
 **Check what's in queue:**
 - `workspace/social-drafts/` - Pending drafts
-- `workers/x-{your-name}/queue.json` - Queued tasks
+- `workers/social/x-poster/queue.json` - Queued tasks
 
 **Check recent activity:**
 - What have you posted recently? (if tracking exists)
@@ -45,9 +45,9 @@ Reference your positioning:
 
 | Goal | Content Angle |
 |------|---------------|
-| **Ralph methodology thought leader** | Posts about autonomous AI, loops, building infrastructure |
-| **e/acc identity** | Pro-technology, abundance mindset, forward-looking |
-| **{Company} CEO** | SMS, e-commerce, AI for brands |
+| **Methodology thought leader** | Posts about autonomous AI, loops, building infrastructure |
+| **Tech-optimist identity** | Pro-technology, abundance mindset, forward-looking |
+| **Company CEO** | SMS, e-commerce, AI for brands |
 | **Startup ecosystem voice** | Disruption observations, founder insights |
 | **Human value in AI age** | Taste, creativity, agency themes |
 
@@ -101,7 +101,7 @@ From social-calendar.md:
 - Taste, creativity, agency observations
 - "X industry is gonna cook" format
 - Platform vs brand dynamics
-- Ralph/autonomous AI insights
+- Autonomous AI insights
 - E-commerce/SMS strategy
 - Disruption predictions
 

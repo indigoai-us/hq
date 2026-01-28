@@ -60,7 +60,7 @@ Based on scope, create drafts in this order:
 **If medium+:**
 - X article (1500-3000 words, Dan Koe style)
   - Structure: Title → Hook → Numbered sections → Protocol → Choice/CTA
-  - See `knowledge/{your-name}/voice-style.md` for X Article format
+  - See `companies/personal/knowledge/voice-style.md` for X Article format
 
 **If deep+:**
 - LinkedIn long post (~300-500 words)
@@ -79,7 +79,7 @@ Update `workspace/social-drafts/INDEX.md` with new entries.
 
 ### 5. Update Queue
 
-Add to `workers/x-{your-name}/queue.json`:
+Add to `workers/social/x-poster/queue.json`:
 ```json
 {
   "id": "{slug}-{type}-001",
@@ -95,7 +95,7 @@ Add to `workers/x-{your-name}/queue.json`:
 
 **ALWAYS generate images as part of content creation.** This happens automatically after writing drafts—do not skip.
 
-1. Create output directory: `workspace/social-drafts/images/{date}-{slug}/`
+1. Create output directory: `repos/private/social-drafts/images/{date}-{slug}/`
 2. Generate one image per style (7 total) for variety:
 
 ```bash
@@ -106,7 +106,7 @@ for style in woodcut grainy minimal blackprint duotone vaporwave liminal; do
   node dist/index.js social "<visual metaphor prompt>" \
     --style $style \
     --variants 1 \
-    --output ~/Documents/HQ/workspace/social-drafts/images/{date}-{slug} \
+    --output ~/Documents/HQ/repos/private/social-drafts/images/{date}-{slug} \
     --metadata
 done
 ```
@@ -176,6 +176,8 @@ git push
 
 Then update `repos/private/social-drafts/index.html` to include the new images in the drafts array.
 
+**Preview site URL:** https://social-drafts.vercel.app
+
 User reviews images at preview site, selects best variant, and approves for posting.
 
 Save selected image to `workspace/social-drafts/images/{date}-{slug}/selected.png`
@@ -221,7 +223,7 @@ Show user:
 - No corporate jargon
 - No hedging
 - Humor: strategic, not forced
-- Emojis: minimal (🫡 occasionally)
+- Emojis: minimal
 
 ## CRITICAL: Humanizer Rules (Anti-AI Slop)
 
@@ -267,17 +269,17 @@ Show user:
 
 ### Before/After Examples:
 
-❌ "This serves as a pivotal moment in the evolution of AI, underscoring its vital role in reshaping how we work."
+BAD: "This serves as a pivotal moment in the evolution of AI, underscoring its vital role in reshaping how we work."
 
-✅ "AI changed how I work. I don't think we're going back."
+GOOD: "AI changed how I work. I don't think we're going back."
 
-❌ "Have you ever wondered what happens when automation takes over? Sound familiar?"
+BAD: "Have you ever wondered what happens when automation takes over? Sound familiar?"
 
-✅ "Automation took over my boring work. Now I do something else with that time."
+GOOD: "Automation took over my boring work. Now I do something else with that time."
 
-❌ "It's not just about the technology — it's about the mindset shift that comes with embracing these groundbreaking tools."
+BAD: "It's not just about the technology — it's about the mindset shift that comes with embracing these groundbreaking tools."
 
-✅ "The technology matters less than deciding to use it differently."
+GOOD: "The technology matters less than deciding to use it differently."
 
 ## Step 8: Mark Idea as Processed
 

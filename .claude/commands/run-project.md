@@ -43,15 +43,38 @@ The orchestrator drives all I/O. Workers are sub-agents that receive instruction
 
 **If `{project}`:**
 - Check `projects/{project}/prd.json` exists
+- If prd.json **MISSING**: STOP immediately. Do not fall back to README.md.
+  ```
+  ERROR: projects/{project}/prd.json not found.
+
+  /run-project requires prd.json (not README.md).
+  Fix: Run /prd {project} to generate prd.json.
+  ```
+- If prd.json **EXISTS**: validate structure (see Step 2)
 - Check if state.json exists (offer resume or restart)
 - Initialize fresh state if new
 
 ### 2. Load Project
 
-Read `projects/{project}/prd.json`:
+Read and validate `projects/{project}/prd.json`:
 ```javascript
 const prd = JSON.parse(read(`projects/${project}/prd.json`))
-const stories = prd.userStories || prd.features
+
+// Strict: userStories required. No fallback.
+const stories = prd.userStories
+if (!stories || !Array.isArray(stories) || stories.length === 0) {
+  STOP: "prd.json has no userStories array (or it's empty). Migrate legacy 'features' key to 'userStories'."
+}
+
+// Validate each story has required fields
+for (const story of stories) {
+  const required = ['id', 'title', 'description', 'passes']
+  const missing = required.filter(f => !(f in story))
+  if (missing.length > 0) {
+    STOP: `Story ${story.id || '?'} missing fields: ${missing.join(', ')}`
+  }
+}
+
 const total = stories.length
 const completed = stories.filter(s => s.passes).length
 const remaining = stories.filter(s => !s.passes)
@@ -374,10 +397,12 @@ Prepend **product-planner** if task spec is unclear or acceptance criteria are v
 - **Handoffs preserve context** — next worker knows what happened
 - **Checkpoint between tasks** — state survives interruptions
 - **Fail fast** — pause on errors, surface to user
+- **prd.json is required** — never read or fall back to README.md
+- **Validate prd.json on load** — fail loudly on missing/malformed fields
 
 ## Integration
 
-- `/newproject` → creates PRD → `/run-project {name}` executes it
+- `/prd` → creates PRD → `/run-project {name}` executes it
 - `/execute-task {project}/{id}` → runs single task with same pipeline (standalone)
 - `/run-project --resume` → continues after pause or context reset
 - `/nexttask` → shows active projects from /run-project

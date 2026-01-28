@@ -10,7 +10,7 @@ Create a new worker with proper structure, skills, and verification.
 **Technology:** All HQ workers use TypeScript + Node.js (ESM). No Python for new workers.
 
 **PRDs live in `projects/`** - Workers reference them, don't create their own. If the worker needs a PRD:
-1. Run `/newproject {worker-name}` first to create the PRD
+1. Run `/prd {worker-name}` first to create the PRD
 2. Then return to `/newworker` to create the worker that references it
 
 ## Context to Load First
@@ -25,7 +25,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-corey")
+- **What's its name/id?** (e.g., "competitive-researcher", "x-poster")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -112,7 +112,7 @@ Workers can get tasks from:
 
 1. **Project PRD** (recommended): `projects/{project-name}/prd.json`
    - For workers that implement features
-   - Reference existing project or create one with `/newproject`
+   - Reference existing project or create one with `/prd`
 
 2. **Queue file**: `workers/{worker-id}/queue.json`
    - For workers with simple, repeating tasks (posting, monitoring)
@@ -139,4 +139,4 @@ Provide next steps:
 1. "Worker created at `workers/{worker-id}/`"
 2. "Test with on-demand execution first"
 3. If using queue: "Add tasks to queue.json to get started"
-4. If using PRD: "Run `/newproject {project-name}` to create the PRD, then link it in worker.yaml"
+4. If using PRD: "Run `/prd {project-name}` to create the PRD, then link it in worker.yaml"

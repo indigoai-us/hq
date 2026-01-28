@@ -84,7 +84,7 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                           # BM25 keyword search (default)
 /search "how do workers execute" --mode vsearch  # Semantic
-/search brand strategy --mode query     # Hybrid with re-ranking
+/search brand --mode query              # Hybrid with re-ranking
 /search stripe -n 20                    # More results
 /search authentication --full           # Show top match content
 ```
