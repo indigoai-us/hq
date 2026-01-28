@@ -12,11 +12,11 @@ Personal OS for orchestrating AI workers, projects, and content.
 
 ```
 HQ/
-├── .claude/commands/   # 22 slash commands
+├── .claude/commands/   # 29 slash commands
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
-├── knowledge/          # HQ-level (Ralph, workers, security)
+├── knowledge/          # HQ-level (Ralph, workers, security, pure-ralph, projects)
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
 │   ├── dev-team/       # 13 code workers
@@ -63,6 +63,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/prd` | Generate PRD through discovery |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Run single task with workers |
+| `/pure-ralph` | External terminal orchestrator for autonomous PRD execution |
 
 ### Content
 | Command | Purpose |
@@ -70,6 +71,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/contentidea` | Build idea into content suite |
 | `/suggestposts` | Research-driven suggestions |
 | `/scheduleposts` | Choose what to post |
+| `/humanize` | Remove AI writing patterns from drafts |
 
 ### Workers
 | Command | Purpose |
@@ -78,13 +80,19 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/newworker` | Create new worker |
 | `/metrics` | View execution metrics |
 
+### Design
+| Command | Purpose |
+|---------|---------|
+| `/svg` | Generate minimalist abstract white line SVG graphics |
+| `/design-iterate` | Design A/B testing |
+
 ### System
 | Command | Purpose |
 |---------|---------|
-| `/search` | Full-text search across HQ |
+| `/search` | Semantic + full-text search across HQ (qmd-powered) |
+| `/search-reindex` | Reindex and re-embed HQ for qmd search |
 | `/hq-sync` | Sync modules from manifest |
 | `/cleanup` | Audit and clean HQ |
-| `/design-iterate` | Design A/B testing |
 
 ## Auto-Checkpoint (PostToolsHook)
 
@@ -97,6 +105,17 @@ Sessions auto-save to `workspace/threads/` after:
 **Thread Format:** `T-{timestamp}-{slug}.json`
 
 **Why:** Prevents lost work, enables session resumption, provides audit trail.
+
+## Search (qmd)
+
+HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
+
+**Commands (run via Bash tool):**
+- `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
+- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
+- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
+
+**Slash commands:** `/search <query>`, `/search-reindex`
 
 ## Core Principles
 

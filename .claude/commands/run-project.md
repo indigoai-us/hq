@@ -6,30 +6,25 @@ argument-hint: [project-name] or [--resume project] or [--status]
 
 # /run-project - Project Orchestrator Loop
 
-The Ralph loop orchestrator. Manages a project from start to finish, spawning task executors for each story.
+Loom-inspired Ralph loop. The orchestrator is the **caller** — it drives the worker pipeline directly. Each task is classified, routed through a worker sequence, and each worker is a fresh sub-agent.
 
 **Arguments:** $ARGUMENTS
 
-## Ralph Principle
+## Core Pattern (Loom-Style)
 
-"A for loop beats elaborate orchestration."
-
-- Orchestrator stays lean (<30% context)
-- Spawns sub-agents for implementation
-- One task at a time, one project at a time
-- Fresh context per task prevents rot
+The orchestrator drives all I/O. Workers are sub-agents that receive instructions and return results. The orchestrator:
+- Classifies tasks
+- Selects worker sequences
+- Spawns each worker with full context
+- Collects results and passes handoff context to next worker
+- Runs post-task hooks (PRD update, learnings)
 
 ## Usage
 
 ```bash
-# Start new project execution
-/run-project campaign-migration
-
-# Resume paused project
-/run-project --resume campaign-migration
-
-# Check all project status
-/run-project --status
+/run-project campaign-migration        # Start new
+/run-project --resume campaign-migration # Resume paused
+/run-project --status                   # Check all projects
 ```
 
 ## Process
@@ -42,12 +37,12 @@ The Ralph loop orchestrator. Manages a project from start to finish, spawning ta
 - Exit
 
 **If `--resume {project}`:**
-- Load existing state from `workspace/orchestrator/{project}/state.json`
-- Find last completed task
-- Continue from next task
+- Load state from `workspace/orchestrator/{project}/state.json`
+- Find last completed task, continue from next
+- If a task was mid-pipeline (has execution state with incomplete phases), resume from the incomplete phase
 
 **If `{project}`:**
-- Check if `projects/{project}/prd.json` exists
+- Check `projects/{project}/prd.json` exists
 - Check if state.json exists (offer resume or restart)
 - Initialize fresh state if new
 
@@ -66,28 +61,19 @@ const remaining = stories.filter(s => !s.passes)
 
 ```
 Project: {project}
-PRD: projects/{project}/prd.json
-
-Progress: {completed}/{total} stories ({percentage}%)
-[=========>          ]
-
-Completed:
-  - {id}: {title}
-  - {id}: {title}
+Progress: {completed}/{total} ({percentage}%)
 
 Remaining:
   1. {id}: {title} (next)
   2. {id}: {title}
-  3. {id}: {title}
 
-Continue execution? [Y/n]
+Continue? [Y/n]
 ```
 
 ### 4. Initialize/Load State
 
-**New project:**
 ```bash
-mkdir -p workspace/orchestrator/{project}
+mkdir -p workspace/orchestrator/{project}/executions
 ```
 
 Write `workspace/orchestrator/{project}/state.json`:
@@ -98,24 +84,11 @@ Write `workspace/orchestrator/{project}/state.json`:
   "status": "in_progress",
   "started_at": "{ISO8601}",
   "updated_at": "{ISO8601}",
-  "progress": {
-    "total": 11,
-    "completed": 0,
-    "failed": 0,
-    "in_progress": 0
-  },
+  "progress": { "total": 0, "completed": 0, "failed": 0, "in_progress": 0 },
   "current_task": null,
   "completed_tasks": [],
-  "learnings_pushed": 0,
   "retries": 0
 }
-```
-
-Create `workspace/orchestrator/{project}/progress.txt`:
-```
-# Project: {project}
-# Started: {date}
-
 ```
 
 ### 5. The Loop
@@ -123,195 +96,249 @@ Create `workspace/orchestrator/{project}/progress.txt`:
 ```
 while (remaining tasks with passes: false):
 
-    1. SELECT next task
-       - Priority order from PRD
-       - Respect dependsOn (skip if dependencies not complete)
-       - First incomplete task that's unblocked
+    5a. SELECT next task
+        - Priority order from PRD
+        - Respect dependsOn (skip if deps incomplete)
+        - First incomplete + unblocked task
 
-    2. LOG to progress.txt
-       [{timestamp}] Starting: {task.id} - {task.title}
+    5b. CLASSIFY task type
+        Analyze title, description, acceptance criteria:
 
-    3. UPDATE state
-       current_task = {id, started_at}
-       progress.in_progress = 1
+        | Type             | Indicators                                          |
+        |------------------|-----------------------------------------------------|
+        | schema_change    | database, migration, schema, table, column, prisma  |
+        | api_development  | endpoint, API, REST, GraphQL, route, service        |
+        | ui_component     | component, page, form, button, React, UI            |
+        | full_stack       | Combination of backend + frontend indicators        |
+        | content          | copy, messaging, brand voice, content, SEO          |
+        | enhancement      | animation, polish, refactor, optimization           |
 
-    4. SPAWN task executor
-       Use Task tool:
-       Task({
-         subagent_type: "general-purpose",
-         prompt: "Execute /execute-task {project}/{task.id}
+    5c. SELECT worker sequence
+        Based on type, pick worker pipeline:
 
-                  This task: {task.title}
-                  Acceptance: {task.acceptance_criteria}
+        schema_change:    database-dev → backend-dev → code-reviewer → dev-qa-tester
+        api_development:  backend-dev → code-reviewer → dev-qa-tester
+        ui_component:     frontend-dev → motion-designer → code-reviewer → dev-qa-tester
+        full_stack:       architect → database-dev → backend-dev → frontend-dev → code-reviewer → dev-qa-tester
+        content:          content-brand → content-product → content-sales → content-legal
+        enhancement:      (relevant dev based on files) → code-reviewer
 
-                  Complete all phases. Return when done.",
-         description: "execute-task {task.id}"
-       })
+        If task has unclear spec, prepend product-planner to sequence.
 
-    5. WAIT for completion
-       Task tool returns when sub-agent finishes
+        Report plan:
+        ```
+        Task: {id} - {title}
+        Type: {type}
+        Pipeline: {worker1} → {worker2} → {worker3}
+        ```
 
-    6. READ results
-       - Check workspace/orchestrator/{project}/executions/{task.id}.json
-       - Check if task.passes updated in PRD
-       - Check workspace/learnings/{project}/{task.id}.json
+    5d. INITIALIZE execution state
+        Write workspace/orchestrator/{project}/executions/{task-id}.json:
+        {
+          "task_id": "{id}",
+          "status": "in_progress",
+          "started_at": "{ISO8601}",
+          "current_phase": 1,
+          "phases": [
+            {"worker": "backend-dev", "status": "pending"},
+            {"worker": "code-reviewer", "status": "pending"}
+          ],
+          "handoffs": []
+        }
 
-    7. PROCESS results
-       If success:
-         - Update state: completed_tasks.push({...})
-         - Update progress counts
-         - Log to progress.txt
-         - Continue loop
+    5e. EXECUTE worker pipeline
+        For each worker in sequence:
 
-       If failure:
-         - Update state: failed++, status: "paused"
-         - Log error to progress.txt
-         - Present recovery options
-         - Wait for user decision
+        i. LOAD worker config
+           Read workers/dev-team/{worker-id}/worker.yaml
+           (or workers/{worker-id}/worker.yaml for non-dev-team)
+           Extract: instructions, context.base files, verification.post_execute
 
-    8. CHECK context budget
-       If orchestrator feels slow or context > 30%:
-         - Save state
-         - Suggest: "Context filling. Run /run-project --resume {project}"
+        ii. BUILD worker prompt
+            ```
+            ## You are: {worker.name} ({worker.description})
+
+            ## Task: {task.id} - {task.title}
+
+            ### Description
+            {task.description}
+
+            ### Acceptance Criteria
+            {task.acceptance_criteria as checklist}
+
+            ### Files to Focus On
+            {task.files or inferred from description}
+
+            ### Context from Previous Worker
+            {handoff JSON from previous worker, or "First in pipeline — no prior context."}
+
+            ### Your Instructions
+            {worker.yaml instructions}
+
+            ### Back Pressure (MUST run before completing)
+            {worker.yaml verification.post_execute commands}
+            If no specific commands: run typecheck, lint, tests, build as applicable.
+
+            ### Output Requirements
+            When complete, output this JSON block:
+            ```json
+            {
+              "summary": "What you accomplished",
+              "files_created": ["paths"],
+              "files_modified": ["paths"],
+              "key_decisions": ["decision and rationale"],
+              "context_for_next": "What the next worker needs to know",
+              "back_pressure": {
+                "tests": "pass|fail|skipped",
+                "lint": "pass|fail|skipped",
+                "typecheck": "pass|fail|skipped",
+                "build": "pass|fail|skipped"
+              },
+              "issues": ["any blocking issues"]
+            }
+            ```
+            ```
+
+        iii. SPAWN worker sub-agent
+             Task({
+               subagent_type: "general-purpose",
+               prompt: {built prompt},
+               description: "{worker-id} for {task.id}"
+             })
+
+        iv. PROCESS worker output
+            Parse the JSON output block.
+
+            If back pressure has failures:
+              - Retry ONCE with error context appended to prompt
+              - If still fails → pause, report to user
+
+            If issues array is non-empty:
+              - Log issues
+              - If blocking → pause, ask user
+
+            If success:
+              - Store output as handoff context for next worker
+              - Update execution state: phase status → completed
+              - Advance to next worker
+
+        v. UPDATE execution state after each phase
+           Update workspace/orchestrator/{project}/executions/{task-id}.json:
+           - Mark completed phase
+           - Add handoff to handoffs array
+           - Increment current_phase
+
+    5f. POST-TASK HOOK (after all workers complete)
+
+        i. Update PRD
+           Set task.passes = true in projects/{project}/prd.json
+
+        ii. Write learning entry
+            workspace/learnings/{project}/{task-id}.json:
+            {
+              "task_id": "{id}",
+              "project": "{project}",
+              "created_at": "{ISO8601}",
+              "task_type": "{classified type}",
+              "workers_used": ["list"],
+              "key_decisions": ["aggregated from all phases"],
+              "insights": ["extracted from worker outputs"]
+            }
+
+        iii. Update state.json
+             - completed_tasks.push({id, completed_at, workers_used})
+             - progress.completed++
+             - current_task = null
+
+        iv. Log to progress.txt
+            [{timestamp}] Completed: {task.id} - {task.title}
+              Pipeline: {worker1} → {worker2} → {worker3}
+              Progress: {completed}/{total}
+
+    5g. CHECK context budget
+        If context feels heavy or > 30%:
+          - Save state
+          - Suggest: "Context filling. Run /run-project --resume {project}"
 ```
 
-### 6. Handle Task Completion
+### 6. Handle Task Failure
 
-After each successful task:
-
-```
-[{timestamp}] Completed: {task.id} - {task.title}
-  Workers: {workers used}
-  Time: {duration}
-  Learning: workspace/learnings/{project}/{task.id}.json
-
-Progress: {completed}/{total} ({percentage}%)
-```
-
-Update state.json:
-```json
-{
-  "completed_tasks": [
-    ...,
-    {
-      "id": "{task.id}",
-      "completed_at": "{ISO8601}",
-      "workers_used": ["backend-engineer", "code-reviewer"],
-      "duration_ms": 180000,
-      "learning_id": "learn-{task.id}"
-    }
-  ]
-}
-```
-
-### 7. Handle Task Failure
-
-If task executor reports failure:
+If any worker phase fails after retry:
 
 ```
-Task Failed: {task.id} - {task.title}
+Phase {N} ({worker}) failed for {task.id}
 
-Error: {error details}
-Phase: {which worker failed}
-Attempts: {retry count}
+Error: {details}
+Attempts: {count}
 
 Options:
-1. Retry this task
-2. Skip and continue to next task
-3. Pause project (fix manually, then --resume)
-4. Abort project
+1. Retry this worker phase
+2. Skip worker, continue pipeline
+3. Pause project (/run-project --resume {project})
+4. Abort
 ```
 
-Use AskUserQuestion for decision.
+Use AskUserQuestion.
 
-### 8. Complete Project
+### 7. Complete Project
 
 When all stories have `passes: true`:
 
-#### 8a. Generate Report
-
+**Generate report:**
 ```
 Project Complete: {project}
 
-Summary:
-  Total tasks: {total}
-  Completed: {completed}
-  Duration: {total time}
-
-Tasks:
-  - {id}: {title} ({duration})
-  - {id}: {title} ({duration})
-  ...
-
-Workers Used:
-  - backend-engineer: {N} tasks
-  - frontend-engineer: {N} tasks
-  - code-reviewer: {N} tasks
-
-Learnings Generated: {count}
+Tasks: {completed}/{total}
+Workers Used: {worker}: {N} tasks, ...
+Learnings: {count}
 ```
 
-#### 8b. Aggregate Learnings
+**Aggregate learnings** from `workspace/learnings/{project}/*.json` into `knowledge/workers/{project}-learnings.md`.
 
-Read all `workspace/learnings/{project}/*.json` and aggregate patterns:
+**Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
 
-Write to `knowledge/workers/{project}-learnings.md`:
-```markdown
-# Learnings from {project}
-
-## Patterns That Worked
-- {pattern from insights.what_worked}
-
-## Key Decisions
-- {aggregated decisions}
-
-## For Future Projects
-- {aggregated for_next_time}
-```
-
-#### 8c. Update State
-
-```json
-{
-  "status": "completed",
-  "completed_at": "{ISO8601}",
-  "progress": {
-    "total": 11,
-    "completed": 11,
-    "failed": 0,
-    "in_progress": 0
-  }
-}
-```
-
-#### 8d. Final Log
-
-Append to progress.txt:
-```
-[{timestamp}] PROJECT COMPLETE
-  Total time: {duration}
-  Tasks: {count}
-  Learnings: {count}
-```
-
-### 9. Status Display (--status)
-
-When called with `--status`:
+### 8. Status Display (--status)
 
 ```
 Project Status
 
 ACTIVE:
-  campaign-migration
-    Progress: 5/11 (45%)
-    Current: CAM-006 (backend-engineer phase)
-    Started: 2h ago
+  campaign-migration — 5/11 (45%) — backend-dev phase on CAM-006
 
 PAUSED:
   (none)
 
 COMPLETED:
-  user-auth (3 days ago) - 8/8 tasks
+  user-auth (3d ago) — 8/8
+```
+
+## Worker Pipeline Reference
+
+| Task Type | Worker Sequence |
+|-----------|----------------|
+| schema_change | database-dev → backend-dev → code-reviewer → dev-qa-tester |
+| api_development | backend-dev → code-reviewer → dev-qa-tester |
+| ui_component | frontend-dev → motion-designer → code-reviewer → dev-qa-tester |
+| full_stack | architect → database-dev → backend-dev → frontend-dev → code-reviewer → dev-qa-tester |
+| content | content-brand → content-product → content-sales → content-legal |
+| enhancement | (relevant dev) → code-reviewer |
+
+Prepend **product-planner** if task spec is unclear or acceptance criteria are vague.
+
+## Handoff Context Format
+
+```json
+{
+  "from_worker": "backend-dev",
+  "to_worker": "code-reviewer",
+  "timestamp": "ISO8601",
+  "summary": "What was accomplished",
+  "files_created": ["src/services/foo.ts"],
+  "files_modified": ["src/index.ts"],
+  "key_decisions": ["Used strategy pattern"],
+  "context_for_next": "Focus review on cache invalidation",
+  "back_pressure": { "tests": "pass", "lint": "pass", "typecheck": "pass" }
+}
 ```
 
 ## State File Format
@@ -324,88 +351,33 @@ COMPLETED:
   "status": "in_progress|paused|completed",
   "started_at": "ISO8601",
   "updated_at": "ISO8601",
-  "completed_at": "ISO8601 (if completed)",
-
-  "progress": {
-    "total": 11,
-    "completed": 5,
-    "failed": 0,
-    "in_progress": 1
-  },
-
+  "progress": { "total": 11, "completed": 5, "failed": 0, "in_progress": 1 },
   "current_task": {
     "id": "CAM-006",
     "started_at": "ISO8601",
     "phase": 2,
-    "worker": "backend-engineer"
+    "worker": "backend-dev"
   },
-
   "completed_tasks": [
-    {
-      "id": "CAM-001",
-      "completed_at": "ISO8601",
-      "workers_used": ["product-planner", "backend-engineer", "code-reviewer"],
-      "duration_ms": 180000,
-      "learning_id": "learn-CAM-001"
-    }
+    { "id": "CAM-001", "completed_at": "ISO8601", "workers_used": ["backend-dev", "code-reviewer"] }
   ],
-
-  "failed_tasks": [],
-
-  "learnings_pushed": 5,
-  "retries": 1,
-
-  "context_checkpoints": [
-    {"at_task": "CAM-003", "reason": "context filling"}
-  ]
+  "retries": 0
 }
-```
-
-## Progress File Format
-
-`workspace/orchestrator/{project}/progress.txt`:
-```
-# Project: campaign-migration
-# Started: 2026-01-24 10:00
-
-[2026-01-24 10:00:15] Starting project execution
-[2026-01-24 10:00:20] Task: CAM-001 - Campaign List View (starting)
-[2026-01-24 10:15:32] Task: CAM-001 - Campaign List View (completed)
-  Workers: product-planner → backend-engineer → code-reviewer
-  Duration: 15m 12s
-[2026-01-24 10:15:35] Task: CAM-002 - Campaign Detail View (starting)
-...
 ```
 
 ## Rules
 
-- **ONE project at a time** - Never run multiple projects concurrently
-- **Orchestrator doesn't implement** - Always spawn sub-agents
-- **Checkpoint early, checkpoint often** - State survives interruptions
-- **Dependencies matter** - Never start task if dependsOn incomplete
-- **Learn from every task** - Capture insights, aggregate patterns
-- **Fail gracefully** - Pause on errors, offer recovery options
+- **ONE project at a time**
+- **Orchestrator classifies + routes, workers implement** — never implement directly
+- **Fresh sub-agent per worker** — no context accumulation
+- **Back pressure is mandatory** — no skipping tests/lint/typecheck
+- **Handoffs preserve context** — next worker knows what happened
+- **Checkpoint between tasks** — state survives interruptions
+- **Fail fast** — pause on errors, surface to user
 
 ## Integration
 
-### With /newproject
-```
-/newproject → creates PRD
-/run-project {name} → executes PRD
-```
-
-### With /nexttask
-```
-/nexttask shows active projects from /run-project
-```
-
-### With /checkpoint
-```
-/run-project auto-checkpoints between tasks
-```
-
-### With /handoff
-```
-/handoff preserves project state
-/run-project --resume continues
-```
+- `/newproject` → creates PRD → `/run-project {name}` executes it
+- `/execute-task {project}/{id}` → runs single task with same pipeline (standalone)
+- `/run-project --resume` → continues after pause or context reset
+- `/nexttask` → shows active projects from /run-project

@@ -4,6 +4,49 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v3.0.0 (from v2.1.0)
+
+### New Skills
+Copy these files to your `.claude/commands/`:
+- `humanize.md` - Remove AI writing patterns from drafts
+- `pure-ralph.md` - External terminal orchestrator for autonomous PRD execution
+- `svg.md` - Generate minimalist abstract white line SVG graphics
+- `search-reindex.md` - Reindex and re-embed HQ for qmd search
+
+### Updated Skills
+The following skills have significant updates. Review and merge:
+- `search.md` - **Breaking:** Complete rewrite to qmd-powered search (BM25, semantic, hybrid). Includes grep fallback if qmd is not installed.
+- `handoff.md` - Added step 4: search index update (`qmd update && qmd embed`)
+- `run-project.md` - Updated orchestration pattern with inline worker pipeline execution
+- `execute-task.md` - Worker names aligned with dev-team IDs (`backend-dev`, `frontend-dev`, `dev-qa-tester`, etc.); added `content` task type
+
+### New Knowledge
+Copy these directories to your `knowledge/`:
+- `pure-ralph/` - Branch workflow, learnings
+- `hq/` - Checkpoint schema
+- `projects/` - Project creation guidelines and templates
+- `design-styles/ethereal-abstract.md` - Ethereal abstract style guide
+- `design-styles/liminal-portal.md` - Liminal portal style guide
+
+### Install qmd (Optional)
+[qmd](https://github.com/tobi/qmd) powers the new `/search` command with semantic + full-text search.
+
+```bash
+# Install qmd (requires Go)
+go install github.com/tobi/qmd@latest
+
+# Index your HQ
+cd ~/Documents/HQ
+qmd update && qmd embed
+```
+
+If qmd is not installed, `/search` falls back to grep-based search.
+
+### Breaking Changes
+- `/search` syntax changed from grep-based to qmd queries. Install qmd or use the built-in fallback.
+
+---
+
 ## Migrating to v2.1.0 (from v2.0.0)
 
 ### New Skills

@@ -1,5 +1,30 @@
 # Changelog
 
+## v3.0.0 (2026-01-27)
+
+### Added
+- **`/humanize`** - Remove AI writing patterns from drafts
+- **`/pure-ralph`** - External terminal orchestrator for autonomous PRD execution
+- **`/svg`** - Generate minimalist abstract white line SVG graphics
+- **`/search-reindex`** - Reindex and re-embed HQ for qmd search
+- `knowledge/pure-ralph/` - Pure Ralph loop patterns, branch workflow, and learnings
+- `knowledge/design-styles/ethereal-abstract.md` - Ethereal abstract style guide
+- `knowledge/design-styles/liminal-portal.md` - Liminal portal style guide
+- `knowledge/hq/checkpoint-schema.json` - Checkpoint data format
+- `knowledge/projects/` - Project creation guidelines and templates
+
+### Changed
+- **`/search`** - Upgraded to qmd-powered semantic + full-text search (BM25, vector, hybrid modes)
+- **`/handoff`** - Added search index update step (`qmd update && qmd embed`)
+- **`/run-project`** - Updated orchestration pattern with inline worker pipeline execution
+- **`/execute-task`** - Worker names aligned with actual dev-team worker IDs; added `content` task type
+- **`.claude/CLAUDE.md`** - Updated command count (22 → 29), added Design section, qmd Search section, new knowledge refs
+
+### Breaking
+- `/search` syntax changed to qmd-based queries. Install [qmd](https://github.com/tobi/qmd) or use the built-in grep fallback.
+
+---
+
 ## v2.1.0 (2026-01-26)
 
 ### Added

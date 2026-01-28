@@ -26,7 +26,13 @@ Prepare for a new session to continue this work.
      - Workers from `workers/registry.yaml`
      - Recent threads from `workspace/threads/`
 
-4. **Write handoff note** to `workspace/threads/handoff.json`:
+4. **Update search index**
+   ```bash
+   qmd update && qmd embed
+   ```
+   Ensures any content created this session is searchable in the next.
+
+5. **Write handoff note** to `workspace/threads/handoff.json`:
    ```json
    {
      "created_at": "ISO8601 timestamp",
@@ -37,7 +43,7 @@ Prepare for a new session to continue this work.
    }
    ```
 
-5. **Report**
+6. **Report**
    ```
    Handoff ready.
 

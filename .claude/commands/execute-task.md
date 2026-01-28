@@ -78,35 +78,41 @@ Based on task type, determine worker sequence:
 ```yaml
 schema_change:
   - product-planner (if spec unclear)
-  - database-engineer
-  - backend-engineer
+  - database-dev
+  - backend-dev
   - code-reviewer
-  - qa-tester
+  - dev-qa-tester
 
 api_development:
   - product-planner (if spec unclear)
-  - backend-engineer
+  - backend-dev
   - code-reviewer
-  - qa-tester
+  - dev-qa-tester
 
 ui_component:
   - product-planner (if spec unclear)
-  - frontend-engineer
-  - design-engineer
+  - frontend-dev
+  - motion-designer
   - code-reviewer
-  - qa-tester
+  - dev-qa-tester
 
 full_stack:
   - product-planner
-  - database-engineer
-  - backend-engineer
-  - frontend-engineer
-  - design-engineer
+  - architect
+  - database-dev
+  - backend-dev
+  - frontend-dev
   - code-reviewer
-  - qa-tester
+  - dev-qa-tester
+
+content:
+  - content-brand
+  - content-product
+  - content-sales
+  - content-legal
 
 enhancement:
-  - (relevant engineer based on files)
+  - (relevant dev based on files)
   - code-reviewer
 ```
 
@@ -118,9 +124,9 @@ Present plan:
 ```
 Execution Plan for {task.id}:
 
-Phase 1: backend-engineer → Implement service
+Phase 1: backend-dev → Implement service
 Phase 2: code-reviewer → Review changes
-Phase 3: qa-tester → Verify implementation
+Phase 3: dev-qa-tester → Verify implementation
 
 Proceed? [Y/n]
 ```
@@ -142,9 +148,9 @@ Write to `workspace/orchestrator/{project}/executions/{task-id}.json`:
   "status": "in_progress",
   "current_phase": 1,
   "phases": [
-    {"worker": "backend-engineer", "status": "pending"},
+    {"worker": "backend-dev", "status": "pending"},
     {"worker": "code-reviewer", "status": "pending"},
-    {"worker": "qa-tester", "status": "pending"}
+    {"worker": "dev-qa-tester", "status": "pending"}
   ],
   "handoffs": []
 }
@@ -156,7 +162,7 @@ For each worker in sequence:
 
 #### 6a. Load Worker Config
 
-Read `workers/{category}/{worker}/worker.yaml`:
+Read `workers/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/worker.yaml` for non-dev-team):
 - `instructions` - Worker's role and process
 - `context.base` - Files worker always needs
 - `skills.installed` - Worker's skills
@@ -234,13 +240,13 @@ After each phase:
 ```json
 {
   "phases": [
-    {"worker": "backend-engineer", "status": "completed", "completed_at": "..."},
+    {"worker": "backend-dev", "status": "completed", "completed_at": "..."},
     {"worker": "code-reviewer", "status": "in_progress"},
     ...
   ],
   "handoffs": [
     {
-      "from": "backend-engineer",
+      "from": "backend-dev",
       "to": "code-reviewer",
       "context": {...worker output...}
     }
@@ -325,7 +331,7 @@ Context passed between workers:
 
 ```json
 {
-  "from_worker": "backend-engineer",
+  "from_worker": "backend-dev",
   "to_worker": "code-reviewer",
   "timestamp": "ISO8601",
   "summary": "1-2 sentence description",

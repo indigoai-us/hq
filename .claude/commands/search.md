@@ -1,90 +1,99 @@
 ---
-description: Search across HQ
-allowed-tools: Bash, Grep, Read
-argument-hint: <query>
+description: Search across HQ (qmd-powered semantic + full-text)
+allowed-tools: Bash, Read
+argument-hint: <query> [--mode search|vsearch|query] [-n count] [--full]
 ---
 
-# /search - Full-Text Search
+# /search - HQ Search (qmd)
 
-Search across threads, checkpoints, PRDs, reports, and workers.
+Semantic + full-text search across all HQ content using qmd.
 
 **Query:** $ARGUMENTS
 
-## Searchable Locations
+## Parse Arguments
 
-| Location | Content |
-|----------|---------|
-| `workspace/threads/` | Thread history (rich context) |
-| `workspace/checkpoints/` | Legacy checkpoints |
-| `projects/*/prd.json` | Project PRDs |
-| `workspace/reports/` | Generated reports |
-| `workers/*/worker.yaml` | Worker definitions |
-| `knowledge/` | Knowledge bases |
+Extract from $ARGUMENTS:
+- `query` — search text (everything except flags)
+- `--mode` — `search` (BM25), `vsearch` (semantic), `query` (hybrid). Default: `search`
+- `-n` — result count (default: 10)
+- `--full` — show full content of top result
 
-## Process
+## Execute Search
 
-1. **Parse query**
-   - Extract search terms from $ARGUMENTS
-   - Support quoted phrases: `"exact match"`
+Run the matching qmd command:
 
-2. **Search each location**
-   ```bash
-   # Threads (most recent first)
-   grep -rl "$QUERY" workspace/threads/ 2>/dev/null | head -20
+**Default (BM25 full-text):**
+```bash
+qmd search "$QUERY" -n 10 --json
+```
 
-   # Checkpoints
-   grep -rl "$QUERY" workspace/checkpoints/ 2>/dev/null | head -10
+**Semantic (conceptual match):**
+```bash
+qmd vsearch "$QUERY" -n 10 --json
+```
 
-   # PRDs
-   grep -rl "$QUERY" projects/*/prd.json 2>/dev/null | head -10
+**Hybrid (BM25 + vector + re-rank):**
+```bash
+qmd query "$QUERY" -n 10 --json
+```
 
-   # Reports
-   grep -rl "$QUERY" workspace/reports/ 2>/dev/null | head -10
+## Display Results
 
-   # Workers
-   grep -rl "$QUERY" workers/ 2>/dev/null | head -10
+Parse JSON output. Display:
 
-   # Knowledge
-   grep -rl "$QUERY" knowledge/ 2>/dev/null | head -10
-   ```
+```
+Search: "{query}" (mode: {mode})
 
-3. **Rank results**
-   - Threads: by recency (newest first)
-   - Others: by match count
+Results:
+  1. [0.92] knowledge/Ralph/02-core-concepts.md
+     "Ralph methodology emphasizes small loops with human checkpoints..."
 
-4. **Display results**
-   ```
-   Search: "{query}"
+  2. [0.84] .claude/commands/run-project.md
+     "Run a project through the Ralph loop..."
 
-   Threads (3 matches):
-     T-20260123-143052-mrr-report    2 hours ago   "MRR Report Jan 2026"
-     T-20260122-091500-email-fix     1 day ago     "Fixed email worker"
-     T-20260120-160000-dashboard     3 days ago    "Dashboard updates"
+  3. [0.71] workers/dev-team/architect/skills/design-review.md
+     "Architecture review following Ralph back-pressure patterns..."
 
-   Workers (1 match):
-     workers/cfo-{company}/        "CFO Worker - {company}"
+{n} results. Use --full to show top result content.
+```
 
-   PRDs (1 match):
-     projects/customer-cube/prd.json "Customer Cube Analytics"
+- Score in brackets
+- Relative path (strip `qmd://hq/` prefix)
+- Snippet truncated to ~100 chars
 
-   Use: /search "{more specific query}" to narrow results
-   ```
+## Full Content
 
-5. **Show context for top result**
-   - If only 1 match, show snippet
-   - If thread match, show summary + files_touched
+If `--full` flag, after listing results, read top result file with Read tool.
+
+## Fallback
+
+If qmd errors or isn't installed:
+
+```bash
+grep -rl "$QUERY" ~/Documents/HQ/knowledge/ \
+  ~/Documents/HQ/companies/ \
+  ~/Documents/HQ/workers/ \
+  ~/Documents/HQ/.claude/commands/ \
+  ~/Documents/HQ/workspace/ 2>/dev/null | head -20
+```
+
+Display: "qmd unavailable, falling back to grep"
 
 ## Examples
 
 ```bash
-/search mrr                    # Find anything mentioning MRR
-/search "customer cube"        # Exact phrase
-/search {company} finance      # Multiple terms (AND)
-/search T-2026                 # Find threads by ID prefix
+/search ralph                           # BM25 keyword search (default)
+/search "how do workers execute" --mode vsearch  # Semantic
+/search brand strategy --mode query     # Hybrid with re-ranking
+/search stripe -n 20                    # More results
+/search authentication --full           # Show top match content
 ```
 
 ## Notes
 
-- Search is case-insensitive
-- Results limited to top 10 per category
+- Default `search` mode is fastest — use for exact keywords
+- Use `--mode vsearch` for conceptual/semantic queries
+- Use `--mode query` for highest quality (slower, uses LLM re-ranking)
+- Scores 0.0-1.0; above 0.5 is a good match
+- Run `/search-reindex` after adding new content
 - For code search in repos, use Grep tool directly
