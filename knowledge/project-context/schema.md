@@ -132,7 +132,85 @@ Workers load context before starting work:
 5. Check `decisions.md` if making architectural choices
 6. Check `learnings.md` for tips and gotchas
 
+## Discovery Methods
+
+There are two main approaches to creating project context:
+
+### Quick Discovery: `/run context-manager discover`
+
+Automatic extraction from repository analysis. Best for:
+- Initial context bootstrapping
+- Projects with good documentation
+- Quick updates when codebase changes
+
+```bash
+# Automatic mode (analyzes repo structure)
+/run context-manager discover --project my-project
+
+# With explicit repo path
+/run context-manager discover --project my-project --repo C:/path/to/repo
+
+# Update existing context incrementally
+/run context-manager discover --project my-project --update
+```
+
+Modes available:
+- `automatic` (default) - Analyze repo structure, extract context
+- `conversational` - Interview to gather context
+- `manual` - User fills templates directly
+
+### Deep Discovery: `/understand-project`
+
+Interview-based discovery with human verification. Best for:
+- Complex or nuanced projects
+- When code doesn't tell the whole story
+- Capturing tribal knowledge and business context
+- Maximum alignment between AI and human understanding
+
+```bash
+# Full interview-based discovery
+/understand-project my-project --repo C:/path/to/repo
+```
+
+**Process:**
+1. **Analyze** - Automatic repo scan
+2. **Present** - "Here's what I understand..."
+3. **Probe** - Ask targeted questions per section
+4. **Verify** - User confirms, corrects, expands
+5. **Write** - Create verified context files with confidence levels
+
+**Output includes:**
+- Context files with verification notes (e.g., `<!-- Verified via interview Q2.1 -->`)
+- `interview-log.md` preserving Q&A for future reference
+- Confidence ratings per section
+
+### When to Use Which
+
+| Situation | Use |
+|-----------|-----|
+| New project with good README | `/run context-manager discover` |
+| Complex domain with business rules | `/understand-project` |
+| Quick refresh after changes | `/run context-manager discover --update` |
+| Onboarding to unfamiliar codebase | `/understand-project` |
+| Multiple team members have context | `/understand-project` (run with each) |
+
+## Context in External Repos
+
+For projects targeting external repositories (not within HQ), context files can be written directly to the target repo:
+
+```
+{target-repo}/
+└── context/
+    ├── overview.md
+    ├── architecture.md
+    ├── domain.md
+    └── interview-log.md
+```
+
+This keeps context close to the code it describes.
+
 ## See Also
 
 - [Templates](./templates/) - File templates with required sections
 - [context-schema.json](./context-schema.json) - JSON schema for validation
+- [/understand-project command](../../.claude/commands/understand-project.md) - Deep interview-based discovery

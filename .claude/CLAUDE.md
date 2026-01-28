@@ -61,6 +61,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | Command | Purpose |
 |---------|---------|
 | `/prd` | Generate PRD through discovery |
+| `/understand-project` | Deep interview-based context discovery |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Run single task with workers |
 
@@ -132,3 +133,8 @@ Format for adding learnings:
 **Discovered:** purist-ralph-loop project
 **Pattern:** Task-level learnings go in workflow prompts; cross-project learnings go in CLAUDE.md
 **Impact:** Keeps learnings appropriately scoped; prevents prompt bloat while capturing valuable insights
+
+### [Context] Interview-Based Discovery Catches Misunderstandings
+**Discovered:** project-context-manager project
+**Pattern:** Use `/understand-project` for interview-based context discovery instead of relying solely on automatic repo analysis
+**Impact:** Automatic analysis misses nuance - e.g., identified webapp as main product when it was actually Electron; missed terminology changes (Insight→Signal); didn't catch deprecated features still in codebase. Human verification catches these gaps.
