@@ -77,6 +77,7 @@ Users respond: "1A, 2C"
 - What's in scope for MVP?
 - Hard constraints (time, tech)?
 - Dependencies on other projects?
+- Target repository path? (where code will be written - use HQ path if this is an HQ infrastructure project)
 
 **Batch 3: Quality Gates** (required)
 ```
@@ -89,9 +90,9 @@ What quality commands must pass for each user story?
 
 ## Step 4: Generate PRD
 
-Create `projects/{name}/` folder with:
+Create `projects/{name}/` folder with **both** files:
 
-**projects/{name}/README.md:**
+**projects/{name}/README.md** (human-readable):
 ```markdown
 # {Project Name}
 
@@ -124,6 +125,52 @@ Create `projects/{name}/` folder with:
 ## Open Questions
 {Remaining questions}
 ```
+
+**projects/{name}/prd.json** (machine-readable for /pure-ralph, /run-project, /execute-task):
+```json
+{
+  "project": "{name}",
+  "goal": "{1-sentence goal}",
+  "success_criteria": "{measurable outcome}",
+  "target_repo": "{path to target repo, or null if HQ project}",
+  "features": [
+    {
+      "id": "US-001",
+      "title": "{story title}",
+      "description": "{what and why}",
+      "acceptance_criteria": [
+        "{criterion 1}",
+        "{criterion 2}"
+      ],
+      "files": ["{expected files to create/modify}"],
+      "dependsOn": [],
+      "passes": null,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "{story title}",
+      "description": "{what and why}",
+      "acceptance_criteria": ["{criteria}"],
+      "files": ["{files}"],
+      "dependsOn": ["US-001"],
+      "passes": null,
+      "notes": ""
+    }
+  ],
+  "metadata": {
+    "created_at": "{ISO8601 timestamp}",
+    "quality_gates": "{quality gate command or 'none'}",
+    "verification": "passes + notes + git commit"
+  }
+}
+```
+
+**Important prd.json fields:**
+- `passes`: Set to `null` initially, becomes `true` when task completes
+- `notes`: Empty initially, filled by executor with what was done
+- `dependsOn`: Array of task IDs that must complete first
+- `target_repo`: Path to the repo being modified (ask user during discovery if not HQ)
 
 ## Story Guidelines
 
@@ -251,15 +298,22 @@ Workers may lack project understanding. You can add context later:
 Tell user:
 ```
 Project **{name}** created with {N} user stories.
-Location: projects/{name}/README.md
-{If context populated: "Context: projects/{name}/context/"}
 
-Next: Run /execute to create tasks and assign workers.
+Files:
+  - projects/{name}/README.md (human-readable)
+  - projects/{name}/prd.json (for execution)
+{If context populated: "  - projects/{name}/context/ (project context)"}
+
+Next steps:
+  - /pure-ralph {name} - Run autonomous loop
+  - /run-project {name} - Run with sub-agents
+  - /execute-task {name}/US-001 - Run single task
 ```
 
 ## Rules
 
 - Scan HQ first, ask questions second
 - Batch questions (don't overwhelm)
+- **Generate BOTH README.md AND prd.json** - execution commands need prd.json
 - **Do NOT use EnterPlanMode** - this skill IS planning
 - **Do NOT use TodoWrite** - PRD stories track tasks
