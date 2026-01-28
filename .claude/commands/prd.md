@@ -126,51 +126,7 @@ Create `projects/{name}/` folder with **both** files:
 {Remaining questions}
 ```
 
-**projects/{name}/prd.json** (machine-readable for /pure-ralph, /run-project, /execute-task):
-```json
-{
-  "project": "{name}",
-  "goal": "{1-sentence goal}",
-  "success_criteria": "{measurable outcome}",
-  "target_repo": "{path to target repo, or null if HQ project}",
-  "features": [
-    {
-      "id": "US-001",
-      "title": "{story title}",
-      "description": "{what and why}",
-      "acceptance_criteria": [
-        "{criterion 1}",
-        "{criterion 2}"
-      ],
-      "files": ["{expected files to create/modify}"],
-      "dependsOn": [],
-      "passes": null,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "{story title}",
-      "description": "{what and why}",
-      "acceptance_criteria": ["{criteria}"],
-      "files": ["{files}"],
-      "dependsOn": ["US-001"],
-      "passes": null,
-      "notes": ""
-    }
-  ],
-  "metadata": {
-    "created_at": "{ISO8601 timestamp}",
-    "quality_gates": "{quality gate command or 'none'}",
-    "verification": "passes + notes + git commit"
-  }
-}
-```
-
-**Important prd.json fields:**
-- `passes`: Set to `null` initially, becomes `true` when task completes
-- `notes`: Empty initially, filled by executor with what was done
-- `dependsOn`: Array of task IDs that must complete first
-- `target_repo`: Path to the repo being modified (ask user during discovery if not HQ)
+**projects/{name}/prd.json** - Also generate the same content as JSON for execution commands. Include: project name, goal, success_criteria, target_repo, features array (with id, title, description, acceptance_criteria, files, dependsOn, passes: null, notes: ""), and metadata.
 
 ## Story Guidelines
 
@@ -298,11 +254,8 @@ Workers may lack project understanding. You can add context later:
 Tell user:
 ```
 Project **{name}** created with {N} user stories.
-
-Files:
-  - projects/{name}/README.md (human-readable)
-  - projects/{name}/prd.json (for execution)
-{If context populated: "  - projects/{name}/context/ (project context)"}
+Location: projects/{name}/
+{If context populated: "Context: projects/{name}/context/"}
 
 Next steps:
   - /pure-ralph {name} - Run autonomous loop
