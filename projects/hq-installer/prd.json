@@ -157,10 +157,10 @@
         "Document any edge cases or workarounds"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "labels": ["testing"],
       "dependsOn": ["US-006"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Created comprehensive testing infrastructure: (1) installer/TESTING.md with VM setup instructions for Windows Sandbox, Hyper-V, VMware, and macOS fresh user/VM testing, (2) installer/tests/test-windows.ps1 automated verification script checking Node.js, npm, Claude CLI, directory structure, shortcuts, and functionality, (3) installer/tests/test-macos.sh equivalent for macOS with shell config and launcher verification, (4) projects/hq-installer/test-results/TEMPLATE.md for documenting test runs, (5) installer/EDGE-CASES.md documenting 16+ known edge cases with workarounds including SmartScreen, Gatekeeper, PATH issues, nvm/Homebrew conflicts, architecture detection, and corporate proxy scenarios. Testing framework ready for QA validation on clean VMs."
     }
   ],
   "metadata": {
