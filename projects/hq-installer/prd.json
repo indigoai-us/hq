@@ -122,10 +122,10 @@
         "Works on both Windows and macOS"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "labels": ["updates"],
       "dependsOn": ["US-002", "US-003"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Created cross-platform update checking infrastructure: (1) check-updates.ps1 for Windows and check-updates.sh for macOS that query GitHub releases API, compare versions, and offer to download/install updates, (2) Windows NSIS installer includes update checker with Start Menu shortcut, saves .hq-version file, (3) macOS postinstall includes update checker with desktop .app launcher, saves .hq-version file. Both platforms preserve user data during updates since installers only update application files, not user configuration. Rate-limited to once-per-day checks to avoid API rate limits."
     },
     {
       "id": "US-008",

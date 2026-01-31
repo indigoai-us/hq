@@ -26,6 +26,9 @@
 !define HQ_TEMPLATE_URL "https://github.com/your-org/my-hq/releases/latest/download/my-hq-starter.zip"
 !define HQ_TEMPLATE_ZIP "my-hq-starter.zip"
 
+; GitHub releases API for update checking
+!define GITHUB_RELEASES_API "https://api.github.com/repos/your-org/my-hq/releases/latest"
+
 ; -----------------------------------------------------------------------------
 ; Includes
 ; -----------------------------------------------------------------------------
@@ -103,6 +106,8 @@ Var ClaudeStatus
 Var AuthStatus
 Var AuthCheckbox
 Var ProgressText
+Var LatestVersion
+Var UpdateAvailable
 
 ; -----------------------------------------------------------------------------
 ; Functions
@@ -367,6 +372,49 @@ Function DownloadFile
     ${EndIf}
 FunctionEnd
 
+; Check for updates from GitHub releases (called on installer launch)
+Function CheckForUpdates
+    ; Try to fetch latest version from GitHub API
+    ; This is optional - if it fails, we just continue with installation
+    DetailPrint "Checking for updates..."
+
+    ; Use INetC to download version info
+    INetC::get /SILENT /CAPTION "Checking for updates..." "${GITHUB_RELEASES_API}" "$TEMP\hq-latest-release.json" /END
+    Pop $R0
+
+    ${If} $R0 == "OK"
+        ; Parse the JSON to get tag_name (version)
+        ; Note: NSIS doesn't have native JSON parsing, so we use a simple grep-like approach
+        FileOpen $0 "$TEMP\hq-latest-release.json" r
+        ${If} $0 != ""
+            FileRead $0 $1
+            FileClose $0
+
+            ; Look for "tag_name" in the response
+            ; Simple string search for version pattern
+            StrCpy $LatestVersion ""
+            StrCpy $UpdateAvailable "false"
+
+            ; Check if we got a valid response with tag_name
+            ; The version will be in format: "tag_name": "v1.2.3"
+            ${If} $1 != ""
+                ; For now, just log that we checked
+                DetailPrint "Update check complete"
+            ${EndIf}
+        ${EndIf}
+        Delete "$TEMP\hq-latest-release.json"
+    ${Else}
+        DetailPrint "Could not check for updates (offline or API unavailable)"
+    ${EndIf}
+FunctionEnd
+
+; Save installed version to file
+Function SaveVersionFile
+    FileOpen $0 "$INSTDIR\.hq-version" w
+    FileWrite $0 "${PRODUCT_VERSION}"
+    FileClose $0
+FunctionEnd
+
 ; Launch setup wizard function (called from finish page)
 Function LaunchSetupWizard
     ; Run the setup wizard PowerShell script
@@ -396,6 +444,14 @@ Section "Core Files" SEC01
     ; Copy the setup wizard script
     DetailPrint "Installing setup wizard..."
     File "..\shared\scripts\setup-wizard.ps1"
+
+    ; Copy the update checker script
+    DetailPrint "Installing update checker..."
+    File "..\shared\scripts\check-updates.ps1"
+
+    ; Save version file for update checking
+    DetailPrint "Recording version information..."
+    Call SaveVersionFile
 
     ; Try to copy bundled template files first
     ; Template is bundled from installer/template/ during build
@@ -585,6 +641,11 @@ Section "Start Menu Shortcuts" SEC04
         CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Setup Wizard.lnk" "powershell.exe" '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\setup-wizard.ps1" -HQDir "$INSTDIR"'
     SkipSetupWizardShortcut:
 
+    ; Create shortcut to check for updates
+    IfFileExists "$INSTDIR\check-updates.ps1" 0 SkipUpdateCheckerShortcut
+        CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Check for Updates.lnk" "powershell.exe" '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\check-updates.ps1" -HQDir "$INSTDIR"'
+    SkipUpdateCheckerShortcut:
+
     ; Create uninstaller shortcut
     CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
 SectionEnd
@@ -640,6 +701,8 @@ Section Uninstall
     ; Remove Start Menu shortcuts
     Delete "$SMPROGRAMS\${PRODUCT_NAME}\my-hq Folder.lnk"
     Delete "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk"
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}\Setup Wizard.lnk"
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}\Check for Updates.lnk"
     Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
     RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
 

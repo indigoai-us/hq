@@ -115,11 +115,13 @@ prepare_payload() {
         create_minimal_files
     fi
 
-    # Copy shared scripts (setup wizard, etc.)
+    # Copy shared scripts (setup wizard, update checker, etc.)
     if [ -d "$SHARED_SCRIPTS_DIR" ]; then
         echo "  Copying shared scripts..."
         cp "$SHARED_SCRIPTS_DIR/setup-wizard.sh" "$PAYLOAD_DIR/my-hq/" 2>/dev/null || true
+        cp "$SHARED_SCRIPTS_DIR/check-updates.sh" "$PAYLOAD_DIR/my-hq/" 2>/dev/null || true
         chmod +x "$PAYLOAD_DIR/my-hq/setup-wizard.sh" 2>/dev/null || true
+        chmod +x "$PAYLOAD_DIR/my-hq/check-updates.sh" 2>/dev/null || true
     fi
 
     echo -e "${GREEN}Payload prepared${NC}"
