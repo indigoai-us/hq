@@ -88,10 +88,10 @@
         "Creates desktop shortcut or launcher"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["setup"],
       "dependsOn": ["US-002", "US-003"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Created installer/template/ with starter files (agents.md, CLAUDE.md, USER-GUIDE.md, README.md, setup command). Windows: Updated NSIS to embed template or download from GitHub, creates desktop shortcut with welcome message. macOS: Updated build-pkg.sh to include template, postinstall creates ~/Desktop/my-hq.app launcher bundle. Both platforms run npm install if package.json exists. No Git required - uses HTTPS download as fallback."
     },
     {
       "id": "US-006",

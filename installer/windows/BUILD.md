@@ -31,14 +31,31 @@ Create the required image assets in the `assets/` folder. See `assets/README.md`
 
 ### 2. Prepare Template Files
 
-The installer bundles my-hq template files from `../../template/`. Create this directory structure:
+The installer can work in two modes:
 
-```bash
-mkdir -p ../../template
-# Copy starter template files to template/
+**Option A: Bundled Template (Recommended for Distribution)**
+
+The template files are in `../template/`. To bundle them with the installer:
+
+```cmd
+:: Compile with bundled template
+makensis /DBUNDLED_TEMPLATE hq-installer.nsi
 ```
 
-Or modify the NSI script to download the template at install time.
+**Option B: Downloaded Template (Smaller Installer)**
+
+Without the `BUNDLED_TEMPLATE` flag, the installer will:
+1. Try to download the template from GitHub releases
+2. Fall back to creating a minimal directory structure if download fails
+
+```cmd
+:: Compile without bundled template
+makensis hq-installer.nsi
+```
+
+**Note:** You may need to install the `nsisunz` plugin for zip extraction:
+- Download from https://nsis.sourceforge.io/Nsisunz_plug-in
+- Extract to NSIS plugins directory
 
 ### 3. Compile the Installer
 

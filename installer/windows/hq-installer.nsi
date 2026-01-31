@@ -22,6 +22,10 @@
 ; Claude CLI package
 !define CLAUDE_CLI_PACKAGE "@anthropic-ai/claude-code"
 
+; my-hq template download (GitHub releases)
+!define HQ_TEMPLATE_URL "https://github.com/your-org/my-hq/releases/latest/download/my-hq-starter.zip"
+!define HQ_TEMPLATE_ZIP "my-hq-starter.zip"
+
 ; -----------------------------------------------------------------------------
 ; Includes
 ; -----------------------------------------------------------------------------
@@ -380,16 +384,86 @@ Section "Core Files" SEC01
     ; Create progress details
     DetailPrint "Installing my-hq core files..."
 
-    ; Copy my-hq template files
-    ; These would be bundled with the installer or downloaded
-    File /r "..\..\template\*.*"
+    ; Try to copy bundled template files first
+    ; Template is bundled from installer/template/ during build
+    !ifdef BUNDLED_TEMPLATE
+        DetailPrint "Extracting bundled my-hq template..."
+        File /r "..\template\*.*"
+    !else
+        ; Download template from GitHub releases
+        DetailPrint "Downloading my-hq starter template..."
+        SetOutPath "$TEMP"
+        StrCpy $0 "${HQ_TEMPLATE_URL}"
+        StrCpy $1 "$TEMP\${HQ_TEMPLATE_ZIP}"
+
+        ; Try to download, but don't fail if it doesn't work
+        INetC::get /CAPTION "Downloading my-hq template..." /BANNER "Please wait..." "$0" "$1" /END
+        Pop $R0
+
+        ${If} $R0 == "OK"
+            DetailPrint "Extracting template..."
+            SetOutPath "$INSTDIR"
+            ; Use nsisunz plugin to extract zip
+            nsisunz::UnzipToLog "$TEMP\${HQ_TEMPLATE_ZIP}" "$INSTDIR"
+            Pop $R0
+            ${If} $R0 != "success"
+                DetailPrint "Warning: Could not extract template, creating minimal structure"
+                Goto CreateMinimal
+            ${EndIf}
+            Delete "$TEMP\${HQ_TEMPLATE_ZIP}"
+        ${Else}
+            DetailPrint "Download failed, creating minimal structure"
+            Goto CreateMinimal
+        ${EndIf}
+        Goto SkipMinimal
+
+        CreateMinimal:
+    !endif
 
     ; Create default directories if they don't exist
     CreateDirectory "$INSTDIR\.claude"
+    CreateDirectory "$INSTDIR\.claude\commands"
+    CreateDirectory "$INSTDIR\.claude\assets"
     CreateDirectory "$INSTDIR\workers"
     CreateDirectory "$INSTDIR\projects"
     CreateDirectory "$INSTDIR\workspace"
+    CreateDirectory "$INSTDIR\workspace\checkpoints"
+    CreateDirectory "$INSTDIR\workspace\threads"
+    CreateDirectory "$INSTDIR\workspace\orchestrator"
     CreateDirectory "$INSTDIR\knowledge"
+    CreateDirectory "$INSTDIR\social-content"
+    CreateDirectory "$INSTDIR\social-content\drafts"
+
+    ; Create minimal required files if template not available
+    !ifndef BUNDLED_TEMPLATE
+        ; Create agents.md
+        FileOpen $0 "$INSTDIR\agents.md" w
+        FileWrite $0 "# Agent Profile$\r$\n$\r$\n"
+        FileWrite $0 "Your personal AI profile. Run /setup to configure.$\r$\n$\r$\n"
+        FileWrite $0 "## Name$\r$\n[Your Name]$\r$\n$\r$\n"
+        FileWrite $0 "## Role$\r$\n[Your Role]$\r$\n$\r$\n"
+        FileWrite $0 "## Goals$\r$\n- [Your goals here]$\r$\n"
+        FileClose $0
+
+        ; Create CLAUDE.md
+        FileOpen $0 "$INSTDIR\.claude\CLAUDE.md" w
+        FileWrite $0 "# my-hq$\r$\n$\r$\n"
+        FileWrite $0 "Your personal AI operating system.$\r$\n$\r$\n"
+        FileWrite $0 "Run /setup to configure your instance.$\r$\n"
+        FileClose $0
+
+        ; Create README.md
+        FileOpen $0 "$INSTDIR\README.md" w
+        FileWrite $0 "# my-hq$\r$\n$\r$\n"
+        FileWrite $0 "Your personal AI operating system.$\r$\n$\r$\n"
+        FileWrite $0 "## Quick Start$\r$\n$\r$\n"
+        FileWrite $0 "1. Open a terminal in this directory$\r$\n"
+        FileWrite $0 "2. Run 'claude'$\r$\n"
+        FileWrite $0 "3. Type '/setup' to configure$\r$\n"
+        FileClose $0
+
+        SkipMinimal:
+    !endif
 SectionEnd
 
 Section "Node.js" SEC02
@@ -451,6 +525,31 @@ Section "Claude CLI" SEC03
     ${EndIf}
 SectionEnd
 
+Section "Template Dependencies" SEC06
+    ; Check if package.json exists in the install directory (for templates with npm dependencies)
+    IfFileExists "$INSTDIR\package.json" 0 SkipNpmInstall
+        DetailPrint "Found package.json, running npm install..."
+
+        ; Refresh PATH
+        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        ReadRegStr $1 HKCU "Environment" "Path"
+        System::Call 'Kernel32::SetEnvironmentVariable(t "PATH", t "$0;$1")i'
+
+        ; Run npm install in the install directory
+        SetOutPath "$INSTDIR"
+        nsExec::ExecToLog 'cmd /c "npm install"'
+        Pop $0
+
+        ${If} $0 != 0
+            DetailPrint "npm install had warnings (non-fatal)"
+        ${Else}
+            DetailPrint "npm install completed"
+        ${EndIf}
+
+    SkipNpmInstall:
+        DetailPrint "No package.json found, skipping npm install"
+SectionEnd
+
 Section "Start Menu Shortcuts" SEC04
     DetailPrint "Creating Start Menu shortcuts..."
 
@@ -461,7 +560,12 @@ Section "Start Menu Shortcuts" SEC04
     CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\my-hq Folder.lnk" "$INSTDIR"
 
     ; Create shortcut to launch Claude in my-hq directory
-    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+    ; Check if icon exists first
+    IfFileExists "$INSTDIR\.claude\assets\hq-icon.ico" 0 +3
+        CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+        Goto EndStartMenuShortcut
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"'
+    EndStartMenuShortcut:
 
     ; Create uninstaller shortcut
     CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
@@ -470,8 +574,13 @@ SectionEnd
 Section "Desktop Shortcut" SEC05
     DetailPrint "Creating Desktop shortcut..."
 
-    ; Create desktop shortcut
-    CreateShortcut "$DESKTOP\my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+    ; Check if icon exists, use default if not
+    IfFileExists "$INSTDIR\.claude\assets\hq-icon.ico" 0 +3
+        CreateShortcut "$DESKTOP\my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && echo Welcome to my-hq! && echo. && echo Type: claude && echo Then type /setup to get started && echo. && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+        Goto EndDesktopShortcut
+    ; Use default Windows icon if custom icon not found
+    CreateShortcut "$DESKTOP\my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && echo Welcome to my-hq! && echo. && echo Type: claude && echo Then type /setup to get started && echo. && claude"'
+    EndDesktopShortcut:
 SectionEnd
 
 Section -Post
@@ -541,4 +650,5 @@ SectionEnd
     !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Claude CLI - AI agent execution engine"
     !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "Create Start Menu shortcuts"
     !insertmacro MUI_DESCRIPTION_TEXT ${SEC05} "Create Desktop shortcut"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC06} "Install template npm dependencies (if any)"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END

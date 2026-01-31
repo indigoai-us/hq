@@ -68,6 +68,24 @@ clean_build() {
     echo ""
 }
 
+# Download template from GitHub if needed
+download_template() {
+    local url="https://github.com/your-org/my-hq/releases/latest/download/my-hq-starter.zip"
+    local dest="$BUILD_DIR/my-hq-starter.zip"
+
+    echo -e "${YELLOW}Downloading template from GitHub...${NC}"
+
+    if curl -fsSL "$url" -o "$dest" 2>/dev/null; then
+        echo "  Extracting template..."
+        unzip -q "$dest" -d "$PAYLOAD_DIR/my-hq/" 2>/dev/null || true
+        rm -f "$dest"
+        return 0
+    else
+        echo "  Download failed, will create minimal structure"
+        return 1
+    fi
+}
+
 # Prepare payload
 prepare_payload() {
     echo -e "${YELLOW}Preparing payload...${NC}"
@@ -75,48 +93,142 @@ prepare_payload() {
     # Create my-hq directory structure
     mkdir -p "$PAYLOAD_DIR/my-hq"
     mkdir -p "$PAYLOAD_DIR/my-hq/.claude/commands"
+    mkdir -p "$PAYLOAD_DIR/my-hq/.claude/assets"
     mkdir -p "$PAYLOAD_DIR/my-hq/workers"
     mkdir -p "$PAYLOAD_DIR/my-hq/projects"
     mkdir -p "$PAYLOAD_DIR/my-hq/workspace/checkpoints"
     mkdir -p "$PAYLOAD_DIR/my-hq/workspace/threads"
     mkdir -p "$PAYLOAD_DIR/my-hq/workspace/orchestrator"
     mkdir -p "$PAYLOAD_DIR/my-hq/knowledge"
+    mkdir -p "$PAYLOAD_DIR/my-hq/social-content/drafts/x"
+    mkdir -p "$PAYLOAD_DIR/my-hq/social-content/drafts/linkedin"
 
     # Copy template files if they exist
     if [ -d "$TEMPLATE_DIR" ]; then
         echo "  Copying template files from $TEMPLATE_DIR..."
         cp -R "$TEMPLATE_DIR/"* "$PAYLOAD_DIR/my-hq/" 2>/dev/null || true
+    elif [ "$DOWNLOAD_TEMPLATE" = "true" ]; then
+        download_template || create_minimal_files
     else
         echo "  No template directory found, creating minimal structure..."
-        # Create minimal required files
-        cat > "$PAYLOAD_DIR/my-hq/agents.md" << 'AGENTS_EOF'
-# Agent Profile
-
-Configure your personal profile here. Run `/setup` after installation to complete setup.
-
-## Name
-[Your Name]
-
-## Role
-[Your Role]
-
-## Goals
-- [Your goals here]
-AGENTS_EOF
-
-        cat > "$PAYLOAD_DIR/my-hq/.claude/CLAUDE.md" << 'CLAUDE_EOF'
-# my-hq
-
-Welcome to my-hq! This is your personal AI operating system.
-
-Run `/setup` to configure your instance.
-
-See USER-GUIDE.md for full documentation.
-CLAUDE_EOF
+        create_minimal_files
     fi
 
     echo -e "${GREEN}Payload prepared${NC}"
     echo ""
+}
+
+# Create minimal files if template not available
+create_minimal_files() {
+    # Create agents.md
+    cat > "$PAYLOAD_DIR/my-hq/agents.md" << 'AGENTS_EOF'
+# Agent Profile
+
+Your personal AI profile. Customize this file to help Claude understand your preferences.
+
+## Personal Information
+
+**Name:** [Your Name]
+**Role:** [Your Role]
+
+## Goals
+
+- [Goal 1]
+- [Goal 2]
+
+## Preferences
+
+Run `/setup` to configure this file interactively.
+AGENTS_EOF
+
+    # Create CLAUDE.md
+    cat > "$PAYLOAD_DIR/my-hq/.claude/CLAUDE.md" << 'CLAUDE_EOF'
+# my-hq
+
+Personal AI operating system for orchestrating workers, projects, and content.
+
+## Quick Start
+
+1. Run `/setup` to configure your profile
+2. Use `/nexttask` to find work
+3. Use `/prd` to plan projects
+4. Use `/run` to execute workers
+
+## Core Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/setup` | Interactive setup wizard |
+| `/nexttask` | Find next task |
+| `/prd` | Plan a new project |
+| `/run` | Execute a worker |
+| `/checkpoint` | Save current state |
+
+See USER-GUIDE.md for full documentation.
+CLAUDE_EOF
+
+    # Create USER-GUIDE.md
+    cat > "$PAYLOAD_DIR/my-hq/USER-GUIDE.md" << 'GUIDE_EOF'
+# my-hq User Guide
+
+Complete reference for using my-hq.
+
+## Getting Started
+
+1. Run `/setup` to configure your profile
+2. Explore with `/help` to see commands
+3. Use `/nexttask` to find work
+
+## Commands
+
+### Session Management
+- `/checkpoint` - Save state
+- `/handoff` - Prepare for fresh session
+- `/nexttask` - Find next task
+
+### Projects
+- `/prd` - Generate a PRD
+- `/run-project` - Execute project
+
+### Workers
+- `/run` - Execute workers
+- `/newworker` - Create new worker
+
+### System
+- `/search` - Search HQ
+- `/setup` - Re-run setup
+
+## Support
+
+Run `/help` in Claude for more information.
+GUIDE_EOF
+
+    # Create README.md
+    cat > "$PAYLOAD_DIR/my-hq/README.md" << 'README_EOF'
+# my-hq
+
+Your personal AI operating system.
+
+## Quick Start
+
+1. Open Terminal in this directory
+2. Run `claude`
+3. Type `/setup` to configure
+
+See USER-GUIDE.md for documentation.
+README_EOF
+
+    # Create setup command
+    cat > "$PAYLOAD_DIR/my-hq/.claude/commands/setup.md" << 'SETUP_EOF'
+# Setup Wizard
+
+Interactive setup for my-hq.
+
+## Prompt
+
+Help me set up my-hq by asking about my profile and preferences.
+Update agents.md with my information and guide me through initial configuration.
+SETUP_EOF
 }
 
 # Build component package

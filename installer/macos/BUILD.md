@@ -46,6 +46,23 @@ chmod +x build-pkg.sh
 
 Output: `build/my-hq-1.0.0.pkg`
 
+### Build Options
+
+**With bundled template (recommended for distribution):**
+```bash
+./build-pkg.sh
+```
+The script looks for template files in `../template/`. If found, they are bundled.
+
+**Download template during install:**
+
+If the template directory doesn't exist, the build script will create minimal files. The postinstall script handles downloading the full template if available.
+
+**Environment variables:**
+```bash
+DOWNLOAD_TEMPLATE=true ./build-pkg.sh  # Enable template download during build
+```
+
 ### Build with Signing
 
 ```bash
@@ -145,6 +162,8 @@ For proper testing, use a clean macOS VM or a fresh user account:
 - [ ] macOS with current Node.js via Homebrew
 - [ ] macOS with Node.js via nvm
 - [ ] Upgrade from previous my-hq version
+- [ ] Desktop launcher works (my-hq.app)
+- [ ] Terminal opens with Claude CLI
 
 ## Troubleshooting
 

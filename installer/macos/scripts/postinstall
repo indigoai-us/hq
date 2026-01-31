@@ -265,6 +265,45 @@ create_path_helper() {
 }
 
 # =============================================================================
+# Run npm install if package.json exists (for templates with dependencies)
+# =============================================================================
+run_npm_install() {
+    log "Checking for package.json..."
+
+    if [ -f "$HQ_DIR/package.json" ]; then
+        log "Found package.json, running npm install..."
+
+        # Find npm
+        local npm_bin=""
+        for npm_path in "/usr/local/bin/npm" "/opt/homebrew/bin/npm"; do
+            if [ -x "$npm_path" ]; then
+                npm_bin="$npm_path"
+                break
+            fi
+        done
+
+        if [ -z "$npm_bin" ]; then
+            npm_bin=$(which npm 2>/dev/null || true)
+        fi
+
+        if [ -n "$npm_bin" ]; then
+            cd "$HQ_DIR"
+            if su "$TARGET_USER" -c "$npm_bin install" 2>&1 | while read line; do
+                log "npm: $line"
+            done; then
+                log "npm install complete"
+            else
+                log "npm install had warnings or errors (non-fatal)"
+            fi
+        else
+            log "npm not found, skipping npm install"
+        fi
+    else
+        log "No package.json found, skipping npm install"
+    fi
+}
+
+# =============================================================================
 # Install Claude Authentication Helper
 # =============================================================================
 install_auth_helper() {
@@ -364,6 +403,84 @@ AUTH_EOF
 }
 
 # =============================================================================
+# Create Desktop Launcher (macOS .app bundle)
+# =============================================================================
+create_desktop_launcher() {
+    log "Creating desktop launcher..."
+
+    local app_dir="$TARGET_HOME/Desktop/my-hq.app"
+    local contents_dir="$app_dir/Contents"
+    local macos_dir="$contents_dir/MacOS"
+    local resources_dir="$contents_dir/Resources"
+
+    # Create app bundle structure
+    mkdir -p "$macos_dir"
+    mkdir -p "$resources_dir"
+
+    # Create the launcher script
+    cat > "$macos_dir/my-hq" << 'LAUNCHER_EOF'
+#!/bin/bash
+# my-hq Launcher
+# Opens Terminal and starts Claude in the my-hq directory
+
+HQ_DIR="$HOME/my-hq"
+
+# Check if Terminal is running
+if pgrep -x "Terminal" > /dev/null; then
+    # Open new tab in existing Terminal
+    osascript -e "tell application \"Terminal\"
+        activate
+        do script \"cd '$HQ_DIR' && echo 'Welcome to my-hq!' && echo '' && echo 'Run: claude' && echo 'Then type /setup to get started' && echo '' && claude\"
+    end tell"
+else
+    # Open new Terminal window
+    osascript -e "tell application \"Terminal\"
+        activate
+        do script \"cd '$HQ_DIR' && echo 'Welcome to my-hq!' && echo '' && echo 'Run: claude' && echo 'Then type /setup to get started' && echo '' && claude\"
+    end tell"
+fi
+LAUNCHER_EOF
+
+    chmod +x "$macos_dir/my-hq"
+
+    # Create Info.plist
+    cat > "$contents_dir/Info.plist" << 'PLIST_EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>my-hq</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.my-hq.launcher</string>
+    <key>CFBundleName</key>
+    <string>my-hq</string>
+    <key>CFBundleDisplayName</key>
+    <string>my-hq</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+PLIST_EOF
+
+    # Fix ownership
+    chown -R "$TARGET_USER" "$app_dir"
+
+    log "Desktop launcher created at $app_dir"
+
+    # Also create a symlink in Applications (optional, user can drag there)
+    log "You can drag my-hq.app from Desktop to Applications folder for permanent access."
+}
+
+# =============================================================================
 # Open Terminal with my-hq (optional)
 # =============================================================================
 open_terminal() {
@@ -426,17 +543,20 @@ fi
 # Step 3: Setup my-hq directory
 setup_hq_directory
 
-# Step 4: Configure PATH
+# Step 4: Run npm install if needed (for templates with dependencies)
+run_npm_install
+
+# Step 5: Configure PATH
 configure_path
 create_path_helper
 
-# Step 5: Install authentication helper
+# Step 6: Install authentication helper
 install_auth_helper
 
-# Step 6: Optional - open terminal
-# open_terminal
+# Step 7: Create desktop launcher (macOS Application)
+create_desktop_launcher
 
-# Step 7: Cleanup
+# Step 8: Cleanup
 cleanup
 
 log "Post-install complete!"
