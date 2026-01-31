@@ -38,6 +38,38 @@
             color: #666;
             margin-bottom: 24px;
         }
+        .auth-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: white;
+            text-align: center;
+        }
+        .auth-section h2 {
+            color: white;
+            font-size: 18px;
+            margin: 0 0 12px 0;
+        }
+        .auth-section p {
+            margin: 8px 0;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .auth-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 12px;
+            cursor: pointer;
+        }
+        .auth-button:hover {
+            background: #f0f0f0;
+        }
         .next-steps {
             background: #f8f9fa;
             border-radius: 8px;
@@ -94,6 +126,23 @@
         .note strong {
             color: #0c5460;
         }
+        .or-divider {
+            display: flex;
+            align-items: center;
+            margin: 16px 0;
+            color: #999;
+        }
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        .or-divider span {
+            padding: 0 12px;
+            font-size: 12px;
+        }
         .links {
             margin-top: 20px;
         }
@@ -112,6 +161,18 @@
         <div class="success-icon">🎉</div>
         <h1>Installation Complete!</h1>
         <div class="tagline">my-hq is ready to use</div>
+
+        <div class="auth-section">
+            <h2>🔐 Authenticate Claude CLI</h2>
+            <p>Claude CLI needs to be authenticated before use.</p>
+            <p>Open Terminal and run:</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 4px; margin: 12px 0; font-family: 'SF Mono', Monaco, monospace;">
+                claude setup-token
+            </div>
+            <p style="font-size: 11px; opacity: 0.8;">This will open your browser to sign in to claude.ai</p>
+        </div>
+
+        <div class="or-divider"><span>then</span></div>
 
         <div class="next-steps">
             <h2>Getting Started</h2>
@@ -147,6 +208,10 @@
                     <code>/setup</code>
                 </div>
             </div>
+        </div>
+
+        <div class="note">
+            <strong>First time?</strong> When you run <code>claude</code> for the first time, you may be prompted to authenticate. Just follow the browser prompts to sign in with your Anthropic account.
         </div>
 
         <div class="note">

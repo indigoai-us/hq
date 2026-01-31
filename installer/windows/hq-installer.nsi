@@ -63,6 +63,7 @@
 !insertmacro MUI_PAGE_DIRECTORY
 Page custom DependencyCheckPage DependencyCheckPageLeave
 !insertmacro MUI_PAGE_INSTFILES
+Page custom ClaudeAuthPage ClaudeAuthPageLeave
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -90,10 +91,13 @@ RequestExecutionLevel admin
 ; -----------------------------------------------------------------------------
 Var NodeJSInstalled
 Var ClaudeCLIInstalled
+Var ClaudeAuthenticated
 Var NodeJSVersion
 Var Dialog
 Var NodeStatus
 Var ClaudeStatus
+Var AuthStatus
+Var AuthCheckbox
 Var ProgressText
 
 ; -----------------------------------------------------------------------------
@@ -165,6 +169,37 @@ Function CheckClaudeCLI
     ${EndIf}
 FunctionEnd
 
+; Check if Claude CLI is authenticated
+; Returns "true" if authenticated, "false" if not, "unknown" if cannot determine
+Function CheckClaudeAuth
+    ; Check if claude is in PATH
+    nsExec::ExecToStack 'cmd /c "claude --version 2>nul"'
+    Pop $0
+    Pop $1
+
+    ${If} $0 != 0
+        ; Claude not installed/accessible
+        StrCpy $ClaudeAuthenticated "unknown"
+        Return
+    ${EndIf}
+
+    ; Try a simple command to check auth
+    ; Note: This is a heuristic - we try to run setup-token check
+    ; If user has previously authenticated, credentials are stored
+    nsExec::ExecToStack 'cmd /c "claude -p "test" 2>&1"'
+    Pop $0
+    Pop $1
+
+    ${If} $0 == 0
+        ; Command succeeded, likely authenticated
+        StrCpy $ClaudeAuthenticated "true"
+    ${Else}
+        ; Command failed, check if auth-related error
+        ; Look for login/auth keywords in output
+        StrCpy $ClaudeAuthenticated "false"
+    ${EndIf}
+FunctionEnd
+
 ; Dependency check custom page
 Function DependencyCheckPage
     !insertmacro MUI_HEADER_TEXT "Checking Dependencies" "Verifying required software..."
@@ -219,6 +254,101 @@ FunctionEnd
 
 Function DependencyCheckPageLeave
     ; Nothing to validate, just continue
+FunctionEnd
+
+; Claude authentication custom page
+Function ClaudeAuthPage
+    !insertmacro MUI_HEADER_TEXT "Claude Authentication" "Sign in to your Claude account"
+
+    ; Check current auth status
+    Call CheckClaudeAuth
+
+    nsDialogs::Create 1018
+    Pop $Dialog
+
+    ${If} $Dialog == error
+        Abort
+    ${EndIf}
+
+    ${If} $ClaudeAuthenticated == "true"
+        ; Already authenticated
+        ${NSD_CreateLabel} 0 0 100% 30u "Claude CLI is already authenticated!"
+        Pop $0
+        SetCtlColors $0 0x008000 transparent  ; Green text
+
+        ${NSD_CreateLabel} 0 40u 100% 40u "You're all set! Claude CLI is ready to use.$\r$\n$\r$\nClick Next to continue."
+        Pop $0
+    ${Else}
+        ; Not authenticated - show options
+        ${NSD_CreateLabel} 0 0 100% 40u "Claude CLI requires authentication to work. You can sign in now using your browser, or skip and authenticate later."
+        Pop $0
+
+        ${NSD_CreateLabel} 0 50u 100% 20u "Authentication Status:"
+        Pop $0
+
+        ${If} $ClaudeAuthenticated == "false"
+            ${NSD_CreateLabel} 0 70u 100% 18u "Not authenticated"
+            Pop $AuthStatus
+            SetCtlColors $AuthStatus 0xFF8C00 transparent  ; Orange text
+        ${Else}
+            ${NSD_CreateLabel} 0 70u 100% 18u "Unknown (will check when you click Authenticate)"
+            Pop $AuthStatus
+            SetCtlColors $AuthStatus 0x808080 transparent  ; Gray text
+        ${EndIf}
+
+        ; Checkbox for authentication
+        ${NSD_CreateCheckBox} 0 100u 100% 20u "Open browser to authenticate Claude CLI"
+        Pop $AuthCheckbox
+        ${NSD_Check} $AuthCheckbox  ; Checked by default
+
+        ${NSD_CreateLabel} 0 130u 100% 50u "If you check this option, a browser window will open for you to sign in to claude.ai. This is required to use Claude CLI.$\r$\n$\r$\nIf you skip, you can authenticate later by running 'claude' and typing /login."
+        Pop $0
+    ${EndIf}
+
+    nsDialogs::Show
+FunctionEnd
+
+Function ClaudeAuthPageLeave
+    ; Skip if already authenticated
+    ${If} $ClaudeAuthenticated == "true"
+        Return
+    ${EndIf}
+
+    ; Check if user wants to authenticate
+    ${NSD_GetState} $AuthCheckbox $0
+    ${If} $0 == ${BST_CHECKED}
+        ; User wants to authenticate - run setup-token
+        DetailPrint "Opening browser for Claude authentication..."
+
+        ; Use ExecWait to run setup-token and wait for it
+        ; setup-token opens browser and waits for OAuth completion
+        nsExec::ExecToLog 'cmd /c "claude setup-token"'
+        Pop $0
+
+        ${If} $0 == 0
+            MessageBox MB_OK|MB_ICONINFORMATION "Authentication successful! Claude CLI is now ready to use."
+            StrCpy $ClaudeAuthenticated "true"
+        ${Else}
+            MessageBox MB_YESNO|MB_ICONQUESTION "Authentication may have failed or was cancelled.$\r$\n$\r$\nWould you like to try again?" IDYES retry IDNO continue
+
+            retry:
+                ; Try again
+                nsExec::ExecToLog 'cmd /c "claude setup-token"'
+                Pop $0
+                ${If} $0 == 0
+                    MessageBox MB_OK|MB_ICONINFORMATION "Authentication successful!"
+                    StrCpy $ClaudeAuthenticated "true"
+                ${Else}
+                    MessageBox MB_OK|MB_ICONINFORMATION "You can authenticate later by running 'claude' and typing /login."
+                ${EndIf}
+                Goto continue
+
+            continue:
+        ${EndIf}
+    ${Else}
+        ; User skipped authentication
+        DetailPrint "Claude authentication skipped by user"
+    ${EndIf}
 FunctionEnd
 
 ; Download file with progress

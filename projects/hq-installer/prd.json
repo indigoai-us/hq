@@ -71,10 +71,10 @@
         "Works on both Windows and macOS"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["auth"],
       "dependsOn": ["US-002", "US-003"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Windows: Added ClaudeAuthPage custom page to NSIS installer that uses 'claude setup-token' command with browser OAuth flow, allows user to skip and authenticate later. macOS: Updated conclusion.html with authentication instructions, postinstall script installs authenticate-claude.sh helper in ~/my-hq/ that handles OAuth via 'claude setup-token'. Both platforms support skip/retry and show clear messages for manual setup later."
     },
     {
       "id": "US-005",
