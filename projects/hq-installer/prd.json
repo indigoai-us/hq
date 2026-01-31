@@ -35,10 +35,10 @@
         "Installer is code-signed (or documented how to sign)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "labels": ["windows"],
       "dependsOn": ["US-001"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. NSIS script with MUI2 UI, Node.js/Claude CLI detection and auto-install, Start Menu shortcuts. Code signing documented in CODE-SIGNING.md."
     },
     {
       "id": "US-003",

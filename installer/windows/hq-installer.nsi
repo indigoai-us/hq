@@ -1,0 +1,414 @@
+; =============================================================================
+; my-hq Windows Installer
+; Built with NSIS (Nullsoft Scriptable Install System)
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; General Attributes
+; -----------------------------------------------------------------------------
+!define PRODUCT_NAME "my-hq"
+!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_PUBLISHER "my-hq"
+!define PRODUCT_WEB_SITE "https://github.com/your-org/my-hq"
+!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\my-hq"
+!define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
+!define PRODUCT_UNINST_ROOT_KEY "HKLM"
+
+; Required Node.js version
+!define NODEJS_MIN_VERSION "18.0.0"
+!define NODEJS_DOWNLOAD_URL "https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi"
+!define NODEJS_INSTALLER "node-v20.11.0-x64.msi"
+
+; Claude CLI package
+!define CLAUDE_CLI_PACKAGE "@anthropic-ai/claude-code"
+
+; -----------------------------------------------------------------------------
+; Includes
+; -----------------------------------------------------------------------------
+!include "MUI2.nsh"
+!include "FileFunc.nsh"
+!include "LogicLib.nsh"
+!include "nsDialogs.nsh"
+!include "WinMessages.nsh"
+
+; -----------------------------------------------------------------------------
+; MUI Settings
+; -----------------------------------------------------------------------------
+!define MUI_ABORTWARNING
+!define MUI_ICON "assets\hq-icon.ico"
+!define MUI_UNICON "assets\hq-uninstall.ico"
+
+; Welcome page settings
+!define MUI_WELCOMEFINISHPAGE_BITMAP "assets\welcome-banner.bmp"
+!define MUI_WELCOMEPAGE_TITLE "Welcome to my-hq Setup"
+!define MUI_WELCOMEPAGE_TEXT "This wizard will install my-hq on your computer.$\r$\n$\r$\nmy-hq is your personal AI operating system for orchestrating AI workers, projects, and content.$\r$\n$\r$\nClick Next to continue."
+
+; Finish page settings
+!define MUI_FINISHPAGE_TITLE "my-hq Installation Complete"
+!define MUI_FINISHPAGE_TEXT "my-hq has been installed on your computer.$\r$\n$\r$\nClick Finish to close this wizard."
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_TEXT "Launch my-hq Setup Wizard"
+!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchSetupWizard"
+
+; Header images
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_BITMAP "assets\header.bmp"
+!define MUI_HEADERIMAGE_RIGHT
+
+; -----------------------------------------------------------------------------
+; Pages
+; -----------------------------------------------------------------------------
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
+!insertmacro MUI_PAGE_DIRECTORY
+Page custom DependencyCheckPage DependencyCheckPageLeave
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+; Uninstaller pages
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+; -----------------------------------------------------------------------------
+; Languages
+; -----------------------------------------------------------------------------
+!insertmacro MUI_LANGUAGE "English"
+
+; -----------------------------------------------------------------------------
+; Installer Attributes
+; -----------------------------------------------------------------------------
+Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+OutFile "my-hq-setup-${PRODUCT_VERSION}.exe"
+InstallDir "$LOCALAPPDATA\my-hq"
+InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
+ShowInstDetails show
+ShowUnInstDetails show
+RequestExecutionLevel admin
+
+; -----------------------------------------------------------------------------
+; Variables
+; -----------------------------------------------------------------------------
+Var NodeJSInstalled
+Var ClaudeCLIInstalled
+Var NodeJSVersion
+Var Dialog
+Var NodeStatus
+Var ClaudeStatus
+Var ProgressText
+
+; -----------------------------------------------------------------------------
+; Functions
+; -----------------------------------------------------------------------------
+
+; Compare version strings (returns 1 if $0 >= $1, 0 otherwise)
+Function CompareVersions
+    ; Simplified version comparison for major version only
+    Push $R0
+    Push $R1
+
+    ; Get major version from $0
+    StrCpy $R0 $0 2
+    IntOp $R0 $R0 + 0  ; Convert to int
+
+    ; Get major version from $1
+    StrCpy $R1 $1 2
+    IntOp $R1 $R1 + 0  ; Convert to int
+
+    ${If} $R0 >= $R1
+        StrCpy $0 1
+    ${Else}
+        StrCpy $0 0
+    ${EndIf}
+
+    Pop $R1
+    Pop $R0
+FunctionEnd
+
+; Check if Node.js is installed and get version
+Function CheckNodeJS
+    ; Try to run node --version
+    nsExec::ExecToStack 'cmd /c "node --version 2>nul"'
+    Pop $0  ; Return code
+    Pop $1  ; Output
+
+    ${If} $0 == 0
+        ; Node is installed, check version (output is like "v20.11.0")
+        StrCpy $NodeJSVersion $1 "" 1  ; Remove leading 'v'
+        StrCpy $NodeJSVersion $NodeJSVersion -2  ; Remove trailing newline
+
+        ; Compare with minimum required version
+        StrCpy $0 $NodeJSVersion
+        StrCpy $1 ${NODEJS_MIN_VERSION}
+        Call CompareVersions
+
+        ${If} $0 == 1
+            StrCpy $NodeJSInstalled "true"
+        ${Else}
+            StrCpy $NodeJSInstalled "outdated"
+        ${EndIf}
+    ${Else}
+        StrCpy $NodeJSInstalled "false"
+        StrCpy $NodeJSVersion ""
+    ${EndIf}
+FunctionEnd
+
+; Check if Claude CLI is installed
+Function CheckClaudeCLI
+    nsExec::ExecToStack 'cmd /c "claude --version 2>nul"'
+    Pop $0  ; Return code
+    Pop $1  ; Output
+
+    ${If} $0 == 0
+        StrCpy $ClaudeCLIInstalled "true"
+    ${Else}
+        StrCpy $ClaudeCLIInstalled "false"
+    ${EndIf}
+FunctionEnd
+
+; Dependency check custom page
+Function DependencyCheckPage
+    !insertmacro MUI_HEADER_TEXT "Checking Dependencies" "Verifying required software..."
+
+    nsDialogs::Create 1018
+    Pop $Dialog
+
+    ${If} $Dialog == error
+        Abort
+    ${EndIf}
+
+    ; Check dependencies
+    Call CheckNodeJS
+    Call CheckClaudeCLI
+
+    ; Create status display
+    ${NSD_CreateLabel} 0 0 100% 24u "The installer will check and install required dependencies:"
+    Pop $0
+
+    ; Node.js status
+    ${If} $NodeJSInstalled == "true"
+        ${NSD_CreateLabel} 0 30u 100% 18u "Node.js: Installed (v$NodeJSVersion)"
+        Pop $NodeStatus
+        SetCtlColors $NodeStatus 0x008000 transparent  ; Green text
+    ${ElseIf} $NodeJSInstalled == "outdated"
+        ${NSD_CreateLabel} 0 30u 100% 18u "Node.js: Outdated (v$NodeJSVersion) - Will upgrade to v20.11.0"
+        Pop $NodeStatus
+        SetCtlColors $NodeStatus 0xFF8C00 transparent  ; Orange text
+    ${Else}
+        ${NSD_CreateLabel} 0 30u 100% 18u "Node.js: Not found - Will install v20.11.0"
+        Pop $NodeStatus
+        SetCtlColors $NodeStatus 0xFF0000 transparent  ; Red text
+    ${EndIf}
+
+    ; Claude CLI status
+    ${If} $ClaudeCLIInstalled == "true"
+        ${NSD_CreateLabel} 0 52u 100% 18u "Claude CLI: Installed"
+        Pop $ClaudeStatus
+        SetCtlColors $ClaudeStatus 0x008000 transparent  ; Green text
+    ${Else}
+        ${NSD_CreateLabel} 0 52u 100% 18u "Claude CLI: Not found - Will install via npm"
+        Pop $ClaudeStatus
+        SetCtlColors $ClaudeStatus 0xFF0000 transparent  ; Red text
+    ${EndIf}
+
+    ; Info text
+    ${NSD_CreateLabel} 0 80u 100% 40u "Click Next to continue with the installation. Missing dependencies will be installed automatically."
+    Pop $0
+
+    nsDialogs::Show
+FunctionEnd
+
+Function DependencyCheckPageLeave
+    ; Nothing to validate, just continue
+FunctionEnd
+
+; Download file with progress
+Function DownloadFile
+    ; $0 = URL, $1 = Destination
+    ; Using INetC plugin for download with progress
+    INetC::get /CAPTION "Downloading..." /BANNER "Please wait while downloading..." "$0" "$1" /END
+    Pop $R0
+    ${If} $R0 != "OK"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Download failed: $R0"
+        Abort
+    ${EndIf}
+FunctionEnd
+
+; Launch setup wizard function (called from finish page)
+Function LaunchSetupWizard
+    ; Open a new terminal with claude and run setup
+    ExecShell "open" "cmd.exe" '/k "cd /d "$INSTDIR" && echo Welcome to my-hq! && echo. && echo Run: claude && echo Then type /setup to begin the setup wizard && echo. && claude"'
+FunctionEnd
+
+; -----------------------------------------------------------------------------
+; Installer Sections
+; -----------------------------------------------------------------------------
+
+Section "Core Files" SEC01
+    SetOutPath "$INSTDIR"
+    SetOverwrite on
+
+    ; Create progress details
+    DetailPrint "Installing my-hq core files..."
+
+    ; Copy my-hq template files
+    ; These would be bundled with the installer or downloaded
+    File /r "..\..\template\*.*"
+
+    ; Create default directories if they don't exist
+    CreateDirectory "$INSTDIR\.claude"
+    CreateDirectory "$INSTDIR\workers"
+    CreateDirectory "$INSTDIR\projects"
+    CreateDirectory "$INSTDIR\workspace"
+    CreateDirectory "$INSTDIR\knowledge"
+SectionEnd
+
+Section "Node.js" SEC02
+    ${If} $NodeJSInstalled != "true"
+        DetailPrint "Installing Node.js..."
+
+        ; Download Node.js installer
+        SetOutPath "$TEMP"
+        StrCpy $0 "${NODEJS_DOWNLOAD_URL}"
+        StrCpy $1 "$TEMP\${NODEJS_INSTALLER}"
+        Call DownloadFile
+
+        ; Run Node.js installer silently
+        DetailPrint "Running Node.js installer (this may take a few minutes)..."
+        nsExec::ExecToLog 'msiexec /i "$TEMP\${NODEJS_INSTALLER}" /qn /norestart'
+        Pop $0
+
+        ${If} $0 != 0
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Node.js installation failed. Please install Node.js manually from https://nodejs.org/"
+        ${Else}
+            DetailPrint "Node.js installed successfully"
+        ${EndIf}
+
+        ; Clean up installer
+        Delete "$TEMP\${NODEJS_INSTALLER}"
+
+        ; Refresh environment variables
+        ; Note: May need system restart or new shell for PATH to be available
+    ${Else}
+        DetailPrint "Node.js already installed (v$NodeJSVersion)"
+    ${EndIf}
+SectionEnd
+
+Section "Claude CLI" SEC03
+    ${If} $ClaudeCLIInstalled != "true"
+        DetailPrint "Installing Claude CLI..."
+
+        ; Need to refresh PATH first to find npm
+        ; This reads the updated PATH from registry
+        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        System::Call 'Kernel32::SetEnvironmentVariable(t "PATH", t "$0")i'
+
+        ; Also check user PATH
+        ReadRegStr $1 HKCU "Environment" "Path"
+        System::Call 'Kernel32::SetEnvironmentVariable(t "PATH", t "$0;$1")i'
+
+        ; Install Claude CLI globally via npm
+        DetailPrint "Running: npm install -g ${CLAUDE_CLI_PACKAGE}"
+        nsExec::ExecToLog 'cmd /c "npm install -g ${CLAUDE_CLI_PACKAGE}"'
+        Pop $0
+
+        ${If} $0 != 0
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Claude CLI installation failed. You can install it manually by running:$\r$\n$\r$\nnpm install -g ${CLAUDE_CLI_PACKAGE}"
+        ${Else}
+            DetailPrint "Claude CLI installed successfully"
+        ${EndIf}
+    ${Else}
+        DetailPrint "Claude CLI already installed"
+    ${EndIf}
+SectionEnd
+
+Section "Start Menu Shortcuts" SEC04
+    DetailPrint "Creating Start Menu shortcuts..."
+
+    ; Create Start Menu folder
+    CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
+
+    ; Create shortcut to open my-hq folder
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\my-hq Folder.lnk" "$INSTDIR"
+
+    ; Create shortcut to launch Claude in my-hq directory
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+
+    ; Create uninstaller shortcut
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
+SectionEnd
+
+Section "Desktop Shortcut" SEC05
+    DetailPrint "Creating Desktop shortcut..."
+
+    ; Create desktop shortcut
+    CreateShortcut "$DESKTOP\my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"' "$INSTDIR\.claude\assets\hq-icon.ico" 0
+SectionEnd
+
+Section -Post
+    ; Write uninstaller
+    WriteUninstaller "$INSTDIR\uninst.exe"
+
+    ; Write registry keys for Add/Remove Programs
+    WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "$(^Name)"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\.claude\assets\hq-icon.ico"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
+    WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
+
+    ; Calculate installed size
+    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+    IntFmt $0 "0x%08X" $0
+    WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" "$0"
+
+    DetailPrint "Installation complete!"
+SectionEnd
+
+; -----------------------------------------------------------------------------
+; Uninstaller Section
+; -----------------------------------------------------------------------------
+
+Function un.onUninstSuccess
+    HideWindow
+    MessageBox MB_ICONINFORMATION|MB_OK "$(^Name) was successfully removed from your computer."
+FunctionEnd
+
+Function un.onInit
+    MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to uninstall $(^Name)?$\r$\n$\r$\nNote: Your my-hq data and configuration will NOT be deleted." IDYES +2
+    Abort
+FunctionEnd
+
+Section Uninstall
+    ; Remove Start Menu shortcuts
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}\my-hq Folder.lnk"
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk"
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
+
+    ; Remove Desktop shortcut
+    Delete "$DESKTOP\my-hq.lnk"
+
+    ; Remove registry keys
+    DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
+    DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"
+
+    ; Remove uninstaller
+    Delete "$INSTDIR\uninst.exe"
+
+    ; Note: We do NOT delete user data in $INSTDIR
+    ; User must manually delete if they want to remove everything
+
+    SetAutoClose true
+SectionEnd
+
+; -----------------------------------------------------------------------------
+; Section Descriptions
+; -----------------------------------------------------------------------------
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Core my-hq files and templates"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Node.js runtime (required for Claude CLI)"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Claude CLI - AI agent execution engine"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "Create Start Menu shortcuts"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SEC05} "Create Desktop shortcut"
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
