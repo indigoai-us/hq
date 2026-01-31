@@ -139,10 +139,10 @@
         "Can be hosted on GitHub Pages"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "labels": ["docs"],
       "dependsOn": ["US-002", "US-003"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Created installer/docs/ with GitHub Pages-ready landing page. Features: (1) Auto-detects Windows/macOS and shows appropriate download button, (2) Shows system requirements (OS versions, disk space, internet), (3) Tabbed manual installation instructions for macOS/Linux and Windows with CLI commands, (4) FAQ section with 8 common questions covering Claude accounts, Node.js auto-install, data storage, security warnings, uninstall, and updates, (5) .nojekyll file and _config.yml for GitHub Pages deployment. Dark theme UI with responsive design."
     },
     {
       "id": "US-009",
