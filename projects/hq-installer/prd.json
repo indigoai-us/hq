@@ -105,10 +105,10 @@
         "Can be skipped if user wants to configure manually later"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "labels": ["setup"],
       "dependsOn": ["US-005"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. Created cross-platform terminal-based setup wizard (setup-wizard.ps1 for Windows, setup-wizard.sh for macOS) that: (1) Welcomes user and explains my-hq, (2) Collects profile info (name, role, location, goals), (3) Collects preferences (communication style, priorities, tools), (4) Optionally collects company/project info, (5) Writes configured agents.md, (6) Shows Getting Started guide with key commands and locations, (7) Offers to launch Claude or open folder, (8) Can be skipped at any point. Windows: NSIS finish page launches wizard via PowerShell, Start Menu shortcut added. macOS: Wizard auto-launches after install, Setup Wizard.app created on desktop for re-running."
     },
     {
       "id": "US-007",

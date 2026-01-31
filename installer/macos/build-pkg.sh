@@ -19,7 +19,8 @@ BUILD_DIR="$SCRIPT_DIR/build"
 PAYLOAD_DIR="$BUILD_DIR/payload"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
 RESOURCES_DIR="$SCRIPT_DIR/resources"
-TEMPLATE_DIR="$SCRIPT_DIR/../../template"
+TEMPLATE_DIR="$SCRIPT_DIR/../template"
+SHARED_SCRIPTS_DIR="$SCRIPT_DIR/../shared/scripts"
 
 # Output
 PKG_NAME="${PRODUCT_NAME}-${PRODUCT_VERSION}.pkg"
@@ -112,6 +113,13 @@ prepare_payload() {
     else
         echo "  No template directory found, creating minimal structure..."
         create_minimal_files
+    fi
+
+    # Copy shared scripts (setup wizard, etc.)
+    if [ -d "$SHARED_SCRIPTS_DIR" ]; then
+        echo "  Copying shared scripts..."
+        cp "$SHARED_SCRIPTS_DIR/setup-wizard.sh" "$PAYLOAD_DIR/my-hq/" 2>/dev/null || true
+        chmod +x "$PAYLOAD_DIR/my-hq/setup-wizard.sh" 2>/dev/null || true
     fi
 
     echo -e "${GREEN}Payload prepared${NC}"

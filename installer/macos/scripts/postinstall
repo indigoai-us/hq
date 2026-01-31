@@ -481,6 +481,134 @@ PLIST_EOF
 }
 
 # =============================================================================
+# Create Setup Wizard Desktop Launcher (.app bundle)
+# =============================================================================
+create_setup_wizard_launcher() {
+    log "Creating setup wizard launcher..."
+
+    local app_dir="$TARGET_HOME/Desktop/my-hq Setup Wizard.app"
+    local contents_dir="$app_dir/Contents"
+    local macos_dir="$contents_dir/MacOS"
+    local resources_dir="$contents_dir/Resources"
+
+    # Create app bundle structure
+    mkdir -p "$macos_dir"
+    mkdir -p "$resources_dir"
+
+    # Create the launcher script
+    cat > "$macos_dir/setup-wizard" << 'WIZARD_LAUNCHER_EOF'
+#!/bin/bash
+# my-hq Setup Wizard Launcher
+# Opens Terminal and runs the setup wizard
+
+HQ_DIR="$HOME/my-hq"
+WIZARD_SCRIPT="$HQ_DIR/setup-wizard.sh"
+
+# Check if setup wizard exists
+if [ ! -f "$WIZARD_SCRIPT" ]; then
+    osascript -e 'display alert "Setup Wizard Not Found" message "The setup wizard script was not found. Please reinstall my-hq or run /setup in Claude." as critical'
+    exit 1
+fi
+
+# Open Terminal and run the setup wizard
+osascript -e "tell application \"Terminal\"
+    activate
+    do script \"cd '$HQ_DIR' && bash '$WIZARD_SCRIPT'\"
+end tell"
+WIZARD_LAUNCHER_EOF
+
+    chmod +x "$macos_dir/setup-wizard"
+
+    # Create Info.plist
+    cat > "$contents_dir/Info.plist" << 'PLIST_EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>setup-wizard</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.my-hq.setup-wizard</string>
+    <key>CFBundleName</key>
+    <string>my-hq Setup Wizard</string>
+    <key>CFBundleDisplayName</key>
+    <string>my-hq Setup Wizard</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+PLIST_EOF
+
+    # Fix ownership
+    chown -R "$TARGET_USER" "$app_dir"
+
+    log "Setup wizard launcher created at $app_dir"
+}
+
+# =============================================================================
+# Launch Setup Wizard After Installation
+# =============================================================================
+launch_setup_wizard() {
+    log "Preparing to launch setup wizard..."
+
+    local wizard_script="$HQ_DIR/setup-wizard.sh"
+
+    # Check if wizard exists
+    if [ ! -f "$wizard_script" ]; then
+        log "Setup wizard script not found, skipping auto-launch"
+        return 0
+    fi
+
+    # Make sure it's executable
+    chmod +x "$wizard_script"
+    chown "$TARGET_USER" "$wizard_script"
+
+    # Create a launchd plist to run the wizard after installation completes
+    # This ensures the wizard runs after the installer window closes
+    local launch_plist="/tmp/com.my-hq.setup-wizard.plist"
+
+    cat > "$launch_plist" << LAUNCH_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.my-hq.setup-wizard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/osascript</string>
+        <string>-e</string>
+        <string>delay 2</string>
+        <string>-e</string>
+        <string>tell application "Terminal" to activate</string>
+        <string>-e</string>
+        <string>tell application "Terminal" to do script "cd $HQ_DIR && bash setup-wizard.sh"</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+LAUNCH_EOF
+
+    # Schedule the wizard to run via a background process
+    # (launchd agents don't work well from postinstall scripts)
+    (
+        sleep 3
+        su "$TARGET_USER" -c "osascript -e 'tell application \"Terminal\"' -e 'activate' -e 'do script \"cd $HQ_DIR && bash setup-wizard.sh\"' -e 'end tell'"
+    ) &
+
+    log "Setup wizard scheduled to launch"
+}
+
+# =============================================================================
 # Open Terminal with my-hq (optional)
 # =============================================================================
 open_terminal() {
@@ -556,12 +684,18 @@ install_auth_helper
 # Step 7: Create desktop launcher (macOS Application)
 create_desktop_launcher
 
-# Step 8: Cleanup
+# Step 8: Create Setup Wizard launcher on desktop
+create_setup_wizard_launcher
+
+# Step 9: Launch Setup Wizard (opens after installer closes)
+launch_setup_wizard
+
+# Step 10: Cleanup
 cleanup
 
 log "Post-install complete!"
 log "my-hq has been installed to $HQ_DIR"
-log "Run 'cd ~/my-hq && claude' to start, then type /setup"
+log "Setup wizard will launch automatically."
 
 # Always exit successfully
 exit 0

@@ -369,8 +369,17 @@ FunctionEnd
 
 ; Launch setup wizard function (called from finish page)
 Function LaunchSetupWizard
-    ; Open a new terminal with claude and run setup
-    ExecShell "open" "cmd.exe" '/k "cd /d "$INSTDIR" && echo Welcome to my-hq! && echo. && echo Run: claude && echo Then type /setup to begin the setup wizard && echo. && claude"'
+    ; Run the setup wizard PowerShell script
+    ; The wizard will guide the user through profile setup and optionally launch Claude
+    IfFileExists "$INSTDIR\setup-wizard.ps1" 0 FallbackLaunch
+        DetailPrint "Launching Setup Wizard..."
+        ; Use powershell to run the wizard script with bypassed execution policy
+        ExecShell "open" "powershell.exe" '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\setup-wizard.ps1" -HQDir "$INSTDIR"'
+        Return
+
+    FallbackLaunch:
+        ; Fallback to original behavior if wizard script not found
+        ExecShell "open" "cmd.exe" '/k "cd /d "$INSTDIR" && echo Welcome to my-hq! && echo. && echo Run: claude && echo Then type /setup to begin the setup wizard && echo. && claude"'
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
@@ -383,6 +392,10 @@ Section "Core Files" SEC01
 
     ; Create progress details
     DetailPrint "Installing my-hq core files..."
+
+    ; Copy the setup wizard script
+    DetailPrint "Installing setup wizard..."
+    File "..\shared\scripts\setup-wizard.ps1"
 
     ; Try to copy bundled template files first
     ; Template is bundled from installer/template/ during build
@@ -566,6 +579,11 @@ Section "Start Menu Shortcuts" SEC04
         Goto EndStartMenuShortcut
     CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Launch my-hq.lnk" "cmd.exe" '/k "cd /d "$INSTDIR" && claude"'
     EndStartMenuShortcut:
+
+    ; Create shortcut to run setup wizard
+    IfFileExists "$INSTDIR\setup-wizard.ps1" 0 SkipSetupWizardShortcut
+        CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Setup Wizard.lnk" "powershell.exe" '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\setup-wizard.ps1" -HQDir "$INSTDIR"'
+    SkipSetupWizardShortcut:
 
     ; Create uninstaller shortcut
     CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
