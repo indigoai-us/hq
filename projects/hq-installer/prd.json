@@ -54,10 +54,10 @@
         "Adds shell PATH entries for installed tools"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "labels": ["macos"],
       "dependsOn": ["US-001"],
-      "notes": ""
+      "notes": "Completed 2026-01-30. .pkg installer with build-pkg.sh script, branded HTML UI (welcome/readme/license/conclusion), preinstall/postinstall scripts for Node.js and Claude CLI detection and auto-install, PATH configuration via ~/.zshrc and /etc/paths.d. Code signing and notarization documented in CODE-SIGNING.md."
     },
     {
       "id": "US-004",

@@ -1,0 +1,345 @@
+#!/bin/bash
+# =============================================================================
+# my-hq macOS Installer - Post-install Script
+# Runs AFTER files are copied to the destination
+# =============================================================================
+
+# Log file for debugging
+LOG_FILE="/tmp/my-hq-installer.log"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [postinstall] $1" >> "$LOG_FILE"
+    echo "$1"
+}
+
+error() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [postinstall] ERROR: $1" >> "$LOG_FILE"
+    echo "ERROR: $1" >&2
+}
+
+log "Starting post-install..."
+
+# Load variables from preinstall
+if [ -f /tmp/my-hq-install-vars ]; then
+    source /tmp/my-hq-install-vars
+else
+    error "Install variables not found, using defaults"
+    TARGET_USER=$(stat -f "%Su" /dev/console)
+    TARGET_HOME=$(eval echo "~$TARGET_USER")
+fi
+
+log "Target user: $TARGET_USER"
+log "Target home: $TARGET_HOME"
+
+# Node.js configuration
+NODEJS_PKG_URL="https://nodejs.org/dist/v20.11.0/node-v20.11.0.pkg"
+NODEJS_PKG_NAME="node-v20.11.0.pkg"
+NODEJS_MIN_VERSION=18
+
+# Claude CLI package
+CLAUDE_CLI_PACKAGE="@anthropic-ai/claude-code"
+
+# my-hq install location
+HQ_DIR="$TARGET_HOME/my-hq"
+
+# =============================================================================
+# Install Node.js if needed
+# =============================================================================
+install_nodejs() {
+    log "Installing Node.js..."
+
+    # Download Node.js pkg
+    local pkg_path="/tmp/$NODEJS_PKG_NAME"
+
+    log "Downloading Node.js from $NODEJS_PKG_URL..."
+    if curl -fsSL "$NODEJS_PKG_URL" -o "$pkg_path"; then
+        log "Download complete, installing..."
+
+        # Install the pkg
+        if installer -pkg "$pkg_path" -target /; then
+            log "Node.js installed successfully"
+            rm -f "$pkg_path"
+
+            # Update NODE_BIN
+            if [ -x "/usr/local/bin/node" ]; then
+                NODE_BIN="/usr/local/bin/node"
+            fi
+            return 0
+        else
+            error "Failed to install Node.js pkg"
+            rm -f "$pkg_path"
+            return 1
+        fi
+    else
+        error "Failed to download Node.js"
+        return 1
+    fi
+}
+
+# =============================================================================
+# Install Claude CLI if needed
+# =============================================================================
+install_claude_cli() {
+    log "Installing Claude CLI..."
+
+    # Find npm
+    local npm_paths=(
+        "/usr/local/bin/npm"
+        "/opt/homebrew/bin/npm"
+        "$(dirname "$NODE_BIN")/npm"
+    )
+
+    local npm_bin=""
+    for npm_path in "${npm_paths[@]}"; do
+        if [ -x "$npm_path" ]; then
+            npm_bin="$npm_path"
+            break
+        fi
+    done
+
+    if [ -z "$npm_bin" ]; then
+        npm_bin=$(which npm 2>/dev/null || true)
+    fi
+
+    if [ -z "$npm_bin" ]; then
+        error "npm not found, cannot install Claude CLI"
+        return 1
+    fi
+
+    log "Using npm at: $npm_bin"
+
+    # Install Claude CLI globally
+    if "$npm_bin" install -g "$CLAUDE_CLI_PACKAGE"; then
+        log "Claude CLI installed successfully"
+
+        # Find where it was installed
+        CLAUDE_BIN=$(which claude 2>/dev/null || true)
+        if [ -z "$CLAUDE_BIN" ]; then
+            # Check common locations
+            for path in "/usr/local/bin/claude" "/opt/homebrew/bin/claude"; do
+                if [ -x "$path" ]; then
+                    CLAUDE_BIN="$path"
+                    break
+                fi
+            done
+        fi
+
+        log "Claude CLI installed at: $CLAUDE_BIN"
+        return 0
+    else
+        error "Failed to install Claude CLI"
+        return 1
+    fi
+}
+
+# =============================================================================
+# Move my-hq to user's home directory
+# =============================================================================
+setup_hq_directory() {
+    log "Setting up my-hq directory..."
+
+    # The pkg installs to /my-hq, we need to move to user home
+    local source_dir="/my-hq"
+
+    if [ -d "$source_dir" ]; then
+        log "Moving my-hq from $source_dir to $HQ_DIR..."
+
+        # Create parent dir if needed
+        mkdir -p "$(dirname "$HQ_DIR")"
+
+        # If target exists, back it up
+        if [ -d "$HQ_DIR" ]; then
+            local backup_dir="${HQ_DIR}.backup.$(date +%Y%m%d%H%M%S)"
+            log "Backing up existing my-hq to $backup_dir"
+            mv "$HQ_DIR" "$backup_dir"
+        fi
+
+        # Move files
+        mv "$source_dir" "$HQ_DIR"
+
+        # Fix ownership
+        chown -R "$TARGET_USER" "$HQ_DIR"
+
+        log "my-hq directory setup complete at $HQ_DIR"
+    else
+        log "No source directory at $source_dir, checking if already in place..."
+
+        if [ ! -d "$HQ_DIR" ]; then
+            log "Creating my-hq directory at $HQ_DIR..."
+            mkdir -p "$HQ_DIR"
+            mkdir -p "$HQ_DIR/.claude/commands"
+            mkdir -p "$HQ_DIR/workers"
+            mkdir -p "$HQ_DIR/projects"
+            mkdir -p "$HQ_DIR/workspace/checkpoints"
+            mkdir -p "$HQ_DIR/workspace/threads"
+            mkdir -p "$HQ_DIR/knowledge"
+            chown -R "$TARGET_USER" "$HQ_DIR"
+        fi
+    fi
+}
+
+# =============================================================================
+# Configure shell PATH
+# =============================================================================
+configure_path() {
+    log "Configuring shell PATH..."
+
+    # Determine which shell config files to update
+    local shell_configs=()
+
+    if [ -f "$TARGET_HOME/.zshrc" ] || [ "$SHELL" = "/bin/zsh" ]; then
+        shell_configs+=("$TARGET_HOME/.zshrc")
+    fi
+
+    if [ -f "$TARGET_HOME/.bash_profile" ]; then
+        shell_configs+=("$TARGET_HOME/.bash_profile")
+    elif [ -f "$TARGET_HOME/.bashrc" ]; then
+        shell_configs+=("$TARGET_HOME/.bashrc")
+    fi
+
+    # If no config found, create .zshrc (default shell on modern macOS)
+    if [ ${#shell_configs[@]} -eq 0 ]; then
+        shell_configs+=("$TARGET_HOME/.zshrc")
+    fi
+
+    # PATH entries to add
+    local path_comment="# Added by my-hq installer"
+    local path_entries=""
+
+    # Add Node.js to PATH if we installed it
+    if [ -n "$NODE_BIN" ]; then
+        local node_dir=$(dirname "$NODE_BIN")
+        if [[ ! ":$PATH:" == *":$node_dir:"* ]]; then
+            path_entries="$path_entries\nexport PATH=\"$node_dir:\$PATH\""
+        fi
+    fi
+
+    # Add npm global bin to PATH
+    local npm_global_bin="/usr/local/bin"
+    if [ -d "$npm_global_bin" ]; then
+        if [[ ! ":$PATH:" == *":$npm_global_bin:"* ]]; then
+            path_entries="$path_entries\nexport PATH=\"$npm_global_bin:\$PATH\""
+        fi
+    fi
+
+    # Add my-hq alias
+    path_entries="$path_entries\nalias hq='cd $HQ_DIR && claude'"
+
+    # Update each shell config
+    for config in "${shell_configs[@]}"; do
+        log "Updating $config..."
+
+        # Check if we've already added our entries
+        if grep -q "my-hq installer" "$config" 2>/dev/null; then
+            log "PATH already configured in $config"
+            continue
+        fi
+
+        # Append to config
+        {
+            echo ""
+            echo "$path_comment"
+            echo -e "$path_entries"
+        } >> "$config"
+
+        # Fix ownership
+        chown "$TARGET_USER" "$config"
+
+        log "Updated $config"
+    done
+}
+
+# =============================================================================
+# Create LaunchAgent for PATH (alternative approach)
+# =============================================================================
+create_path_helper() {
+    log "Creating PATH helper..."
+
+    # Create a paths.d entry for system-wide PATH
+    local paths_dir="/etc/paths.d"
+
+    if [ -d "$paths_dir" ]; then
+        echo "/usr/local/bin" > "$paths_dir/my-hq" 2>/dev/null || true
+        log "Created $paths_dir/my-hq"
+    fi
+}
+
+# =============================================================================
+# Open Terminal with my-hq (optional)
+# =============================================================================
+open_terminal() {
+    log "Opening Terminal with my-hq..."
+
+    # Create a temporary script to run
+    local launch_script="/tmp/my-hq-launch.sh"
+    cat > "$launch_script" << 'LAUNCH_EOF'
+#!/bin/bash
+cd ~/my-hq
+echo ""
+echo "Welcome to my-hq!"
+echo "================="
+echo ""
+echo "Run 'claude' to start, then type /setup to configure."
+echo ""
+exec bash
+LAUNCH_EOF
+
+    chmod +x "$launch_script"
+    chown "$TARGET_USER" "$launch_script"
+
+    # Open Terminal with the script (as the target user)
+    # su "$TARGET_USER" -c "open -a Terminal '$launch_script'" &
+
+    log "Launch script created at $launch_script"
+}
+
+# =============================================================================
+# Cleanup
+# =============================================================================
+cleanup() {
+    log "Cleaning up..."
+    rm -f /tmp/my-hq-install-vars
+    log "Cleanup complete"
+}
+
+# =============================================================================
+# Main installation flow
+# =============================================================================
+
+# Step 1: Install Node.js if needed
+if [ "$NODEJS_INSTALLED" != "true" ]; then
+    install_nodejs || {
+        error "Node.js installation failed. Please install Node.js 18+ manually from https://nodejs.org"
+    }
+else
+    log "Node.js already installed, skipping..."
+fi
+
+# Step 2: Install Claude CLI if needed
+if [ "$CLAUDE_INSTALLED" != "true" ]; then
+    install_claude_cli || {
+        error "Claude CLI installation failed. You can install it manually: npm install -g @anthropic-ai/claude-code"
+    }
+else
+    log "Claude CLI already installed, skipping..."
+fi
+
+# Step 3: Setup my-hq directory
+setup_hq_directory
+
+# Step 4: Configure PATH
+configure_path
+create_path_helper
+
+# Step 5: Optional - open terminal
+# open_terminal
+
+# Step 6: Cleanup
+cleanup
+
+log "Post-install complete!"
+log "my-hq has been installed to $HQ_DIR"
+log "Run 'cd ~/my-hq && claude' to start, then type /setup"
+
+# Always exit successfully
+exit 0
