@@ -4,6 +4,67 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v4.0.0 (from v3.3.0)
+
+### What Changed
+Major architecture upgrade: INDEX.md navigation system, knowledge repos (independent git repos), automated learning pipeline (`/learn`), and significant command updates.
+
+### New Command
+Copy to `.claude/commands/`:
+- `learn.md` — Automated learning pipeline (captures learnings, injects rules into source files, deduplicates)
+
+### New Knowledge Files
+Copy to `knowledge/`:
+- `Ralph/11-team-training-guide.md` — Team training guide
+- `hq-core/checkpoint-schema.json` — Checkpoint data format
+- `hq-core/index-md-spec.md` — INDEX.md specification
+
+### Updated Files
+All 13 existing public commands have been refreshed. Copy from starter kit:
+- `.claude/commands/*.md` (all public commands)
+- `.claude/CLAUDE.md` (major rewrite — merge carefully with your customizations)
+- `workers/registry.yaml` (v4.0)
+
+Updated workers:
+- `workers/dev-team/code-reviewer/skills/review-pr.md`
+- `workers/dev-team/frontend-dev/worker.yaml`
+- `workers/dev-team/qa-tester/worker.yaml`
+- `workers/dev-team/task-executor/skills/validate-completion.md`
+
+Updated knowledge:
+- `knowledge/hq-core/thread-schema.md`
+- `knowledge/workers/README.md`
+- `knowledge/workers/skill-schema.md`
+- `knowledge/workers/state-machine.md`
+- `knowledge/projects/README.md`
+
+### Removed
+- `knowledge/pure-ralph/` — Delete this directory. Pure Ralph patterns have been merged into the Ralph methodology core.
+
+### New Features to Adopt
+
+**INDEX.md System:** Create INDEX.md files at key directories. See `knowledge/hq-core/index-md-spec.md` for spec. Commands like `/checkpoint`, `/handoff`, `/prd` auto-update them.
+
+**Knowledge Repos (Optional):** Knowledge folders can be independent git repos symlinked into HQ. See "Knowledge Repos" section in CLAUDE.md.
+
+**Learning System:** `/learn` and `/remember` now inject rules directly into source files. Add a `## Learned Rules` section to your CLAUDE.md and `## Rules` sections to your commands.
+
+### Migration Steps
+1. Copy `.claude/commands/learn.md` (new command)
+2. Copy all updated `.claude/commands/*.md`
+3. Merge `.claude/CLAUDE.md` — add INDEX.md System, Knowledge Repos, Learning System, Auto-Learn, and Search rules sections
+4. Copy `workers/registry.yaml`
+5. Copy new knowledge files (`Ralph/11-team-training-guide.md`, `hq-core/checkpoint-schema.json`, `hq-core/index-md-spec.md`)
+6. Copy updated knowledge and worker files
+7. Delete `knowledge/pure-ralph/`
+8. Run `/search-reindex`
+9. Run `/cleanup --reindex` to generate INDEX.md files
+
+### Breaking Changes
+- `knowledge/pure-ralph/` removed — if you reference it, update to `knowledge/Ralph/`
+
+---
+
 ## Migrating to v3.3.0 (from v3.2.0)
 
 ### What Changed

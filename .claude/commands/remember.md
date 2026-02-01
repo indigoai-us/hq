@@ -62,53 +62,28 @@ Options:
 3. Add anyway (different enough)
 ```
 
-## Step 4: Inject Rule
+## Step 4: Inject Rule via /learn
 
-### For worker.yaml (YAML `instructions:` block)
+Delegate to the `/learn` pipeline:
 
-Read the file, find `instructions: |` block, append rule at end:
-```yaml
-instructions: |
-  ...existing instructions...
+Run `/learn` with:
+- **rule**: The rule from steps 1-2
+- **source**: `user-correction`
+- **severity**: `high`
+- **scope**: Detected from step 2 (worker:{id}, command:{name}, or global)
 
-  ## Learnings
-  - {new rule}
-```
+`/learn` injects the rule directly into the file it governs (worker.yaml, command .md, knowledge file, or CLAUDE.md). User corrections **ALWAYS** also promote to CLAUDE.md `## Learned Rules`.
 
-If no `## Learnings` section exists, create it.
+`/learn` handles: dedup, injection, event logging, qmd reindexing.
 
-### For command.md (Markdown)
-
-Find or create `## Rules` section, append:
-```markdown
-## Rules
-
-...existing rules...
-- {new rule}
-```
-
-### For CLAUDE.md
-
-Find the most relevant section (based on rule content), append rule.
-If no clear section, add to end under `## Learnings`.
-
-### For skill files
-
-Append rule inline at end of file under `## Rules` or `## Learnings`.
-
-## Step 5: Reindex
-
-```bash
-qmd update 2>/dev/null || true
-```
-
-## Step 6: Report
+## Step 5: Report
 
 ```
-Rule added to: {file path}
-Section: {section name}
-
-Rule: {the rule}
+Rule captured via /learn:
+  Rule: {the rule}
+  Injected: {target file path}
+  Global: promoted (user correction)
+  Event: workspace/learnings/learn-{timestamp}.json
 
 Search with: /search "{keywords}"
 ```
@@ -125,7 +100,7 @@ Match existing style in target file. Common patterns:
 
 ### Worker-specific
 User: "The CFO worker kept trying to write to Stripe instead of just reading"
-Target: `workers/private/{worker-id}/worker.yaml`
+Target: `workers/private/cfo-{company}/worker.yaml`
 Rule: `- NEVER: Write or modify data in Stripe. All operations are read-only.`
 
 ### Command-specific

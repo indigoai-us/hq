@@ -178,6 +178,17 @@ Write to `workspace/orchestrator/{project}/executions/{task-id}.json`:
 }
 ```
 
+### 5.5 Load Scoped Learnings
+
+Learnings live inside the files they govern — no separate learnings files.
+
+1. For each worker in the selected sequence:
+   - Worker `instructions:` in `worker.yaml` includes a `## Learnings` subsection with accumulated rules from prior `/learn` injections
+   - These are loaded automatically in step 6a when reading worker config
+2. `.claude/CLAUDE.md` `## Learned Rules` (global hot rules) is already in session context
+
+No extra file reads needed — learnings are part of the source files.
+
 ### 6. Execute Each Phase
 
 For each worker in sequence:
@@ -287,31 +298,29 @@ When all phases complete:
 task.passes = true
 ```
 
-#### 7b. Create Learning Entry
+#### 7b. Capture Learnings via /learn
 
-Write to `workspace/learnings/{project}/{task-id}.json`:
+Run `/learn` with structured input from execution:
+
 ```json
 {
-  "learning_id": "learn-{task-id}",
   "task_id": "{task.id}",
   "project": "{project}",
-  "created_at": "{ISO8601}",
-  "classification": {
-    "task_type": "{classified type}",
-    "workers_used": ["list"],
-    "total_phases": N
-  },
-  "execution": {
-    "retries": 0,
-    "back_pressure_failures": []
-  },
-  "insights": {
-    "what_worked": ["extracted from worker outputs"],
-    "key_decisions": ["aggregated from all phases"],
-    "for_next_time": ["lessons learned"]
-  }
+  "source": "task-completion",
+  "severity": "medium",
+  "scope": "auto",
+  "workers_used": ["list of workers that ran"],
+  "back_pressure_failures": [{"worker": "...", "check": "...", "error": "..."}],
+  "retries": N,
+  "key_decisions": ["aggregated from worker outputs"],
+  "issues_encountered": ["from worker outputs"],
+  "patterns_discovered": ["success patterns worth preserving"]
 }
 ```
+
+`/learn` handles: injection into source files, global promotion, event logging, dedup.
+
+If task completed cleanly with no failures/retries/notable patterns, `/learn` will log the event only (no rule injection).
 
 #### 7c. Report Completion
 
@@ -330,9 +339,43 @@ Learning captured: workspace/learnings/{project}/{task-id}.json
 PRD updated: passes: true
 ```
 
+#### 7d. Structured Output for Orchestrator
+
+When invoked as a sub-agent by `/run-project`, end with this JSON so the orchestrator can parse results without absorbing full context:
+
+```json
+{
+  "task_id": "{task.id}",
+  "status": "completed",
+  "summary": "1-sentence summary of what was accomplished",
+  "workers_used": ["{worker1}", "{worker2}"],
+  "back_pressure": {
+    "tests": "pass|fail|skipped",
+    "lint": "pass|fail|skipped",
+    "typecheck": "pass|fail|skipped",
+    "build": "pass|fail|skipped",
+    "e2e_manifest": "pass|fail|skipped"
+  }
+}
+```
+
 ### 8. Handle Failures
 
 If any phase fails after retry:
+
+0. **Auto-capture failure as learning:**
+   Run `/learn` with:
+   ```json
+   {
+     "source": "back-pressure-failure",
+     "severity": "high",
+     "scope": "worker:{failed-worker-id}",
+     "back_pressure_failures": [{"worker": "...", "check": "...", "error": "..."}],
+     "task_id": "{task.id}",
+     "project": "{project}"
+   }
+   ```
+   This ensures the failure becomes a rule BEFORE asking the user what to do.
 
 1. Update execution state: `status: "paused"`
 2. Log error details
@@ -345,6 +388,18 @@ Options:
 1. Fix manually and resume: /execute-task {project}/{task-id} --resume
 2. Skip this worker and continue
 3. Abort execution
+```
+
+When invoked as a sub-agent, also output structured JSON on failure:
+
+```json
+{
+  "task_id": "{task.id}",
+  "status": "failed",
+  "summary": "Phase {N} ({worker}) failed: {brief error}",
+  "workers_used": ["{workers that ran}"],
+  "back_pressure": {}
+}
 ```
 
 ## Handoff Context Format
@@ -382,3 +437,4 @@ Context passed between workers:
 - **Fail fast, fail loud** - Stop on errors, don't hide them
 - **prd.json is required** - never read or fall back to README.md
 - **Validate prd.json on load** - fail loudly on missing/malformed fields
+- **Orchestrator-compatible output** - always end with structured JSON block (step 7d) so `/run-project` can parse results without absorbing full context

@@ -27,12 +27,26 @@ Save current work state as a thread to survive context loss.
    git status --porcelain                   # dirty check
    ```
 
-3. **Gather session state**
+3. **Capture knowledge repo git states**
+   Knowledge folders are separate git repos (symlinked). For any knowledge path in files_touched, capture its repo state:
+   ```bash
+   # For each knowledge repo with changes:
+   for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+     [ -L "$symlink" ] || continue
+     repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
+     dirty=$(cd "$repo_dir" && git status --porcelain)
+     [ -z "$dirty" ] && continue
+     echo "$symlink: $(cd "$repo_dir" && git rev-parse --short HEAD) (dirty)"
+   done
+   ```
+   Include dirty knowledge repos in the thread JSON under `git.knowledge_repos`.
+
+4. **Gather session state**
    - Summarize what was accomplished
    - List files touched
    - Identify next steps
 
-4. **Write thread** to `workspace/threads/{thread_id}.json`:
+5. **Write thread** to `workspace/threads/{thread_id}.json` (include knowledge_repos from step 3):
    ```json
    {
      "thread_id": "T-20260123-143052-mrr-report",
@@ -49,7 +63,11 @@ Save current work state as a thread to survive context loss.
        "initial_commit": "abc1234",
        "current_commit": "def5678",
        "commits_made": ["hash: message"],
-       "dirty": false
+       "dirty": false,
+       "knowledge_repos": {
+         "knowledge-acme": {"commit": "abc1234", "dirty": true},
+         "knowledge-ralph": {"commit": "def5678", "dirty": false}
+       }
      },
 
      "worker": {
@@ -69,15 +87,18 @@ Save current work state as a thread to survive context loss.
    }
    ```
 
-5. **Also write legacy checkpoint** to `workspace/checkpoints/{task-id}.json` for backward compat
+6. **Also write legacy checkpoint** to `workspace/checkpoints/{task-id}.json` for backward compat
 
-6. **Update INDEX.md**
+7. **Update INDEX.md files**
    - Regenerate `INDEX.md` at HQ root with current:
      - Workers from `workers/registry.yaml`
      - Recent threads from `workspace/threads/`
      - Update timestamp
+   - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
+   - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
+   - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
-7. **Report**
+8. **Report**
    ```
    Thread saved: workspace/threads/{thread_id}.json
 

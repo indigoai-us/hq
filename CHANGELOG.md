@@ -1,5 +1,35 @@
 # Changelog
 
+## v4.0.0 (2026-01-31)
+
+### Added
+- **`/learn`** — Automated learning pipeline: captures learnings from task execution/failure and injects rules directly into the files they govern (worker.yaml, command .md, knowledge files, or CLAUDE.md). Deduplicates via qmd, supports global promotion, event logging.
+- **INDEX.md System** — Hierarchical INDEX.md files provide navigable maps of HQ. Auto-updated by `/checkpoint`, `/handoff`, `/reanchor`, `/prd`, `/run-project`, `/newworker`. Spec at `knowledge/hq-core/index-md-spec.md`
+- **Knowledge Repos** — Knowledge folders can now be independent git repos, symlinked into HQ for versioning and sharing
+- **Learning System** — Rules injected directly into source files (worker.yaml, commands, knowledge, CLAUDE.md). `/learn` + `/remember` pipeline with dedup, event logging, and global cap (20 rules)
+- **Auto-Learn (Build Activities)** — `/newworker`, `/prd`, new knowledge/commands auto-register themselves via `/learn`
+- **Search rules** — Formal policy: use qmd for HQ content search, never Grep/Glob for topic search
+- `knowledge/Ralph/11-team-training-guide.md` — Team training guide for Ralph methodology
+- `knowledge/hq-core/checkpoint-schema.json` — Checkpoint data format
+- `knowledge/hq-core/index-md-spec.md` — INDEX.md specification
+
+### Changed
+- **`.claude/CLAUDE.md`** — Major rewrite: added INDEX.md System, Knowledge Repos, Learning System, Auto-Learn, Search rules sections. Command count 16 → 17
+- **All 14 public commands refreshed** — `/checkpoint` (knowledge repo state), `/cleanup` (INDEX.md audit + knowledge repo checks), `/execute-task` (learnings integration, orchestrator output), `/handoff` (knowledge repo commits, INDEX.md regen), `/metrics`, `/newworker` (auto-learn + INDEX updates), `/prd` (auto-learn + INDEX updates), `/reanchor` (INDEX-based context loading), `/remember` (delegates to /learn), `/run-project` (fresh-context sub-agent pattern, auto-reanchor between tasks), `/run` (learnings loading), `/search-reindex`, `/search`
+- `workers/registry.yaml` — Version 3.0 → 4.0, dev team count 13 → 12
+- `knowledge/hq-core/thread-schema.md` — Added knowledge repo tracking
+- `knowledge/workers/README.md`, `skill-schema.md`, `state-machine.md` — Updated
+- `knowledge/projects/README.md` — Updated
+- `workers/dev-team/code-reviewer/skills/review-pr.md` — Generalized E2E checks
+- `workers/dev-team/frontend-dev/worker.yaml` — Generalized E2E requirements
+- `workers/dev-team/qa-tester/worker.yaml` — Generalized E2E testing
+- `workers/dev-team/task-executor/skills/validate-completion.md` — Added E2E manifest validation
+
+### Removed
+- `knowledge/pure-ralph/` — Removed (pure-ralph patterns merged into Ralph methodology core)
+
+---
+
 ## v3.3.0 (2026-01-28)
 
 ### Added

@@ -181,6 +181,23 @@ npx tsx scripts/prd-to-beads.ts --project={name}
 
 Silent — just log success/failure.
 
+## Step 7.5: Capture Learning (Auto-Learn)
+
+Run `/learn` to register the new project in the learning system:
+```json
+{
+  "source": "build-activity",
+  "severity": "medium",
+  "scope": "global",
+  "rule": "Project {name} exists at projects/{name}/ with {N} stories targeting {repoPath or 'no repo'}",
+  "context": "Created via /prd"
+}
+```
+
+Also reindex: `qmd update 2>/dev/null || true`
+
+**Update INDEX.md:** Regenerate `projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+
 ## Step 8: Execution Choice
 
 Based on complexity, recommend execution path:

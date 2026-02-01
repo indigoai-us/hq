@@ -22,18 +22,34 @@ Prepare for a new session to continue this work.
    ls -t workspace/threads/*.json | head -1
    ```
 
-3. **Update INDEX.md**
+3. **Commit dirty knowledge repos**
+   Knowledge folders are separate git repos (symlinked). Before handoff, commit any uncommitted knowledge changes:
+   ```bash
+   for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+     [ -L "$symlink" ] || continue
+     repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
+     dirty=$(cd "$repo_dir" && git status --porcelain)
+     [ -z "$dirty" ] && continue
+     (cd "$repo_dir" && git add -A && git commit -m "checkpoint: auto-commit before handoff")
+   done
+   ```
+
+4. **Update INDEX.md files**
    - Regenerate `INDEX.md` at HQ root with:
      - Workers from `workers/registry.yaml`
      - Recent threads from `workspace/threads/`
+   - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
+   - Regenerate `workspace/orchestrator/INDEX.md` (project progress)
+   - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
+   - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
-4. **Update search index**
+5. **Update search index**
    ```bash
    qmd update && qmd embed
    ```
    Ensures any content created this session is searchable in the next.
 
-5. **Write handoff note** to `workspace/threads/handoff.json`:
+6. **Write handoff note** to `workspace/threads/handoff.json`:
    ```json
    {
      "created_at": "ISO8601 timestamp",
@@ -44,7 +60,7 @@ Prepare for a new session to continue this work.
    }
    ```
 
-6. **Report**
+7. **Report**
    ```
    Handoff ready.
 

@@ -26,7 +26,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "{worker-id}")
+- **What's its name/id?** (e.g., "competitive-researcher", "x-{your-name}")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -61,7 +61,7 @@ worker:
   version: "1.0"
 
 identity:
-  persona: corey-epstein  # or company_context, voice_guide
+  persona: {your-username}  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}
@@ -135,6 +135,25 @@ Workers can get tasks from:
 - Default to `approval_required: true` for external actions
 
 ## After Creation
+
+### Capture Learning (Auto-Learn)
+
+Run `/learn` to register the new worker in the learning system:
+```json
+{
+  "source": "build-activity",
+  "severity": "medium",
+  "scope": "global",
+  "rule": "Worker {worker-id} exists at workers/{path}/ for {1-sentence purpose}",
+  "context": "Created via /newworker"
+}
+```
+
+Also reindex: `qmd update 2>/dev/null || true`
+
+**Update INDEX.md:** Regenerate `workers/public/INDEX.md` or `workers/private/INDEX.md` (whichever the worker was created in) per `knowledge/public/hq-core/index-md-spec.md`.
+
+### Report to User
 
 Provide next steps:
 1. "Worker created at `workers/{worker-id}/`"

@@ -9,12 +9,12 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "3.0"
-updated: "2026-01-28"
+version: "4.0"
+updated: "2026-01-31"
 
 workers:
   # ===================
-  # Dev Team (13 workers)
+  # Dev Team (12 workers)
   # ===================
   # Full development team for autonomous project execution
   # See workers/dev-team/README.md for workflow

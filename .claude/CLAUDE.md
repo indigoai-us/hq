@@ -1,25 +1,36 @@
 # HQ - Personal OS for AI Workers
 
-Personal OS for orchestrating AI workers, projects, and content.
+Personal OS for orchestrating work across companies, workers, and AI.
 
 ## Key Files
 
+- `INDEX.md` - Root directory map, recent threads, workers (start here)
+- `USER-GUIDE.md` - Commands, workers, typical session
 - `agents.md` - Your profile, preferences, companies (load for writing/communication tasks)
 - `workers/registry.yaml` - Worker index
-- `USER-GUIDE.md` - Full command reference
+
+## INDEX.md System
+
+Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX before diving into subdirectories.
+
+**Key indexes:** `projects/INDEX.md`, `workspace/orchestrator/INDEX.md`, `companies/*/knowledge/INDEX.md`, `workers/*/INDEX.md`, `knowledge/INDEX.md`, `workspace/reports/INDEX.md`
+
+**Spec:** `knowledge/hq-core/index-md-spec.md`
+**Rebuild all:** `/cleanup --reindex`
+**Auto-updated by:** `/checkpoint`, `/handoff`, `/reanchor`, `/prd`, `/run-project`, `/newworker`, content commands
 
 ## Structure
 
 ```
 HQ/
-├── .claude/commands/   # 16 slash commands
+├── .claude/commands/   # Slash commands (17, visibility: public|private in frontmatter)
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
-├── knowledge/          # HQ-level (Ralph, workers, security, pure-ralph, projects)
+├── knowledge/          # HQ-level (Ralph, workers, security, projects)
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
-│   ├── dev-team/       # 13 code workers
+│   ├── dev-team/       # 12 code workers
 │   └── content-*/      # 5 content workers
 ├── social-content/     # Content drafts
 │   └── drafts/         # x/, linkedin/
@@ -27,7 +38,7 @@ HQ/
     ├── checkpoints/    # Manual saves
     ├── threads/        # Auto-saved sessions
     ├── orchestrator/   # Project state
-    ├── learnings/      # Task insights
+    ├── learnings/      # Task insights (event log)
     └── content-ideas/  # Idea capture
 ```
 
@@ -57,6 +68,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/reanchor` | Pause and realign |
 | `/nexttask` | Find next thing to work on |
 | `/remember` | Capture learnings as rules in relevant files |
+| `/learn` | Auto-capture and classify learnings from task execution |
 
 ### Projects
 | Command | Purpose |
@@ -81,17 +93,95 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/setup` | Interactive setup wizard |
 | `/exit-plan` | Force exit from plan mode |
 
+## Knowledge Repos
+
+Knowledge folders can be their own git repos, symlinked into HQ. This enables independent versioning, sharing, and publishing per knowledge base.
+
+**Convention:** Repos live in `repos/public/` or `repos/private/`. Symlinks in `knowledge/` and `companies/*/knowledge` point to them. The symlinks are tracked by HQ git; the repo contents are gitignored.
+
+**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all follow symlinks.
+
+**Committing knowledge changes:** Changes show in `git status` of the *target repo* (not HQ). To commit:
+1. `cd` to the symlink target (e.g. `repos/public/knowledge-ralph/`)
+2. `git add`, `git commit`, `git push` in that repo
+
+**Adding new knowledge:** Create repo in `repos/{public|private}/knowledge-{name}`, symlink into the appropriate knowledge path.
+
+## Search (qmd)
+
+HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
+
+**When to search:** Before any planning, research, or context-gathering task, search HQ first with `qmd` to find relevant knowledge, workers, skills, and prior work.
+
+**Commands (run via Bash tool):**
+- `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
+- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
+- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
+
+**Slash commands:** `/search <query>`, `/search-reindex`
+
+### Search rules (all commands/skills must follow)
+
+| Need | Tool | Example |
+|------|------|---------|
+| Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about API integration" |
+| Find files by path pattern | `Glob` | `workers/*/worker.yaml`, `projects/*/prd.json` |
+| Search code in `repos/` | `Grep` | Pattern matching in source code |
+| Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
+
+**Never use Grep/Glob to search HQ content by topic.** That's what qmd does. Commands and skills that scan HQ for related context must use `qmd vsearch` (semantic) or `qmd search` (keyword), not Grep.
+
+## Learned Rules
+
+<!-- Max 20. Overflow removed (rule still lives in its source file). -->
+<!-- Auto-managed by /learn. Manual: /remember -->
+
+(none yet — rules accumulate as the system runs)
+
+## Learning System
+
+Learnings are rules injected directly into the files they govern:
+- Worker rules → `worker.yaml` `instructions:` block
+- Command rules → command `.md` `## Rules` section
+- Knowledge rules → relevant knowledge file
+- Global rules → this file `## Learned Rules`
+
+- `/learn` captures and classifies learnings automatically after task execution
+- `/remember` delegates to `/learn` — user corrections always promote to Tier 1
+
+Event log: `workspace/learnings/*.json` (append-only, for analysis/dedup).
+
+## Auto-Learn (Build Activities)
+
+When building HQ infrastructure (new workers, knowledge bases, commands, projects), auto-capture structural changes so future sessions know what exists:
+
+**Triggers:**
+- `/newworker` completes → `/learn` with scope: global, rule: "Worker {id} exists at {path} for {purpose}"
+- `/prd` completes → `/learn` with scope: global, rule: "Project {name} exists with {N} stories targeting {repo}"
+- New knowledge files created → `/learn` with scope: global, rule: "Knowledge {topic} available at {path}"
+- New command created → `/learn` with scope: global, rule: "Command /{name} available for {purpose}"
+
+**Why:** Fresh sessions load CLAUDE.md but don't scan every directory. Learned rules act as an index of what has been built, preventing re-creation of existing resources and enabling discovery.
+
+**Also:** After any structural change, run `qmd update 2>/dev/null || true` to keep search current.
+
 ## Auto-Checkpoint (PostToolsHook)
 
-Sessions auto-save to `workspace/threads/` after:
+After completing any of these actions, automatically save thread state to `workspace/threads/`:
+
+**Triggers:**
 - Worker skill completion (via `/run`)
 - Git commit
 - File generation (reports, social drafts)
 - Significant file edits in project repos
 
-**Thread Format:** `T-{timestamp}-{slug}.json`
+**Thread Format:** See `knowledge/hq-core/thread-schema.md`
 
 **Why:** Prevents lost work, enables session resumption, provides audit trail.
+
+**How:** After a triggering action, capture git state + summary and write to `workspace/threads/T-{timestamp}-{slug}.json`
+
+**Knowledge repos:** When edits touch knowledge files (symlinked to `repos/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above for commit instructions.
 
 ## Auto-Handoff (Context Limit)
 
@@ -104,48 +194,9 @@ When context usage reaches 70% (remaining drops to 30%), automatically run `/han
 - Run `/handoff` with summary of remaining work
 - This overrides manual handoff — don't wait for user to request it
 
-## Search (qmd)
-
-HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
-
-**Commands (run via Bash tool):**
-- `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
-- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
-- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
-
-**Slash commands:** `/search <query>`, `/search-reindex`
-
 ## Core Principles
 
 1. **Infrastructure scales, effort doesn't** - Build reusable systems
 2. **Workers should grow smarter** - Capture learnings in knowledge bases
 3. **Context is precious** - Checkpoint often, don't let work evaporate
 4. **Ship, then iterate** - Working > perfect
-
-## Pure Ralph Learnings
-
-Cross-project patterns discovered through `/pure-ralph` execution. These learnings transcend individual tasks and apply across HQ.
-
-<!--
-Format for adding learnings:
-
-### [Category] Title
-**Discovered:** Project name or context
-**Pattern:** What to do
-**Impact:** Why this matters across projects
--->
-
-### [PRD] Keep Acceptance Criteria Verifiable
-**Discovered:** purist-ralph-loop project
-**Pattern:** Write acceptance criteria that can be checked programmatically or by reading specific files/outputs
-**Impact:** Enables autonomous verification; vague criteria cause task failures or require human intervention
-
-### [Workflow] Single-Task Focus Prevents Context Bloat
-**Discovered:** purist-ralph-loop project
-**Pattern:** Each Claude session handles exactly one task, reads only what's needed
-**Impact:** Fresh context per task prevents accumulated confusion; easier to debug failures
-
-### [Self-Improvement] Two-Level Learning System
-**Discovered:** purist-ralph-loop project
-**Pattern:** Task-level learnings go in workflow prompts; cross-project learnings go in CLAUDE.md
-**Impact:** Keeps learnings appropriately scoped; prevents prompt bloat while capturing valuable insights

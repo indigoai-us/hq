@@ -16,6 +16,7 @@ Audit HQ for policy violations, migrate outdated structures, and fix inconsisten
 - **No args / --audit**: Report issues only (default, safe)
 - **--migrate**: Convert old formats to new (prd.json → README.md)
 - **--fix**: Auto-fix simple issues (git cleanup, archive stale files)
+- **--reindex**: Regenerate ALL INDEX.md files from disk (full rebuild)
 
 ## The Job
 
@@ -86,6 +87,27 @@ git status --short
 - Untracked new files (should commit or ignore)
 - Modified submodules
 
+**Note:** Knowledge folders are symlinks to repos in `repos/public/` and `repos/private/` (gitignored). Symlinks themselves should be tracked by HQ git. Knowledge file changes are invisible to HQ git (they live in their own repos).
+
+### 4b. Knowledge Repo Status
+
+**Policy**: Knowledge repos should be clean (committed)
+
+```bash
+for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+  [ -L "$symlink" ] || continue
+  repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
+  dirty=$(cd "$repo_dir" && git status --porcelain)
+  [ -z "$dirty" ] && continue
+  echo "DIRTY: $symlink → $repo_dir"
+done
+```
+
+**With --fix**: Auto-commit dirty knowledge repos:
+```bash
+(cd "$repo_dir" && git add -A && git commit -m "chore: cleanup commit")
+```
+
 ### 5. Stale Threads & Checkpoints
 
 **Policy**: Archive threads/checkpoints older than 30 days
@@ -119,6 +141,26 @@ done
 # Find old SKILL.md format
 find . -name "SKILL.md" -not -path "./repos/*"
 ```
+
+### 8. Stale INDEX.md Files
+
+**Policy**: INDEX.md files should exist and match directory contents. See `knowledge/public/hq-core/index-md-spec.md` for spec.
+
+**Expected locations:**
+- `projects/INDEX.md`
+- `companies/{company}/knowledge/INDEX.md` (for each company)
+- `knowledge/public/INDEX.md`
+- `workers/public/INDEX.md`
+- `workers/private/INDEX.md`
+- `workspace/orchestrator/INDEX.md`
+- `workspace/reports/INDEX.md`
+- `workspace/social-drafts/INDEX.md`
+
+For each:
+1. Check if INDEX.md exists → flag MISSING if not
+2. Count entries in INDEX table vs actual directory contents → flag STALE if mismatch
+
+**With --reindex or --fix**: Regenerate all INDEX.md files from disk per spec.
 
 ---
 
@@ -188,6 +230,14 @@ mkdir -p projects/{name}
 mv apps/{name}/prd.json projects/{name}/
 ```
 
+### Regenerate INDEX.md Files (--reindex)
+
+For each expected INDEX.md location (see Audit Check #8):
+1. List all files and subdirectories (skip INDEX.md, .DS_Store, node_modules, dotfiles)
+2. Extract description per spec: `.md` → first `#` heading, `.yaml` → `description:`, `.json` → `name`/`description`, dirs → file count + purpose
+3. Write INDEX.md using template from `knowledge/public/hq-core/index-md-spec.md`
+4. Directories first, then files, alphabetical within each group
+
 ---
 
 ## Output Format
@@ -205,10 +255,14 @@ HQ Cleanup Audit
 ✗ Deprecated directories: apps/ still exists (4 items)
 ✗ Git status: 3 uncommitted changes
 ✓ Checkpoints: all recent
+✗ INDEX.md: 2 stale, 1 missing
+  - projects/INDEX.md: 30 entries vs 33 actual (stale)
+  - workspace/reports/INDEX.md: missing
 
-Summary: 12 issues found
+Summary: 14 issues found
 Run `/cleanup --migrate` to convert prd.json files
 Run `/cleanup --fix` to clean git and archive stale files
+Run `/cleanup --reindex` to regenerate all INDEX.md files
 ```
 
 ### After Migration
@@ -249,3 +303,5 @@ Reference for what we're enforcing:
 | Checkpoints | Legacy format, archive after 30 days |
 | Metrics | Append to `workspace/metrics/metrics.jsonl` |
 | Git | Clean working tree |
+| Knowledge repos | Symlinks in `knowledge/` and `companies/*/knowledge/` point to repos; all repos committed |
+| INDEX.md | Exist at key dirs, match contents (see spec) |

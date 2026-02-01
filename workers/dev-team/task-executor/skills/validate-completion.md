@@ -40,7 +40,20 @@ Optional:
    - Build must succeed
    - No runtime errors
 
-5. **Report Results**
+5. **E2E Manifest Check** (if project has E2E tests)
+   Skip if the repo does not have an E2E test infrastructure.
+   ```bash
+   npm run check-coverage
+   ```
+   - All app routes must have test coverage in manifest
+   - Exit code 1 = uncovered pages exist
+   ```bash
+   npm run generate-manifest && git diff --quiet tests/e2e/manifest.json
+   ```
+   - If diff is non-empty, manifest is stale
+   - Fail with: "Run `npm run generate-manifest` and commit the updated manifest"
+
+6. **Report Results**
    - Show pass/fail for each check
    - Surface errors clearly
    - Suggest fixes if possible
@@ -53,16 +66,18 @@ Optional:
 | lint | npm run lint | Yes |
 | test | npm test | Yes (if tests exist) |
 | build | npm run build | No (optional) |
+| e2e-manifest | npm run check-coverage + generate-manifest drift | Yes (if E2E tests exist) |
 
 ## Output
 
 Validation report:
 ```
 Validation Results:
-  ✅ typecheck: passed (0 errors)
-  ✅ lint: passed (0 errors, 2 warnings)
-  ✅ test: passed (45 tests, 100% passing)
-  ⏭️ build: skipped
+  typecheck: passed (0 errors)
+  lint: passed (0 errors, 2 warnings)
+  test: passed (45 tests, 100% passing)
+  build: skipped
+  e2e-manifest: passed (all pages covered, manifest fresh)
 
 Overall: PASS
 ```
@@ -70,12 +85,12 @@ Overall: PASS
 Or on failure:
 ```
 Validation Results:
-  ✅ typecheck: passed
-  ❌ lint: failed (3 errors)
+  typecheck: passed
+  lint: failed (3 errors)
      - src/api/auth.ts:42 - Unexpected any
      - src/api/auth.ts:58 - Missing return type
      - src/api/auth.ts:72 - Unused variable 'temp'
-  ⏭️ test: skipped (lint failed)
+  test: skipped (lint failed)
 
 Overall: FAIL
 Suggestion: Fix lint errors, then re-run
@@ -84,22 +99,22 @@ Suggestion: Fix lint errors, then re-run
 ## Example
 
 ```bash
-node dist/index.js validate-completion --repo repos/private/my-app
+node dist/index.js validate-completion --repo ~/repos/my-app
 
 # Output:
 # Running validation checks...
 #
 # [1/3] typecheck...
-#   ✅ passed (0 errors)
+#   passed (0 errors)
 #
 # [2/3] lint...
-#   ✅ passed (0 errors, 2 warnings)
+#   passed (0 errors, 2 warnings)
 #   Warnings:
 #     - src/api/auth.ts:42 - Consider using explicit type
 #     - src/api/auth.ts:58 - Prefer const over let
 #
 # [3/3] test...
-#   ✅ passed (45 tests)
+#   passed (45 tests)
 #
 # Overall: PASS
 # Ready to commit.

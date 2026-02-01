@@ -81,6 +81,34 @@ instructions: |
   - axe-core for accessibility
   - Jest/Vitest for unit tests
 
+  ## E2E Testing
+
+  When testing a project with E2E infrastructure:
+
+  ### Test Structure
+  - Manifest: `tests/e2e/manifest.json` (source of truth for test entries)
+  - Fixtures: `tests/e2e/fixtures/pages.ts` (page definitions with path, name, category)
+  - Specs organized by category: `tests/e2e/{pages,navigation,forms,components,accessibility,responsive,performance,visual}/`
+
+  ### Writing Tests
+  - Each page needs at minimum a spec in `tests/e2e/pages/` with page-load checks
+  - Page-load tests are `critical: true` — must include 200 status, title, hero, nav, footer checks
+  - After writing/modifying tests: `npm run generate-manifest`
+  - Verify coverage: `npm run check-coverage`
+  - Commit updated `tests/e2e/manifest.json` alongside spec changes
+
+  ### Results Pipeline
+  - Local: `npm test` runs Playwright against localhost
+  - CI: GitHub Actions runs against preview URLs
+  - Results can be stored in a database for dashboarding
+
+  ### Commands
+  ```bash
+  npm run generate-manifest  # Rebuild manifest from specs
+  npm run check-coverage     # Verify all routes have tests
+  npm test                   # Run full E2E suite
+  ```
+
   ## Human-in-the-loop
 
   - Report test failures with context

@@ -11,28 +11,35 @@ Stop and realign before continuing. Use when you want to ensure the agent is on 
 
 ## Process
 
-1. **Show recent state**
-   - Read last checkpoint if exists (`workspace/checkpoints/`)
-   - Run `git log --oneline -5` for recent commits
-   - Summarize current working state
+1. **Load INDEX context**
+   - Read root `INDEX.md` (directory map, recent threads, workers)
+   - Read `workspace/orchestrator/INDEX.md` (active projects + progress)
+   - Read `workspace/threads/handoff.json` if exists (last handoff context)
 
-2. **Display summary**
-   ```
-   Recent commits:
-   - abc123: feat: add /run skill
-   - def456: refactor: simplify checkpoint
-
-   Last checkpoint: {task-id}
-   Summary: {checkpoint summary}
-   Next steps: {from checkpoint}
+2. **Check git state**
+   ```bash
+   git log --oneline -5
    ```
 
-3. **Ask for focus**
+3. **Display combined summary**
+   ```
+   HQ State:
+   - Active projects: {from orchestrator INDEX — name + progress %}
+   - Recent threads: {from root INDEX — last 5}
+   - Last handoff: {from handoff.json — summary + timestamp}
+   - Recent commits: {from git log}
+   ```
+
+4. **Ask for focus**
    Use AskUserQuestion:
    - "What's the focus for the next stretch?"
-   - Options based on checkpoint next_steps + "Something else"
+   - Options: active projects from orchestrator INDEX + handoff next_steps + "Something else"
 
-4. **Wait for response** before proceeding
+5. **Load company context if needed**
+   If user picks a company-specific focus, read that company's `knowledge/INDEX.md`:
+   - `companies/{company}/knowledge/INDEX.md`
+
+6. **Wait for response** before proceeding
 
 ## Why Reanchor
 

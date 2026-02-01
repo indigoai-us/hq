@@ -7,18 +7,20 @@ visibility: public
 
 # /run-project - Project Orchestrator Loop
 
-Loom-inspired Ralph loop. The orchestrator is the **caller** — it drives the worker pipeline directly. Each task is classified, routed through a worker sequence, and each worker is a fresh sub-agent.
+Ralph loop with fresh context per task. The orchestrator is an ultra-lean state machine — it delegates each task entirely to a sub-agent via `/execute-task`, receiving only a structured summary back. Each task gets clean context; nothing accumulates.
 
 **Arguments:** $ARGUMENTS
 
-## Core Pattern (Loom-Style)
+## Core Pattern (Ralph Fresh-Context)
 
-The orchestrator drives all I/O. Workers are sub-agents that receive instructions and return results. The orchestrator:
-- Classifies tasks
-- Selects worker sequences
-- Spawns each worker with full context
-- Collects results and passes handoff context to next worker
-- Runs post-task hooks (PRD update, learnings)
+The orchestrator is an **ultra-lean state machine**. It picks tasks and delegates each one entirely to a sub-agent via `/execute-task`. The orchestrator:
+- Selects the next incomplete task from the PRD
+- Spawns ONE sub-agent per task (fresh context per task)
+- Receives only a structured JSON summary back
+- Updates state.json and progress.txt
+- Never accumulates worker outputs, handoff blobs, or implementation details
+
+Classification, worker selection, worker pipelines, PRD updates, and learning capture all happen inside the sub-agent. This mirrors Pure Ralph's fresh-terminal-per-task model.
 
 ## Usage
 
@@ -37,10 +39,12 @@ The orchestrator drives all I/O. Workers are sub-agents that receive instruction
 - Display all project statuses
 - Exit
 
-**If `--resume {project}`:**
+**If `--resume {project}` (first-class operation — not a fallback):**
 - Load state from `workspace/orchestrator/{project}/state.json`
-- Find last completed task, continue from next
-- If a task was mid-pipeline (has execution state with incomplete phases), resume from the incomplete phase
+- Read PRD to find next incomplete task
+- Continue from next incomplete + unblocked task
+- The orchestrator starts with ZERO accumulated context — only state.json + PRD
+- If a task was mid-pipeline (has execution state with incomplete phases), `/execute-task` will resume from the incomplete phase inside its sub-agent
 
 **If `{project}`:**
 - Check `projects/{project}/prd.json` exists
@@ -117,6 +121,8 @@ Write `workspace/orchestrator/{project}/state.json`:
 
 ### 5. The Loop
 
+The orchestrator is an **ultra-lean state machine**. It picks tasks and delegates everything to sub-agents. Classification, worker selection, worker pipelines, PRD updates, and learning capture all happen inside the sub-agent via `/execute-task`. The orchestrator NEVER accumulates implementation context.
+
 ```
 while (remaining tasks with passes: false):
 
@@ -125,164 +131,91 @@ while (remaining tasks with passes: false):
         - Respect dependsOn (skip if deps incomplete)
         - First incomplete + unblocked task
 
-    5b. CLASSIFY task type
-        Analyze title, description, acceptance criteria:
-
-        | Type             | Indicators                                          |
-        |------------------|-----------------------------------------------------|
-        | schema_change    | database, migration, schema, table, column, prisma  |
-        | api_development  | endpoint, API, REST, GraphQL, route, service        |
-        | ui_component     | component, page, form, button, React, UI            |
-        | full_stack       | Combination of backend + frontend indicators        |
-        | content          | copy, messaging, brand voice, content, SEO          |
-        | enhancement      | animation, polish, refactor, optimization           |
-
-    5c. SELECT worker sequence
-        Based on type, pick worker pipeline:
-
-        schema_change:    database-dev → backend-dev → code-reviewer → dev-qa-tester
-        api_development:  backend-dev → code-reviewer → dev-qa-tester
-        ui_component:     frontend-dev → motion-designer → code-reviewer → dev-qa-tester
-        full_stack:       architect → database-dev → backend-dev → frontend-dev → code-reviewer → dev-qa-tester
-        content:          content-brand → content-product → content-sales → content-legal
-        enhancement:      (relevant dev based on files) → code-reviewer
-
-        If task has unclear spec, prepend product-planner to sequence.
-
-        Report plan:
+        Report:
         ```
-        Task: {id} - {title}
-        Type: {type}
-        Pipeline: {worker1} → {worker2} → {worker3}
+        Next: {task.id} - {task.title}
+        Progress: {completed}/{total}
         ```
 
-    5d. INITIALIZE execution state
-        Write workspace/orchestrator/{project}/executions/{task-id}.json:
-        {
-          "task_id": "{id}",
-          "status": "in_progress",
-          "started_at": "{ISO8601}",
-          "current_phase": 1,
-          "phases": [
-            {"worker": "backend-dev", "status": "pending"},
-            {"worker": "code-reviewer", "status": "pending"}
-          ],
-          "handoffs": []
-        }
+    5b. EXECUTE task via sub-agent
 
-    5e. EXECUTE worker pipeline
-        For each worker in sequence:
+        Spawn a SINGLE sub-agent for the entire task.
+        The sub-agent handles classification, worker selection,
+        the full worker pipeline, PRD update, execution state,
+        and learning capture — all via /execute-task.
 
-        i. LOAD worker config
-           Read workers/public/dev-team/{worker-id}/worker.yaml
-           (or workers/{worker-id}/worker.yaml for non-dev-team)
-           Extract: instructions, context.base files, verification.post_execute
+        Task({
+          subagent_type: "general-purpose",
+          description: "Execute {task.id}: {task.title}",
+          prompt: "Run /execute-task {project}/{task.id}
 
-        ii. BUILD worker prompt
-            ```
-            ## You are: {worker.name} ({worker.description})
+                   After completion, output ONLY this structured JSON:
+                   {
+                     \"task_id\": \"{task.id}\",
+                     \"status\": \"completed|failed|blocked\",
+                     \"summary\": \"1-sentence summary\",
+                     \"workers_used\": [\"list\"],
+                     \"back_pressure\": {
+                       \"tests\": \"pass|fail|skipped\",
+                       \"lint\": \"pass|fail|skipped\",
+                       \"typecheck\": \"pass|fail|skipped\",
+                       \"build\": \"pass|fail|skipped\"
+                     }
+                   }"
+        })
 
-            ## Task: {task.id} - {task.title}
+        The sub-agent's full context (worker outputs, handoff blobs,
+        file diffs, error traces) is freed when it returns.
+        Only the structured JSON crosses the boundary.
 
-            ### Description
-            {task.description}
+    5c. POST-TASK (orchestrator side — minimal)
 
-            ### Acceptance Criteria
-            {task.acceptance_criteria as checklist}
+        Parse the sub-agent's JSON output.
 
-            ### Files to Focus On
-            {task.files or inferred from description}
+        i. If status == "completed":
+           - Update state.json:
+             completed_tasks.push({id, completed_at, workers_used})
+             progress.completed++
+             current_task = null
+           - Log 1-line to progress.txt:
+             [{timestamp}] {task.id}: {summary} ({completed}/{total})
 
-            ### Context from Previous Worker
-            {handoff JSON from previous worker, or "First in pipeline — no prior context."}
+        ii. If status == "failed" or "blocked":
+            - Log error
+            - AskUserQuestion:
+              1. Retry this task
+              2. Skip and continue
+              3. Pause project (run /run-project --resume {project})
 
-            ### Your Instructions
-            {worker.yaml instructions}
+        iv. Update `workspace/orchestrator/INDEX.md` with new progress.
 
-            ### Back Pressure (MUST run before completing)
-            {worker.yaml verification.post_execute commands}
-            If no specific commands: run typecheck, lint, tests, build as applicable.
+        v. DISCARD everything else.
+             The orchestrator MUST NOT store worker outputs,
+             handoff blobs, file lists, or error traces.
+             Only retain: task_id, status, 1-sentence summary.
 
-            ### Output Requirements
-            When complete, output this JSON block:
-            ```json
-            {
-              "summary": "What you accomplished",
-              "files_created": ["paths"],
-              "files_modified": ["paths"],
-              "key_decisions": ["decision and rationale"],
-              "context_for_next": "What the next worker needs to know",
-              "back_pressure": {
-                "tests": "pass|fail|skipped",
-                "lint": "pass|fail|skipped",
-                "typecheck": "pass|fail|skipped",
-                "build": "pass|fail|skipped"
-              },
-              "issues": ["any blocking issues"]
-            }
-            ```
-            ```
+    5c.5 AUTO-REANCHOR (between tasks, silent)
 
-        iii. SPAWN worker sub-agent
-             Task({
-               subagent_type: "general-purpose",
-               prompt: {built prompt},
-               description: "{worker-id} for {task.id}"
-             })
+        After processing each task result, refresh context:
+        1. Re-read PRD from disk (sub-agent may have updated passes/notes)
+        2. Refresh git state: `git log --oneline -3`
+        3. If task failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
+           (searches across all knowledge, worker yamls, and command files)
+        4. Re-read CLAUDE.md `## Learned Rules`
+           (another session may have added rules via /learn)
 
-        iv. PROCESS worker output
-            Parse the JSON output block.
+        This is silent — no user interaction. Prevents stale context
+        between tasks, especially for multi-session projects.
 
-            If back pressure has failures:
-              - Retry ONCE with error context appended to prompt
-              - If still fails → pause, report to user
+    5d. CONTEXT SAFETY NET
 
-            If issues array is non-empty:
-              - Log issues
-              - If blocking → pause, ask user
+        If > 10 tasks completed this session OR context heavy:
+          - Save state.json
+          - Print: "Context boundary reached. Run: /run-project --resume {project}"
+          - STOP
 
-            If success:
-              - Store output as handoff context for next worker
-              - Update execution state: phase status → completed
-              - Advance to next worker
-
-        v. UPDATE execution state after each phase
-           Update workspace/orchestrator/{project}/executions/{task-id}.json:
-           - Mark completed phase
-           - Add handoff to handoffs array
-           - Increment current_phase
-
-    5f. POST-TASK HOOK (after all workers complete)
-
-        i. Update PRD
-           Set task.passes = true in projects/{project}/prd.json
-
-        ii. Write learning entry
-            workspace/learnings/{project}/{task-id}.json:
-            {
-              "task_id": "{id}",
-              "project": "{project}",
-              "created_at": "{ISO8601}",
-              "task_type": "{classified type}",
-              "workers_used": ["list"],
-              "key_decisions": ["aggregated from all phases"],
-              "insights": ["extracted from worker outputs"]
-            }
-
-        iii. Update state.json
-             - completed_tasks.push({id, completed_at, workers_used})
-             - progress.completed++
-             - current_task = null
-
-        iv. Log to progress.txt
-            [{timestamp}] Completed: {task.id} - {task.title}
-              Pipeline: {worker1} → {worker2} → {worker3}
-              Progress: {completed}/{total}
-
-    5g. CHECK context budget
-        If context feels heavy or > 30%:
-          - Save state
-          - Suggest: "Context filling. Run /run-project --resume {project}"
+        This rarely triggers because each task sub-agent releases
+        its context. But it provides a hard ceiling.
 ```
 
 ### 6. Handle Task Failure
@@ -317,9 +250,15 @@ Workers Used: {worker}: {N} tasks, ...
 Learnings: {count}
 ```
 
-**Aggregate learnings** from `workspace/learnings/{project}/*.json` into `knowledge/public/workers/{project}-learnings.md`.
+**Aggregate learnings:**
+1. Scan Tier 3 logs: `workspace/learnings/learn-*.json` matching this project
+2. Identify repeated patterns (same rule triggered 3+ times across tasks)
+3. Promote repeated patterns to Tier 1 via `/learn` (severity: high, source: pattern-repetition)
+4. Write project retrospective to `workspace/reports/{project}-retro.md`
 
 **Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
+
+**Update INDEX.md files:** Regenerate `projects/INDEX.md` and `workspace/orchestrator/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
 ### 8. Status Display (--status)
 
@@ -392,11 +331,11 @@ Prepend **product-planner** if task spec is unclear or acceptance criteria are v
 ## Rules
 
 - **ONE project at a time**
-- **Orchestrator classifies + routes, workers implement** — never implement directly
-- **Fresh sub-agent per worker** — no context accumulation
-- **Back pressure is mandatory** — no skipping tests/lint/typecheck
-- **Handoffs preserve context** — next worker knows what happened
-- **Checkpoint between tasks** — state survives interruptions
+- **Sub-agent per task** — each task runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes worker phases directly.
+- **Context discipline** — the orchestrator stores ONLY task_id, status, and 1-sentence summary per task. No worker outputs, no handoff blobs, no file lists.
+- **Fresh context per task** — sub-agent context is freed when it returns.
+- **Resume is first-class** — `--resume` is how multi-session projects continue. Not a fallback — the expected path for large projects.
+- **Back pressure is mandatory** — enforced inside `/execute-task`, not by the orchestrator
 - **Fail fast** — pause on errors, surface to user
 - **prd.json is required** — never read or fall back to README.md
 - **Validate prd.json on load** — fail loudly on missing/malformed fields
@@ -404,6 +343,6 @@ Prepend **product-planner** if task spec is unclear or acceptance criteria are v
 ## Integration
 
 - `/prd` → creates PRD → `/run-project {name}` executes it
-- `/execute-task {project}/{id}` → runs single task with same pipeline (standalone)
-- `/run-project --resume` → continues after pause or context reset
+- `/execute-task {project}/{id}` → runs single task with same pipeline (standalone or as sub-agent)
+- `/run-project --resume` → continues from next incomplete task with fresh context
 - `/nexttask` → shows active projects from /run-project

@@ -53,6 +53,18 @@ Optional:
 - [ ] Edge cases tested
 - [ ] Tests are meaningful (not just coverage)
 
+### E2E Tests (if applicable)
+- [ ] Pages modified in the PR have corresponding E2E spec updates
+- [ ] Test manifest is fresh (no diff after regeneration)
+- [ ] Coverage check passes (all app routes covered)
+- [ ] New pages include at minimum a page-load spec with 200 status + title checks
+
+If any E2E check fails, request changes with instructions to run:
+```bash
+npm run generate-manifest  # regenerate manifest
+npm run check-coverage     # verify coverage
+```
+
 ## Output
 
 - Review summary

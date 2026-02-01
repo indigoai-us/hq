@@ -28,9 +28,9 @@ If no arguments provided, read `workers/registry.yaml` and display:
 ```
 Available Workers:
 
-  {worker-id}            X/Twitter posting for Corey
-  {worker-id}    Financial reporting
-  {worker-id} LR/VYG data analysis
+  x-{your-name}       X/Twitter posting
+  cfo-{company}       Financial reporting
+  {company}-analyst    Data analysis
   ...
 
 Usage: /run {worker-id} to see skills
@@ -44,15 +44,15 @@ If only worker-id provided:
 3. List available skills
 
 ```
-Worker: {worker-id}
-Description: X/Twitter posting for Corey
+Worker: x-{your-name}
+Description: X/Twitter posting
 
 Skills:
   contentidea   Build out a content idea into posts
   suggestposts  Research and suggest posts
   scheduleposts Choose what to post now
 
-Usage: /run {worker-id} {skill}
+Usage: /run x-{your-name} {skill}
 ```
 
 ### Worker + Skill → Execute
@@ -69,7 +69,7 @@ Pass arguments to the skill. The skill file will reference `$ARGUMENTS`.
 ## Execution Pattern
 
 When executing a skill:
-1. **Load context** - Read worker.yaml, any knowledge files referenced
+1. **Load context** - Read worker.yaml (includes accumulated learnings in `instructions:`), any knowledge files referenced
 2. **Execute** - Follow the skill's instructions
 3. **Verify** - Run any verification steps defined
 4. **PostToolsHook** - Auto-save thread to `workspace/threads/`
@@ -97,10 +97,10 @@ Also append to metrics: `workspace/metrics/metrics.jsonl`
 
 ```
 /run                              # See all workers
-/run {worker-id}                      # See {worker-id} skills
-/run {worker-id} contentidea          # Run contentidea
-/run {worker-id} contentidea "AI workforce" # Run with topic
-/run {worker-id} mrr          # Run MRR report
+/run x-{your-name}                # See skills
+/run x-{your-name} contentidea    # Run contentidea
+/run x-{your-name} contentidea "AI workforce" # Run with topic
+/run cfo-{company} mrr            # Run MRR report
 ```
 
 ## Notes

@@ -11,9 +11,9 @@ execution:
 
 context:
   base:
-    - workers/public/dev-team/frontend-dev/
-    - workers/public/dev-team/frontend-dev/skills/
-    - knowledge/public/dev-team/patterns/frontend/
+    - workers/dev-team/frontend-dev/
+    - workers/dev-team/frontend-dev/skills/
+    - knowledge/dev-team/patterns/frontend/
   dynamic:
     - pattern: "{target_repo}/src/components/"
       when: always
@@ -53,7 +53,7 @@ mcp:
     command: node
     args:
       - dist/mcp-server.js
-    cwd: workers/public/dev-team/frontend-dev
+    cwd: workers/dev-team/frontend-dev
   tools:
     - create_component
     - create_page
@@ -115,6 +115,15 @@ instructions: |
   - Extract to memoized components for isolation
   - Use functional setState updates
   - Use Transitions for non-urgent updates
+
+  ## E2E Requirements
+
+  When working in a project with E2E tests:
+  - Every new or modified page MUST have a corresponding E2E spec in `tests/e2e/pages/`
+  - After adding or modifying specs, run: `npm run generate-manifest`
+  - Commit the updated `tests/e2e/manifest.json` alongside your changes
+  - Run `npm run check-coverage` to verify no routes are uncovered
+  - Test categories: page-load, navigation, forms, components, accessibility, responsive, performance, visual
 
   ## Human-in-the-loop
 
