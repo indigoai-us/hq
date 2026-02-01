@@ -1,0 +1,806 @@
+# GitHub Actions workflow for testing the my-hq installer
+#
+# This workflow validates the installer build and test scripts across
+# Windows and macOS platforms to ensure installer quality before merging.
+#
+# Triggers:
+#   - Pull requests modifying installer/** files
+#   - Manual dispatch via workflow_dispatch
+#
+# Platform jobs run in parallel for faster feedback.
+
+name: Test Installer
+
+on:
+  # Trigger on pull requests that modify installer files
+  pull_request:
+    paths:
+      - 'installer/**'
+    branches:
+      - main
+      - staging
+
+  # Allow manual triggering for testing/debugging
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Windows Build and Test
+  # ============================================
+  test-windows:
+    name: Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Cache NSIS installation (Chocolatey install + plugins)
+      - name: Cache NSIS installation
+        id: cache-nsis
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\Program Files (x86)\NSIS
+          key: nsis-windows-3.09-plugins-v2
+          restore-keys: |
+            nsis-windows-3.09-plugins-
+            nsis-windows-
+
+      # Install NSIS and required plugins via Chocolatey (skip if cached)
+      - name: Install NSIS
+        if: steps.cache-nsis.outputs.cache-hit != 'true'
+        run: |
+          Write-Host "Installing NSIS via Chocolatey..."
+          choco install nsis -y --no-progress
+
+          # Refresh environment to get NSIS in PATH
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+          # Verify NSIS installation
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            Write-Host "NSIS installed at: $nsisPath"
+            & $nsisPath /VERSION
+          } else {
+            Write-Error "NSIS not found at expected path"
+            exit 1
+          }
+        shell: pwsh
+
+      # Install NSIS plugins (INetC and nsisunz) - skip if cached
+      - name: Install NSIS plugins
+        if: steps.cache-nsis.outputs.cache-hit != 'true'
+        run: |
+          $nsisPluginPath = "C:\Program Files (x86)\NSIS\Plugins"
+          $nsisIncludePath = "C:\Program Files (x86)\NSIS\Include"
+
+          # Download INetC plugin
+          Write-Host "Downloading INetC plugin..."
+          $inetcUrl = "https://nsis.sourceforge.io/mediawiki/images/c/c9/Inetc.zip"
+          $inetcZip = "$env:TEMP\inetc.zip"
+          $inetcExtract = "$env:TEMP\inetc"
+
+          Invoke-WebRequest -Uri $inetcUrl -OutFile $inetcZip -UseBasicParsing
+          Expand-Archive -Path $inetcZip -DestinationPath $inetcExtract -Force
+
+          # Copy INetC plugin files to NSIS directories
+          if (Test-Path "$inetcExtract\Plugins\x86-ansi\INetC.dll") {
+            Copy-Item "$inetcExtract\Plugins\x86-ansi\INetC.dll" "$nsisPluginPath\x86-ansi\" -Force
+            Copy-Item "$inetcExtract\Plugins\x86-unicode\INetC.dll" "$nsisPluginPath\x86-unicode\" -Force
+            Write-Host "INetC plugin installed successfully"
+          } else {
+            Write-Error "INetC plugin files not found in extracted archive"
+            Get-ChildItem -Recurse $inetcExtract
+            exit 1
+          }
+
+          # Download nsisunz plugin
+          Write-Host "Downloading nsisunz plugin..."
+          $nsisunzUrl = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
+          $nsisunzZip = "$env:TEMP\nsisunz.zip"
+          $nsisunzExtract = "$env:TEMP\nsisunz"
+
+          Invoke-WebRequest -Uri $nsisunzUrl -OutFile $nsisunzZip -UseBasicParsing
+          Expand-Archive -Path $nsisunzZip -DestinationPath $nsisunzExtract -Force
+
+          # Copy nsisunz plugin (ANSI only plugin)
+          if (Test-Path "$nsisunzExtract\nsisunz\Release\nsisunz.dll") {
+            Copy-Item "$nsisunzExtract\nsisunz\Release\nsisunz.dll" "$nsisPluginPath\x86-ansi\" -Force
+            # Also copy to unicode folder if exists, or copy ansi version
+            Copy-Item "$nsisunzExtract\nsisunz\Release\nsisunz.dll" "$nsisPluginPath\x86-unicode\" -Force
+            Write-Host "nsisunz plugin installed successfully"
+          } else {
+            Write-Warning "nsisunz plugin not found at expected path, searching..."
+            Get-ChildItem -Recurse $nsisunzExtract -Filter "*.dll" | ForEach-Object {
+              Write-Host "Found: $($_.FullName)"
+              Copy-Item $_.FullName "$nsisPluginPath\x86-ansi\" -Force
+              Copy-Item $_.FullName "$nsisPluginPath\x86-unicode\" -Force
+            }
+          }
+
+          Write-Host "NSIS plugins installation complete"
+        shell: pwsh
+
+      # Verify NSIS is available (after cache restore or fresh install)
+      - name: Verify NSIS installation
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            Write-Host "NSIS verified at: $nsisPath"
+            & $nsisPath /VERSION
+          } else {
+            Write-Error "NSIS not found - cache may be corrupted"
+            exit 1
+          }
+        shell: pwsh
+
+      # Create placeholder assets for CI build
+      - name: Create placeholder assets
+        run: |
+          $assetsPath = "installer\windows\assets"
+
+          # Create a minimal valid ICO file (16x16 icon)
+          # ICO header + BITMAPINFOHEADER + pixel data
+          function Create-MinimalIco {
+            param([string]$Path)
+
+            # Minimal ICO: 16x16, 32bpp, just white pixels
+            $icoHeader = @(
+              0, 0,       # Reserved (2 bytes)
+              1, 0,       # Image type: 1 = ICO (2 bytes)
+              1, 0        # Number of images: 1 (2 bytes)
+            )
+
+            $iconDirEntry = @(
+              16,         # Width: 16
+              16,         # Height: 16
+              0,          # Color palette: 0 for 32bpp
+              0,          # Reserved
+              1, 0,       # Color planes: 1 (2 bytes)
+              32, 0,      # Bits per pixel: 32 (2 bytes)
+              0xE8, 3, 0, 0,  # Size of image data: 1000 bytes (4 bytes)
+              22, 0, 0, 0     # Offset to image data: 22 (4 bytes)
+            )
+
+            # BITMAPINFOHEADER (40 bytes)
+            $bmpHeader = @(
+              40, 0, 0, 0,    # Header size: 40
+              16, 0, 0, 0,    # Width: 16
+              32, 0, 0, 0,    # Height: 32 (16*2 for XOR+AND mask)
+              1, 0,           # Planes: 1
+              32, 0,          # Bits per pixel: 32
+              0, 0, 0, 0,     # Compression: none
+              0, 0, 0, 0,     # Image size (can be 0 for uncompressed)
+              0, 0, 0, 0,     # X pixels per meter
+              0, 0, 0, 0,     # Y pixels per meter
+              0, 0, 0, 0,     # Colors used
+              0, 0, 0, 0      # Important colors
+            )
+
+            # Pixel data: 16x16 pixels, 4 bytes each (BGRA) = 1024 bytes
+            # Plus AND mask: 16x16 bits = 32 bytes (4 bytes per row * 16 rows, padded)
+            $pixelData = @()
+            for ($i = 0; $i -lt 1024; $i++) {
+              # Create a simple blue gradient icon
+              $pixelData += @(0xFF, 0x66, 0x00, 0xFF)  # BGRA: blue with alpha
+            }
+
+            # AND mask (all zeros = fully visible)
+            $andMask = @()
+            for ($i = 0; $i -lt 64; $i++) {
+              $andMask += 0
+            }
+
+            $allBytes = $icoHeader + $iconDirEntry + $bmpHeader + $pixelData + $andMask
+            [System.IO.File]::WriteAllBytes($Path, [byte[]]$allBytes)
+            Write-Host "Created placeholder ICO: $Path"
+          }
+
+          # Create a minimal valid BMP file
+          function Create-MinimalBmp {
+            param([string]$Path, [int]$Width, [int]$Height)
+
+            # Row size must be multiple of 4 bytes
+            $rowSize = [Math]::Ceiling($Width * 3 / 4) * 4
+            $pixelDataSize = $rowSize * $Height
+            $fileSize = 54 + $pixelDataSize  # Header (54) + pixel data
+
+            $bmpHeader = @(
+              0x42, 0x4D  # BM signature
+            )
+
+            # File size (4 bytes, little endian)
+            $bmpHeader += @(
+              ($fileSize -band 0xFF),
+              (($fileSize -shr 8) -band 0xFF),
+              (($fileSize -shr 16) -band 0xFF),
+              (($fileSize -shr 24) -band 0xFF)
+            )
+
+            $bmpHeader += @(
+              0, 0, 0, 0,  # Reserved
+              54, 0, 0, 0  # Pixel data offset: 54
+            )
+
+            # BITMAPINFOHEADER
+            $bmpHeader += @(
+              40, 0, 0, 0  # Header size: 40
+            )
+
+            # Width (4 bytes)
+            $bmpHeader += @(
+              ($Width -band 0xFF),
+              (($Width -shr 8) -band 0xFF),
+              (($Width -shr 16) -band 0xFF),
+              (($Width -shr 24) -band 0xFF)
+            )
+
+            # Height (4 bytes)
+            $bmpHeader += @(
+              ($Height -band 0xFF),
+              (($Height -shr 8) -band 0xFF),
+              (($Height -shr 16) -band 0xFF),
+              (($Height -shr 24) -band 0xFF)
+            )
+
+            $bmpHeader += @(
+              1, 0,        # Planes: 1
+              24, 0,       # Bits per pixel: 24
+              0, 0, 0, 0,  # Compression: none
+              0, 0, 0, 0,  # Image size (0 for uncompressed)
+              0, 0, 0, 0,  # X pixels per meter
+              0, 0, 0, 0,  # Y pixels per meter
+              0, 0, 0, 0,  # Colors used
+              0, 0, 0, 0   # Important colors
+            )
+
+            # Create pixel data (simple blue gradient)
+            $pixelData = @()
+            for ($y = 0; $y -lt $Height; $y++) {
+              for ($x = 0; $x -lt $Width; $x++) {
+                # BGR: light blue color
+                $pixelData += @(0xFF, 0x99, 0x33)  # BGR
+              }
+              # Padding to 4-byte boundary
+              $padding = $rowSize - ($Width * 3)
+              for ($p = 0; $p -lt $padding; $p++) {
+                $pixelData += 0
+              }
+            }
+
+            $allBytes = [byte[]]($bmpHeader + $pixelData)
+            [System.IO.File]::WriteAllBytes($Path, $allBytes)
+            Write-Host "Created placeholder BMP: $Path (${Width}x${Height})"
+          }
+
+          # Create placeholder icons
+          Create-MinimalIco -Path "$assetsPath\hq-icon.ico"
+          Create-MinimalIco -Path "$assetsPath\hq-uninstall.ico"
+
+          # Create placeholder banners
+          Create-MinimalBmp -Path "$assetsPath\welcome-banner.bmp" -Width 164 -Height 314
+          Create-MinimalBmp -Path "$assetsPath\header.bmp" -Width 150 -Height 57
+
+          Write-Host "All placeholder assets created successfully"
+          Get-ChildItem $assetsPath
+        shell: pwsh
+
+      # Build the Windows installer using NSIS
+      - name: Build Windows installer
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          $nsiScript = "installer\windows\hq-installer.nsi"
+
+          Write-Host "Building installer from: $nsiScript"
+          Write-Host "Working directory: $(Get-Location)"
+
+          # Check that required files exist
+          if (-not (Test-Path $nsiScript)) {
+            Write-Error "NSIS script not found: $nsiScript"
+            exit 1
+          }
+
+          # Check for LICENSE file (referenced by NSIS script)
+          if (-not (Test-Path "LICENSE")) {
+            Write-Error "LICENSE file not found in repository root"
+            exit 1
+          }
+
+          # Build with bundled template for self-contained installer
+          Write-Host "Running makensis..."
+          & $nsisPath /DBUNDLED_TEMPLATE /V3 $nsiScript
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS build failed with exit code: $LASTEXITCODE"
+            exit 1
+          }
+
+          # Verify the installer was created
+          $installerPath = "installer\windows\my-hq-setup-1.0.0.exe"
+          if (Test-Path $installerPath) {
+            Write-Host "Installer built successfully: $installerPath"
+            Write-Host "Installer size: $((Get-Item $installerPath).Length / 1KB) KB"
+          } else {
+            Write-Error "Installer not found at expected path: $installerPath"
+            Get-ChildItem "installer\windows" -Filter "*.exe"
+            exit 1
+          }
+        shell: pwsh
+
+      # Run the installer in silent/unattended mode
+      - name: Run installer (silent mode)
+        run: |
+          $installerPath = "installer\windows\my-hq-setup-1.0.0.exe"
+          $installDir = "$env:LOCALAPPDATA\my-hq"
+
+          Write-Host "Running installer in silent mode..."
+          Write-Host "Installer: $installerPath"
+          Write-Host "Target directory: $installDir"
+
+          # Run installer with /S (silent) flag
+          # /D sets the installation directory (must be last parameter, no quotes)
+          $process = Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait -PassThru -NoNewWindow
+
+          Write-Host "Installer exit code: $($process.ExitCode)"
+
+          # NSIS installers return 0 on success
+          if ($process.ExitCode -ne 0) {
+            Write-Error "Installer failed with exit code: $($process.ExitCode)"
+            exit 1
+          }
+
+          # Wait a moment for file system operations to complete
+          Start-Sleep -Seconds 5
+
+          # Verify installation directory exists
+          if (Test-Path $installDir) {
+            Write-Host "Installation directory created successfully"
+            Write-Host "Contents:"
+            Get-ChildItem $installDir -Recurse | Select-Object -First 30
+          } else {
+            Write-Error "Installation directory not found: $installDir"
+            exit 1
+          }
+        shell: pwsh
+
+      # Run the Windows verification test script
+      - name: Run verification tests
+        run: |
+          $testScript = "installer\tests\test-windows.ps1"
+          $installDir = "$env:LOCALAPPDATA\my-hq"
+
+          Write-Host "Running verification tests..."
+          Write-Host "Test script: $testScript"
+          Write-Host "Install directory: $installDir"
+
+          # Refresh PATH to pick up any new installations
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+          # Run the test script with verbose output
+          & powershell -ExecutionPolicy Bypass -File $testScript -HqPath $installDir -Verbose
+
+          $testExitCode = $LASTEXITCODE
+          Write-Host "Test script exit code: $testExitCode"
+
+          if ($testExitCode -ne 0) {
+            Write-Host ""
+            Write-Host "============================================" -ForegroundColor Red
+            Write-Host "   VERIFICATION TESTS FAILED" -ForegroundColor Red
+            Write-Host "============================================" -ForegroundColor Red
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Green
+          Write-Host "   ALL VERIFICATION TESTS PASSED" -ForegroundColor Green
+          Write-Host "============================================" -ForegroundColor Green
+        shell: pwsh
+
+      # Output test summary
+      - name: Test summary
+        if: always()
+        run: |
+          Write-Host ""
+          Write-Host "============================================"
+          Write-Host "   Windows Installer Test Summary"
+          Write-Host "============================================"
+          Write-Host ""
+
+          # Cache status
+          Write-Host "Cache Status:"
+          Write-Host "  NSIS Cache Hit: ${{ steps.cache-nsis.outputs.cache-hit }}"
+          Write-Host ""
+
+          # Check what was installed
+          $installDir = "$env:LOCALAPPDATA\my-hq"
+
+          if (Test-Path $installDir) {
+            Write-Host "Installation directory: EXISTS"
+            $itemCount = (Get-ChildItem $installDir -Recurse -File).Count
+            Write-Host "Files installed: $itemCount"
+          } else {
+            Write-Host "Installation directory: NOT FOUND"
+          }
+
+          # Check for key binaries
+          Write-Host ""
+          Write-Host "Dependency Check:"
+
+          $nodeVersion = & node --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "  Node.js: $nodeVersion"
+          } else {
+            Write-Host "  Node.js: NOT FOUND"
+          }
+
+          $npmVersion = & npm --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "  npm: $npmVersion"
+          } else {
+            Write-Host "  npm: NOT FOUND"
+          }
+
+          # Note: Claude CLI may not be installed during CI (requires network)
+          $claudeVersion = & claude --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "  Claude CLI: $claudeVersion"
+          } else {
+            Write-Host "  Claude CLI: NOT INSTALLED (expected in CI without network access to npm)"
+          }
+
+          Write-Host ""
+        shell: pwsh
+
+      # Upload the built installer as an artifact
+      - name: Upload installer artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/windows/my-hq-setup-*.exe
+          retention-days: 7
+
+  # ============================================
+  # macOS Build and Test
+  # ============================================
+  test-macos:
+    name: macOS Installer
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Verify Xcode Command Line Tools are available (pkgbuild, productbuild)
+      - name: Verify build dependencies
+        run: |
+          echo "Verifying Xcode Command Line Tools..."
+
+          # Check for pkgbuild
+          if command -v pkgbuild &> /dev/null; then
+            echo "pkgbuild found: $(which pkgbuild)"
+            pkgbuild --version || echo "Version check not supported"
+          else
+            echo "ERROR: pkgbuild not found"
+            echo "Installing Xcode Command Line Tools..."
+            xcode-select --install || true
+            exit 1
+          fi
+
+          # Check for productbuild
+          if command -v productbuild &> /dev/null; then
+            echo "productbuild found: $(which productbuild)"
+            productbuild --version || echo "Version check not supported"
+          else
+            echo "ERROR: productbuild not found"
+            exit 1
+          fi
+
+          echo ""
+          echo "Build dependencies verified successfully"
+
+      # Create placeholder resources for CI build
+      - name: Create placeholder resources
+        run: |
+          RESOURCES_DIR="installer/macos/resources"
+
+          echo "Creating placeholder installer resources..."
+
+          # Create welcome.html if not exists
+          if [ ! -f "$RESOURCES_DIR/welcome.html" ]; then
+            cat > "$RESOURCES_DIR/welcome.html" << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>Welcome</title></head>
+          <body>
+          <h1>Welcome to my-hq</h1>
+          <p>This installer will set up my-hq on your Mac.</p>
+          </body>
+          </html>
+          EOF
+            echo "Created: welcome.html"
+          fi
+
+          # Create readme.html if not exists
+          if [ ! -f "$RESOURCES_DIR/readme.html" ]; then
+            cat > "$RESOURCES_DIR/readme.html" << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>Read Me</title></head>
+          <body>
+          <h1>my-hq</h1>
+          <p>Personal AI operating system for orchestrating workers, projects, and content.</p>
+          </body>
+          </html>
+          EOF
+            echo "Created: readme.html"
+          fi
+
+          # Create license.html if not exists
+          if [ ! -f "$RESOURCES_DIR/license.html" ]; then
+            cat > "$RESOURCES_DIR/license.html" << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>License</title></head>
+          <body>
+          <h1>License Agreement</h1>
+          <p>See LICENSE file for full license terms.</p>
+          </body>
+          </html>
+          EOF
+            echo "Created: license.html"
+          fi
+
+          # Create conclusion.html if not exists
+          if [ ! -f "$RESOURCES_DIR/conclusion.html" ]; then
+            cat > "$RESOURCES_DIR/conclusion.html" << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>Installation Complete</title></head>
+          <body>
+          <h1>Installation Complete</h1>
+          <p>my-hq has been installed successfully.</p>
+          </body>
+          </html>
+          EOF
+            echo "Created: conclusion.html"
+          fi
+
+          # Create placeholder background.png if not exists (1x1 transparent PNG)
+          if [ ! -f "$RESOURCES_DIR/background.png" ]; then
+            # Create minimal valid PNG (1x1 transparent pixel)
+            printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > "$RESOURCES_DIR/background.png"
+            echo "Created: background.png (placeholder)"
+          fi
+
+          echo ""
+          echo "Placeholder resources ready:"
+          ls -la "$RESOURCES_DIR"
+
+      # Build the macOS installer package
+      - name: Build macOS installer
+        run: |
+          BUILD_SCRIPT="installer/macos/build-pkg.sh"
+
+          echo "Building macOS installer..."
+          echo "Build script: $BUILD_SCRIPT"
+          echo "Working directory: $(pwd)"
+
+          # Ensure build script is executable
+          chmod +x "$BUILD_SCRIPT"
+
+          # Check that LICENSE file exists (required by build script)
+          if [ ! -f "LICENSE" ]; then
+            echo "ERROR: LICENSE file not found in repository root"
+            exit 1
+          fi
+
+          # Run the build script
+          "$BUILD_SCRIPT"
+
+          # Verify the installer was created
+          PKG_PATH="installer/macos/build/my-hq-1.0.0.pkg"
+          if [ -f "$PKG_PATH" ]; then
+            echo ""
+            echo "Installer built successfully: $PKG_PATH"
+            echo "Installer size: $(du -h "$PKG_PATH" | cut -f1)"
+
+            # Show package info
+            echo ""
+            echo "Package info:"
+            pkgutil --payload-files "$PKG_PATH" | head -20 || true
+          else
+            echo "ERROR: Installer not found at expected path: $PKG_PATH"
+            echo ""
+            echo "Contents of build directory:"
+            ls -la "installer/macos/build/" || echo "Build directory does not exist"
+            exit 1
+          fi
+
+      # Install the package using the macOS installer command
+      - name: Install package
+        run: |
+          PKG_PATH="installer/macos/build/my-hq-1.0.0.pkg"
+
+          echo "Installing package: $PKG_PATH"
+          echo "Target: /"
+          echo ""
+
+          # Install the package (requires sudo)
+          sudo installer -pkg "$PKG_PATH" -target / -verbose
+
+          INSTALL_EXIT_CODE=$?
+
+          if [ $INSTALL_EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "ERROR: Installation failed with exit code: $INSTALL_EXIT_CODE"
+            exit 1
+          fi
+
+          echo ""
+          echo "Installation completed successfully"
+
+          # Wait for file system operations to complete
+          sleep 3
+
+          # Verify installation directory exists
+          # The installer puts files in $HOME/my-hq via postinstall script
+          # But pkgbuild installs to /my-hq initially, then postinstall moves to $HOME
+          echo ""
+          echo "Checking installation locations..."
+
+          if [ -d "$HOME/my-hq" ]; then
+            echo "Found: $HOME/my-hq"
+            ls -la "$HOME/my-hq" | head -20
+          elif [ -d "/my-hq" ]; then
+            echo "Found: /my-hq (root install location)"
+            ls -la "/my-hq" | head -20
+            # Move to user home for tests
+            echo "Moving to user home directory for testing..."
+            cp -R "/my-hq" "$HOME/my-hq" || true
+          else
+            echo "WARNING: my-hq directory not found in expected locations"
+            echo "Searching for my-hq..."
+            find / -name "my-hq" -type d 2>/dev/null | head -10 || true
+          fi
+
+      # Run the macOS verification test script
+      - name: Run verification tests
+        run: |
+          TEST_SCRIPT="installer/tests/test-macos.sh"
+
+          echo "Running verification tests..."
+          echo "Test script: $TEST_SCRIPT"
+          echo ""
+
+          # Ensure test script is executable
+          chmod +x "$TEST_SCRIPT"
+
+          # Set HQ_PATH to the expected installation location
+          export HQ_PATH="$HOME/my-hq"
+          export VERBOSE="true"
+
+          echo "HQ_PATH: $HQ_PATH"
+          echo ""
+
+          # Run the test script
+          "$TEST_SCRIPT"
+
+          TEST_EXIT_CODE=$?
+
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "============================================"
+            echo "   VERIFICATION TESTS FAILED"
+            echo "============================================"
+            exit 1
+          fi
+
+          echo ""
+          echo "============================================"
+          echo "   ALL VERIFICATION TESTS PASSED"
+          echo "============================================"
+
+      # Output test summary
+      - name: Test summary
+        if: always()
+        run: |
+          echo ""
+          echo "============================================"
+          echo "   macOS Installer Test Summary"
+          echo "============================================"
+          echo ""
+
+          # Check what was installed
+          INSTALL_DIR="$HOME/my-hq"
+
+          if [ -d "$INSTALL_DIR" ]; then
+            echo "Installation directory: EXISTS"
+            FILE_COUNT=$(find "$INSTALL_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
+            echo "Files installed: $FILE_COUNT"
+          else
+            echo "Installation directory: NOT FOUND"
+          fi
+
+          echo ""
+          echo "Dependency Check:"
+
+          # Check Node.js
+          if command -v node &> /dev/null; then
+            echo "  Node.js: $(node --version)"
+          else
+            echo "  Node.js: NOT FOUND"
+          fi
+
+          # Check npm
+          if command -v npm &> /dev/null; then
+            echo "  npm: $(npm --version)"
+          else
+            echo "  npm: NOT FOUND"
+          fi
+
+          # Check Claude CLI (may not be installed during CI)
+          if command -v claude &> /dev/null; then
+            echo "  Claude CLI: $(claude --version 2>&1 || echo 'installed')"
+          else
+            echo "  Claude CLI: NOT INSTALLED (expected in CI without npm install)"
+          fi
+
+          echo ""
+          echo "macOS Version: $(sw_vers -productVersion)"
+          echo "Architecture: $(uname -m)"
+          echo ""
+
+      # Upload the built installer as an artifact
+      - name: Upload macOS installer artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: installer/macos/build/my-hq-*.pkg
+          retention-days: 7
+
+  # ============================================
+  # Summary Job (runs after platform jobs)
+  # ============================================
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-windows, test-macos]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          echo "=== Installer Test Results ==="
+          echo "Windows: ${{ needs.test-windows.result }}"
+          echo "macOS: ${{ needs.test-macos.result }}"
+
+          if [[ "${{ needs.test-windows.result }}" == "failure" ]] || [[ "${{ needs.test-macos.result }}" == "failure" ]]; then
+            echo "One or more platform tests failed!"
+            exit 1
+          fi
+
+          echo "All platform tests passed!"
