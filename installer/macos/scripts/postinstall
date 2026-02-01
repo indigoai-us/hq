@@ -19,13 +19,29 @@ error() {
 
 log "Starting post-install..."
 
+# Detect CI environment
+# Check common CI environment variables and also check for missing GUI (headless)
+CI_MODE=false
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$JENKINS_HOME" ]; then
+    CI_MODE=true
+    log "CI environment detected - skipping GUI operations"
+elif [ ! -e "/dev/console" ]; then
+    # No console device typically means headless/CI environment
+    CI_MODE=true
+    log "Headless environment detected - skipping GUI operations"
+elif ! command -v osascript &> /dev/null; then
+    # No osascript means no GUI scripting
+    CI_MODE=true
+    log "No GUI scripting available - skipping GUI operations"
+fi
+
 # Load variables from preinstall
 if [ -f /tmp/my-hq-install-vars ]; then
     source /tmp/my-hq-install-vars
 else
     error "Install variables not found, using defaults"
-    TARGET_USER=$(stat -f "%Su" /dev/console)
-    TARGET_HOME=$(eval echo "~$TARGET_USER")
+    TARGET_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "$USER")
+    TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null || echo "$HOME")
 fi
 
 log "Target user: $TARGET_USER"
@@ -855,7 +871,9 @@ cleanup() {
 # =============================================================================
 
 # Step 1: Install Node.js if needed
-if [ "$NODEJS_INSTALLED" != "true" ]; then
+if [ "$CI_MODE" = true ]; then
+    log "Skipping Node.js installation in CI mode"
+elif [ "$NODEJS_INSTALLED" != "true" ]; then
     install_nodejs || {
         error "Node.js installation failed. Please install Node.js 18+ manually from https://nodejs.org"
     }
@@ -864,7 +882,9 @@ else
 fi
 
 # Step 2: Install Claude CLI if needed
-if [ "$CLAUDE_INSTALLED" != "true" ]; then
+if [ "$CI_MODE" = true ]; then
+    log "Skipping Claude CLI installation in CI mode"
+elif [ "$CLAUDE_INSTALLED" != "true" ]; then
     install_claude_cli || {
         error "Claude CLI installation failed. You can install it manually: npm install -g @anthropic-ai/claude-code"
     }
@@ -891,17 +911,15 @@ install_update_checker
 # Step 8: Save version file for update tracking
 save_version_file
 
-# Step 9: Create desktop launcher (macOS Application)
-create_desktop_launcher
-
-# Step 10: Create Setup Wizard launcher on desktop
-create_setup_wizard_launcher
-
-# Step 11: Create Update Checker launcher on desktop
-create_update_checker_launcher
-
-# Step 12: Launch Setup Wizard (opens after installer closes)
-launch_setup_wizard
+# Step 9-12: Create launchers and open wizard (skip in CI)
+if [ "$CI_MODE" = true ]; then
+    log "Skipping GUI operations in CI mode"
+else
+    create_desktop_launcher
+    create_setup_wizard_launcher
+    create_update_checker_launcher
+    launch_setup_wizard
+fi
 
 # Step 13: Cleanup
 cleanup
