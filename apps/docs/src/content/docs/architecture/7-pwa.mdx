@@ -1,0 +1,158 @@
+---
+title: PWA Dashboard
+description: Architecture of the HQ web app — React 19, Vite, Cognito auth, file API, and PWA installability.
+---
+
+The PWA dashboard (`apps/web`) provides mobile and desktop access to HQ content synced to S3. It is a single-page application built with React 19, bundled by Vite, and installable as a Progressive Web App on any device.
+
+## Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| **React 19** | UI framework with concurrent rendering |
+| **React Router v7** | Client-side routing |
+| **Vite** | Build tool with fast HMR |
+| **Tailwind CSS** | Utility-first styling |
+| **VitePWA plugin** | Service worker generation and manifest |
+| **amazon-cognito-identity-js** | Authentication against AWS Cognito |
+| **react-markdown** | Markdown file rendering |
+
+## App Structure
+
+`App.tsx` defines a `BrowserRouter` with five routes:
+
+```tsx
+<BrowserRouter>
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route element={<ProtectedRoute />}>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/files/*" element={<FileBrowser />} />
+      <Route path="/view/*" element={<FileViewer />} />
+      <Route path="/settings" element={<Settings />} />
+    </Route>
+  </Routes>
+</BrowserRouter>
+```
+
+`ProtectedRoute` wraps all authenticated routes. It checks the auth context and redirects to `/login` if the user has no active session.
+
+## Authentication
+
+Authentication lives in `lib/auth.tsx` and uses React context to provide auth state across the app.
+
+### AuthProvider
+
+```tsx
+const AuthProvider = ({ children }) => {
+  // CognitoUserPool initialized from environment config
+  // Checks session on mount via cognitoUser.getSession()
+  // Provides: signIn, signUp, signOut, getToken
+};
+```
+
+| Method | Description |
+|---|---|
+| `signIn(email, password)` | Authenticates against Cognito user pool |
+| `signUp(email, password)` | Creates a new Cognito user |
+| `signOut()` | Clears the local session |
+| `getToken()` | Extracts the JWT from the current session for API calls |
+
+On mount, the provider checks for an existing session by calling `cognitoUser.getSession()`. If a valid session exists, the user is automatically signed in without re-entering credentials.
+
+## API Client
+
+`lib/api.ts` provides four functions for interacting with the S3-backed file API. All requests include a `Bearer` token header obtained from the auth context.
+
+```ts
+listFiles(path?)         // GET /api/files — optional path prefix filter
+getFile(path)            // GET /api/files/{path}
+putFile(path, content)   // PUT /api/files/{path}
+deleteFile(path)         // DELETE /api/files/{path}
+```
+
+Each function checks the response status and throws on non-2xx responses, allowing the UI to display error states consistently.
+
+## Pages
+
+### Login
+
+Email and password form with a toggle to switch between sign-in and sign-up modes. Displays error messages from Cognito (invalid credentials, user not confirmed, etc.) inline below the form.
+
+### Dashboard
+
+The landing page after authentication. Shows two sections:
+
+- **Recent files** — A chronological list of recently modified files from the synced workspace.
+- **Quick access grid** — Cards linking to common directories: threads, social-drafts, reports, and knowledge.
+
+### FileBrowser
+
+Displays a directory listing built from the flat S3 file list. The S3 API returns all files as flat keys (e.g. `workspace/threads/file.json`), and the FileBrowser reconstructs the directory hierarchy client-side.
+
+Features:
+- Parent directory navigation (back button)
+- Click a directory to navigate into it
+- Click a file to open it in FileViewer
+
+### FileViewer
+
+Renders file content based on the file extension:
+
+| Extension | Rendering |
+|---|---|
+| `.md`, `.mdx` | Markdown via `react-markdown` |
+| `.json` | Pretty-printed with `JSON.stringify(data, null, 2)` |
+| All other | Raw text display |
+
+### Settings
+
+A simple page with:
+- Sign out button (calls `signOut()` and redirects to `/login`)
+- Version info (build number from Vite env)
+- GitHub link to the HQ repository
+
+## PWA Configuration
+
+The Vite config uses the `VitePWA` plugin to generate a service worker and web app manifest:
+
+```ts
+// vite.config.ts
+VitePWA({
+  manifest: {
+    name: "HQ",
+    short_name: "HQ",
+    theme_color: "#0a0a0a",
+    background_color: "#0a0a0a",
+    display: "standalone",
+    // icons, start_url, etc.
+  }
+})
+```
+
+Key PWA properties:
+- **Dark theme** — `#0a0a0a` background matches the app's dark UI
+- **Standalone display** — Runs without browser chrome when installed
+- **Installable** — Add to home screen on iOS, Android, and desktop
+
+## Route Map
+
+```
+/login          Public — email/password authentication
+/               Dashboard — recent files, quick access
+/files/*        FileBrowser — directory listing, navigation
+/view/*         FileViewer — markdown, JSON, raw text rendering
+/settings       Settings — sign out, version, links
+```
+
+## Data Flow
+
+```
+User ──► PWA (React) ──► API Gateway ──► Lambda ──► S3
+              │
+              ▼
+         Cognito JWT
+         (Bearer token)
+```
+
+The PWA never accesses S3 directly. All file operations go through the API Gateway, which validates the Cognito JWT and scopes access to the user's S3 prefix. This keeps credentials out of the browser and enforces per-user isolation.

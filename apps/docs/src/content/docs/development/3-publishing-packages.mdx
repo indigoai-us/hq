@@ -1,0 +1,105 @@
+---
+title: Publishing Packages
+description: npm publishing workflow for HQ packages, including manual and CI/CD approaches.
+---
+
+## npm Organization
+
+All packages publish under the `@indigoai` npm scope (except `create-hq` which is unscoped for `npx` convenience).
+
+| Package | npm Name | Scoped |
+|---------|----------|--------|
+| packages/create-hq | create-hq | No |
+| packages/hq-cli | @indigoai/hq-cli | Yes |
+| packages/hq-cloud | @indigoai/hq-cloud | Yes |
+
+## Prerequisites
+
+- npm account with publish access to `@indigoai` org
+- `NPM_TOKEN` secret set in GitHub repo settings
+- Two-factor authentication enabled on npm account
+
+## Manual Publishing
+
+### 1. Bump version
+
+All packages use unified versioning. Update version in all three package.json files:
+
+```bash
+# packages/create-hq/package.json
+# packages/hq-cli/package.json
+# packages/hq-cloud/package.json
+# Also update root package.json
+```
+
+### 2. Build
+
+```bash
+npm run build
+```
+
+### 3. Publish (order matters)
+
+```bash
+cd packages/hq-cloud && npm publish --access public
+cd packages/hq-cli && npm publish --access public
+cd packages/create-hq && npm publish --access public
+```
+
+hq-cloud first (hq-cli depends on it), then hq-cli, then create-hq.
+
+## Automated Publishing (CI/CD)
+
+The `publish.yml` workflow triggers on version tags:
+
+```yaml
+# Triggered by: git tag v5.0.0 && git push --tags
+on:
+  push:
+    tags: ['v*']
+```
+
+Workflow steps:
+
+1. Checkout code
+2. Setup Node.js 18 with npm registry
+3. `npm ci` — install all deps
+4. `npm run build` — build all packages
+5. `npm run typecheck` — verify types
+6. Publish hq-cloud → hq-cli → create-hq (in order)
+
+### Creating a release
+
+```bash
+# After merging to main:
+git tag v5.1.0
+git push --tags
+```
+
+This triggers the publish workflow automatically.
+
+## Template Bundling
+
+The `create-hq` package includes the `template/` directory in its published bundle. The package.json `files` field controls what's included:
+
+```json
+{
+  "files": ["dist", "template"]
+}
+```
+
+When users run `npx create-hq`, npm downloads the package including the template, and scaffold.ts copies it to their chosen directory.
+
+### Updating the template
+
+1. Make changes in `template/` directory
+2. Test locally: `node packages/create-hq/dist/index.js ~/test-hq`
+3. Bump version and publish
+
+## Version Strategy
+
+- **Major**: Breaking changes to CLI interface or template structure
+- **Minor**: New features, new commands, new workers
+- **Patch**: Bug fixes, content updates, documentation
+
+All packages share the same version number for simplicity. A single `git tag` triggers publishing of all three packages.

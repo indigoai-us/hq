@@ -1,0 +1,126 @@
+---
+title: Testing
+description: Testing strategy and QA processes across the HQ monorepo.
+---
+
+## Testing Strategy
+
+HQ testing is organized in three tiers:
+
+### Tier 1: Unit Tests
+Package-level tests for individual functions and modules.
+
+| Package | What to Test |
+|---------|-------------|
+| create-hq | scaffold flow, dependency checks, template copying |
+| hq-cli | manifest parsing, module registration, strategy execution |
+| hq-cloud | journal operations, ignore filtering, hash computation |
+| infra | Lambda handler logic (with mocked AWS SDK) |
+
+Framework: Vitest (recommended for TypeScript + ESM).
+
+```bash
+# Run all tests
+npm test
+
+# Run tests for a specific package
+npm test --workspace packages/hq-cloud
+```
+
+### Tier 2: Integration Tests
+Cross-package and API tests.
+
+- **CLI → Cloud**: Test that `hq sync init` correctly calls auth flow
+- **API → S3**: Test Lambda handlers with actual S3 operations (use localstack or test bucket)
+- **PWA → API**: Test API client against running API Gateway
+
+### Tier 3: End-to-End Tests
+Full user journey tests.
+
+- **Install flow**: `npx create-hq ~/test-hq` creates valid HQ
+- **Sync flow**: File change → upload → verify in S3
+- **PWA flow**: Login → browse files → view file content
+
+## Manual QA Checklist
+
+Before every release, verify:
+
+### create-hq
+- [ ] `npx create-hq` prompts for directory
+- [ ] Template copies completely (all directories, files)
+- [ ] Git initializes with first commit
+- [ ] Dependency check reports missing tools correctly
+- [ ] `--skip-deps` flag works
+- [ ] `--skip-cli` flag works
+- [ ] `--skip-sync` flag works
+
+### hq-cli
+- [ ] `hq modules list` shows module inventory
+- [ ] `hq modules add <url>` clones and registers module
+- [ ] `hq modules sync` updates all modules
+- [ ] `hq sync init` opens browser for auth
+- [ ] `hq sync start` starts background daemon
+- [ ] `hq sync stop` terminates daemon
+- [ ] `hq sync status` reports health
+
+### hq-cloud
+- [ ] Auth flow completes (browser → callback → credentials)
+- [ ] File upload reaches S3
+- [ ] File download matches original
+- [ ] Watcher detects file changes within 5 seconds
+- [ ] Journal tracks sync state correctly
+- [ ] Ignore patterns respected (.git, node_modules, repos/)
+- [ ] Files > 50MB skipped
+- [ ] Daemon survives terminal close
+
+### PWA
+- [ ] Sign up creates account
+- [ ] Sign in redirects to dashboard
+- [ ] File browser shows synced files
+- [ ] Markdown files render correctly
+- [ ] JSON files pretty-print
+- [ ] Navigation works (back, breadcrumbs)
+- [ ] Installable as PWA on mobile
+- [ ] Dark theme renders properly
+
+### Infrastructure
+- [ ] `sst deploy` completes without errors
+- [ ] API endpoints return correct responses
+- [ ] CORS allows web app origin
+- [ ] JWT auth rejects invalid tokens
+- [ ] User isolation: User A cannot see User B's files
+
+## Writing Tests
+
+### Test file location
+Place tests next to source files:
+```
+src/
+├── journal.ts
+├── journal.test.ts
+├── ignore.ts
+└── ignore.test.ts
+```
+
+### Example unit test (hq-cloud journal)
+```typescript
+import { describe, it, expect } from "vitest";
+import { hashFile, updateEntry } from "./journal.js";
+
+describe("journal", () => {
+  it("computes consistent SHA256 hash", async () => {
+    const hash = await hashFile("/path/to/test-file.md");
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+```
+
+## CI Pipeline
+
+The `ci.yml` workflow runs on every PR and push to main:
+1. `npm ci` — install deps
+2. `npm run build` — build all packages
+3. `npm run typecheck` — TypeScript checking
+4. `npm test` — run all tests (when added)
+
+Tests must pass before merging to main.

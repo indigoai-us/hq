@@ -1,0 +1,96 @@
+---
+title: "v5 Launch"
+description: "npm publishing and first release specification for HQ v5."
+---
+
+## Goal
+
+`npx create-hq` installs a fully functional HQ on any machine with Node.js 18+.
+
+## Prerequisites
+
+### npm Organization
+
+- [ ] Register `@indigoai` npm org (or verify access)
+- [ ] Add team members with publish access
+- [ ] Enable 2FA enforcement on org
+- [ ] Set `NPM_TOKEN` in GitHub repo secrets
+
+### GitHub Repository
+
+- [ ] Verify `indigoai-us/hq` repo is public
+- [ ] Branch protection on `main` (require CI pass)
+- [ ] Set up GitHub release drafting
+
+## Acceptance Criteria
+
+### AC-1: Packages publish successfully
+
+```bash
+npm view create-hq          # Shows package info
+npm view @indigoai/hq-cli   # Shows package info
+npm view @indigoai/hq-cloud # Shows package info
+```
+
+All three packages visible on npmjs.com with correct metadata.
+
+### AC-2: Install flow works end-to-end
+
+```bash
+npx create-hq ~/my-hq
+cd ~/my-hq
+claude  # Opens Claude Code
+/setup  # Setup wizard completes
+```
+
+On a clean machine with only Node.js and Claude Code installed.
+
+### AC-3: Template integrity
+
+- All 17 commands load without errors
+- Worker registry matches available worker directories
+- INDEX.md accurately reflects directory structure
+- modules.yaml references valid public repos
+- No PII or private data in any file
+
+### AC-4: CLI installs and runs
+
+```bash
+npm install -g @indigoai/hq-cli
+hq modules list    # Shows module inventory
+hq modules sync    # Syncs modules from manifest
+```
+
+### AC-5: CI/CD pipeline works
+
+- Push to main triggers build + typecheck
+- Tag push triggers npm publish
+- All three packages publish in correct order (hq-cloud → hq-cli → create-hq)
+
+## Implementation Steps
+
+1. **Register npm org** — `npm org create indigoai` or verify existing
+2. **Verify package.json files** — Ensure `name`, `version`, `files`, `bin`, `main`, `types` are correct
+3. **Dry-run publish** — `npm publish --dry-run` for each package, verify contents
+4. **Test locally** — Build + run installer from source, verify template
+5. **Create GitHub release** — Draft release notes for v5.0.0
+6. **Tag and push** — `git tag v5.0.0 && git push --tags`
+7. **Verify** — `npx create-hq@5.0.0` on a clean machine
+8. **Update README** — Add npm badges, verified install instructions
+
+## Risks
+
+| Risk | Mitigation |
+|------|-----------|
+| npm name `create-hq` taken | Check availability first, use `create-hq-app` as fallback |
+| Template too large for npm | Verify package size, exclude unnecessary files |
+| Broken symlinks in template | Template uses flat directories, not symlinks. Symlinks created by module system post-install. |
+| Missing dependencies | Dependency checker in scaffold.ts warns users |
+
+## Definition of Done
+
+- [ ] All 3 packages on npmjs.com
+- [ ] `npx create-hq` works on macOS and Linux
+- [ ] CI/CD pipeline passes
+- [ ] GitHub release v5.0.0 published
+- [ ] README has install instructions with npm badges

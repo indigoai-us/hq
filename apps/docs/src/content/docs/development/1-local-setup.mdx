@@ -1,0 +1,104 @@
+---
+title: Local Setup
+description: Clone and run the HQ monorepo locally for development and testing.
+---
+
+## Prerequisites
+
+- **Node.js 18+**
+- **npm 9+** (ships with Node 18)
+- **Git**
+- **AWS CLI v2** — for infrastructure deployment (`infra/` stack)
+- **Claude Code CLI** — for template testing and worker development
+- **qmd** — for search testing (`brew install tobi/tap/qmd`)
+
+## Clone & Install
+
+```bash
+git clone https://github.com/indigoai-us/hq.git
+cd hq
+npm ci
+```
+
+`npm ci` installs all workspaces automatically via the root `package.json` workspaces config.
+
+## Build All Packages
+
+```bash
+npm run build
+```
+
+This runs `npm run build --workspaces --if-present` — builds `create-hq`, `hq-cli`, `hq-cloud`, `web`, and `docs`.
+
+Build order matters: `hq-cloud` must build before `hq-cli` (dependency). npm workspaces handles this automatically.
+
+## Typecheck
+
+```bash
+npm run typecheck
+```
+
+## Run Individual Packages
+
+### create-hq (test installer)
+
+```bash
+cd packages/create-hq
+npm run build
+node dist/index.js ~/test-hq
+```
+
+### hq-cli (test CLI)
+
+```bash
+cd packages/hq-cli
+npm run build
+node dist/index.js modules list
+```
+
+### hq-cloud (library — no standalone run)
+
+Build only. Consumed by `hq-cli`.
+
+### PWA (dev server)
+
+```bash
+npm run dev --workspace apps/web
+# Opens at http://localhost:5173
+```
+
+Requires API backend running (or use mock). Set environment variables:
+
+- `VITE_API_URL` — API Gateway endpoint
+- `VITE_USER_POOL_ID` — Cognito user pool ID
+- `VITE_USER_POOL_CLIENT_ID` — Cognito client ID
+
+### Docs (dev server)
+
+```bash
+npm run dev --workspace apps/docs
+# Opens at http://localhost:4321
+```
+
+## Environment Variables
+
+| Variable | Package | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `apps/web` | API Gateway endpoint URL |
+| `VITE_USER_POOL_ID` | `apps/web` | Cognito User Pool ID |
+| `VITE_USER_POOL_CLIENT_ID` | `apps/web` | Cognito Client ID |
+| `AWS_PROFILE` | `infra` | AWS credentials profile |
+| `AWS_REGION` | `infra` | AWS region (default: `us-east-1`) |
+
+Create `.env` files locally (they are gitignored).
+
+## Project Structure Reference
+
+| Workspace | Path | Purpose | Dev Command | Build Output |
+|-----------|------|---------|-------------|--------------|
+| `create-hq` | `packages/create-hq` | Project scaffolder / installer | — | `dist/` |
+| `hq-cli` | `packages/hq-cli` | CLI for modules, sync, cloud | — | `dist/` |
+| `hq-cloud` | `packages/hq-cloud` | Cloud SDK (library) | — | `dist/` |
+| `web` | `apps/web` | PWA dashboard | `npm run dev --workspace apps/web` | `dist/` |
+| `docs` | `apps/docs` | Documentation site (Starlight) | `npm run dev --workspace apps/docs` | `dist/` |
+| `infra` | `infra/` | AWS CDK infrastructure | — | `cdk.out/` |

@@ -1,0 +1,207 @@
+---
+title: Module System
+description: How HQ manages knowledge bases, workers, and shared content through a declarative module manifest with multiple sync strategies.
+---
+
+HQ uses a module system to manage external knowledge bases, worker definitions, and shared content. Each module maps a git repository (or a subdirectory within one) to one or more targets inside the HQ directory. A declarative manifest defines what modules exist, and a lock file pins them to specific commits for reproducible syncs.
+
+## Manifest
+
+The module manifest lives at `modules/modules.yaml` in the HQ root. It declares every module, its source repository, sync strategy, and where it should appear in the local directory tree.
+
+```yaml
+version: 1
+modules:
+  ralph-methodology:
+    name: ralph-methodology
+    repo: https://github.com/indigoai-us/ralph-methodology
+    branch: main
+    path: docs
+    strategy: link
+    targets:
+      - knowledge/public/Ralph
+  knowledge-workers:
+    name: knowledge-workers
+    repo: https://github.com/indigoai-us/knowledge-workers
+    strategy: link
+    targets:
+      - knowledge/public/workers
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Unique module identifier |
+| `repo` | yes | Git repository URL (HTTPS) |
+| `branch` | no | Branch to track (defaults to `main`) |
+| `path` | no | Subdirectory within the repo to use as the source root |
+| `strategy` | yes | Sync strategy: `link`, `merge`, or `copy` |
+| `targets` | yes | Array of paths (relative to HQ root) where the module content should appear |
+
+A single module can have multiple targets. Each target receives the same source content using the configured strategy.
+
+## Lock File
+
+The lock file at `modules.lock` pins each module to a specific commit SHA and records the last sync timestamp.
+
+```yaml
+version: 1
+modules:
+  ralph-methodology:
+    commit: abc123def
+    synced_at: "2025-01-15T10:30:00Z"
+```
+
+When `hq modules sync --locked` is run, the lock file commits are used instead of pulling the latest from the remote branch. This ensures deterministic syncs across machines and sessions.
+
+## Strategies
+
+The `strategy` field controls how source content is delivered to targets. Each strategy makes different tradeoffs between independence, transparency, and conflict handling.
+
+### Link
+
+The **link** strategy creates relative symlinks from the target path to the cloned source repository.
+
+```
+knowledge/public/Ralph → ../../repos/public/ralph-methodology/docs
+```
+
+- HQ git tracks the symlink itself, not the content behind it
+- Changes to knowledge content are committed in the target repo independently
+- Search tools (`qmd`, `Glob`, `Grep`, `Read`) follow symlinks transparently
+- No conflict detection needed — the source repo is the single source of truth
+
+This is the default strategy for knowledge bases. It preserves independent git history for each knowledge module while making the content appear as part of the HQ directory tree.
+
+### Merge
+
+The **merge** strategy copies files from the source repository to the target path, with SHA256 hash tracking for conflict detection.
+
+```
+source repo → copy files → target path
+                  │
+                  ▼
+          sync state (per-file SHA256 hashes)
+```
+
+On each sync:
+
+1. Compute SHA256 hash of every source file
+2. Compare against the stored hash from the last sync
+3. **Hash matches** — file unchanged, skip it
+4. **Hash differs, local file unchanged** — safe to overwrite
+5. **Hash differs, local file also modified** — conflict detected, skip and report
+
+Conflicted files are reported to the user for manual resolution. The sync state (hashes and timestamps) is stored alongside the lock file.
+
+Use **merge** when the target content needs to be editable locally but should also receive upstream updates with conflict awareness.
+
+### Copy
+
+The **copy** strategy performs a simple file copy from source to target with no conflict detection. It always overwrites the target with the latest source content.
+
+This strategy is planned for use cases where the target is always regenerated from source and local edits are not expected.
+
+## Commands
+
+### `hq modules add <repo-url>`
+
+Registers a new module. Clones the repository, adds an entry to the manifest, and runs an initial sync.
+
+| Option | Description |
+|--------|-------------|
+| `--as <name>` | Override the auto-detected module name |
+| `--branch <branch>` | Branch to track (default: `main`) |
+| `--strategy <strategy>` | Sync strategy: `link`, `merge`, or `copy` |
+| `--path <subdir>` | Subdirectory within the repo to use as source |
+
+The repository is cloned into `repos/public/` or `repos/private/` following the standard convention. The module name is extracted from the GitHub URL by default (e.g., `https://github.com/indigoai-us/ralph-methodology` becomes `ralph-methodology`).
+
+### `hq modules sync`
+
+Syncs all modules according to the manifest. Each module is synced using its configured strategy.
+
+```bash
+# Sync all modules to latest
+hq modules sync
+
+# Sync using pinned commits from lock file
+hq modules sync --locked
+```
+
+The `--locked` flag fetches the exact commit recorded in `modules.lock` rather than pulling the latest from the remote branch.
+
+### `hq modules list`
+
+Displays all registered modules with their current status.
+
+```bash
+hq modules list
+```
+
+Output includes:
+- Module name and strategy
+- Current local commit
+- Whether upstream has new commits
+- Target paths
+
+### `hq modules update`
+
+Updates the lock file with the current HEAD of each module's tracked branch.
+
+```bash
+# Update all modules
+hq modules update
+
+# Update a specific module
+hq modules update ralph-methodology
+```
+
+This fetches the latest commit for each module and writes it to `modules.lock` without performing a sync. Run `hq modules sync --locked` afterward to apply the updates.
+
+## Utilities
+
+The module system relies on two internal utilities:
+
+**`findHqRoot()`** — Walks up the directory tree from the current working directory, looking for a `.claude/` directory to identify the HQ root. This allows module commands to work from any subdirectory within HQ.
+
+**`parseRepoName()`** — Extracts a module name from a GitHub URL by taking the final path segment and stripping any `.git` suffix. For example, `https://github.com/indigoai-us/knowledge-workers.git` becomes `knowledge-workers`.
+
+## Repo Layout Convention
+
+Cloned module repositories follow the same directory convention as all HQ repos:
+
+```
+repos/
+├── public/               # Open-source module repos
+│   ├── ralph-methodology/
+│   ├── knowledge-workers/
+│   ├── knowledge-hq-core/
+│   └── ...
+└── private/              # Private module repos
+    ├── knowledge-abacus/
+    ├── knowledge-liverecover/
+    └── ...
+```
+
+Symlinks in `knowledge/public/`, `knowledge/private/`, and `companies/*/knowledge/` point into these repos. The symlinks are tracked by HQ git; the repo contents themselves are gitignored at the HQ level.
+
+## Adding a New Module
+
+The typical workflow for adding a new knowledge base as a module:
+
+1. Create the repository in `repos/public/` or `repos/private/`
+2. Register it with `hq modules add`
+3. The command clones the repo, creates the symlink target, and updates `modules.yaml`
+4. Run `qmd update` to index the new content for search
+5. Commit the manifest change to HQ git
+
+```bash
+# Example: add a new public knowledge base
+hq modules add https://github.com/indigoai-us/knowledge-design-styles \
+  --strategy link \
+  --as knowledge-design-styles
+```
+
+After registration, the module content is immediately available through the HQ directory tree and searchable via `qmd`.

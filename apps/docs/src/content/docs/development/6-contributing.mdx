@@ -1,0 +1,120 @@
+---
+title: Contributing
+description: Contribution guidelines for the HQ monorepo — how to fork, branch, commit, and submit pull requests.
+---
+
+## Getting Started
+
+1. Fork the repo: `gh repo fork indigoai-us/hq`
+2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/hq.git`
+3. Install dependencies: `npm ci`
+4. Build: `npm run build`
+5. Create a branch: `git checkout -b feature/my-feature`
+
+## Branch Strategy
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Production. Always deployable. |
+| `feature/*` | New features. Branch from main. |
+| `fix/*` | Bug fixes. Branch from main. |
+| `docs/*` | Documentation changes. |
+
+## Making Changes
+
+### Code changes
+
+1. Make changes in the appropriate package under `packages/` or `apps/`
+2. Build the affected package: `npm run build --workspace packages/hq-cloud`
+3. Run typecheck: `npm run typecheck`
+4. Test your changes locally (see Testing guide)
+5. Commit with clear, descriptive message
+
+### Template changes
+
+1. Edit files in `template/`
+2. Test by running the installer locally: `node packages/create-hq/dist/index.js ~/test-hq`
+3. Verify the change works in a fresh HQ instance
+
+### Documentation changes
+
+1. Edit MDX files in `apps/docs/src/content/docs/`
+2. Preview locally: `npm run dev --workspace apps/docs`
+3. Verify at http://localhost:4321
+
+## Commit Messages
+
+Follow conventional commits:
+
+```
+feat: add new worker scaffold command
+fix: correct journal hash on Windows
+docs: update cloud sync architecture page
+chore: bump dependencies
+```
+
+Format: `type: short description`
+
+Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`
+
+## Pull Requests
+
+### Creating a PR
+
+```bash
+git push origin feature/my-feature
+gh pr create --title "feat: my feature" --body "Description of changes"
+```
+
+### PR Checklist
+
+- [ ] Code builds without errors (`npm run build`)
+- [ ] TypeScript passes (`npm run typecheck`)
+- [ ] Tests pass (if applicable)
+- [ ] No secrets or PII in committed files
+- [ ] Documentation updated if needed
+- [ ] Commit messages follow conventional format
+
+### Review Process
+
+1. Open PR against `main`
+2. CI runs automatically (build + typecheck)
+3. Core team reviews
+4. Address feedback
+5. Squash merge when approved
+
+## Code Style
+
+- **TypeScript** for all packages
+- **ES Modules** (type: "module" in package.json)
+- **Strict mode** enabled in tsconfig
+- **No default exports** — use named exports
+- Prefer `async/await` over raw promises
+- Use `interface` over `type` for object shapes
+- Error handling: throw typed errors, catch at boundaries
+
+## Architecture Decisions
+
+When proposing significant changes:
+
+1. Open an issue describing the problem and proposed solution
+2. Get feedback before implementing
+3. Document architectural decisions in PR description
+4. Update relevant docs pages
+
+## Areas for Contribution
+
+| Area | Examples |
+|------|---------|
+| New sync strategies | Copy strategy, two-way merge |
+| PWA features | Offline mode, push notifications, Monaco editor |
+| CLI commands | New module management features |
+| Testing | Unit tests, integration tests, E2E |
+| Documentation | Tutorials, examples, API reference improvements |
+| Template content | New workers, knowledge bases, commands |
+
+## Questions?
+
+- Open a GitHub issue for bugs and feature requests
+- Check the docs site for architecture and usage guides
+- Review existing PRs for code patterns and conventions

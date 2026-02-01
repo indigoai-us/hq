@@ -1,0 +1,117 @@
+---
+title: Future Vision
+description: Long-term plans and ideas for HQ.
+---
+
+## Homebrew Tap
+
+**Idea**: `brew install indigoai/tap/create-hq` as an alternative to npx.
+
+**Why**: Faster install, no Node.js dependency for the installer itself, native feel on macOS.
+
+**How**: Create a Homebrew tap repo (`indigoai-us/homebrew-tap`) with a formula that downloads the compiled binary. Use `pkg` or `bun compile` to create a standalone executable from the TypeScript source.
+
+**Blocked by**: v5 launch (need stable npm packages first).
+
+## Worker Marketplace
+
+**Idea**: A registry where users can discover and install community-built workers.
+
+**How it could work**:
+```bash
+hq modules add https://github.com/someuser/worker-email-digest
+# Clones the worker, adds to workers/, registers in modules.yaml
+```
+
+Workers are already just YAML + markdown files in git repos. The module system already supports adding remote repos. The marketplace would be a curated list (GitHub repo or web page) of verified workers.
+
+**Components**:
+- Worker registry (JSON/YAML hosted on GitHub)
+- Submission process (PR to registry repo)
+- Quality checks (required fields, valid YAML, description)
+- Star/rating system (GitHub stars as proxy)
+- Categories: coding, content, research, automation, data
+
+## Team Features
+
+**Idea**: Shared HQ for teams — multiple people contributing workers, knowledge, and projects.
+
+**Challenges**:
+- Conflict resolution for simultaneous edits
+- Permission model (who can edit what)
+- Shared vs. personal workspace sections
+- Real-time sync between team members
+
+**Possible approach**:
+- Shared S3 bucket with per-user prefixes for workspace/
+- Shared prefix for knowledge/ and workers/
+- Git-based collaboration for knowledge repos (already works)
+- Real-time: WebSocket notifications when shared files change
+
+## Real-Time Collaboration
+
+**Idea**: Multiple users editing the same file simultaneously (Google Docs-style).
+
+**This is hard**. Requires:
+- Operational Transform (OT) or CRDT for conflict-free editing
+- WebSocket server for real-time updates
+- Presence indicators (who's viewing/editing)
+- Cursor sharing
+
+**More realistic first step**: File-level locking. If User A opens a file for editing, User B sees "locked by User A" and can view read-only.
+
+## Native Apps
+
+**Idea**: Native iOS and Android apps instead of PWA.
+
+**Pros**: Better performance, native notifications, background sync, biometric auth.
+**Cons**: Two codebases to maintain, App Store review process, higher development cost.
+
+**Verdict**: Stay with PWA for now. Revisit if PWA limitations become blockers. React Native could bridge the gap if needed.
+
+## AI Model Flexibility
+
+**Idea**: Support multiple AI providers, not just Claude Code.
+
+**Considerations**:
+- HQ workers currently depend on Claude Code's slash command system
+- Knowledge bases and CLAUDE.md are Claude-specific
+- Supporting other models would require an abstraction layer
+- Worker YAML could specify model preference
+
+**Near-term**: Stay Claude-focused. The deep integration is a feature, not a limitation.
+**Long-term**: Abstract the agent interface so workers can run on different models.
+
+## Plugin System
+
+**Idea**: Extend HQ with plugins for integrations (Slack, Linear, GitHub, Notion).
+
+**How it could work**:
+```yaml
+# modules.yaml
+plugins:
+  slack-notify:
+    repo: https://github.com/indigoai-us/plugin-slack
+    config:
+      webhook_url: $SLACK_WEBHOOK
+```
+
+Plugins would be lightweight adapters that hook into HQ events (task complete, sync conflict, checkpoint saved) and take actions (send Slack message, create Linear ticket, update Notion page).
+
+## CLI Improvements
+
+Near-term CLI enhancements:
+- `hq status` — Dashboard view of HQ health (sync, workers, projects)
+- `hq doctor` — Diagnose issues (missing deps, broken symlinks, stale locks)
+- `hq upgrade` — Update HQ template to latest version (smart merge)
+- `hq export` — Export HQ snapshot for backup/sharing
+- Tab completion for all commands (bash/zsh/fish)
+
+## Contributing Ideas
+
+Have an idea? Open an issue on [GitHub](https://github.com/indigoai-us/hq/issues) with:
+- **Problem**: What's missing or broken?
+- **Proposal**: How should it work?
+- **Scope**: Small fix or large feature?
+
+We prioritize ideas that make HQ more useful for solo developers and small teams.

@@ -1,0 +1,59 @@
+---
+title: HQ — Personal OS for AI Workers
+description: Build your AI team. Ship projects autonomously. Never lose context.
+template: splash
+hero:
+  tagline: Build your AI team. Ship projects autonomously. Never lose context.
+  actions:
+    - text: Get Started
+      link: /guide/2-getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/indigoai-us/hq
+      icon: external
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Install in 30 seconds
+
+```bash
+npx create-hq
+cd hq && claude
+/setup
+```
+
+---
+
+<CardGrid stagger>
+  <Card title="Product Guide" icon="open-book">
+    What HQ is, how it works, and how to use every command and worker.
+    [Read the guide →](/guide/1-what-is-hq/)
+  </Card>
+  <Card title="Architecture" icon="setting">
+    Technical deep-dive into the monorepo, cloud sync engine, infrastructure, and
+    API. [Explore architecture →](/architecture/1-overview/)
+  </Card>
+  <Card title="Development" icon="laptop">
+    Local setup, deploying infrastructure, publishing packages, and contributing.
+    [Dev guide →](/development/1-local-setup/)
+  </Card>
+  <Card title="Roadmap" icon="rocket">
+    What's next for HQ — v5 launch specs, cloud sync GA, and future features.
+    [See roadmap →](/roadmap/1-overview/)
+  </Card>
+</CardGrid>
+
+---
+
+## What's in the box
+
+| Component | Description |
+|-----------|-------------|
+| **17 Commands** | Session management, workers, projects, content, system |
+| **26 AI Workers** | Dev team (12), content team (5), QA, security, and more |
+| **8 Knowledge Bases** | Ralph methodology, security, design styles, worker framework |
+| **3 Starter Projects** | Personal assistant, social media, code worker |
+| **Cloud Sync** | Bidirectional S3 sync with mobile PWA dashboard |
+| **Module System** | Keep your HQ updated with upstream changes |

@@ -1,0 +1,155 @@
+---
+title: API Reference
+description: REST API endpoints for the HQ Cloud API, covering file operations, authentication, and S3 storage.
+---
+
+The HQ Cloud API is available at `https://api.hq.indigoai.com`.
+
+All endpoints require a JWT authorization header:
+
+```
+Authorization: Bearer {token}
+```
+
+## File Operations
+
+### List Files
+
+```
+GET /api/files?prefix={path}&continuationToken={token}
+```
+
+**Response:**
+
+```json
+{
+  "files": [
+    {
+      "key": "workspace/threads/T-001.json",
+      "size": 1234,
+      "lastModified": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "continuationToken": "abc123...",
+  "isTruncated": false
+}
+```
+
+- Paginates at 100 keys per page.
+- Keys have user prefix stripped (files appear relative to HQ root).
+
+### Get File
+
+```
+GET /api/files/{path}
+```
+
+**Response:**
+
+```json
+{
+  "content": "base64-encoded-content",
+  "contentType": "text/markdown"
+}
+```
+
+### Upload File
+
+```
+PUT /api/files/{path}
+Content-Type: application/json
+```
+
+**Body:**
+
+```json
+{
+  "content": "base64-encoded-content",
+  "contentType": "text/markdown"
+}
+```
+
+### Delete File
+
+```
+DELETE /api/files/{path}
+```
+
+## Authentication
+
+### Refresh Tokens
+
+```
+POST /api/auth/refresh
+Content-Type: application/json
+```
+
+**Body:**
+
+```json
+{
+  "refreshToken": "..."
+}
+```
+
+**Response:**
+
+```json
+{
+  "accessToken": "...",
+  "idToken": "...",
+  "credentials": {
+    "accessKeyId": "ASIA...",
+    "secretAccessKey": "...",
+    "sessionToken": "...",
+    "expiration": "2025-01-15T11:30:00Z"
+  }
+}
+```
+
+- Returns fresh Cognito tokens and STS temporary AWS credentials.
+- STS credentials expire after 1 hour.
+
+### Get Credentials
+
+```
+GET /api/auth/credentials
+```
+
+**Response:**
+
+```json
+{
+  "userId": "uuid",
+  "bucket": "hq-files-prod",
+  "region": "us-east-1",
+  "prefix": "users/{userId}/hq/"
+}
+```
+
+## Error Responses
+
+All error responses follow this shape:
+
+```json
+{
+  "error": "Error message description"
+}
+```
+
+| Status Code | Meaning |
+|---|---|
+| 400 | Bad request |
+| 401 | Unauthorized |
+| 404 | Not found |
+| 500 | Internal error |
+
+## S3 Key Structure
+
+All files are stored at:
+
+```
+s3://{bucket}/users/{userId}/hq/{path}
+```
+
+This provides per-user isolation -- users can only access their own files.

@@ -1,0 +1,122 @@
+---
+title: Projects
+description: Project management in HQ — PRDs, the Ralph loop, and autonomous execution.
+---
+
+## Overview
+
+Projects in HQ are structured task definitions that workers execute autonomously. The workflow:
+
+```
+/prd "Build X"  →  /run-project  →  /execute-task (per story)
+```
+
+## Creating Projects with /prd
+
+```bash
+/prd "Build a REST API for user management"
+```
+
+This generates a `prd.json` at `projects/{project-name}/prd.json`:
+
+```json
+{
+  "project": {
+    "name": "user-management-api",
+    "description": "REST API for user CRUD operations",
+    "repo": "https://github.com/org/repo",
+    "branch": "feature/user-api"
+  },
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "User registration endpoint",
+      "description": "POST /api/users with email/password",
+      "acceptance_criteria": [
+        "Returns 201 with user object",
+        "Validates email format",
+        "Hashes password before storage"
+      ],
+      "status": "pending",
+      "assigned_to": null
+    }
+  ]
+}
+```
+
+## The Ralph Loop
+
+Projects execute via the Ralph methodology — an iterative loop of planning, execution, and validation:
+
+1. **Load PRD** — Read project definition and current state
+2. **Pick Story** — Select highest-priority pending story
+3. **Route to Workers** — Architect → Developer → QA → Reviewer
+4. **Execute** — Worker implements the story
+5. **Validate** — Run tests, check acceptance criteria
+6. **Capture Learnings** — `/learn` records insights
+7. **Repeat** — Next story until project complete
+
+### Running a Project
+
+```bash
+/run-project
+```
+
+The orchestrator:
+- Reads the PRD
+- Tracks state in `workspace/orchestrator/`
+- Routes stories to appropriate workers
+- Validates completion
+- Updates PRD status
+
+## Starter Projects
+
+HQ ships with 3 starter project templates:
+
+### Personal Assistant
+```bash
+# Located at starter-projects/personal-assistant/
+```
+- Email digest automation
+- Task scanning across tools
+- Daily briefing generation
+
+### Social Media Worker
+```bash
+# Located at starter-projects/social-media/
+```
+- Content creation for X and LinkedIn
+- Scheduling and publishing
+- Audience engagement tracking
+
+### Code Worker
+```bash
+# Located at starter-projects/code-worker/
+```
+- Autonomous coding via Ralph loop
+- Git branch management
+- Test-driven development
+
+## Task Execution
+
+Individual tasks execute through `/execute-task`:
+
+```bash
+/execute-task
+```
+
+This runs a single story through the worker pipeline:
+1. **Analyze** — Task executor examines the story requirements
+2. **Plan** — Architect designs the approach
+3. **Implement** — Developer(s) write code
+4. **Test** — QA writes and runs tests
+5. **Review** — Code reviewer validates
+6. **Complete** — Mark story as done, capture learnings
+
+## Project State
+
+Project execution state is tracked in `workspace/orchestrator/`:
+- Current story being executed
+- Worker assignments
+- Completion status
+- Errors and retries

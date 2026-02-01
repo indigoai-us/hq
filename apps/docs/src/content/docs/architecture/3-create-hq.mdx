@@ -1,0 +1,112 @@
+---
+title: create-hq
+description: Architecture of the create-hq installer — the npx create-hq scaffolding tool that bootstraps a new HQ instance.
+---
+
+## Overview
+
+`create-hq` is the npm package behind `npx create-hq`. It scaffolds a new HQ directory with the full template, initializes git, checks dependencies, and optionally installs the HQ CLI and cloud sync.
+
+```bash
+npx create-hq
+```
+
+## CLI Entry Point
+
+The CLI is built with Commander. The entry point at `src/index.ts` exposes a single command with an optional directory argument and three flags:
+
+```typescript
+program.name("create-hq").version("5.0.0")
+  .argument("[directory]", "where to create HQ", "hq")
+  .option("--skip-deps", "skip dependency checks")
+  .option("--skip-cli", "don't install @indigoai/hq-cli globally")
+  .option("--skip-sync", "don't prompt for cloud sync setup")
+  .action(async (directory, options) => {
+    await scaffold(directory, options);
+  });
+```
+
+| Flag | Effect |
+|------|--------|
+| `--skip-deps` | Skip Node.js, Claude Code, qmd, and optional dependency checks |
+| `--skip-cli` | Don't install `@indigoai/hq-cli` globally |
+| `--skip-sync` | Don't prompt for cloud sync initialization |
+
+## Scaffold Flow
+
+The core logic lives in `src/scaffold.ts`. When `scaffold()` is called, it runs these steps in order:
+
+1. **Resolve target directory** — Converts the directory argument to an absolute path.
+2. **Check for existing directory** — If the target already exists, prompts the user to overwrite or abort.
+3. **Copy template** — Uses fs-extra to copy the bundled template directory into the target path.
+4. **Initialize git** — Runs `git init`, stages all files, and creates the initial commit (`"Initial HQ setup"`).
+5. **Check dependencies** — Verifies required and optional tools are available:
+
+   | Tool | Required | Check |
+   |------|----------|-------|
+   | Node.js 18+ | Yes | Version parsing |
+   | Claude Code CLI | Yes | Command existence |
+   | qmd | Yes | Command existence |
+   | gh CLI | No | Command existence |
+   | Vercel CLI | No | Command existence |
+
+6. **Install HQ CLI** — Optionally runs `npm install -g @indigoai/hq-cli` for module management.
+7. **Set up cloud sync** — Optionally runs `hq sync init` to configure S3-backed sync.
+8. **Index with qmd** — Runs `qmd index .` to build the search index.
+9. **Display success** — Prints a banner with next steps (open Claude Code, run `/setup`).
+
+## Module Structure
+
+```
+packages/create-hq/
+├── src/
+│   ├── index.ts       # CLI entry point (Commander)
+│   ├── scaffold.ts    # Core scaffolding logic
+│   ├── deps.ts        # Dependency checking (command existence + version parsing)
+│   ├── git.ts         # Git initialization helpers
+│   └── ui.ts          # ASCII banner, colored output, step logging
+├── template/          # Bundled HQ template (copied into target)
+├── package.json
+└── tsconfig.json
+```
+
+### src/index.ts
+
+Parses CLI arguments and delegates to `scaffold()`. No other logic.
+
+### src/scaffold.ts
+
+Orchestrates the full setup flow. Resolves the template path relative to `__dirname`:
+
+```typescript
+const templateDir = path.join(__dirname, '..', '..', 'template');
+```
+
+This works because the compiled output sits in `dist/src/`, making `../..` resolve to the package root where `template/` lives.
+
+### src/deps.ts
+
+Checks whether commands exist on the system PATH and parses version output for minimum version requirements. Returns a structured result indicating which dependencies are available and which are missing.
+
+### src/git.ts
+
+Helpers for initializing a fresh git repository: `git init`, `git add .`, and `git commit` with the initial message.
+
+### src/ui.ts
+
+Handles all terminal output. Uses **chalk** for colored text and **ora** for spinners during long-running steps (template copy, dependency checks, qmd indexing). Prints an ASCII banner on start and a success summary on completion.
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `commander` | CLI argument parsing |
+| `chalk` | Colored terminal output |
+| `fs-extra` | Recursive directory copy |
+| `ora` | Terminal spinners |
+
+## Template Bundling
+
+The `template/` directory at the package root contains the full HQ starter template. It is included in the published npm package via the `files` field in `package.json`. When `scaffold.ts` runs, it resolves the template path relative to `__dirname` and copies it with `fs-extra.copy()`.
+
+This means the template ships with every version of the package -- users get a consistent, versioned snapshot of HQ when they run `npx create-hq`.

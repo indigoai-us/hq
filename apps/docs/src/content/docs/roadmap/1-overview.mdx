@@ -1,0 +1,55 @@
+---
+title: Roadmap Overview
+description: Current status of HQ development and priority order for upcoming work.
+---
+
+## Current Status
+
+HQ v5.0.0 is **built but not yet published**. The monorepo at `indigoai-us/hq` contains:
+
+| Component | Status |
+|-----------|--------|
+| create-hq (installer) | ✅ Built, not published to npm |
+| @indigoai/hq-cli | ✅ Built, not published to npm |
+| @indigoai/hq-cloud | ✅ Built, not published to npm |
+| PWA dashboard | ✅ Built, not deployed |
+| AWS infrastructure | ✅ Defined, not deployed |
+| Documentation | ✅ Built, deploying to Vercel |
+| Template | ✅ Complete (17 commands, 26 workers, 8 knowledge bases) |
+
+## Priority Order
+
+### Phase 1: v5 Launch (npm + GitHub)
+
+Get packages published and the install flow working end-to-end. This is the critical path — nothing else matters until `npx create-hq` works.
+
+### Phase 2: Cloud Sync GA
+
+Deploy AWS infrastructure, enable auth flow, stress-test the sync daemon. This unlocks mobile access.
+
+### Phase 3: PWA Improvements
+
+Offline support, push notifications, inline editing. Make the mobile experience production-grade.
+
+### Phase 4: Future
+
+Homebrew tap, worker marketplace, team features, real-time collaboration.
+
+## Timeline
+
+This is a small team project. No hard deadlines — quality over speed.
+
+- **Phase 1**: Target completion in 1-2 weeks
+- **Phase 2**: Target completion in 3-4 weeks
+- **Phase 3**: Ongoing improvements
+- **Phase 4**: Long-term vision
+
+## How to Read This Section
+
+Each page in this section is a **specification** with acceptance criteria. They're designed to be executable by AI workers via the Ralph methodology — feed a spec to `/execute-task` and the worker implements it.
+
+Pages:
+- **v5 Launch** — npm org, first publish, template verification
+- **Cloud Sync GA** — AWS deployment, auth E2E, daemon testing
+- **PWA Improvements** — Offline, notifications, editor, responsive
+- **Future** — Longer-term vision and ideas

@@ -1,0 +1,107 @@
+---
+title: Getting Started
+description: Install HQ and run your first AI worker in under 5 minutes.
+---
+
+## Prerequisites
+
+- **Node.js** 18+ ([nodejs.org](https://nodejs.org))
+- **Claude Code** CLI ([docs](https://docs.anthropic.com/en/docs/claude-code))
+- **qmd** for search (`brew install tobi/tap/qmd`)
+- **gh** CLI (optional, for code workers)
+
+## Install
+
+```bash
+npx create-hq
+```
+
+The installer will:
+1. Ask where to create your HQ (default: `~/hq`)
+2. Copy the template (17 commands, 26 workers, 8 knowledge bases)
+3. Initialize a git repository
+4. Check your dependencies
+5. Optionally install `@indigoai/hq-cli` for module management
+6. Optionally set up cloud sync
+
+## Setup Wizard
+
+Open your HQ in Claude Code and run the interactive setup:
+
+```bash
+cd hq
+claude
+/setup
+```
+
+The setup wizard walks you through 5 phases:
+
+### Phase 1: Dependencies
+Checks that `qmd`, Claude Code, and `gh` are installed.
+
+### Phase 2: Identity
+- Your name and handle
+- What you do
+- Your domains/areas of expertise
+- Company or context name
+
+### Phase 3: Starter Projects
+Choose one or more starter projects:
+
+| Project | What It Does |
+|---------|-------------|
+| **Personal Assistant** | Email digests, task scanning, daily briefings |
+| **Social Media Worker** | X/LinkedIn content creation and scheduling |
+| **Code Worker** | Autonomous coding via the Ralph methodology |
+
+### Phase 4: Customization
+Follow-up questions based on your selections (platforms, tech stack, preferences).
+
+### Phase 5: File Generation
+Creates your personalized directory structure:
+```
+companies/{your-company}/
+├── settings/       # API credentials (gitignored)
+├── data/           # Exports, reports
+└── knowledge/
+    ├── profile.md
+    └── voice-style.md
+```
+
+## First Task
+
+After setup, try these:
+
+```bash
+# Find what to work on
+/nexttask
+
+# Create a project
+/prd "Build a landing page for my product"
+
+# Run a worker
+/run task-executor execute
+
+# Search your HQ
+/search "how do workers work"
+```
+
+## Directory Structure
+
+```
+hq/
+├── .claude/
+│   ├── CLAUDE.md        # Global instructions
+│   └── commands/        # 17 slash commands
+├── companies/           # Your company resources
+├── knowledge/           # Knowledge bases
+├── workers/             # AI worker configs
+├── projects/            # Project PRDs
+├── workspace/
+│   ├── threads/         # Session history
+│   ├── checkpoints/     # Session saves
+│   ├── learnings/       # Captured insights
+│   └── reports/         # Generated reports
+└── modules/
+    └── modules.yaml     # Module manifest
+```

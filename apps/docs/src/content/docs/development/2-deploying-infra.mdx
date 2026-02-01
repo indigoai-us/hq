@@ -1,0 +1,101 @@
+---
+title: Deploying Infrastructure
+description: Deploy HQ's AWS infrastructure using SST for serverless backend, auth, storage, and CDN.
+---
+
+## Prerequisites
+
+- AWS Account with admin access
+- AWS CLI v2 configured (`aws configure`)
+- Node.js 18+
+- Domain name for PWA (optional, default: hq.indigoai.com)
+
+## SST Overview
+
+HQ uses SST (Serverless Stack) v2 for infrastructure-as-code. SST wraps AWS CDK with a better DX for serverless apps.
+
+The config lives at `infra/sst.config.ts` and defines:
+
+- Cognito User Pool + Client
+- S3 Bucket with CORS
+- API Gateway v2 with JWT authorizer
+- Lambda functions for file and auth operations
+- CloudFront Static Site for PWA
+
+## Deploy
+
+### First-time setup
+
+```bash
+cd infra
+npx sst deploy --stage prod
+```
+
+SST will:
+
+1. Bootstrap a CDK toolkit stack in your AWS account
+2. Create all resources defined in `sst.config.ts`
+3. Output the API URL, User Pool ID, Client ID, and site URL
+
+### Staging environments
+
+```bash
+npx sst deploy --stage dev
+npx sst deploy --stage staging
+```
+
+Each stage gets isolated resources (separate Cognito pool, S3 bucket, API).
+
+### Live development
+
+```bash
+npx sst dev
+```
+
+Starts SST in dev mode with live Lambda reloading. Changes to Lambda functions hot-reload without redeploying.
+
+## Post-Deploy Configuration
+
+After first deploy, you'll need the outputs:
+
+1. **API URL** — Set as `VITE_API_URL` in `apps/web/.env`
+2. **User Pool ID** — Set as `VITE_USER_POOL_ID`
+3. **Client ID** — Set as `VITE_USER_POOL_CLIENT_ID`
+4. **Site URL** — Configure DNS if using custom domain
+
+## Custom Domain
+
+To use `hq.indigoai.com`:
+
+1. Add domain to Route 53 (or configure external DNS)
+2. Update `sst.config.ts` StaticSite with `customDomain` property
+3. Redeploy — SST handles ACM certificate provisioning
+
+## Monitoring
+
+- **CloudWatch Logs** — Lambda function logs
+- **S3 Metrics** — Storage usage per user
+- **API Gateway** — Request counts, latency, error rates
+- **Cognito** — User sign-ups, sign-ins
+
+## Tear Down
+
+```bash
+npx sst remove --stage prod
+```
+
+:::caution
+This deletes all resources including the S3 bucket and user data. Only use for non-production stages.
+:::
+
+## Cost Estimates
+
+| Service       | Pricing                          |
+|---------------|----------------------------------|
+| Cognito       | Free for first 50,000 MAU        |
+| S3            | ~$0.023/GB/month                 |
+| Lambda        | Free for first 1M requests/month |
+| API Gateway   | $1/million requests              |
+| CloudFront    | $0.085/GB transfer               |
+
+For a small team (&lt;100 users), expect &lt;$10/month.

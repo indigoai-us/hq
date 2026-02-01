@@ -1,0 +1,99 @@
+---
+title: Cloud Sync
+description: Sync your HQ to the cloud for mobile access via the PWA dashboard.
+---
+
+## Overview
+
+HQ Cloud Sync enables bidirectional syncing between your local HQ folder and cloud storage (S3), with a mobile-friendly PWA dashboard for access from any device.
+
+```
+Local HQ  ←→  Sync Daemon  ←→  S3 Bucket  ←→  PWA Dashboard
+              (chokidar)       (AWS)          (hq.indigoai.com)
+```
+
+## Setup
+
+### Install the CLI
+
+```bash
+npm install -g @indigoai/hq-cli
+```
+
+### Authenticate
+
+```bash
+hq sync init
+```
+
+This opens your browser for IndigoAI sign-up/sign-in. After authentication:
+- Your account is provisioned
+- An S3 bucket is created for your files
+- Credentials are stored locally at `~/.hq/credentials.json`
+
+### Start Syncing
+
+```bash
+hq sync start
+```
+
+This starts a background daemon that watches your HQ directory for changes and syncs them to S3 in real-time.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `hq sync init` | Authenticate and provision cloud storage |
+| `hq sync start` | Start the background sync daemon |
+| `hq sync stop` | Stop the daemon |
+| `hq sync status` | Show sync health (running, last sync, file count, errors) |
+| `hq sync push` | Force upload all local changes |
+| `hq sync pull` | Force download all cloud changes |
+
+## How Sync Works
+
+1. **File watcher** monitors your HQ directory using chokidar
+2. Changes are **debounced** (2-second quiet period) and batched
+3. File hashes are computed and compared against the **sync journal**
+4. Changed files are uploaded to S3 at `s3://{bucket}/hq/{path}`
+5. The journal (`.hq-sync-journal.json`) is updated with new hashes
+
+### Conflict Resolution
+
+- **Last-write-wins** with a journal audit trail
+- The journal tracks hash, size, timestamp, and sync direction for every file
+- Git handles content-level conflicts for version-controlled files
+
+## What Syncs
+
+| Synced | Not Synced |
+|--------|------------|
+| `workspace/` | `repos/` (use git) |
+| `knowledge/` | `node_modules/` |
+| `companies/` | `.git/` |
+| `.claude/` | Build artifacts (`dist/`) |
+| `workers/` | Files > 50MB |
+| `projects/` | Paths in `.hqsyncignore` |
+
+## .hqsyncignore
+
+Create a `.hqsyncignore` file in your HQ root to exclude additional paths (gitignore syntax):
+
+```
+# Exclude large data files
+companies/*/data/exports/*.csv
+
+# Exclude temp files
+workspace/scratch/
+```
+
+## Mobile Access
+
+Once sync is running, access your HQ at [hq.indigoai.com](https://hq.indigoai.com):
+
+- **File browser** — Navigate your HQ directory structure
+- **Markdown viewer** — Read knowledge files, reports, and threads
+- **Quick actions** — Approve social drafts, add notes
+- **Search** — Filter files by name and path
+
+The PWA can be installed on your phone's home screen for app-like access.

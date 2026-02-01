@@ -1,0 +1,107 @@
+---
+title: Knowledge Bases
+description: Persistent memory for your AI workers — built-in bases, company knowledge, and the symlink-to-git pattern.
+---
+
+## Built-in Knowledge
+
+HQ ships with 8 knowledge bases in `knowledge/`:
+
+| Knowledge Base | Path | Contents |
+|---------------|------|----------|
+| **Ralph** | `knowledge/Ralph/` | Coding methodology — overview, core concepts, workflow, back-pressure, specifications, implementation |
+| **Workers** | `knowledge/workers/` | Worker framework — Ralph loop pattern, skill schema, state machines, templates |
+| **HQ Core** | `knowledge/hq-core/` | Thread schema, checkpoint schema, INDEX.md specification |
+| **AI Security** | `knowledge/ai-security/` | Security framework — core principles, threat landscape, checklists, incident response |
+| **Design Styles** | `knowledge/design-styles/` | Image generation style guides — American Industrial, Ethereal Abstract, Liminal Portal |
+| **Dev Team** | `knowledge/dev-team/` | Development patterns — React best practices, troubleshooting, workflows |
+| **Loom** | `knowledge/loom/` | Agent patterns reference — architecture, state machines, thread system |
+| **Projects** | `knowledge/projects/` | Project templates — README template for new projects |
+
+## Company-Scoped Knowledge
+
+After running `/setup`, you'll have company-specific knowledge:
+
+```
+companies/{your-company}/knowledge/
+├── profile.md           # Your identity, role, domains
+└── voice-style.md       # Writing voice and style preferences
+```
+
+## The Symlink Pattern
+
+Knowledge bases are **independent git repos** symlinked into HQ. This enables:
+
+- **Independent versioning** — Each base has its own commit history
+- **Selective sharing** — Share some bases publicly, keep others private
+- **Easy updates** — `git pull` in the knowledge repo updates HQ
+
+```
+knowledge/Ralph/  →  repos/public/ralph-methodology/docs/
+knowledge/workers/ →  repos/public/knowledge-workers/
+```
+
+### How It Works
+
+1. Knowledge repos live in `repos/public/` or `repos/private/`
+2. Symlinks in `knowledge/` point to the repo content
+3. HQ git tracks the symlinks, not the content
+4. Changes are committed in the **target repo**, not in HQ
+
+### Committing Knowledge Changes
+
+```bash
+# Navigate to the knowledge repo
+cd repos/public/knowledge-ralph/
+
+# Standard git workflow
+git add .
+git commit -m "Update best practices"
+git push
+```
+
+## Adding New Knowledge
+
+1. Create a new repo:
+```bash
+cd repos/public/
+git init knowledge-my-topic
+```
+
+2. Add content (markdown files)
+
+3. Symlink into HQ:
+```bash
+ln -s ../repos/public/knowledge-my-topic knowledge/my-topic
+```
+
+4. Add to `modules/modules.yaml` for sync tracking
+
+5. Reindex search:
+```bash
+/search-reindex
+```
+
+## Using Knowledge in Workers
+
+Workers reference knowledge bases in their `worker.yaml`:
+
+```yaml
+context:
+  base:
+    - knowledge/Ralph/
+    - knowledge/workers/
+    - companies/my-company/knowledge/
+```
+
+When a worker runs, Claude Code loads these paths as context, giving the worker access to all relevant knowledge.
+
+## Search Across Knowledge
+
+All knowledge bases are indexed by qmd:
+
+```bash
+/search "deployment best practices"
+```
+
+This searches across all knowledge bases, workspace files, commands, and worker configurations.

@@ -1,0 +1,98 @@
+---
+title: Template Updates
+description: Managing the HQ template content that ships with create-hq.
+---
+
+## What's in the Template
+
+The `template/` directory at the repo root contains the full HQ starter kit that gets copied to user machines during `npx create-hq`. It includes:
+
+```
+template/
+├── .claude/
+│   ├── CLAUDE.md           # Global instructions for Claude Code
+│   └── commands/           # 17 slash commands (.md files)
+├── knowledge/
+│   └── public/             # 8 knowledge base directories
+├── workers/
+│   ├── public/             # Shared workers (dev-team, content, QA, etc.)
+│   └── private/            # Private worker templates
+├── projects/               # Project directory (empty, with INDEX.md)
+├── workspace/
+│   ├── threads/            # Thread storage
+│   ├── checkpoints/        # Checkpoint storage
+│   ├── learnings/          # Learning capture
+│   └── reports/            # Generated reports
+├── modules/
+│   └── modules.yaml        # Module manifest
+├── starter-projects/       # 3 starter project templates
+├── INDEX.md                # Root directory map
+└── USER-GUIDE.md           # User guide
+```
+
+## The /publish-kit Flow
+
+HQ includes a `/publish-kit` command that automates template preparation for publishing. It handles:
+
+1. **PII Scrubbing** — Removes personal data, API keys, company-specific content
+2. **Visibility Filtering** — Only includes items marked `visibility: public` in frontmatter
+3. **Content Sanitization** — Strips private worker configs, company knowledge
+4. **Changelog Generation** — Summarizes what changed since last publish
+
+### Running publish-kit
+```bash
+/publish-kit
+```
+
+This generates a clean template ready for publishing to npm.
+
+## Making Template Changes
+
+### Adding a new command
+1. Create `.claude/commands/my-command.md` in template/
+2. Add frontmatter with `visibility: public` (or `private` to exclude from published kit)
+3. Document the command in the USER-GUIDE.md
+4. Test: run `npx create-hq ~/test-hq` and verify command works
+
+### Adding a new worker
+1. Create `workers/public/my-worker/worker.yaml` in template/
+2. Add skills directory if needed
+3. Update `workers/registry.yaml`
+4. Test with a fresh HQ install
+
+### Updating knowledge bases
+Knowledge bases in the template are static copies. For the published template, they serve as starting content. Users update them via the module system (`hq modules sync`).
+
+### Updating CLAUDE.md
+The global CLAUDE.md is the most important file — it's loaded by Claude Code on every session. Changes here affect all users. Be careful and test thoroughly.
+
+## Testing Template Changes
+
+### Local test
+```bash
+cd packages/create-hq
+npm run build
+node dist/index.js ~/test-hq --skip-deps --skip-cli --skip-sync
+cd ~/test-hq
+claude  # Open in Claude Code and test
+```
+
+### Checklist
+- [ ] All commands load without errors
+- [ ] Worker registry matches available workers
+- [ ] Knowledge base symlink targets exist (or fallback gracefully)
+- [ ] INDEX.md accurately reflects directory structure
+- [ ] No PII or private data in any file
+- [ ] modules.yaml references valid public repos
+- [ ] /setup wizard completes without errors
+
+## Template vs. Modules
+
+| Aspect | Template (baked in) | Modules (pulled via hq-cli) |
+|--------|--------------------|-----------------------------|
+| Delivery | Copied at install time | Cloned/synced on demand |
+| Updates | Requires new create-hq version | `hq modules sync` anytime |
+| Content | Commands, structure, starter config | Knowledge bases, workers |
+| Versioning | Tied to package version | Independent git repos |
+
+The template provides the scaffolding. Modules provide the living content that evolves independently.

@@ -1,0 +1,237 @@
+---
+title: hq-cli
+description: Architecture of the @indigoai/hq-cli package — module management, sync strategies, and cloud sync bridge.
+---
+
+The `@indigoai/hq-cli` package is the ongoing management CLI for HQ. It handles two concerns: **module management** (adding, syncing, listing, and updating external module repos) and **cloud sync** (bridging to `@indigoai/hq-cloud` for S3-backed mobile access).
+
+Built with [Commander.js](https://github.com/tj/commander.js), the CLI registers two top-level command groups:
+
+```
+hq modules <add|sync|list|update>   # Module management
+hq sync <init|start|stop|status|push|pull>  # Cloud sync
+```
+
+## Module Commands
+
+### `hq modules add <repo-url>`
+
+Registers a module in `modules.yaml`. Validates the repo URL, parses the repo name, builds a `ModuleDefinition`, and appends it to the manifest.
+
+```bash
+hq modules add https://github.com/org/knowledge-ralph.git \
+  --as ralph \
+  --branch main \
+  --strategy link \
+  --path "docs:knowledge/public/Ralph"
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--as <name>` | Parsed from URL | Module name |
+| `--branch <branch>` | `main` | Git branch to track |
+| `--strategy <strategy>` | `link` | Sync strategy: `link`, `merge`, or `copy` |
+| `--path <src:dest>` | `.:workers/<name>` | Path mapping (repeatable) |
+
+### `hq modules sync`
+
+The core sync loop. For each module in the manifest:
+
+1. **Clone or fetch** the module repo into `modules/<name>/`
+2. **Apply the sync strategy** (link, merge, or copy) based on path mappings
+3. **Record the commit SHA** in `modules.lock`
+
+```bash
+hq modules sync          # Sync all to latest
+hq modules sync --locked # Sync to locked commits
+```
+
+The `--locked` flag checks out the exact commit recorded in `modules.lock` instead of pulling latest. This enables reproducible installs across machines.
+
+On first run, `modules/` is automatically added to `.gitignore` since cloned repos should not be tracked by HQ git.
+
+### `hq modules list`
+
+Displays all modules with their status, current commit, lock state, and whether they are behind the remote.
+
+```bash
+hq modules list   # or: hq modules ls
+```
+
+### `hq modules update [module-name]`
+
+Fetches the latest from the remote, pulls, and updates `modules.lock` with the new commit SHA. If no module name is given, all modules are updated.
+
+```bash
+hq modules update ralph   # Update one module's lock
+hq modules update         # Update all locks
+```
+
+## Type System
+
+All types are defined in `src/types.ts`:
+
+```typescript
+type SyncStrategy = 'link' | 'merge' | 'copy';
+type AccessLevel = 'public' | 'team' | `role:${string}`;
+
+interface PathMapping {
+  src: string;   // Path within module repo
+  dest: string;  // Path in HQ tree (relative to HQ root)
+}
+
+interface ModuleDefinition {
+  name: string;
+  repo: string;              // Git URL (https or git@)
+  branch?: string;           // Default: main
+  strategy: SyncStrategy;
+  paths: PathMapping[];
+  access?: AccessLevel;      // For future RBAC
+}
+
+interface ModulesManifest {
+  version: '1';
+  modules: ModuleDefinition[];
+}
+
+interface ModuleLock {
+  version: '1';
+  locked: Record<string, string>; // module name -> commit SHA
+}
+```
+
+The manifest stores modules as an array (not a record), so ordering is preserved. The lock file maps module names to commit SHAs for deterministic installs.
+
+### SyncState
+
+The merge strategy tracks per-file state for conflict detection:
+
+```typescript
+interface SyncState {
+  version: '1';
+  files: Record<string, {
+    hash: string;          // SHA256 of file content at sync time
+    syncedAt: string;      // ISO timestamp
+    fromModule: string;    // Module that provided this file
+  }>;
+}
+```
+
+This is persisted to `.hq-sync-state.json` at the HQ root and used by the merge strategy to detect local modifications.
+
+## Manifest Utilities
+
+`src/utils/manifest.ts` provides all file I/O for the module system:
+
+| Function | Purpose |
+|----------|---------|
+| `findHqRoot()` | Walks up the directory tree looking for `.claude/` or `workers/` directory |
+| `readManifest()` / `writeManifest()` | YAML read/write for `modules.yaml` |
+| `readLock()` / `writeLock()` | YAML read/write for `modules.lock` |
+| `readState()` / `writeState()` | JSON read/write for `.hq-sync-state.json` |
+| `addModule()` | Appends a `ModuleDefinition` to the manifest (with duplicate check) |
+| `parseRepoName()` | Extracts the repo name from a GitHub URL (handles both HTTPS and SSH formats) |
+| `isValidRepoUrl()` | Validates that a URL starts with `https://` or `git@` |
+
+## Git Utilities
+
+`src/utils/git.ts` wraps [simple-git](https://github.com/steveukx/git-js) for repository operations:
+
+| Function | Purpose |
+|----------|---------|
+| `cloneRepo()` | Clones a repo with optional branch selection |
+| `fetchRepo()` | Fetches all remotes |
+| `pullRepo()` | Pulls latest changes |
+| `getCurrentCommit()` | Returns the HEAD commit SHA |
+| `checkoutCommit()` | Checks out a specific commit (for locked installs) |
+| `isRepo()` | Checks if a directory is a valid git repository |
+| `isBehindRemote()` | Fetches and checks if local is behind remote |
+| `ensureGitignore()` | Appends an entry to `.gitignore` if not already present |
+
+## Sync Strategies
+
+Each strategy is implemented as an async function that takes a `ModuleDefinition`, the module's local directory, and the HQ root, returning a `SyncResult`.
+
+### Link Strategy
+
+**File:** `src/strategies/link.ts`
+
+Creates relative symlinks from the module repo into the HQ tree. This is the default strategy and is used for knowledge bases where files should remain in their git repo and be transparently accessible from HQ paths.
+
+For each path mapping:
+1. Validates the source path exists in the module repo
+2. Creates parent directories at the destination if needed
+3. If an existing symlink is found at the destination, removes and recreates it
+4. If a real file or directory exists, warns and skips (does not overwrite)
+5. Computes a **relative** symlink path for portability across machines
+
+Relative symlinks mean the link still works if the entire HQ directory is moved, as long as the internal structure is preserved.
+
+### Merge Strategy
+
+**File:** `src/strategies/merge.ts`
+
+Copies files from the module repo into the HQ tree with SHA256-based conflict detection. This is used for content that should be owned by HQ after initial sync (commands, templates, configuration).
+
+The merge logic for each file:
+1. Compute the SHA256 hash of the source file
+2. If the destination file exists, compute its hash
+3. Look up the hash recorded at last sync time from `.hq-sync-state.json`
+4. **Skip (conflict)** if the destination was modified since last sync *and* differs from the source — the user's local changes are preserved
+5. **Skip (unchanged)** if source and destination hashes match
+6. **Copy** the file and record the new hash in sync state
+
+This three-way comparison (source, destination, last-synced) prevents overwriting local customizations while still pulling upstream changes for unmodified files.
+
+### Copy Strategy
+
+Planned. Currently falls through to the merge strategy implementation.
+
+## Cloud Commands
+
+**File:** `src/commands/cloud.ts`
+
+The `hq sync` command group bridges to `@indigoai/hq-cloud` via dynamic imports. Each subcommand lazily loads the cloud package and delegates to its exported functions:
+
+| Command | Cloud Function | Description |
+|---------|---------------|-------------|
+| `hq sync init` | `initSync()` | Authenticate with IndigoAI and provision S3 storage |
+| `hq sync start` | `startDaemon()` | Start the background file-watching sync daemon |
+| `hq sync stop` | `stopDaemon()` | Stop the daemon |
+| `hq sync status` | `getStatus()` | Display sync health: running state, last sync time, file count, bucket, errors |
+| `hq sync push` | `pushAll()` | Force upload all local changes to S3 |
+| `hq sync pull` | `pullAll()` | Force download all cloud changes to local |
+
+Dynamic imports (`await import("@indigoai/hq-cloud")`) mean the cloud package is only loaded when cloud commands are actually invoked. Module management commands work without `hq-cloud` installed.
+
+## File Layout
+
+```
+packages/hq-cli/
+├── src/
+│   ├── index.ts              # Entry point, Commander setup
+│   ├── types.ts              # All TypeScript interfaces
+│   ├── commands/
+│   │   ├── add.ts            # hq modules add
+│   │   ├── sync.ts           # hq modules sync
+│   │   ├── list.ts           # hq modules list
+│   │   ├── update.ts         # hq modules update
+│   │   └── cloud.ts          # hq sync *
+│   ├── strategies/
+│   │   ├── link.ts           # Symlink strategy
+│   │   └── merge.ts          # Copy-with-conflict-detection strategy
+│   └── utils/
+│       ├── manifest.ts       # Manifest/lock/state I/O
+│       └── git.ts            # simple-git wrapper
+└── package.json
+```
+
+## Data Files
+
+The CLI reads and writes three data files at the HQ root:
+
+| File | Format | Purpose |
+|------|--------|---------|
+| `modules.yaml` | YAML | Module manifest — the source of truth for what modules exist |
+| `modules.lock` | YAML | Locked commit SHAs for reproducible installs |
+| `.hq-sync-state.json` | JSON | Per-file hash tracking for merge conflict detection |
