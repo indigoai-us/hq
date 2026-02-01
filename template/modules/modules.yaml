@@ -1,0 +1,59 @@
+# HQ Modules Manifest
+# Declares external modules to sync into your HQ instance
+#
+# Modules allow you to pull in functionality from other repos:
+# - Core HQ updates (workers, commands, knowledge)
+# - Company-specific modules (team workflows, shared knowledge)
+# - Community modules (third-party integrations)
+
+version: "1.0"
+
+modules:
+  # Core HQ module - official updates and improvements
+  - name: hq-core
+    repo: https://github.com/coreyepstein/hq-starter-kit.git
+    branch: main
+    strategy: merge  # merge updates with local changes
+    access: public
+    paths:
+      knowledge/Ralph: knowledge/Ralph
+      knowledge/workers: knowledge/workers
+      .claude/commands: .claude/commands
+
+  # Example: Company shared module
+  # - name: acme-workflows
+  #   repo: https://github.com/acme-corp/hq-module.git
+  #   branch: main
+  #   strategy: link  # symlink for real-time sync
+  #   access: team
+  #   paths:
+  #     knowledge/company: knowledge/acme
+  #     workers/shared: workers/acme
+
+  # Example: Role-specific module
+  # - name: engineering-tools
+  #   repo: https://github.com/acme-corp/engineering-hq.git
+  #   branch: main
+  #   strategy: copy  # one-time copy, no ongoing sync
+  #   access: "role:engineer"
+  #   paths:
+  #     workers/code: workers/engineering
+  #     knowledge/tech-stack: knowledge/tech-stack
+
+# Schema Reference:
+#
+# modules[]:
+#   name: string           # Unique identifier for this module
+#   repo: string           # Git repository URL
+#   branch: string         # Branch to sync from (default: main)
+#   strategy: enum         # Sync strategy:
+#                          #   - link: symlink (real-time, requires local clone)
+#                          #   - merge: git merge (preserves local changes)
+#                          #   - copy: one-time copy (no ongoing sync)
+#   access: string         # Access level for future RBAC:
+#                          #   - public: anyone can use
+#                          #   - team: team members only
+#                          #   - role:X: specific role required (e.g., role:admin)
+#   paths: object          # Source path -> destination path mappings
+#                          # Keys are paths in the source repo
+#                          # Values are paths in your local HQ

@@ -1,0 +1,84 @@
+worker:
+  id: motion-designer
+  name: "Motion Designer"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 20m
+  retry_attempts: 1
+
+context:
+  base:
+    - workers/public/dev-team/motion-designer/
+    - workers/public/dev-team/motion-designer/skills/
+    - knowledge/public/dev-team/patterns/motion/
+  dynamic:
+    - pattern: "{target_repo}/src/components/"
+      when: always
+  exclude:
+    - node_modules/
+    - dist/
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+  approval_required: true
+
+output:
+  destination: workspace/reports/dev-team/
+  format: both
+  naming: "{date}-motion-designer-{task}.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/public/dev-team/motion-designer
+  tools:
+    - add_animation
+    - add_transition
+    - polish_component
+    - generate_image
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # Motion Designer
+
+  Animations, transitions, visual polish, and image generation.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | add-animation | Add animation to component |
+  | add-transition | Add page/element transition |
+  | polish-component | Polish visual design |
+  | generate-image | Generate image via gnb |
+
+  ## Tools
+
+  - Framer Motion
+  - Three.js
+  - GSAP
+  - gnb (gemini-nano-banana) for image generation
+
+  ## Human-in-the-loop
+
+  - Approve animation design
+  - Review performance impact
+  - Confirm image generation prompts

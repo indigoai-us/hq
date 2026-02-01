@@ -1,0 +1,50 @@
+{
+  "project": "ralph-test",
+  "goal": "Test the Pure Ralph Loop with simple tasks",
+  "success_criteria": "All 3 tasks complete autonomously with proper commits",
+  "target_repo": "C:/my-hq",
+  "features": [
+    {
+      "id": "TEST-001",
+      "title": "Create test file",
+      "description": "Create a simple test file to verify the Ralph loop is working",
+      "acceptance_criteria": [
+        "File workspace/ralph-test/hello.txt exists",
+        "File contains the text 'Hello from Ralph Loop!'"
+      ],
+      "files": ["workspace/ralph-test/hello.txt"],
+      "passes": true,
+      "notes": "Created hello.txt with greeting message"
+    },
+    {
+      "id": "TEST-002",
+      "title": "Add timestamp to test file",
+      "description": "Append a timestamp to the test file",
+      "acceptance_criteria": [
+        "workspace/ralph-test/hello.txt has a second line",
+        "Second line contains 'Executed at:' followed by a timestamp"
+      ],
+      "files": ["workspace/ralph-test/hello.txt"],
+      "dependsOn": ["TEST-001"],
+      "passes": true,
+      "notes": "Added timestamp line to hello.txt"
+    },
+    {
+      "id": "TEST-003",
+      "title": "Create completion marker",
+      "description": "Create a completion file indicating the test passed",
+      "acceptance_criteria": [
+        "File workspace/ralph-test/COMPLETE.md exists",
+        "File contains summary of what was tested"
+      ],
+      "files": ["workspace/ralph-test/COMPLETE.md"],
+      "dependsOn": ["TEST-002"],
+      "passes": true,
+      "notes": "Created COMPLETE.md with test summary"
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T18:45:00Z",
+    "purpose": "Test Pure Ralph Loop before PR"
+  }
+}

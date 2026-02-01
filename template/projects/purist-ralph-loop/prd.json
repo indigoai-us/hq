@@ -1,0 +1,135 @@
+{
+  "project": "purist-ralph-loop",
+  "goal": "Create an external terminal orchestrator that runs a canonical Ralph loop with fresh context per task and self-improving prompts",
+  "success_criteria": "/pure-ralph my-project opens terminal, executes PRD autonomously, completes with zero intervention, evolves prompts with learnings",
+  "target_repo": "C:/my-hq",
+  "features": [
+    {
+      "id": "US-001",
+      "title": "Create base prompt file",
+      "description": "Create a low-fi base prompt that instructs Claude on Ralph principles so each spawned session knows the methodology",
+      "acceptance_criteria": [
+        "prompts/pure-ralph-base.md exists in my-hq",
+        "Contains Ralph principles: one task, fresh context, update PRD, commit",
+        "Includes instructions for self-modification (how to update this file)",
+        "Under 500 lines (minimal, focused)"
+      ],
+      "files": ["prompts/pure-ralph-base.md"],
+      "passes": true,
+      "notes": "Created 129-line base prompt with Ralph principles (one task/fresh context/PRD source of truth/atomic commits), self-modification instructions with Learned Patterns section, and JSON response format for task completion reporting"
+    },
+    {
+      "id": "US-002",
+      "title": "Create terminal settings mechanism",
+      "description": "Create a settings file that stores terminal preference, prompting user on first run and remembering for subsequent runs",
+      "acceptance_criteria": [
+        "settings/pure-ralph.json stores terminal preference",
+        "First run prompts user to choose terminal type",
+        "Supports: PowerShell (Windows), Windows Terminal, bash (Mac/Linux), iTerm (Mac)",
+        "Setting persists across sessions"
+      ],
+      "files": ["settings/pure-ralph.json"],
+      "passes": true,
+      "notes": "Created settings/pure-ralph.json with terminal.type field (null for first run prompting), terminal.configured_at for timestamps, and supported_terminals reference with platform-specific options (powershell/windows-terminal for Windows, bash for Mac/Linux, iterm for Mac). Includes _meta section documenting first_run_behavior for consuming scripts."
+    },
+    {
+      "id": "US-003",
+      "title": "Create PowerShell loop script",
+      "description": "Create a PowerShell script that runs the canonical Ralph loop for Windows users",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.ps1 exists",
+        "Reads PRD path and target repo as arguments",
+        "Spawns fresh claude -p per task with base prompt",
+        "Updates PRD passes and notes fields",
+        "Creates git commit per completed task",
+        "Logs to workspace/orchestrator/{project}/pure-ralph.log"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1"],
+      "dependsOn": ["US-001", "US-002"],
+      "passes": true,
+      "notes": "Created .claude/scripts/pure-ralph-loop.ps1 with: mandatory -PrdPath and -TargetRepo params; reads base prompt from prompts/pure-ralph-base.md with placeholder substitution ({{TARGET_REPO}}, {{PRD_PATH}}, {{TASK_ID}}, {{TASK_TITLE}}); spawns fresh claude -p per task; builds prior task context from completed PRD notes; logs to workspace/orchestrator/{project}/pure-ralph.log; includes dependency checking (skips tasks with unmet deps); safety limit of 50 iterations; colored console output with INFO/WARN/ERROR/SUCCESS levels"
+    },
+    {
+      "id": "US-004",
+      "title": "Create bash loop script",
+      "description": "Create a bash script that runs the canonical Ralph loop for Mac/Linux users",
+      "acceptance_criteria": [
+        ".claude/scripts/pure-ralph-loop.sh exists",
+        "Same functionality as PowerShell version",
+        "Works on macOS and Linux",
+        "Executable permissions set"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-001", "US-002"],
+      "passes": true,
+      "notes": "Created .claude/scripts/pure-ralph-loop.sh with: --prd-path and --target-repo CLI arguments; jq dependency for JSON parsing with install instructions; reads base prompt from prompts/pure-ralph-base.md with placeholder substitution ({{TARGET_REPO}}, {{PRD_PATH}}, {{TASK_ID}}, {{TASK_TITLE}}); spawns fresh claude -p per task; builds prior task context from completed PRD notes; logs to workspace/orchestrator/{project}/pure-ralph.log; includes dependency checking (skips tasks with unmet deps); safety limit of 50 iterations; colored console output (ANSI codes) with INFO/WARN/ERROR/SUCCESS levels; auto-detects HQ path (~/my-hq, /c/my-hq, C:/my-hq); executable permissions set via chmod +x"
+    },
+    {
+      "id": "US-005",
+      "title": "Create /pure-ralph slash command",
+      "description": "Create the slash command that launches the external orchestrator",
+      "acceptance_criteria": [
+        ".claude/commands/pure-ralph.md exists",
+        "Accepts project name as argument",
+        "Prompts for target repo if not in PRD metadata",
+        "Checks terminal preference, prompts if not set",
+        "Spawns appropriate terminal with loop script",
+        "Provides feedback on how to monitor progress"
+      ],
+      "files": [".claude/commands/pure-ralph.md"],
+      "dependsOn": ["US-003", "US-004"],
+      "passes": true,
+      "notes": "Created .claude/commands/pure-ralph.md slash command with: argument parsing for project name and optional --target-repo; PRD validation and target repo resolution from PRD metadata; terminal settings check via settings/pure-ralph.json; platform detection (Windows/macOS/Linux) and AskUserQuestion prompt for terminal selection when not configured; launch commands for powershell/windows-terminal/bash/iterm; monitoring feedback with log paths and progress check commands. Includes integration docs with /prd and /run-project."
+    },
+    {
+      "id": "US-006",
+      "title": "Add self-modification capability",
+      "description": "Enable the loop to improve its own prompts based on learnings",
+      "acceptance_criteria": [
+        "Base prompt includes section for Learned Patterns",
+        "Each task completion can append to learned patterns",
+        "CLAUDE.md gets updated with cross-project learnings",
+        "Changes are committed with clear messages"
+      ],
+      "files": ["prompts/pure-ralph-base.md", ".claude/CLAUDE.md"],
+      "dependsOn": ["US-005"],
+      "passes": true,
+      "notes": "Implemented two-level self-modification system: (1) Task-level learnings in prompts/pure-ralph-base.md Learned Patterns section with clear format and when-to-add guidance; (2) Cross-project learnings in .claude/CLAUDE.md Pure Ralph Learnings section for patterns that transcend individual workflows. Added explicit instructions for when to use each level and commit message conventions. Seeded both sections with initial learnings from this project."
+    },
+    {
+      "id": "US-007",
+      "title": "Add learnings aggregation",
+      "description": "Aggregate learnings from completed projects into knowledge base",
+      "acceptance_criteria": [
+        "On project completion, learnings extracted from all task notes",
+        "Written to knowledge/pure-ralph/learnings.md",
+        "Patterns categorized (workflow, technical, gotchas)",
+        "Base prompt updated with high-value patterns"
+      ],
+      "files": ["knowledge/pure-ralph/learnings.md", "prompts/pure-ralph-base.md"],
+      "dependsOn": ["US-006"],
+      "passes": true,
+      "notes": "Implemented three-part learnings aggregation system: (1) Created knowledge/pure-ralph/learnings.md with categorized patterns (Workflow, Technical, Gotchas) and aggregation log table; (2) Added aggregate_learnings functions to both PowerShell and bash loop scripts that extract patterns from task notes using keyword matching, count by category, and update the learnings log on project completion; (3) Updated base prompt with Level 3 aggregation instructions and added high-value patterns (verifiable criteria, temp files for prompts, no batch completions). Patterns are automatically categorized and logged when projects complete."
+    },
+    {
+      "id": "US-008",
+      "title": "Add beads integration",
+      "description": "Sync with beads CLI for task tracking visibility",
+      "acceptance_criteria": [
+        "Loop checks if bd CLI is available",
+        "If available, syncs PRD tasks to beads on start",
+        "Updates bead status as tasks complete",
+        "Graceful fallback if beads not installed"
+      ],
+      "files": [".claude/scripts/pure-ralph-loop.ps1", ".claude/scripts/pure-ralph-loop.sh"],
+      "dependsOn": ["US-005"],
+      "passes": true,
+      "notes": "Added beads CLI integration to both PowerShell and bash loop scripts: (1) Test-BeadsCli/check_beads_cli functions detect if bd command is available; (2) Initialize-Beads/initialize_beads functions sync all PRD tasks to beads on loop start using bd add with --id for idempotent creation, setting status to 'done' for passing tasks and 'todo' for pending; (3) Update-BeadStatus/update_bead_status functions update bead status to 'in-progress' before task execution and 'done'/'blocked' after; (4) Graceful fallback with BEADS_AVAILABLE flag - all bead functions check this and silently skip if bd CLI not installed. Bead IDs use format '{project-name}-{task-id}' for uniqueness."
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-26T15:30:00Z",
+    "quality_gates": "none",
+    "verification": "passes + notes + git commit"
+  }
+}

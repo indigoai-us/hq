@@ -1,0 +1,92 @@
+# Example: Full HQ Modules Manifest
+# Shows various module configurations for different use cases
+
+version: "1.0"
+
+modules:
+  # =============================================================================
+  # CORE MODULE
+  # Official HQ updates - recommended for all users
+  # =============================================================================
+  - name: hq-core
+    repo: https://github.com/coreyepstein/hq-starter-kit.git
+    branch: main
+    strategy: merge
+    access: public
+    paths:
+      # Core knowledge bases
+      knowledge/Ralph: knowledge/Ralph
+      knowledge/workers: knowledge/workers
+      # Commands and configuration
+      .claude/commands: .claude/commands
+      # Worker templates
+      workers/examples: workers/examples
+
+  # =============================================================================
+  # COMPANY MODULES
+  # Shared across your organization
+  # =============================================================================
+
+  # Company-wide shared resources
+  - name: acme-shared
+    repo: https://github.com/acme-corp/hq-shared.git
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      # Company knowledge
+      knowledge/company: knowledge/acme
+      knowledge/processes: knowledge/acme/processes
+      # Shared worker configurations
+      workers/shared: workers/acme-shared
+      # Company templates
+      templates: templates/acme
+
+  # Engineering team module
+  - name: acme-engineering
+    repo: https://github.com/acme-corp/hq-engineering.git
+    branch: main
+    strategy: merge
+    access: "role:engineer"
+    paths:
+      # Tech stack documentation
+      knowledge/tech-stack: knowledge/tech-stack
+      # Code review guidelines
+      knowledge/code-review: knowledge/engineering/code-review
+      # Engineering-specific workers
+      workers/code: workers/engineering
+
+  # Design team module
+  - name: acme-design
+    repo: https://github.com/acme-corp/hq-design.git
+    branch: main
+    strategy: copy
+    access: "role:designer"
+    paths:
+      knowledge/design-system: knowledge/design-system
+      knowledge/brand: knowledge/brand
+
+  # =============================================================================
+  # COMMUNITY/THIRD-PARTY MODULES
+  # Optional integrations
+  # =============================================================================
+
+  # Social media management extension
+  - name: social-pro
+    repo: https://github.com/hq-community/social-pro.git
+    branch: stable
+    strategy: merge
+    access: public
+    paths:
+      workers/social: workers/social-extended
+      knowledge/social-strategy: knowledge/social
+
+  # Research and analysis tools
+  - name: research-toolkit
+    repo: https://github.com/hq-community/research-toolkit.git
+    branch: main
+    strategy: copy
+    access: public
+    paths:
+      workers/research: workers/research
+      knowledge/research-methods: knowledge/research

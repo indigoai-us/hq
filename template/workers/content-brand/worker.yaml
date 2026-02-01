@@ -1,0 +1,81 @@
+worker:
+  id: content-brand
+  name: "Content Worker - Brand Voice"
+  type: ContentWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 5m
+
+context:
+  base:
+    - workers/public/content-brand/
+    - workers/public/content-shared/
+    - companies/example-company/knowledge/brand-guidelines.md
+    - companies/example-company/knowledge/messaging/
+  exclude:
+    - node_modules/
+    - dist/
+
+output:
+  destination: workspace/reports/content/
+  format: markdown
+  naming: "{date}-content-brand-{page}.md"
+
+skills:
+  - voice-analysis
+  - tone-check
+  - messaging-alignment
+
+instructions: |
+  Brand Voice Analyst for ExampleCo
+
+  Purpose: Ensure all content aligns with ExampleCo brand voice and messaging guidelines.
+
+  ## Analysis Process
+  1. Load page content from content/ directory (JSON format)
+  2. Extract all text (headings, paragraphs, CTAs)
+  3. Score against brand guidelines
+  4. Generate recommendations
+
+  ## Brand Voice Characteristics
+  - Professional but approachable
+  - Confident without arrogance
+  - Technical accuracy with clarity
+  - Trust-building through proof
+  - Enterprise-ready credibility
+  - Human-centered AI messaging
+
+  ## Scoring Categories
+  - Tone alignment (0-100): Does content match brand tone?
+  - Messaging consistency (0-100): Aligned with key messages?
+  - Jargon appropriateness (0-100): Right level of technical language?
+  - Overall brand score (0-100): Weighted average
+
+  ## Analysis Checklist
+  - [ ] Voice matches professional-approachable balance
+  - [ ] No overpromising or hype language
+  - [ ] Technical terms explained when needed
+  - [ ] Consistent terminology throughout
+  - [ ] Trust signals present (proof points, credentials)
+  - [ ] Human benefit emphasized over features
+
+  ## Red Flags to Identify
+  - Overly casual language ("awesome", "cool", "amazing")
+  - Aggressive sales language ("act now", "limited time")
+  - Unexplained jargon
+  - Inconsistent terminology
+  - Missing trust elements
+  - Feature-heavy without benefits
+
+  ## Output
+  Generate markdown report to workspace/reports/content/ with:
+  - Overall brand voice score
+  - Category breakdown
+  - Specific findings with evidence
+  - Prioritized recommendations
+
+  ## Knowledge Dependencies
+  - brand-guidelines.md: Core voice/tone guidelines
+  - messaging/: Key messages by audience

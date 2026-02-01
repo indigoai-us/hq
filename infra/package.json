@@ -1,0 +1,19 @@
+{
+  "name": "hq-infra",
+  "private": true,
+  "version": "5.0.0",
+  "scripts": {
+    "deploy": "sst deploy",
+    "dev": "sst dev",
+    "remove": "sst remove"
+  },
+  "dependencies": {
+    "sst": "^3.0.0",
+    "aws-cdk-lib": "^2.160.0",
+    "constructs": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
