@@ -1,131 +1,30 @@
 #!/bin/bash
 # =============================================================================
 # my-hq macOS Installer - Pre-install Script
-# Runs BEFORE files are copied to the destination
+# Minimal version for CI compatibility
 # =============================================================================
 
-# Log file for debugging
-LOG_FILE="/tmp/my-hq-installer.log"
+# Simple logging
+echo "$(date): Starting preinstall" >> /tmp/my-hq-preinstall.log 2>&1
 
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [preinstall] $1" >> "$LOG_FILE"
-    echo "$1"
-}
-
-log "Starting pre-install checks..."
-
-# Get the target user (who ran the installer)
-TARGET_USER="${USER}"
+# Get the target user
+TARGET_USER="${USER:-runner}"
 if [ "$TARGET_USER" = "root" ]; then
-    # If running as root, get the console user
-    # Use fallback for CI/headless environments where /dev/console may not exist
     TARGET_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "runner")
 fi
-TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null || echo "$HOME")
 
-log "Target user: $TARGET_USER"
-log "Target home: $TARGET_HOME"
+# Get home directory
+TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null || echo "/Users/runner")
+TARGET_HOME="${TARGET_HOME:-/Users/runner}"
 
-# Store user info for postinstall
-echo "TARGET_USER=$TARGET_USER" > /tmp/my-hq-install-vars
-echo "TARGET_HOME=$TARGET_HOME" >> /tmp/my-hq-install-vars
+# Save for postinstall
+cat > /tmp/my-hq-install-vars << EOF
+TARGET_USER=$TARGET_USER
+TARGET_HOME=$TARGET_HOME
+EOF
 
-# =============================================================================
-# Check for Node.js
-# =============================================================================
-check_nodejs() {
-    log "Checking for Node.js..."
+echo "$(date): Target user: $TARGET_USER" >> /tmp/my-hq-preinstall.log 2>&1
+echo "$(date): Target home: $TARGET_HOME" >> /tmp/my-hq-preinstall.log 2>&1
+echo "$(date): Preinstall complete" >> /tmp/my-hq-preinstall.log 2>&1
 
-    # Check common Node.js locations
-    NODE_PATHS=(
-        "/usr/local/bin/node"
-        "/opt/homebrew/bin/node"
-        "$TARGET_HOME/.nvm/current/bin/node"
-        "$TARGET_HOME/.volta/bin/node"
-        "$TARGET_HOME/.asdf/shims/node"
-    )
-
-    for node_path in "${NODE_PATHS[@]}"; do
-        if [ -x "$node_path" ]; then
-            NODE_BIN="$node_path"
-            break
-        fi
-    done
-
-    # Also try which (may work if PATH is set)
-    if [ -z "$NODE_BIN" ]; then
-        NODE_BIN=$(which node 2>/dev/null || true)
-    fi
-
-    if [ -n "$NODE_BIN" ] && [ -x "$NODE_BIN" ]; then
-        NODE_VERSION=$("$NODE_BIN" --version 2>/dev/null | sed 's/v//')
-        NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
-
-        log "Found Node.js $NODE_VERSION at $NODE_BIN"
-
-        if [ "$NODE_MAJOR" -ge 18 ]; then
-            log "Node.js version is sufficient (>= 18)"
-            echo "NODEJS_INSTALLED=true" >> /tmp/my-hq-install-vars
-            echo "NODE_BIN=$NODE_BIN" >> /tmp/my-hq-install-vars
-            return 0
-        else
-            log "Node.js version $NODE_VERSION is too old (need >= 18)"
-            echo "NODEJS_INSTALLED=outdated" >> /tmp/my-hq-install-vars
-            echo "NODE_BIN=$NODE_BIN" >> /tmp/my-hq-install-vars
-            return 1
-        fi
-    else
-        log "Node.js not found"
-        echo "NODEJS_INSTALLED=false" >> /tmp/my-hq-install-vars
-        return 1
-    fi
-}
-
-# =============================================================================
-# Check for Claude CLI
-# =============================================================================
-check_claude_cli() {
-    log "Checking for Claude CLI..."
-
-    # Check common locations
-    CLAUDE_PATHS=(
-        "/usr/local/bin/claude"
-        "/opt/homebrew/bin/claude"
-        "$TARGET_HOME/.npm-global/bin/claude"
-    )
-
-    for claude_path in "${CLAUDE_PATHS[@]}"; do
-        if [ -x "$claude_path" ]; then
-            CLAUDE_BIN="$claude_path"
-            break
-        fi
-    done
-
-    if [ -z "$CLAUDE_BIN" ]; then
-        CLAUDE_BIN=$(which claude 2>/dev/null || true)
-    fi
-
-    if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
-        log "Found Claude CLI at $CLAUDE_BIN"
-        echo "CLAUDE_INSTALLED=true" >> /tmp/my-hq-install-vars
-        echo "CLAUDE_BIN=$CLAUDE_BIN" >> /tmp/my-hq-install-vars
-        return 0
-    else
-        log "Claude CLI not found"
-        echo "CLAUDE_INSTALLED=false" >> /tmp/my-hq-install-vars
-        return 1
-    fi
-}
-
-# =============================================================================
-# Run checks
-# =============================================================================
-
-check_nodejs || true
-check_claude_cli || true
-
-log "Pre-install checks complete"
-log "Installation variables saved to /tmp/my-hq-install-vars"
-
-# Always exit successfully to continue installation
 exit 0

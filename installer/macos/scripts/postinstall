@@ -4,61 +4,42 @@
 # Minimal version for CI compatibility
 # =============================================================================
 
-exec >> /tmp/my-hq-installer.log 2>&1
+LOG="/tmp/my-hq-installer.log"
+echo "$(date): Starting postinstall" >> "$LOG"
 
-echo "$(date): Starting postinstall"
-
-# Get target user - simple fallback approach
-TARGET_USER="${USER:-runner}"
-if [ "$TARGET_USER" = "root" ]; then
-    TARGET_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "runner")
+# Load install vars if available
+if [ -f /tmp/my-hq-install-vars ]; then
+    . /tmp/my-hq-install-vars
+    echo "$(date): Loaded install vars" >> "$LOG"
 fi
 
-# Get home directory
-if [ -n "$TARGET_USER" ] && [ "$TARGET_USER" != "root" ]; then
-    TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null)
-fi
+# Fallbacks
+TARGET_USER="${TARGET_USER:-runner}"
 TARGET_HOME="${TARGET_HOME:-/Users/runner}"
 
-echo "$(date): Target user: $TARGET_USER"
-echo "$(date): Target home: $TARGET_HOME"
+echo "$(date): User=$TARGET_USER Home=$TARGET_HOME" >> "$LOG"
 
-# Source install location
+# Source and destination
 SOURCE_DIR="/usr/local/my-hq"
 DEST_DIR="$TARGET_HOME/my-hq"
 
-echo "$(date): Source: $SOURCE_DIR"
-echo "$(date): Dest: $DEST_DIR"
-
-# Check if source exists
-if [ ! -d "$SOURCE_DIR" ]; then
-    echo "$(date): ERROR - Source directory not found: $SOURCE_DIR"
-    # Still exit 0 to not fail the installer
-    exit 0
-fi
+echo "$(date): Source=$SOURCE_DIR Dest=$DEST_DIR" >> "$LOG"
 
 # Create destination
-mkdir -p "$DEST_DIR" 2>/dev/null || true
+mkdir -p "$DEST_DIR" 2>/dev/null
 
-# Copy files
+# Copy files if source exists
 if [ -d "$SOURCE_DIR" ]; then
-    echo "$(date): Copying files..."
-    cp -R "$SOURCE_DIR/"* "$DEST_DIR/" 2>/dev/null || true
-
-    # Fix ownership if we can
-    if [ -n "$TARGET_USER" ]; then
-        chown -R "$TARGET_USER" "$DEST_DIR" 2>/dev/null || true
-    fi
-
-    echo "$(date): Files copied"
+    echo "$(date): Copying files..." >> "$LOG"
+    cp -R "$SOURCE_DIR/"* "$DEST_DIR/" 2>/dev/null
+    chown -R "$TARGET_USER" "$DEST_DIR" 2>/dev/null
+    echo "$(date): Done copying" >> "$LOG"
+else
+    echo "$(date): Source not found" >> "$LOG"
 fi
 
 # Create version file
-echo "1.0.0" > "$DEST_DIR/.hq-version" 2>/dev/null || true
+echo "1.0.0" > "$DEST_DIR/.hq-version" 2>/dev/null
 
-# List what was installed
-echo "$(date): Installed files:"
-ls -la "$DEST_DIR" 2>/dev/null || true
-
-echo "$(date): Postinstall complete"
+echo "$(date): Postinstall complete" >> "$LOG"
 exit 0
