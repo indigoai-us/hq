@@ -454,6 +454,20 @@ jobs:
           echo ""
           echo "Installer completed."
 
+      - name: Check installer log
+        run: |
+          echo "=== INSTALLER LOG ==="
+          if [ -f /tmp/my-hq-installer.log ]; then
+            cat /tmp/my-hq-installer.log
+          else
+            echo "No installer log found at /tmp/my-hq-installer.log"
+          fi
+          echo ""
+          if [ -f /tmp/my-hq-preinstall.log ]; then
+            echo "=== PREINSTALL LOG ==="
+            cat /tmp/my-hq-preinstall.log
+          fi
+
       - name: Reload environment
         run: |
           echo "=== RELOADING ENVIRONMENT ==="
