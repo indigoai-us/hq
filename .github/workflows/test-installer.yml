@@ -140,10 +140,18 @@ jobs:
           done
           printf '\x89PNG\r\n\x1a\n' > installer/macos/resources/background.png
 
+      - name: Fix line endings
+        run: |
+          # Convert Windows CRLF to Unix LF for all shell scripts
+          # This is critical - bash scripts with CRLF fail on macOS
+          find installer/macos -type f \( -name "*.sh" -o -name "preinstall" -o -name "postinstall" \) -exec sed -i '' 's/\r$//' {} \;
+
       - name: Build pkg
         run: |
           [ ! -f "LICENSE" ] && echo "MIT License" > LICENSE
           chmod +x installer/macos/build-pkg.sh
+          chmod +x installer/macos/scripts/preinstall
+          chmod +x installer/macos/scripts/postinstall
           installer/macos/build-pkg.sh
           ls -la installer/macos/build/
 
