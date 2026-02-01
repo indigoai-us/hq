@@ -44,6 +44,10 @@ echo "1.0.0" > "$DEST_DIR/.hq-version" 2>/dev/null
 # Install Claude CLI if npm is available
 echo "$(date): Checking for npm..." >> "$LOG"
 
+# Set PATH to include common locations where Node.js/npm might be
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:$PATH"
+echo "$(date): PATH set to $PATH" >> "$LOG"
+
 # Find npm - check common locations
 NPM_CMD=""
 for npm_path in /opt/homebrew/bin/npm /usr/local/bin/npm /usr/bin/npm; do
@@ -60,8 +64,8 @@ if [ -n "$NPM_CMD" ]; then
     # Install Claude CLI globally
     # Run as target user to install in their npm prefix
     if [ "$EUID" -eq 0 ]; then
-        # Running as root, use sudo -u to run as target user
-        sudo -u "$TARGET_USER" "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || {
+        # Running as root, use sudo -u to run as target user with proper PATH
+        sudo -u "$TARGET_USER" PATH="$PATH" "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || {
             echo "$(date): Claude CLI install failed as user, trying globally..." >> "$LOG"
             "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || true
         }
