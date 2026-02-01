@@ -1,0 +1,85 @@
+---
+title: Commands
+description: Complete reference for all 17 HQ slash commands.
+---
+
+Run any command inside Claude Code with `/command-name`.
+
+## Session Commands
+
+| Command | Description |
+|---------|-------------|
+| `/reanchor` | Reload HQ context at start of session |
+| `/checkpoint` | Save current session state to `workspace/checkpoints/` |
+| `/handoff` | Save thread and prepare for session continuation |
+| `/nexttask` | Scan HQ and suggest the next task to work on |
+| `/remember` | Capture a learning or correction (promotes to `/learn`) |
+| `/learn` | Auto-capture insights from completed tasks |
+
+### /checkpoint
+Saves git state, active files, and a summary. Use when you want to bookmark progress.
+
+### /handoff
+Creates a comprehensive thread at `workspace/threads/` with all context needed to resume in a fresh session. Automatically triggered when context reaches 70% capacity.
+
+### /nexttask
+Scans projects, workspace, and queues to recommend what to work on next. Considers priority, dependencies, and recent activity.
+
+## Worker Commands
+
+| Command | Description |
+|---------|-------------|
+| `/run {worker} {skill}` | Execute a worker's skill |
+| `/newworker` | Scaffold a new worker with skills, tools, and knowledge |
+| `/metrics` | View worker execution metrics |
+
+### /run
+The primary way to invoke workers. Examples:
+```
+/run task-executor execute
+/run architect system-design
+/run content-brand voice-analysis
+/run code-reviewer review-pr
+```
+
+### /newworker
+Interactive wizard to create a custom worker:
+1. Name, type, and description
+2. Skill definitions
+3. Knowledge context
+4. Execution rules
+5. Generates worker.yaml + skill files
+
+## Project Commands
+
+| Command | Description |
+|---------|-------------|
+| `/prd "description"` | Create a Project Requirements Document |
+| `/run-project` | Execute a project through the Ralph loop |
+| `/execute-task` | Execute a single task through coordinated workers |
+
+### /prd
+Generates a structured `prd.json` with:
+- Project metadata (name, repo, branch)
+- User stories with acceptance criteria
+- Task breakdown
+- Architecture decisions
+
+### /run-project
+Orchestrates multi-task execution using the Ralph methodology:
+1. Load PRD
+2. Pick next story
+3. Route to workers (architect → dev → QA → review)
+4. Validate completion
+5. Capture learnings
+6. Repeat
+
+## System Commands
+
+| Command | Description |
+|---------|-------------|
+| `/search "query"` | Search HQ with qmd (semantic + full-text) |
+| `/search-reindex` | Rebuild the qmd search index |
+| `/cleanup` | Audit HQ structure, rebuild INDEX.md files |
+| `/setup` | Interactive setup wizard for new installations |
+| `/exit-plan` | Force exit from plan mode when stuck |

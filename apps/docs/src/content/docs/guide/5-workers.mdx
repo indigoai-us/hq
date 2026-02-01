@@ -1,0 +1,115 @@
+---
+title: Workers
+description: Reference for all 26 AI workers — dev team, content team, and standalone.
+---
+
+## Worker Types
+
+| Type | Purpose |
+|------|---------|
+| CodeWorker | Implements features, fixes bugs, refactors |
+| ContentWorker | Drafts content, maintains voice consistency |
+| SocialWorker | Social media posting, engagement |
+| ResearchWorker | Analysis, market research, competitive intel |
+| OpsWorker | Reports, monitoring, automation |
+| Library | Shared utilities (not directly executable) |
+
+## Dev Team (12 Workers)
+
+A full autonomous development team at `workers/dev-team/`.
+
+| Worker | Type | Skills |
+|--------|------|--------|
+| **project-manager** | CodeWorker | PRD lifecycle, issue selection, learning aggregation |
+| **task-executor** | CodeWorker | Analyze issues, route to workers, validate completion |
+| **architect** | CodeWorker | System design, API design, architecture decisions |
+| **backend-dev** | CodeWorker | API endpoints, business logic, backend implementation |
+| **frontend-dev** | CodeWorker | UI components, React, user interfaces |
+| **database-dev** | CodeWorker | Schema design, migrations, query optimization |
+| **infra-dev** | CodeWorker | Docker, CI/CD, deployment, monitoring |
+| **qa-tester** | CodeWorker | Write tests, run tests, create demo accounts |
+| **code-reviewer** | CodeWorker | Review PRs, request changes, merge to staging/production |
+| **motion-designer** | CodeWorker | Animations, image generation |
+| **knowledge-curator** | CodeWorker | Documentation sync, pattern updates, troubleshooting |
+| **product-planner** | CodeWorker | Feature planning, backlog management |
+
+## Content Team (5 Workers)
+
+Multi-perspective content review at `workers/content-*/`.
+
+| Worker | Focus | Skills |
+|--------|-------|--------|
+| **content-brand** | Voice & tone | Voice analysis, tone check, messaging alignment |
+| **content-sales** | Conversion | Conversion analysis, CTA audit, value prop check |
+| **content-product** | Accuracy | Feature accuracy, claim verification, stats check |
+| **content-legal** | Compliance | Compliance scan, claim substantiation, disclaimer check |
+| **content-shared** | Shared library | Shared analysis tools, scoring, reporting |
+
+## Standalone Workers
+
+| Worker | Purpose |
+|--------|---------|
+| **security-scanner** | Pre-deploy security checks |
+
+## Worker YAML Schema
+
+Every worker is defined by a `worker.yaml`:
+
+```yaml
+worker:
+  id: my-worker
+  name: My Worker
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on-demand        # on-demand | scheduled | triggered
+  max_runtime: 30m
+
+context:
+  base:
+    - knowledge/Ralph/   # Knowledge to load
+  dynamic: []
+  exclude: []
+
+verification:
+  checks:
+    - tests-pass
+    - no-lint-errors
+  approval_required: false
+
+tasks:
+  source: prd            # prd | queue
+
+output:
+  destination: workspace/reports/
+  format: markdown
+
+instructions: |
+  Multi-line instructions for the worker...
+```
+
+## Creating Custom Workers
+
+Use `/newworker` to scaffold:
+
+```
+/newworker
+```
+
+The wizard asks for:
+1. Worker ID and name
+2. Type (CodeWorker, ContentWorker, etc.)
+3. Skills (name + description for each)
+4. Knowledge context paths
+5. Execution rules
+
+Generates:
+```
+workers/{id}/
+├── worker.yaml
+├── skills/
+│   ├── skill-one.md
+│   └── skill-two.md
+└── README.md
+```

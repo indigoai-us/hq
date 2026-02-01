@@ -1,0 +1,122 @@
+---
+title: PWA Improvements
+description: Planned PWA feature enhancements to make the mobile dashboard production-grade.
+---
+
+## Goal
+
+The HQ PWA should feel like a native app — fast, reliable offline, and capable of meaningful actions (not just read-only file browsing).
+
+## Planned Features
+
+### 1. Offline Support (Service Worker)
+
+**Problem**: Currently the PWA requires network connectivity for everything.
+
+**Solution**: Service worker with caching strategy.
+
+**Spec**:
+- Cache the app shell (HTML, CSS, JS) for instant load
+- Cache recently viewed files for offline access
+- Queue file edits while offline, sync when reconnected
+- Show clear offline/online indicator in UI
+- Stale-while-revalidate for API responses
+
+**Acceptance Criteria**:
+- [ ] App loads in airplane mode (shell + cached files)
+- [ ] Offline indicator visible when disconnected
+- [ ] Edits made offline sync on reconnect
+- [ ] Cache size limited to 50MB
+- [ ] Cache eviction: LRU (least recently used)
+
+### 2. Push Notifications
+
+**Problem**: No way to know when a worker completes a task or sync conflicts arise.
+
+**Solution**: Web Push API with notification types.
+
+**Spec**:
+- Notification types: sync conflict, worker completion, checkpoint saved
+- User-configurable notification preferences
+- Backend: Lambda → SNS → Web Push
+- Permission prompt on first use (not on page load)
+
+**Acceptance Criteria**:
+- [ ] Notifications work on iOS and Android
+- [ ] User can toggle notification types in Settings
+- [ ] Notifications deep-link to relevant file/page
+- [ ] Silent if user is actively in the app
+
+### 3. Inline Editor (Monaco)
+
+**Problem**: Currently files are read-only in the PWA. Users must switch to desktop to edit.
+
+**Solution**: Monaco editor (VS Code's editor) for markdown and YAML editing.
+
+**Spec**:
+- Monaco editor for `.md`, `.mdx`, `.yaml`, `.json` files
+- Syntax highlighting per file type
+- Auto-save with debounce (2 seconds)
+- Saves via PUT /api/files → triggers downstream sync
+- Mobile-optimized keyboard handling
+- Preview toggle for markdown
+
+**Acceptance Criteria**:
+- [ ] Can edit markdown files with syntax highlighting
+- [ ] Changes save to S3 within 5 seconds
+- [ ] Changes sync back to desktop via hq-cloud
+- [ ] Editor works on mobile (responsive layout, touch-friendly)
+- [ ] Undo/redo works
+
+### 4. Responsive Audit
+
+**Problem**: Current layout untested on various screen sizes.
+
+**Solution**: Systematic responsive testing and fixes.
+
+**Spec**:
+- Test on: iPhone SE, iPhone 15, iPad, Android phone, Android tablet
+- Fix: navigation overflow, text truncation, touch targets (min 44px)
+- Add: bottom tab navigation for mobile
+- Add: swipe gestures for file browser (swipe to go back)
+- Test: PWA home screen icon, splash screen
+
+**Acceptance Criteria**:
+- [ ] No horizontal scroll on any device
+- [ ] All touch targets ≥ 44px
+- [ ] Bottom navigation on screens < 768px
+- [ ] File browser usable with one hand on phone
+- [ ] Splash screen shows HQ branding
+
+### 5. Quick Actions
+
+**Problem**: Common tasks require multiple taps.
+
+**Solution**: Action shortcuts on the dashboard.
+
+**Spec**:
+- Approve social draft (one-tap)
+- Add quick note (text → workspace/notes/)
+- View latest thread
+- Trigger worker (with confirmation)
+
+**Acceptance Criteria**:
+- [ ] Quick actions visible on dashboard
+- [ ] Social draft approval works in 2 taps
+- [ ] Quick note saves to workspace/
+- [ ] Actions provide haptic feedback on mobile
+
+## Priority Order
+
+1. Responsive Audit (quick wins, low effort)
+2. Offline Support (biggest UX improvement)
+3. Inline Editor (unlocks real mobile productivity)
+4. Quick Actions (convenience features)
+5. Push Notifications (requires backend work)
+
+## Definition of Done
+
+- [ ] All Lighthouse PWA checks pass
+- [ ] Offline mode works reliably
+- [ ] At least markdown editing works on mobile
+- [ ] Tested on iOS Safari + Chrome Android

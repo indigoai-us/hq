@@ -18,6 +18,9 @@ Thumbs.db
 .hq-sync.pid
 .hq-sync-journal.json
 
+# Astro
+.astro/
+
 # Template workspace artifacts (keep structure, ignore content)
 template/workspace/threads/*.json
 !template/workspace/threads/.gitkeep

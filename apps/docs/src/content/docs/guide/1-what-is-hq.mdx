@@ -1,0 +1,63 @@
+---
+title: What is HQ?
+description: HQ is infrastructure for orchestrating AI workers — autonomous agents that code, write, research, and automate.
+---
+
+## The Problem
+
+Modern knowledge work generates more tasks than any person can handle. AI tools exist, but they're disconnected — one for coding, another for writing, another for research. Each session starts from zero. Context is lost. Work is repeated.
+
+## The Solution
+
+HQ is a **folder-based operating system** for orchestrating AI workers. It runs on [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and provides:
+
+- **Workers** — Autonomous agents with specific skills (coding, content, research, QA)
+- **Knowledge Bases** — Persistent memory that grows smarter over time
+- **Commands** — Slash commands that orchestrate complex workflows
+- **Checkpoints** — Session state that survives context limits
+- **Cloud Sync** — Access your HQ from any device
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                         YOUR HQ                          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐          │
+│   │ WORKERS  │    │KNOWLEDGE │    │ COMMANDS │          │
+│   │ Do work  │    │ Remember │    │Orchestrate│         │
+│   └──────────┘    └──────────┘    └──────────┘          │
+│         │               │               │                │
+│         └───────────────┼───────────────┘                │
+│                         ▼                                │
+│                  ┌──────────┐                            │
+│                  │CHECKPOINT│                            │
+│                  │ Persist  │                            │
+│                  └──────────┘                            │
+│                         ▼                                │
+│                  ┌──────────┐                            │
+│                  │  CLOUD   │                            │
+│                  │  SYNC    │                            │
+│                  └──────────┘                            │
+└─────────────────────────────────────────────────────────┘
+```
+
+## How It's Different
+
+| Traditional AI | HQ |
+|----------------|-----|
+| Chat sessions start from zero | Workers carry persistent context |
+| One tool per task | Unified system with 26 specialized workers |
+| Manual orchestration | Commands automate multi-step workflows |
+| Context lost at session end | Checkpoints and threads preserve everything |
+| Desktop only | Cloud sync enables mobile access |
+
+## Who It's For
+
+- **Solo developers** who want an AI dev team
+- **Content creators** managing multi-platform publishing
+- **Technical founders** automating operations
+- **Anyone** drowning in tasks they wish AI could handle
+
+## Philosophy
+
+HQ is **files, not SaaS**. Your data lives in a folder on your machine. Knowledge bases are git repos. Configuration is YAML. Everything is version-controlled, portable, and yours.
