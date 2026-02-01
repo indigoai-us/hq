@@ -276,7 +276,7 @@ jobs:
       - name: Install pkg tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y xar cpio
+          sudo apt-get install -y libarchive-tools cpio
 
       - name: Validate pkg structure
         run: |
@@ -298,7 +298,7 @@ jobs:
           cd pkg-extract
 
           echo "=== Extracting package ==="
-          xar -xf "../$PKG" 2>&1 || {
+          bsdtar -xf "../$PKG" 2>&1 || {
             echo "ERROR: Failed to extract pkg"
             exit 1
           }
