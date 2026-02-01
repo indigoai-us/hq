@@ -418,9 +418,33 @@ jobs:
 
       - name: Pull Docker-OSX image
         run: |
-          # Use the auto image - pre-installed macOS with auto-login and SSH
-          docker pull sickcodes/docker-osx:auto
-        timeout-minutes: 20
+          # Try to pull a pre-built macOS image
+          # These are large images (10-40GB), so we use a longer timeout
+          # Try multiple tags in case one is unavailable
+          echo "Attempting to pull Docker-OSX image..."
+
+          # Try sonoma first (macOS 14)
+          if docker pull sickcodes/docker-osx:sonoma 2>&1; then
+            echo "DOCKER_OSX_IMAGE=sickcodes/docker-osx:sonoma" >> $GITHUB_ENV
+            echo "Successfully pulled sonoma image"
+          # Try ventura (macOS 13)
+          elif docker pull sickcodes/docker-osx:ventura 2>&1; then
+            echo "DOCKER_OSX_IMAGE=sickcodes/docker-osx:ventura" >> $GITHUB_ENV
+            echo "Successfully pulled ventura image"
+          # Try monterey (macOS 12)
+          elif docker pull sickcodes/docker-osx:monterey 2>&1; then
+            echo "DOCKER_OSX_IMAGE=sickcodes/docker-osx:monterey" >> $GITHUB_ENV
+            echo "Successfully pulled monterey image"
+          # Try latest as final fallback
+          elif docker pull sickcodes/docker-osx:latest 2>&1; then
+            echo "DOCKER_OSX_IMAGE=sickcodes/docker-osx:latest" >> $GITHUB_ENV
+            echo "Successfully pulled latest image"
+          else
+            echo "ERROR: Failed to pull any Docker-OSX image"
+            echo "Docker-OSX images may be temporarily unavailable"
+            exit 1
+          fi
+        timeout-minutes: 45
 
       - name: Create macOS test script
         run: |
@@ -568,13 +592,16 @@ jobs:
           echo "Package to test: $PKG_FILE"
 
           # Start Docker-OSX in the background
+          echo "Using image: $DOCKER_OSX_IMAGE"
           docker run -d --name macos-test \
             --device /dev/kvm \
             -p 10022:10022 \
             -p 5999:5999 \
             -e "GENERATE_UNIQUE=true" \
             -e "HEADLESS=true" \
-            sickcodes/docker-osx:auto
+            -e "RAM=4" \
+            -e "CORES=2" \
+            "$DOCKER_OSX_IMAGE"
 
           echo ""
           echo "Container started. Waiting for macOS to boot..."
