@@ -225,31 +225,42 @@ jobs:
       - name: Run installer (silent mode)
         run: |
           $installerPath = "installer\windows\my-hq-setup-1.0.0.exe"
+          $installDir = "$env:LOCALAPPDATA\my-hq"
 
           Write-Host "=== Running Installer ==="
           Write-Host "Installer: $installerPath"
+          Write-Host "Install dir: $installDir"
           Write-Host "Mode: Silent (/S)"
           Write-Host ""
-          Write-Host "Starting installer... (this may take several minutes)"
+          Write-Host "Starting installer..."
           Write-Host ""
 
-          # Run installer in silent mode
-          # The installer will:
-          # 1. Check for Node.js (skip download if found)
-          # 2. Check for Claude CLI (install via npm if not found)
-          # 3. Create my-hq directory structure
-          # 4. Copy template files
+          # Run installer with /S (silent) and /D (install directory)
+          # The /D must be last and not have quotes around the path
+          $args = "/S", "/D=$installDir"
+          Write-Host "Running: $installerPath $($args -join ' ')"
 
-          $process = Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait -PassThru
+          $process = Start-Process -FilePath $installerPath -ArgumentList $args -Wait -PassThru -NoNewWindow
+
+          Write-Host ""
+          Write-Host "Installer process exited with code: $($process.ExitCode)"
 
           if ($process.ExitCode -eq 0) {
-            Write-Host "Installer completed successfully (exit code: 0)"
+            Write-Host "Installer completed successfully"
           } else {
-            Write-Host "Installer finished with exit code: $($process.ExitCode)"
-            # Don't fail - some exit codes may be warnings
+            Write-Host "Installer finished with non-zero exit code"
+          }
+
+          # Check what was installed
+          Write-Host ""
+          Write-Host "Checking install directory..."
+          if (Test-Path $installDir) {
+            Get-ChildItem $installDir | ForEach-Object { Write-Host "  $($_.Name)" }
+          } else {
+            Write-Host "Install directory not found: $installDir"
           }
         shell: pwsh
-        timeout-minutes: 20
+        timeout-minutes: 10
 
       - name: Verify installation
         run: |
@@ -493,6 +504,33 @@ jobs:
 
           echo ""
 
+      - name: Inspect package contents
+        run: |
+          PKG_PATH="installer/macos/build/my-hq-1.0.0.pkg"
+
+          echo "=== Inspecting Package ==="
+          pkgutil --payload-files "$PKG_PATH" | head -30
+
+          echo ""
+          echo "=== Extracting package for debugging ==="
+          mkdir -p /tmp/pkg-extract
+          cd /tmp/pkg-extract
+          xar -xf "$GITHUB_WORKSPACE/$PKG_PATH"
+          ls -la
+
+          # Check if there are scripts
+          if [ -f Scripts ]; then
+            echo ""
+            echo "=== Scripts archive found ==="
+            mkdir -p scripts-extract
+            cd scripts-extract
+            cpio -i < ../Scripts 2>/dev/null || gzip -dc ../Scripts | cpio -i 2>/dev/null || true
+            ls -la
+            echo ""
+            echo "=== Postinstall script content ==="
+            cat postinstall 2>/dev/null | head -50 || echo "No postinstall found"
+          fi
+
       - name: Run installer
         run: |
           PKG_PATH="installer/macos/build/my-hq-1.0.0.pkg"
@@ -500,12 +538,21 @@ jobs:
           echo "=== Running Installer ==="
           echo "Package: $PKG_PATH"
           echo ""
+          echo "Setting CI environment variables..."
+          export CI=true
+          export GITHUB_ACTIONS=true
+          echo ""
           echo "Starting installer... (this may take several minutes)"
           echo ""
 
           # Run the .pkg installer
           # Using sudo installer to install the package to the target
-          sudo installer -pkg "$PKG_PATH" -target / -verbose
+          sudo CI=true GITHUB_ACTIONS=true installer -pkg "$PKG_PATH" -target / -verbose 2>&1 || {
+            echo ""
+            echo "=== Installer failed, checking logs ==="
+            cat /tmp/my-hq-installer.log 2>/dev/null || echo "No installer log found"
+            exit 1
+          }
 
           echo ""
           echo "Installer completed"
