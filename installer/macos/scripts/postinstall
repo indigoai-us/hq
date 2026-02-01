@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # my-hq macOS Installer - Post-install Script
-# Minimal version for CI compatibility
+# Installs my-hq files and Claude CLI
 # =============================================================================
 
 LOG="/tmp/my-hq-installer.log"
@@ -40,6 +40,40 @@ fi
 
 # Create version file
 echo "1.0.0" > "$DEST_DIR/.hq-version" 2>/dev/null
+
+# Install Claude CLI if npm is available
+echo "$(date): Checking for npm..." >> "$LOG"
+
+# Find npm - check common locations
+NPM_CMD=""
+for npm_path in /opt/homebrew/bin/npm /usr/local/bin/npm /usr/bin/npm; do
+    if [ -x "$npm_path" ]; then
+        NPM_CMD="$npm_path"
+        break
+    fi
+done
+
+if [ -n "$NPM_CMD" ]; then
+    echo "$(date): Found npm at $NPM_CMD" >> "$LOG"
+    echo "$(date): Installing Claude CLI..." >> "$LOG"
+
+    # Install Claude CLI globally
+    # Run as target user to install in their npm prefix
+    if [ "$EUID" -eq 0 ]; then
+        # Running as root, use sudo -u to run as target user
+        sudo -u "$TARGET_USER" "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || {
+            echo "$(date): Claude CLI install failed as user, trying globally..." >> "$LOG"
+            "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || true
+        }
+    else
+        "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || true
+    fi
+
+    echo "$(date): Claude CLI installation attempted" >> "$LOG"
+else
+    echo "$(date): npm not found - please install Node.js first" >> "$LOG"
+    echo "$(date): Claude CLI was not installed" >> "$LOG"
+fi
 
 echo "$(date): Postinstall complete" >> "$LOG"
 exit 0
