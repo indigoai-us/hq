@@ -174,6 +174,16 @@ jobs:
       # Install Phase: Run the actual installer
       # ----------------------------------------
 
+      # Pre-install Claude CLI to avoid long npm install during installer
+      # This speeds up CI and tests the installer's detection logic
+      - name: Pre-install Claude CLI
+        run: |
+          Write-Host "Pre-installing Claude CLI for faster CI testing..."
+          npm install -g @anthropic-ai/claude-code
+          Write-Host "Claude CLI installed: $(claude --version 2>&1)"
+        shell: pwsh
+        timeout-minutes: 10
+
       - name: Check pre-install environment
         run: |
           Write-Host "=== Pre-Install Environment Check ==="
@@ -195,6 +205,7 @@ jobs:
           if ($claudeCmd) {
             $claudeVersion = & claude --version 2>&1
             Write-Host "Claude CLI found: $claudeVersion"
+            Write-Host "  (Installer should detect and skip Claude CLI install)"
           } else {
             Write-Host "Claude CLI: NOT FOUND"
             Write-Host "  (Installer will install Claude CLI via npm)"
@@ -435,6 +446,20 @@ jobs:
       # Install Phase: Run the actual installer
       # ----------------------------------------
 
+      # Setup Node.js for macOS - ensures npm is available
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Pre-install Claude CLI to speed up CI
+      - name: Pre-install Claude CLI
+        run: |
+          echo "Pre-installing Claude CLI for faster CI testing..."
+          npm install -g @anthropic-ai/claude-code
+          echo "Claude CLI installed: $(claude --version 2>&1)"
+        timeout-minutes: 10
+
       - name: Check pre-install environment
         run: |
           echo "=== Pre-Install Environment Check ==="
@@ -452,6 +477,7 @@ jobs:
           # Check for Claude CLI
           if command -v claude &> /dev/null; then
             echo "Claude CLI found: $(claude --version)"
+            echo "  (Installer should detect and skip Claude CLI install)"
           else
             echo "Claude CLI: NOT FOUND"
             echo "  (Installer will install Claude CLI via npm)"
