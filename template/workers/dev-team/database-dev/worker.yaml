@@ -1,0 +1,90 @@
+worker:
+  id: database-dev
+  name: "Database Developer"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 15m
+  retry_attempts: 1
+
+context:
+  base:
+    - workers/public/dev-team/database-dev/
+    - workers/public/dev-team/database-dev/skills/
+    - knowledge/public/dev-team/patterns/database/
+  dynamic:
+    - pattern: "{target_repo}/prisma/"
+      when: "db.type == 'prisma'"
+    - pattern: "{target_repo}/drizzle/"
+      when: "db.type == 'drizzle'"
+    - pattern: "{target_repo}/migrations/"
+      when: always
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: migration
+      command: npm run db:generate
+  approval_required: true
+
+output:
+  destination: workspace/reports/dev-team/
+  format: both
+  naming: "{date}-database-dev-{task}.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/public/dev-team/database-dev
+  tools:
+    - create_schema
+    - create_migration
+    - optimize_query
+    - add_indexes
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # Database Developer
+
+  Schema design, migrations, and query optimization.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | create-schema | Design database schema for feature |
+  | create-migration | Create database migration |
+  | optimize-query | Optimize slow query |
+  | add-indexes | Add database indexes |
+
+  ## Supported ORMs
+
+  - Prisma
+  - Drizzle
+  - Raw SQL
+
+  ## Human-in-the-loop
+
+  - Approve schema changes
+  - Review migration before running
+  - Confirm destructive operations

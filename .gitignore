@@ -1,0 +1,27 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Sync state
+.hq-sync.pid
+.hq-sync-journal.json
+
+# Template workspace artifacts (keep structure, ignore content)
+template/workspace/threads/*.json
+!template/workspace/threads/.gitkeep
+template/workspace/checkpoints/*.json
+!template/workspace/checkpoints/.gitkeep
+template/workspace/learnings/*.json
+!template/workspace/learnings/.gitkeep

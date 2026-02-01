@@ -1,0 +1,26 @@
+worker:
+  id: security-scanner
+  name: "Security Scanner"
+  type: OpsWorker
+  status: active
+
+description: |
+  Pre-deployment security scanner for public repositories.
+  Detects PII, credentials, and sensitive data before pushing to public repos.
+
+context:
+  base:
+    - knowledge/public/ai-security-framework/
+
+skills:
+  - name: pre-deploy-check
+    description: "Scan repo for PII, credentials, and sensitive data before public deployment"
+  - name: scan-file
+    description: "Scan a specific file for sensitive patterns"
+  - name: generate-report
+    description: "Generate a security scan report"
+
+verification:
+  post_execute:
+    - check: no_secrets_detected
+    - check: no_pii_detected

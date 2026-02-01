@@ -1,0 +1,58 @@
+# Credentials and secrets
+settings/**/*.json
+!settings/.gitkeep
+!settings/pure-ralph.json
+*.credentials.json
+*.secret.*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.scratch/
+
+# Generated digests (keep structure, not content)
+workspace/digests/*.html
+workspace/digests/*.md
+
+# Draft content (personal)
+social-content/drafts/**/*.md
+!social-content/drafts/INDEX.md
+
+# Checkpoints (session-specific)
+workspace/checkpoints/*.json
+
+# Journal entries (personal)
+data/journal/*.jsonl
+
+# Synced modules (cloned repos)
+modules/.synced/

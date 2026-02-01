@@ -1,0 +1,32 @@
+name: Deploy PWA
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "infra/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      # Build PWA
+      - run: npm run build --workspace apps/web
+
+      # Deploy infra (SST)
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - run: cd infra && npx sst deploy --stage production

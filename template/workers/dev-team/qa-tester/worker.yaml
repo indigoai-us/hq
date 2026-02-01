@@ -1,0 +1,116 @@
+worker:
+  id: qa-tester
+  name: "QA Tester"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 30m
+  retry_attempts: 2
+
+context:
+  base:
+    - workers/dev-team/qa-tester/
+    - workers/dev-team/qa-tester/skills/
+    - knowledge/dev-team/patterns/testing/
+  dynamic:
+    - pattern: "{target_repo}/tests/"
+      when: always
+    - pattern: "{target_repo}/playwright.config.ts"
+      when: always
+  exclude:
+    - node_modules/
+    - dist/
+    - test-results/
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+  approval_required: true
+
+output:
+  destination: workspace/reports/dev-team/qa/
+  format: both
+  naming: "{date}-qa-{task}.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/dev-team/qa-tester
+  tools:
+    - run_tests
+    - write_test
+    - visual_regression
+    - accessibility_scan
+    - create_demo_account
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # QA Tester
+
+  Testing, browser automation, and accessibility verification.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | run-tests | Run test suite |
+  | write-test | Write new test for feature |
+  | visual-regression | Run visual regression tests |
+  | accessibility-scan | Run accessibility audit |
+  | create-demo-account | Create demo account for testing |
+
+  ## Tools
+
+  - Playwright for browser automation
+  - axe-core for accessibility
+  - Jest/Vitest for unit tests
+
+  ## E2E Testing
+
+  When testing a project with E2E infrastructure:
+
+  ### Test Structure
+  - Manifest: `tests/e2e/manifest.json` (source of truth for test entries)
+  - Fixtures: `tests/e2e/fixtures/pages.ts` (page definitions with path, name, category)
+  - Specs organized by category: `tests/e2e/{pages,navigation,forms,components,accessibility,responsive,performance,visual}/`
+
+  ### Writing Tests
+  - Each page needs at minimum a spec in `tests/e2e/pages/` with page-load checks
+  - Page-load tests are `critical: true` — must include 200 status, title, hero, nav, footer checks
+  - After writing/modifying tests: `npm run generate-manifest`
+  - Verify coverage: `npm run check-coverage`
+  - Commit updated `tests/e2e/manifest.json` alongside spec changes
+
+  ### Results Pipeline
+  - Local: `npm test` runs Playwright against localhost
+  - CI: GitHub Actions runs against preview URLs
+  - Results can be stored in a database for dashboarding
+
+  ### Commands
+  ```bash
+  npm run generate-manifest  # Rebuild manifest from specs
+  npm run check-coverage     # Verify all routes have tests
+  npm test                   # Run full E2E suite
+  ```
+
+  ## Human-in-the-loop
+
+  - Report test failures with context
+  - Get approval before creating demo accounts
+  - Surface flaky tests
