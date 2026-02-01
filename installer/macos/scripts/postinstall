@@ -141,8 +141,8 @@ install_claude_cli() {
 setup_hq_directory() {
     log "Setting up my-hq directory..."
 
-    # The pkg installs to /my-hq, we need to move to user home
-    local source_dir="/my-hq"
+    # The pkg installs to /usr/local/my-hq, we need to move to user home
+    local source_dir="/usr/local/my-hq"
 
     if [ -d "$source_dir" ]; then
         log "Moving my-hq from $source_dir to $HQ_DIR..."
@@ -647,7 +647,7 @@ install_update_checker() {
     log "Installing update checker..."
 
     # Copy the update checker script to my-hq directory
-    local source_script="/my-hq/check-updates.sh"
+    local source_script="/usr/local/my-hq/check-updates.sh"
     local dest_script="$HQ_DIR/check-updates.sh"
 
     # Check if bundled script exists

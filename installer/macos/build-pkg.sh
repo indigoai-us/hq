@@ -245,12 +245,14 @@ SETUP_EOF
 build_component_pkg() {
     echo -e "${YELLOW}Building component package...${NC}"
 
+    # Install to /usr/local so payload lands at /usr/local/my-hq
+    # The postinstall script will symlink or copy to user's home directory
     pkgbuild \
         --root "$PAYLOAD_DIR" \
         --identifier "$PRODUCT_ID" \
         --version "$PRODUCT_VERSION" \
         --scripts "$SCRIPTS_DIR" \
-        --install-location "/" \
+        --install-location "/usr/local" \
         "$BUILD_DIR/my-hq-component.pkg"
 
     echo -e "${GREEN}Component package built${NC}"

@@ -180,8 +180,9 @@ jobs:
           Write-Host ""
 
           # Check for Node.js
-          $nodeVersion = & node --version 2>&1
-          if ($LASTEXITCODE -eq 0) {
+          $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+          if ($nodeCmd) {
+            $nodeVersion = & node --version 2>&1
             Write-Host "Node.js found: $nodeVersion"
             Write-Host "  (Installer should detect and skip Node.js download)"
           } else {
@@ -190,8 +191,9 @@ jobs:
           }
 
           # Check for Claude CLI
-          $claudeVersion = & claude --version 2>&1
-          if ($LASTEXITCODE -eq 0) {
+          $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+          if ($claudeCmd) {
+            $claudeVersion = & claude --version 2>&1
             Write-Host "Claude CLI found: $claudeVersion"
           } else {
             Write-Host "Claude CLI: NOT FOUND"
