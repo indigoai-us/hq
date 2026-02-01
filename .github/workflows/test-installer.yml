@@ -1,18 +1,17 @@
 # GitHub Actions workflow for testing the my-hq installer
 #
-# This workflow validates the installer build and test scripts across
-# Windows and macOS platforms to ensure installer quality before merging.
+# This workflow validates the installer in a CLEAN ROOM environment:
+#   - Builds the installer from source
+#   - Runs the installer in silent mode (no pre-installed dependencies)
+#   - Verifies the installation actually works
 #
 # Triggers:
 #   - Pull requests modifying installer/** files
 #   - Manual dispatch via workflow_dispatch
-#
-# Platform jobs run in parallel for faster feedback.
 
 name: Test Installer
 
 on:
-  # Trigger on pull requests that modify installer files
   pull_request:
     paths:
       - 'installer/**'
@@ -21,16 +20,10 @@ on:
       - main
       - staging
 
-  # Allow manual triggering for testing/debugging
   workflow_dispatch:
     inputs:
       debug_enabled:
         description: 'Enable debug logging'
-        required: false
-        default: 'false'
-        type: boolean
-      test_full_install:
-        description: 'Run full installer (may timeout)'
         required: false
         default: 'false'
         type: boolean
@@ -42,23 +35,21 @@ concurrency:
 
 jobs:
   # ============================================
-  # Windows Build and Test
+  # Windows Build and Install Test
   # ============================================
   test-windows:
     name: Windows Installer
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      # ----------------------------------------
+      # Build Phase: Compile the NSIS installer
+      # ----------------------------------------
 
-      # Cache NSIS installation (Chocolatey install + plugins)
       - name: Cache NSIS installation
         id: cache-nsis
         uses: actions/cache@v4
@@ -70,17 +61,14 @@ jobs:
             nsis-windows-3.09-plugins-
             nsis-windows-
 
-      # Install NSIS and required plugins via Chocolatey (skip if cached)
       - name: Install NSIS
         if: steps.cache-nsis.outputs.cache-hit != 'true'
         run: |
           Write-Host "Installing NSIS via Chocolatey..."
           choco install nsis -y --no-progress
 
-          # Refresh environment to get NSIS in PATH
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-          # Verify NSIS installation
           $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
           if (Test-Path $nsisPath) {
             Write-Host "NSIS installed at: $nsisPath"
@@ -91,7 +79,6 @@ jobs:
           }
         shell: pwsh
 
-      # Install NSIS plugins (INetC and nsisunz) - skip if cached
       - name: Install NSIS plugins
         if: steps.cache-nsis.outputs.cache-hit != 'true'
         run: |
@@ -100,48 +87,28 @@ jobs:
           # Download INetC plugin
           Write-Host "Downloading INetC plugin..."
           $inetcUrl = "https://nsis.sourceforge.io/mediawiki/images/c/c9/Inetc.zip"
-          $inetcZip = "$env:TEMP\inetc.zip"
-          $inetcExtract = "$env:TEMP\inetc"
+          Invoke-WebRequest -Uri $inetcUrl -OutFile "$env:TEMP\inetc.zip" -UseBasicParsing
+          Expand-Archive -Path "$env:TEMP\inetc.zip" -DestinationPath "$env:TEMP\inetc" -Force
 
-          Invoke-WebRequest -Uri $inetcUrl -OutFile $inetcZip -UseBasicParsing
-          Expand-Archive -Path $inetcZip -DestinationPath $inetcExtract -Force
-
-          if (Test-Path "$inetcExtract\Plugins\x86-ansi\INetC.dll") {
-            Copy-Item "$inetcExtract\Plugins\x86-ansi\INetC.dll" "$nsisPluginPath\x86-ansi\" -Force
-            Copy-Item "$inetcExtract\Plugins\x86-unicode\INetC.dll" "$nsisPluginPath\x86-unicode\" -Force
+          if (Test-Path "$env:TEMP\inetc\Plugins\x86-ansi\INetC.dll") {
+            Copy-Item "$env:TEMP\inetc\Plugins\x86-ansi\INetC.dll" "$nsisPluginPath\x86-ansi\" -Force
+            Copy-Item "$env:TEMP\inetc\Plugins\x86-unicode\INetC.dll" "$nsisPluginPath\x86-unicode\" -Force
             Write-Host "INetC plugin installed"
           }
 
           # Download nsisunz plugin
           Write-Host "Downloading nsisunz plugin..."
           $nsisunzUrl = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
-          $nsisunzZip = "$env:TEMP\nsisunz.zip"
-          $nsisunzExtract = "$env:TEMP\nsisunz"
+          Invoke-WebRequest -Uri $nsisunzUrl -OutFile "$env:TEMP\nsisunz.zip" -UseBasicParsing
+          Expand-Archive -Path "$env:TEMP\nsisunz.zip" -DestinationPath "$env:TEMP\nsisunz" -Force
 
-          Invoke-WebRequest -Uri $nsisunzUrl -OutFile $nsisunzZip -UseBasicParsing
-          Expand-Archive -Path $nsisunzZip -DestinationPath $nsisunzExtract -Force
-
-          Get-ChildItem -Recurse $nsisunzExtract -Filter "*.dll" | ForEach-Object {
+          Get-ChildItem -Recurse "$env:TEMP\nsisunz" -Filter "*.dll" | ForEach-Object {
             Copy-Item $_.FullName "$nsisPluginPath\x86-ansi\" -Force
             Copy-Item $_.FullName "$nsisPluginPath\x86-unicode\" -Force
           }
           Write-Host "nsisunz plugin installed"
         shell: pwsh
 
-      # Verify NSIS is available
-      - name: Verify NSIS installation
-        run: |
-          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
-          if (Test-Path $nsisPath) {
-            Write-Host "NSIS verified: $nsisPath"
-            & $nsisPath /VERSION
-          } else {
-            Write-Error "NSIS not found"
-            exit 1
-          }
-        shell: pwsh
-
-      # Create placeholder assets for CI build
       - name: Create placeholder assets
         run: |
           $assetsPath = "installer\windows\assets"
@@ -149,15 +116,13 @@ jobs:
           # Create minimal ICO files
           $icoBytes = [byte[]](0,0,1,0,1,0,16,16,0,0,1,0,32,0,104,4,0,0,22,0,0,0)
           $icoBytes += [byte[]](40,0,0,0,16,0,0,0,32,0,0,0,1,0,32,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-          # Add pixel data (blue pixels)
           for ($i = 0; $i -lt 256; $i++) { $icoBytes += [byte[]](255,102,0,255) }
-          # Add AND mask
           for ($i = 0; $i -lt 64; $i++) { $icoBytes += [byte]0 }
 
           [System.IO.File]::WriteAllBytes("$assetsPath\hq-icon.ico", $icoBytes)
           [System.IO.File]::WriteAllBytes("$assetsPath\hq-uninstall.ico", $icoBytes)
 
-          # Create minimal BMP files (simple header + blue pixels)
+          # Create minimal BMP files
           function New-SimpleBmp($path, $w, $h) {
             $rowSize = [Math]::Ceiling($w * 3 / 4) * 4
             $pixelSize = $rowSize * $h
@@ -174,10 +139,8 @@ jobs:
           New-SimpleBmp "$assetsPath\header.bmp" 150 57
 
           Write-Host "Placeholder assets created"
-          Get-ChildItem $assetsPath
         shell: pwsh
 
-      # Build the Windows installer
       - name: Build Windows installer
         run: |
           $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
@@ -186,7 +149,6 @@ jobs:
           Write-Host "Building installer from: $nsiScript"
 
           if (-not (Test-Path "LICENSE")) {
-            # Create a placeholder LICENSE if missing
             "MIT License" | Out-File -FilePath "LICENSE" -Encoding utf8
           }
 
@@ -208,58 +170,166 @@ jobs:
           }
         shell: pwsh
 
-      # Set up test environment (simulate what installer does)
-      - name: Setup test environment
+      # ----------------------------------------
+      # Install Phase: Run the actual installer
+      # ----------------------------------------
+
+      - name: Check pre-install environment
         run: |
-          $installDir = "$env:LOCALAPPDATA\my-hq"
-          $templateDir = "installer\template"
+          Write-Host "=== Pre-Install Environment Check ==="
+          Write-Host ""
 
-          Write-Host "Setting up test environment at: $installDir"
-
-          # Create install directory
-          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-
-          # Copy template files
-          if (Test-Path $templateDir) {
-            Copy-Item -Path "$templateDir\*" -Destination $installDir -Recurse -Force
-            Write-Host "Template files copied"
+          # Check for Node.js
+          $nodeVersion = & node --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Node.js found: $nodeVersion"
+            Write-Host "  (Installer should detect and skip Node.js download)"
+          } else {
+            Write-Host "Node.js: NOT FOUND"
+            Write-Host "  (Installer will download and install Node.js)"
           }
 
-          # Copy shared scripts
-          $sharedScripts = "installer\shared\scripts"
-          if (Test-Path "$sharedScripts\setup-wizard.ps1") {
-            Copy-Item "$sharedScripts\setup-wizard.ps1" $installDir -Force
-          }
-          if (Test-Path "$sharedScripts\check-updates.ps1") {
-            Copy-Item "$sharedScripts\check-updates.ps1" $installDir -Force
+          # Check for Claude CLI
+          $claudeVersion = & claude --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Claude CLI found: $claudeVersion"
+          } else {
+            Write-Host "Claude CLI: NOT FOUND"
+            Write-Host "  (Installer will install Claude CLI via npm)"
           }
 
-          # Create version file
-          "1.0.0" | Out-File -FilePath "$installDir\.hq-version" -Encoding utf8
+          # Check my-hq directory
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
+          if (Test-Path $hqPath) {
+            Write-Host "my-hq directory: EXISTS (will be updated)"
+          } else {
+            Write-Host "my-hq directory: DOES NOT EXIST (will be created)"
+          }
 
-          Write-Host "Test environment ready"
-          Get-ChildItem $installDir -Recurse | Select-Object -First 20
+          Write-Host ""
         shell: pwsh
 
-      # Run verification tests
+      - name: Run installer (silent mode)
+        run: |
+          $installerPath = "installer\windows\my-hq-setup-1.0.0.exe"
+
+          Write-Host "=== Running Installer ==="
+          Write-Host "Installer: $installerPath"
+          Write-Host "Mode: Silent (/S)"
+          Write-Host ""
+          Write-Host "Starting installer... (this may take several minutes)"
+          Write-Host ""
+
+          # Run installer in silent mode
+          # The installer will:
+          # 1. Check for Node.js (skip download if found)
+          # 2. Check for Claude CLI (install via npm if not found)
+          # 3. Create my-hq directory structure
+          # 4. Copy template files
+
+          $process = Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait -PassThru
+
+          if ($process.ExitCode -eq 0) {
+            Write-Host "Installer completed successfully (exit code: 0)"
+          } else {
+            Write-Host "Installer finished with exit code: $($process.ExitCode)"
+            # Don't fail - some exit codes may be warnings
+          }
+        shell: pwsh
+        timeout-minutes: 20
+
+      - name: Verify installation
+        run: |
+          Write-Host "=== Post-Install Verification ==="
+          Write-Host ""
+
+          $failed = $false
+
+          # Check my-hq directory
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
+          if (Test-Path $hqPath) {
+            Write-Host "[PASS] my-hq directory created at: $hqPath"
+            $fileCount = (Get-ChildItem $hqPath -Recurse -File -ErrorAction SilentlyContinue).Count
+            Write-Host "       Files installed: $fileCount"
+          } else {
+            Write-Host "[FAIL] my-hq directory NOT FOUND at: $hqPath"
+            $failed = $true
+          }
+
+          # Check for key files
+          $keyFiles = @(
+            ".hq-version",
+            "CLAUDE.md",
+            "workers\registry.yaml"
+          )
+
+          foreach ($file in $keyFiles) {
+            $filePath = Join-Path $hqPath $file
+            if (Test-Path $filePath) {
+              Write-Host "[PASS] Found: $file"
+            } else {
+              Write-Host "[FAIL] Missing: $file"
+              $failed = $true
+            }
+          }
+
+          # Check Node.js
+          $nodeVersion = & node --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "[PASS] Node.js available: $nodeVersion"
+          } else {
+            Write-Host "[FAIL] Node.js not available"
+            $failed = $true
+          }
+
+          # Check npm
+          $npmVersion = & npm --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "[PASS] npm available: $npmVersion"
+          } else {
+            Write-Host "[FAIL] npm not available"
+            $failed = $true
+          }
+
+          # Check Claude CLI (may not be installed in CI due to npm global path)
+          $claudeVersion = & claude --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "[PASS] Claude CLI available: $claudeVersion"
+          } else {
+            Write-Host "[WARN] Claude CLI not in PATH (may need shell restart)"
+          }
+
+          Write-Host ""
+
+          if ($failed) {
+            Write-Host "=== INSTALLATION VERIFICATION FAILED ==="
+            exit 1
+          } else {
+            Write-Host "=== INSTALLATION VERIFIED SUCCESSFULLY ==="
+          }
+        shell: pwsh
+
+      # ----------------------------------------
+      # Test Phase: Run test scripts
+      # ----------------------------------------
+
       - name: Run verification tests
         run: |
           $testScript = "installer\tests\test-windows.ps1"
-          $installDir = "$env:LOCALAPPDATA\my-hq"
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
 
           Write-Host "Running verification tests..."
 
-          # Set CI environment
           $env:CI = "true"
 
-          & powershell -ExecutionPolicy Bypass -File $testScript -HqPath $installDir -CI
+          & powershell -ExecutionPolicy Bypass -File $testScript -HqPath $hqPath -CI
 
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "Some tests failed (expected in CI for optional components)"
+            Write-Host "Some tests failed"
+            exit 1
           }
         shell: pwsh
 
-      # Test summary
       - name: Test summary
         if: always()
         run: |
@@ -268,13 +338,22 @@ jobs:
           Write-Host "   Windows Installer Test Summary"
           Write-Host "============================================"
           Write-Host ""
-          Write-Host "Build: SUCCESS (installer created)"
-          Write-Host "NSIS Cache: ${{ steps.cache-nsis.outputs.cache-hit }}"
+          Write-Host "NSIS Cache Hit: ${{ steps.cache-nsis.outputs.cache-hit }}"
 
-          $installDir = "$env:LOCALAPPDATA\my-hq"
-          if (Test-Path $installDir) {
-            $fileCount = (Get-ChildItem $installDir -Recurse -File).Count
-            Write-Host "Files in test env: $fileCount"
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
+          if (Test-Path $hqPath) {
+            $fileCount = (Get-ChildItem $hqPath -Recurse -File -ErrorAction SilentlyContinue).Count
+            Write-Host "Files installed: $fileCount"
+
+            Write-Host ""
+            Write-Host "Directory structure:"
+            Get-ChildItem $hqPath -Depth 1 | ForEach-Object {
+              if ($_.PSIsContainer) {
+                Write-Host "  [DIR] $($_.Name)/"
+              } else {
+                Write-Host "  [FILE] $($_.Name)"
+              }
+            }
           }
 
           Write-Host ""
@@ -282,7 +361,6 @@ jobs:
           Write-Host "npm: $(npm --version 2>&1)"
         shell: pwsh
 
-      # Upload installer artifact
       - name: Upload installer artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -293,43 +371,38 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================
-  # macOS Build and Test
+  # macOS Build and Install Test
   # ============================================
   test-macos:
     name: macOS Installer
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      # ----------------------------------------
+      # Build Phase: Create the .pkg installer
+      # ----------------------------------------
 
-      # Verify build tools
       - name: Verify build dependencies
         run: |
           echo "Checking build tools..."
           which pkgbuild && echo "pkgbuild: OK"
           which productbuild && echo "productbuild: OK"
 
-      # Create placeholder resources
       - name: Create placeholder resources
         run: |
           RESOURCES_DIR="installer/macos/resources"
           mkdir -p "$RESOURCES_DIR"
 
-          # Create HTML files if missing
           for file in welcome readme license conclusion; do
             if [ ! -f "$RESOURCES_DIR/${file}.html" ]; then
               echo "<!DOCTYPE html><html><body><h1>${file}</h1></body></html>" > "$RESOURCES_DIR/${file}.html"
             fi
           done
 
-          # Create placeholder background
           if [ ! -f "$RESOURCES_DIR/background.png" ]; then
             printf '\x89PNG\r\n\x1a\n' > "$RESOURCES_DIR/background.png"
           fi
@@ -337,12 +410,10 @@ jobs:
           echo "Resources ready:"
           ls -la "$RESOURCES_DIR"
 
-      # Build the macOS installer
       - name: Build macOS installer
         run: |
           BUILD_SCRIPT="installer/macos/build-pkg.sh"
 
-          # Create LICENSE if missing
           [ ! -f "LICENSE" ] && echo "MIT License" > LICENSE
 
           chmod +x "$BUILD_SCRIPT"
@@ -358,33 +429,124 @@ jobs:
             exit 1
           fi
 
-      # Set up test environment
-      - name: Setup test environment
+      # ----------------------------------------
+      # Install Phase: Run the actual installer
+      # ----------------------------------------
+
+      - name: Check pre-install environment
         run: |
-          INSTALL_DIR="$HOME/my-hq"
-          TEMPLATE_DIR="installer/template"
+          echo "=== Pre-Install Environment Check ==="
+          echo ""
 
-          echo "Setting up test environment at: $INSTALL_DIR"
-
-          mkdir -p "$INSTALL_DIR"
-
-          # Copy template files
-          if [ -d "$TEMPLATE_DIR" ]; then
-            cp -R "$TEMPLATE_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
+          # Check for Node.js
+          if command -v node &> /dev/null; then
+            echo "Node.js found: $(node --version)"
+            echo "  (Installer should detect and skip Node.js download)"
+          else
+            echo "Node.js: NOT FOUND"
+            echo "  (Installer will download and install Node.js)"
           fi
 
-          # Copy shared scripts
-          SHARED_SCRIPTS="installer/shared/scripts"
-          [ -f "$SHARED_SCRIPTS/setup-wizard.sh" ] && cp "$SHARED_SCRIPTS/setup-wizard.sh" "$INSTALL_DIR/"
-          [ -f "$SHARED_SCRIPTS/check-updates.sh" ] && cp "$SHARED_SCRIPTS/check-updates.sh" "$INSTALL_DIR/"
+          # Check for Claude CLI
+          if command -v claude &> /dev/null; then
+            echo "Claude CLI found: $(claude --version)"
+          else
+            echo "Claude CLI: NOT FOUND"
+            echo "  (Installer will install Claude CLI via npm)"
+          fi
 
-          # Create version file
-          echo "1.0.0" > "$INSTALL_DIR/.hq-version"
+          # Check my-hq directory
+          HQ_PATH="$HOME/my-hq"
+          if [ -d "$HQ_PATH" ]; then
+            echo "my-hq directory: EXISTS (will be updated)"
+          else
+            echo "my-hq directory: DOES NOT EXIST (will be created)"
+          fi
 
-          echo "Test environment ready:"
-          ls -la "$INSTALL_DIR" | head -20
+          echo ""
 
-      # Run verification tests
+      - name: Run installer
+        run: |
+          PKG_PATH="installer/macos/build/my-hq-1.0.0.pkg"
+
+          echo "=== Running Installer ==="
+          echo "Package: $PKG_PATH"
+          echo ""
+          echo "Starting installer... (this may take several minutes)"
+          echo ""
+
+          # Run the .pkg installer
+          # Using sudo installer to install the package to the target
+          sudo installer -pkg "$PKG_PATH" -target / -verbose
+
+          echo ""
+          echo "Installer completed"
+        timeout-minutes: 15
+
+      - name: Verify installation
+        run: |
+          echo "=== Post-Install Verification ==="
+          echo ""
+
+          FAILED=0
+
+          # Check my-hq directory
+          HQ_PATH="$HOME/my-hq"
+          if [ -d "$HQ_PATH" ]; then
+            echo "[PASS] my-hq directory created at: $HQ_PATH"
+            FILE_COUNT=$(find "$HQ_PATH" -type f 2>/dev/null | wc -l | tr -d ' ')
+            echo "       Files installed: $FILE_COUNT"
+          else
+            echo "[FAIL] my-hq directory NOT FOUND at: $HQ_PATH"
+            FAILED=1
+          fi
+
+          # Check for key files
+          for file in ".hq-version" "CLAUDE.md" "workers/registry.yaml"; do
+            if [ -f "$HQ_PATH/$file" ]; then
+              echo "[PASS] Found: $file"
+            else
+              echo "[FAIL] Missing: $file"
+              FAILED=1
+            fi
+          done
+
+          # Check Node.js
+          if command -v node &> /dev/null; then
+            echo "[PASS] Node.js available: $(node --version)"
+          else
+            echo "[FAIL] Node.js not available"
+            FAILED=1
+          fi
+
+          # Check npm
+          if command -v npm &> /dev/null; then
+            echo "[PASS] npm available: $(npm --version)"
+          else
+            echo "[FAIL] npm not available"
+            FAILED=1
+          fi
+
+          # Check Claude CLI
+          if command -v claude &> /dev/null; then
+            echo "[PASS] Claude CLI available: $(claude --version)"
+          else
+            echo "[WARN] Claude CLI not in PATH (may need shell restart)"
+          fi
+
+          echo ""
+
+          if [ $FAILED -eq 1 ]; then
+            echo "=== INSTALLATION VERIFICATION FAILED ==="
+            exit 1
+          else
+            echo "=== INSTALLATION VERIFIED SUCCESSFULLY ==="
+          fi
+
+      # ----------------------------------------
+      # Test Phase: Run test scripts
+      # ----------------------------------------
+
       - name: Run verification tests
         run: |
           TEST_SCRIPT="installer/tests/test-macos.sh"
@@ -395,9 +557,13 @@ jobs:
           export CI="true"
           export VERBOSE="true"
 
-          "$TEST_SCRIPT" || echo "Some tests failed (expected in CI for optional components)"
+          "$TEST_SCRIPT"
 
-      # Test summary
+          if [ $? -ne 0 ]; then
+            echo "Some tests failed"
+            exit 1
+          fi
+
       - name: Test summary
         if: always()
         run: |
@@ -406,12 +572,15 @@ jobs:
           echo "   macOS Installer Test Summary"
           echo "============================================"
           echo ""
-          echo "Build: SUCCESS (package created)"
 
-          INSTALL_DIR="$HOME/my-hq"
-          if [ -d "$INSTALL_DIR" ]; then
-            FILE_COUNT=$(find "$INSTALL_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
-            echo "Files in test env: $FILE_COUNT"
+          HQ_PATH="$HOME/my-hq"
+          if [ -d "$HQ_PATH" ]; then
+            FILE_COUNT=$(find "$HQ_PATH" -type f 2>/dev/null | wc -l | tr -d ' ')
+            echo "Files installed: $FILE_COUNT"
+
+            echo ""
+            echo "Directory structure:"
+            ls -la "$HQ_PATH" | head -15
           fi
 
           echo ""
@@ -419,7 +588,6 @@ jobs:
           echo "npm: $(npm --version 2>&1)"
           echo "macOS: $(sw_vers -productVersion)"
 
-      # Upload installer artifact
       - name: Upload macOS installer artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -442,19 +610,20 @@ jobs:
       - name: Check results
         run: |
           echo "=== Installer Test Results ==="
+          echo ""
           echo "Windows: ${{ needs.test-windows.result }}"
           echo "macOS: ${{ needs.test-macos.result }}"
           echo ""
 
           if [[ "${{ needs.test-windows.result }}" == "failure" ]] && [[ "${{ needs.test-macos.result }}" == "failure" ]]; then
-            echo "Both platform builds failed!"
+            echo "Both platform installs failed!"
             exit 1
           fi
 
-          if [[ "${{ needs.test-windows.result }}" == "success" ]] || [[ "${{ needs.test-macos.result }}" == "success" ]]; then
-            echo "At least one platform build succeeded!"
+          if [[ "${{ needs.test-windows.result }}" == "success" ]] && [[ "${{ needs.test-macos.result }}" == "success" ]]; then
+            echo "All platform installs succeeded!"
             exit 0
           fi
 
-          echo "Build status unclear"
-          exit 1
+          echo "Partial success - check individual job logs"
+          exit 0
