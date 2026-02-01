@@ -18,9 +18,10 @@ log "Starting pre-install checks..."
 TARGET_USER="${USER}"
 if [ "$TARGET_USER" = "root" ]; then
     # If running as root, get the console user
-    TARGET_USER=$(stat -f "%Su" /dev/console)
+    # Use fallback for CI/headless environments where /dev/console may not exist
+    TARGET_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "runner")
 fi
-TARGET_HOME=$(eval echo "~$TARGET_USER")
+TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null || echo "$HOME")
 
 log "Target user: $TARGET_USER"
 log "Target home: $TARGET_HOME"
