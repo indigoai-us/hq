@@ -457,14 +457,10 @@ jobs:
       - name: Reload environment
         run: |
           echo "=== RELOADING ENVIRONMENT ==="
-          # Source shell profile to pick up PATH changes
-          source ~/.zshrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true
-
-          # Also explicitly add common paths
-          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
-
-          # Save PATH for subsequent steps
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          # Set PATH to include locations where installer puts binaries
+          NEW_PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+          echo "PATH=$NEW_PATH" >> $GITHUB_ENV
+          echo "Updated PATH for subsequent steps"
 
       - name: Verify my-hq files
         run: |
@@ -510,6 +506,7 @@ jobs:
       - name: Verify Node.js installation
         run: |
           echo "=== VERIFYING NODE.JS ==="
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
 
           if ! command -v node &>/dev/null; then
             echo "ERROR: Node.js is not available in PATH"
@@ -539,6 +536,7 @@ jobs:
       - name: Verify npm
         run: |
           echo "=== VERIFYING NPM ==="
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
 
           if ! command -v npm &>/dev/null; then
             echo "ERROR: npm is not available"
@@ -552,9 +550,7 @@ jobs:
       - name: Verify Claude CLI
         run: |
           echo "=== VERIFYING CLAUDE CLI ==="
-
-          # Refresh PATH to include npm global bin
-          export PATH="$HOME/.npm-global/bin:/usr/local/bin:$PATH"
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
 
           if ! command -v claude &>/dev/null; then
             echo "ERROR: Claude CLI is not available in PATH"
@@ -577,6 +573,8 @@ jobs:
 
       - name: Installation summary
         run: |
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+
           echo ""
           echo "============================================"
           echo "  INSTALLATION TEST PASSED"
@@ -584,8 +582,8 @@ jobs:
           echo ""
           echo "All components verified:"
           echo "  [OK] my-hq files installed to ~/my-hq"
-          echo "  [OK] Node.js $(node --version) available"
-          echo "  [OK] npm $(npm --version) available"
+          echo "  [OK] Node.js $(node --version 2>/dev/null || echo 'N/A') available"
+          echo "  [OK] npm $(npm --version 2>/dev/null || echo 'N/A') available"
           echo "  [OK] Claude CLI installed"
           echo ""
           echo "The macOS installer correctly sets up the my-hq environment."
