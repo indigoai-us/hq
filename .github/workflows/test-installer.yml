@@ -173,6 +173,181 @@ jobs:
           New-Item -ItemType Directory -Force -Path $testDir | Out-Null
           Copy-Item $installer "$testDir\setup.exe"
 
+          # Create test script that will run inside the container
+          $testScript = @'
+          $ErrorActionPreference = "Continue"
+
+          Write-Host "============================================"
+          Write-Host "  CLEAN ROOM INSTALLATION TEST"
+          Write-Host "============================================"
+          Write-Host ""
+
+          # Verify this is a clean environment
+          Write-Host "=== PRE-INSTALL CHECK ==="
+          Write-Host "Verifying clean environment..."
+
+          $preNode = Get-Command node -ErrorAction SilentlyContinue
+          $preNpm = Get-Command npm -ErrorAction SilentlyContinue
+          $preClaude = Get-Command claude -ErrorAction SilentlyContinue
+
+          if ($preNode) {
+            Write-Host "ERROR: Node.js is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  Node.js: NOT INSTALLED (good - clean environment)"
+
+          if ($preNpm) {
+            Write-Host "ERROR: npm is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  npm: NOT INSTALLED (good - clean environment)"
+
+          if ($preClaude) {
+            Write-Host "ERROR: Claude is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  Claude: NOT INSTALLED (good - clean environment)"
+          Write-Host ""
+
+          # Run the installer
+          Write-Host "=== RUNNING INSTALLER ==="
+          Write-Host "Command: C:\test\setup.exe /S"
+          Write-Host "This will download and install Node.js and Claude CLI..."
+          Write-Host ""
+
+          $startTime = Get-Date
+          $proc = Start-Process -FilePath "C:\test\setup.exe" -ArgumentList "/S" -Wait -PassThru
+          $duration = (Get-Date) - $startTime
+
+          Write-Host ""
+          Write-Host "Installer process completed"
+          Write-Host ("  Exit code: " + $proc.ExitCode)
+          Write-Host ("  Duration: " + [math]::Round($duration.TotalSeconds, 1) + " seconds")
+          Write-Host ""
+
+          if ($proc.ExitCode -ne 0) {
+            Write-Host "ERROR: Installer exited with non-zero code"
+            exit 1
+          }
+
+          # Refresh PATH to pick up newly installed software
+          Write-Host "=== REFRESHING ENVIRONMENT ==="
+          $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+          $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          $env:Path = "$machinePath;$userPath"
+          Write-Host "PATH refreshed"
+          Write-Host ""
+
+          # Verify my-hq files
+          Write-Host "=== VERIFYING MY-HQ FILES ==="
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
+
+          if (-not (Test-Path $hqPath)) {
+            Write-Host "ERROR: my-hq directory not found at $hqPath"
+            exit 1
+          }
+          Write-Host "my-hq directory: OK"
+
+          $requiredFiles = @(".hq-version", "agents.md", "README.md")
+          $filesFailed = $false
+          foreach ($f in $requiredFiles) {
+            $filePath = Join-Path $hqPath $f
+            if (Test-Path $filePath) {
+              Write-Host "  $f : OK"
+            } else {
+              Write-Host "  $f : MISSING"
+              $filesFailed = $true
+            }
+          }
+
+          if ($filesFailed) {
+            Write-Host "ERROR: Required my-hq files are missing"
+            exit 1
+          }
+          Write-Host ""
+
+          # Verify Node.js installation
+          Write-Host "=== VERIFYING NODE.JS INSTALLATION ==="
+          $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+
+          if (-not $nodeCmd) {
+            Write-Host "ERROR: Node.js was NOT installed!"
+            Write-Host "The installer failed to install Node.js."
+            Write-Host ""
+            Write-Host "Checking common Node.js locations..."
+            $nodePaths = @(
+              "C:\Program Files\nodejs\node.exe",
+              "C:\Program Files (x86)\nodejs\node.exe",
+              "$env:APPDATA\npm\node.exe"
+            )
+            foreach ($p in $nodePaths) {
+              if (Test-Path $p) {
+                Write-Host "  Found at: $p"
+              }
+            }
+            exit 1
+          }
+
+          $nodeVersion = & node --version 2>&1
+          Write-Host "Node.js: INSTALLED"
+          Write-Host "  Version: $nodeVersion"
+          Write-Host "  Path: $($nodeCmd.Source)"
+          Write-Host ""
+
+          # Verify npm
+          Write-Host "=== VERIFYING NPM ==="
+          $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+
+          if (-not $npmCmd) {
+            Write-Host "ERROR: npm was NOT installed!"
+            exit 1
+          }
+
+          $npmVersion = & npm --version 2>&1
+          Write-Host "npm: INSTALLED"
+          Write-Host "  Version: $npmVersion"
+          Write-Host ""
+
+          # Verify Claude CLI installation
+          Write-Host "=== VERIFYING CLAUDE CLI INSTALLATION ==="
+          $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+
+          if (-not $claudeCmd) {
+            Write-Host "ERROR: Claude CLI was NOT installed!"
+            Write-Host "The installer failed to install Claude CLI."
+            Write-Host ""
+            Write-Host "Checking npm global packages..."
+            $npmList = & npm list -g --depth=0 2>&1
+            Write-Host $npmList
+            exit 1
+          }
+
+          $claudeVersion = & claude --version 2>&1
+          Write-Host "Claude CLI: INSTALLED"
+          Write-Host "  Version: $claudeVersion"
+          Write-Host "  Path: $($claudeCmd.Source)"
+          Write-Host ""
+
+          # Final summary
+          Write-Host "============================================"
+          Write-Host "  INSTALLATION TEST PASSED"
+          Write-Host "============================================"
+          Write-Host ""
+          Write-Host "All components verified:"
+          Write-Host "  [OK] my-hq files installed"
+          Write-Host "  [OK] Node.js $nodeVersion installed"
+          Write-Host "  [OK] npm $npmVersion installed"
+          Write-Host "  [OK] Claude CLI installed"
+          Write-Host ""
+          Write-Host "The installer successfully set up a complete"
+          Write-Host "my-hq environment from a clean machine."
+          Write-Host ""
+          exit 0
+          '@
+
+          # Save test script
+          $testScript | Out-File -FilePath "$testDir\test-installation.ps1" -Encoding UTF8
+
           # Run in clean Windows Server Core container
           Write-Host ""
           Write-Host "=== Starting Clean Room Container ==="
@@ -181,78 +356,18 @@ jobs:
           docker run --rm `
             -v "${testDir}:C:\test" `
             mcr.microsoft.com/windows/servercore:ltsc2022 `
-            powershell -Command "
-              Write-Host '=== CLEAN ROOM ENVIRONMENT ==='
-              Write-Host ''
-              Write-Host 'Checking pre-installed software:'
-              `$hasNode = `$null -ne (Get-Command node -ErrorAction SilentlyContinue)
-              `$hasNpm = `$null -ne (Get-Command npm -ErrorAction SilentlyContinue)
-              `$hasClaude = `$null -ne (Get-Command claude -ErrorAction SilentlyContinue)
-              Write-Host ('  Node.js: ' + @{`$true='FOUND';`$false='NOT INSTALLED'}[`$hasNode])
-              Write-Host ('  npm: ' + @{`$true='FOUND';`$false='NOT INSTALLED'}[`$hasNpm])
-              Write-Host ('  Claude: ' + @{`$true='FOUND';`$false='NOT INSTALLED'}[`$hasClaude])
-              Write-Host ''
+            powershell -ExecutionPolicy Bypass -File "C:\test\test-installation.ps1"
 
-              Write-Host '=== RUNNING INSTALLER ==='
-              Write-Host 'Command: C:\test\setup.exe /S'
-              Write-Host ''
-
-              `$startTime = Get-Date
-              `$proc = Start-Process -FilePath 'C:\test\setup.exe' -ArgumentList '/S' -Wait -PassThru
-              `$duration = (Get-Date) - `$startTime
-
-              Write-Host ''
-              Write-Host 'Installer completed'
-              Write-Host ('  Exit code: ' + `$proc.ExitCode)
-              Write-Host ('  Duration: ' + `$duration.TotalSeconds + ' seconds')
-              Write-Host ''
-
-              Write-Host '=== VERIFYING INSTALLATION ==='
-              `$hqPath = `"`$env:LOCALAPPDATA\my-hq`"
-              if (Test-Path `$hqPath) {
-                Write-Host 'SUCCESS: my-hq directory created'
-                Write-Host ''
-                Write-Host 'Directory contents:'
-                Get-ChildItem `$hqPath | ForEach-Object { Write-Host ('  ' + `$_.Name) }
-                Write-Host ''
-
-                # Check key files
-                `$keyFiles = @('.hq-version', 'agents.md', 'README.md')
-                Write-Host 'Key files:'
-                foreach (`$f in `$keyFiles) {
-                  `$exists = Test-Path (Join-Path `$hqPath `$f)
-                  `$status = @{`$true='OK';`$false='MISSING'}[`$exists]
-                  Write-Host ('  ' + `$f + ': ' + `$status)
-                }
-
-                # Fail if key files missing
-                `$versionExists = Test-Path (Join-Path `$hqPath '.hq-version')
-                if (-not `$versionExists) {
-                  Write-Host ''
-                  Write-Host 'ERROR: .hq-version file not found - installation incomplete'
-                  exit 1
-                }
-              } else {
-                Write-Host 'FAIL: my-hq directory not found at' `$hqPath
-                Write-Host ''
-                Write-Host 'Checking other locations...'
-                Get-ChildItem 'C:\Users' -Directory | ForEach-Object {
-                  `$check = Join-Path `$_.FullName 'AppData\Local\my-hq'
-                  if (Test-Path `$check) { Write-Host ('Found at: ' + `$check) }
-                }
-                exit 1
-              }
-
-              Write-Host ''
-              Write-Host '=== CLEAN ROOM TEST COMPLETE ==='
-            "
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Container test failed with exit code: $LASTEXITCODE"
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host ""
+            Write-Host "============================================"
+            Write-Host "  INSTALLATION TEST FAILED (exit code: $exitCode)"
+            Write-Host "============================================"
             exit 1
           }
         shell: pwsh
-        timeout-minutes: 30
+        timeout-minutes: 45
 
   # ============================================
   # Validate macOS Installer Package
