@@ -203,6 +203,18 @@ jobs:
           exit $TEST_EXIT_CODE
         continue-on-error: true
 
+      - name: Process results for agents
+        if: always()
+        working-directory: installer/tests/e2e
+        env:
+          BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          USE_BROWSERBASE: ${{ steps.mode.outputs.mode == 'browserbase' && 'true' || 'false' }}
+        run: |
+          # Generate agent-friendly JSON summary
+          if [ -f test-results.json ]; then
+            node scripts/process-results.js test-results.json agent-results.json || true
+          fi
+
       - name: Generate test summary
         if: always()
         working-directory: installer/tests/e2e
@@ -247,6 +259,7 @@ jobs:
           name: e2e-results-json
           path: |
             installer/tests/e2e/test-results.json
+            installer/tests/e2e/agent-results.json
             installer/tests/e2e/test-output.txt
           retention-days: 7
           if-no-files-found: ignore
@@ -282,38 +295,91 @@ jobs:
             const testExitCode = '${{ steps.test.outputs.exit_code }}';
             const passed = testExitCode === '0';
             const executionMode = process.env.EXECUTION_MODE;
+            const runId = context.runId;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
 
-            // Try to read test results
+            // Try to read agent-friendly results first, fall back to raw results
             let summary = '';
+            let failureDetails = '';
+            let artifactInfo = '';
             try {
-              const results = JSON.parse(fs.readFileSync('installer/tests/e2e/test-results.json', 'utf8'));
-              const specs = results.suites?.flatMap(s => s.specs) || [];
-              const total = specs.length;
-              const passedCount = specs.filter(s => s.tests?.every(t => t.results?.every(r => r.status === 'passed'))).length;
-              const failedCount = total - passedCount;
+              // Prefer agent-results.json for cleaner parsing
+              let agentResults;
+              try {
+                agentResults = JSON.parse(fs.readFileSync('installer/tests/e2e/agent-results.json', 'utf8'));
+              } catch {
+                // Fall back to raw test-results.json
+                const results = JSON.parse(fs.readFileSync('installer/tests/e2e/test-results.json', 'utf8'));
+                const specs = results.suites?.flatMap(s => s.specs) || [];
+                const total = specs.length;
+                const passedCount = specs.filter(s => s.tests?.every(t => t.results?.every(r => r.status === 'passed'))).length;
+                agentResults = {
+                  summary: { total, passed: passedCount, failed: total - passedCount, skipped: 0, flaky: 0 },
+                  failures: []
+                };
+              }
 
-              summary = `| Total | Passed | Failed |\n|-------|--------|--------|\n| ${total} | ${passedCount} | ${failedCount} |`;
+              const s = agentResults.summary;
+              summary = `| Metric | Count |\n|--------|-------|\n| Total | ${s.total} |\n| Passed | ${s.passed} |\n| Failed | ${s.failed} |\n| Skipped | ${s.skipped} |\n| Flaky | ${s.flaky} |`;
+
+              // Add failure details if any
+              if (agentResults.failures && agentResults.failures.length > 0) {
+                failureDetails = '\n\n### Failed Tests\n\n';
+                for (const f of agentResults.failures.slice(0, 5)) {
+                  failureDetails += `<details>\n<summary><code>${f.suite} > ${f.test}</code></summary>\n\n`;
+                  failureDetails += `**File:** \`${f.file}:${f.line}\`\n\n`;
+                  failureDetails += `**Error:**\n\`\`\`\n${(f.error?.message || 'Unknown error').slice(0, 500)}\n\`\`\`\n`;
+                  if (f.screenshot) {
+                    failureDetails += `\n**Screenshot:** \`${f.screenshot}\`\n`;
+                  }
+                  if (f.trace) {
+                    failureDetails += `**Trace:** \`${f.trace}\` (use \`npx playwright show-trace <path>\`)\n`;
+                  }
+                  failureDetails += '\n</details>\n';
+                }
+                if (agentResults.failures.length > 5) {
+                  failureDetails += `\n_...and ${agentResults.failures.length - 5} more failures. See artifacts for full details._\n`;
+                }
+              }
+
+              // Add artifact links
+              artifactInfo = `\n\n### Artifacts\n\n`;
+              artifactInfo += `Download via CLI:\n`;
+              artifactInfo += `\`\`\`bash\n`;
+              artifactInfo += `# Download agent-friendly results\n`;
+              artifactInfo += `gh run download ${runId} -R ${repo} -n e2e-results-json\n`;
+              artifactInfo += `\n# Parse failures\n`;
+              artifactInfo += `jq '.failures[] | {test: .test, error: .error.message}' e2e-results-json/agent-results.json\n`;
+              if (!passed) {
+                artifactInfo += `\n# Download failure artifacts (screenshots, traces)\n`;
+                artifactInfo += `gh run download ${runId} -R ${repo} -n e2e-failures\n`;
+              }
+              artifactInfo += `\`\`\`\n`;
             } catch (e) {
               summary = 'Unable to parse test results.';
+              console.error('Error parsing results:', e);
             }
 
-            const status = passed ? '✅ Passed' : '❌ Failed';
-            const modeEmoji = executionMode === 'browserbase' ? '☁️' : '💻';
+            const status = passed ? 'Passed' : 'Failed';
+            const statusIcon = passed ? ':white_check_mark:' : ':x:';
+            const modeIcon = executionMode === 'browserbase' ? ':cloud:' : ':computer:';
             const modeText = executionMode === 'browserbase' ? 'Browserbase (cloud)' : 'Local Playwright';
-            const sessionNote = executionMode === 'browserbase' ? '\n\n_Session Recordings:_ Check Browserbase dashboard for video replays.' : '';
-            const debugNote = !passed ? '\n\n### Debugging\nDownload the `e2e-failures` artifact for screenshots and traces.' : '';
+            const sessionNote = executionMode === 'browserbase' ? '\n\n_Session Recordings:_ Check [Browserbase dashboard](https://browserbase.com) for video replays.' : '';
             const body = [
-              `## E2E Test Results: ${status}`,
+              `## E2E Test Results: ${statusIcon} ${status}`,
               '',
-              `_Execution Mode:_ ${modeEmoji} ${modeText}`,
-              `_Preview URL:_ ${previewUrl}`,
+              `| | |`,
+              `|---|---|`,
+              `| **Execution Mode** | ${modeIcon} ${modeText} |`,
+              `| **Preview URL** | ${previewUrl} |`,
+              `| **Workflow Run** | [#${runId}](https://github.com/${repo}/actions/runs/${runId}) |`,
               '',
               summary,
+              failureDetails,
               sessionNote,
-              debugNote,
-              '',
+              artifactInfo,
               '---',
-              '🤖 Generated with [Claude Code](https://claude.com/claude-code)'
+              '_Generated with [Claude Code](https://claude.com/claude-code)_'
             ].join('\n');
 
             // Find existing comment

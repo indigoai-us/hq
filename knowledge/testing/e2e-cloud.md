@@ -349,6 +349,141 @@ gh workflow run e2e.yml -f preview_url=https://custom.vercel.app
 gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId'
 ```
 
+## Agent-Friendly Test Results
+
+The E2E workflow produces an `agent-results.json` file designed for easy machine parsing.
+
+### Download and Parse Results
+
+```bash
+# Get latest run ID
+RUN_ID=$(gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId')
+
+# Download agent-friendly results
+gh run download $RUN_ID -n e2e-results-json
+cd e2e-results-json
+
+# Quick status check
+jq '.status' agent-results.json
+# Output: "passed" or "failed"
+
+# Get summary counts
+jq '.summary' agent-results.json
+# Output: {"total":21,"passed":21,"failed":0,"skipped":0,"flaky":0,"duration":4523}
+```
+
+### Parsing Failures
+
+```bash
+# List all failed tests
+jq -r '.failures[] | "\(.suite) > \(.test)"' agent-results.json
+
+# Get failure details with error messages
+jq '.failures[] | {test: .test, file: "\(.file):\(.line)", error: .error.message}' agent-results.json
+
+# Get screenshot paths for failed tests
+jq -r '.failures[] | select(.screenshot) | "\(.test): \(.screenshot)"' agent-results.json
+
+# Get trace paths for debugging
+jq -r '.failures[] | select(.trace) | "\(.test): \(.trace)"' agent-results.json
+
+# Full stack traces
+jq -r '.failures[] | "=== \(.test) ===\n\(.error.stack // "no stack")\n"' agent-results.json
+```
+
+### Parsing Passed Tests
+
+```bash
+# List all passed tests
+jq -r '.passed[] | "\(.suite) > \(.test)"' agent-results.json
+
+# Find flaky tests (passed after retry)
+jq -r '.passed[] | select(.flaky) | "\(.test) (retries: \(.retries))"' agent-results.json
+
+# Slowest tests
+jq -r '[.passed[] | {test: .test, duration: .duration}] | sort_by(.duration) | reverse | .[:5]' agent-results.json
+```
+
+### Download Failure Artifacts
+
+```bash
+# Download screenshots, traces, videos (only uploaded on failure)
+gh run download $RUN_ID -n e2e-failures
+
+# List downloaded artifacts
+ls -la e2e-failures/
+
+# View trace locally
+npx playwright show-trace e2e-failures/*/trace.zip
+```
+
+### Agent-Results.json Schema
+
+```json
+{
+  "summary": {
+    "total": 21,
+    "passed": 20,
+    "failed": 1,
+    "skipped": 0,
+    "flaky": 0,
+    "duration": 4523
+  },
+  "status": "failed",
+  "failures": [
+    {
+      "test": "page loads with correct title",
+      "suite": "Landing Page",
+      "file": "tests/landing-page.spec.ts",
+      "line": 26,
+      "column": 3,
+      "duration": 5000,
+      "retries": 2,
+      "status": "failed",
+      "error": {
+        "message": "Expected: 'my-hq - Download'\nReceived: 'my-hq'",
+        "stack": "Error: expect(received).toHaveTitle(expected)...",
+        "snippet": null
+      },
+      "screenshot": "test-results/Landing-Page-page-loads-with-correct-title/test-failed-1.png",
+      "trace": "test-results/Landing-Page-page-loads-with-correct-title/trace.zip",
+      "video": null
+    }
+  ],
+  "passed": [
+    {
+      "test": "displays logo and tagline",
+      "suite": "Landing Page",
+      "file": "tests/landing-page.spec.ts",
+      "line": 30,
+      "duration": 1234,
+      "retries": 0
+    }
+  ],
+  "skipped": [],
+  "artifacts": {
+    "screenshots": [{"test": "page loads with correct title", "path": "..."}],
+    "traces": [{"test": "page loads with correct title", "path": "..."}],
+    "videos": []
+  },
+  "meta": {
+    "timestamp": "2026-02-01T12:00:00Z",
+    "baseUrl": "https://hq-installer-abc123.vercel.app",
+    "executionMode": "browserbase",
+    "playwrightVersion": "1.51.0"
+  }
+}
+```
+
+### One-Liner for Agents
+
+```bash
+# Complete failure check in one command
+gh run download $(gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId') -n e2e-results-json && \
+jq -e '.status == "passed"' e2e-results-json/agent-results.json || \
+jq '.failures[] | {test: .test, error: .error.message}' e2e-results-json/agent-results.json
+```
+
 ## Branch Protection & Quality Gates
 
 ### Required Status Checks

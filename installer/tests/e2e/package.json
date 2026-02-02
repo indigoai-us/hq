@@ -9,7 +9,9 @@
     "test:ui": "playwright test --ui",
     "test:browserbase": "USE_BROWSERBASE=true playwright test",
     "test:local": "USE_BROWSERBASE=false playwright test",
-    "report": "playwright show-report"
+    "test:agent": "playwright test && node scripts/process-results.js",
+    "report": "playwright show-report",
+    "process-results": "node scripts/process-results.js"
   },
   "devDependencies": {
     "@browserbasehq/sdk": "^2.6.0",
