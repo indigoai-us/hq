@@ -112,10 +112,10 @@
         "E2E test: Run /run dev-team/frontend-dev e2e-testing, verify skill executes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["workers"],
       "dependsOn": ["US-004", "US-005"],
-      "notes": ""
+      "notes": "Completed 2026-02-01. Added e2e-testing skill to frontend-dev and backend-dev workers: (1) Created skills/e2e-testing.md for each worker with actions: write, run, debug, fix, (2) Updated worker.yaml context to include knowledge/testing/templates/ and e2e-cloud.md, (3) Added e2e_testing to MCP tools list, (4) Added skill to instructions table. NOTE: fullstack-dev worker does not exist in the codebase - only frontend-dev and backend-dev have been updated. Skill definition references templates at knowledge/testing/templates/ (nextjs-webapp, api-endpoints, cli-browser-oauth). Skills are documented with arguments, process, output, and best practices sections."
     },
     {
       "id": "US-007",
