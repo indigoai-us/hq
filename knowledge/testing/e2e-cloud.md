@@ -349,6 +349,95 @@ gh workflow run e2e.yml -f preview_url=https://custom.vercel.app
 gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId'
 ```
 
+## Branch Protection & Quality Gates
+
+### Required Status Checks
+
+The `main` branch is protected with required status checks:
+
+| Check | Required | Description |
+|-------|----------|-------------|
+| `Run E2E Tests` | Yes | Playwright E2E test suite must pass |
+
+PRs cannot be merged until the E2E Tests workflow completes successfully.
+
+### Verifying Protection Status
+
+```bash
+# Check branch protection rules
+gh api repos/{owner}/{repo}/branches/main/protection/required_status_checks --jq '{strict, contexts}'
+
+# Example output:
+# {"strict":true,"contexts":["Run E2E Tests"]}
+```
+
+### Merge Blocked Indicator
+
+When E2E tests fail:
+- Merge button shows "Merge blocked" with red X
+- Required status check shows "Run E2E Tests — Failing"
+- PR comment includes failure details and artifact links
+
+### Emergency Override (Admin Only)
+
+**IMPORTANT:** Skipping E2E tests should be extremely rare. Before overriding, consider:
+1. Can you fix the test quickly?
+2. Is the failure a flaky test vs. real regression?
+3. Is this a critical hotfix that can't wait?
+
+**To bypass for a single PR:**
+
+1. Go to repository **Settings** > **Branches** > **main** protection rule
+2. Temporarily enable "Allow specified actors to bypass required pull requests"
+3. Add yourself as a bypass actor
+4. Merge the PR
+5. **IMMEDIATELY** revert the bypass setting
+
+**Alternative: Admin merge (if enforce_admins=false):**
+
+```bash
+# Check if admin enforcement is enabled
+gh api repos/{owner}/{repo}/branches/main/protection/enforce_admins --jq '.enabled'
+
+# If false, admins can merge without passing checks via:
+# Repository Settings > Branch protection > Uncheck "Include administrators"
+```
+
+**AUDIT REQUIREMENT:** When bypassing:
+1. Document in PR comment why override was necessary
+2. Create follow-up issue to fix the failing test
+3. Notify team via standard communication channel
+
+### Configuring Protection for New Repos
+
+```bash
+# Set up branch protection with E2E requirement
+gh api repos/{owner}/{repo}/branches/main/protection \
+  -X PUT \
+  -H "Accept: application/vnd.github+json" \
+  --input - << 'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Run E2E Tests"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0
+  },
+  "restrictions": null
+}
+EOF
+```
+
+**Parameters explained:**
+- `strict: true` - Requires branch to be up-to-date with base before merging
+- `contexts: ["Run E2E Tests"]` - The job name from e2e.yml workflow
+- `enforce_admins: false` - Allows admin override in emergencies
+- `required_approving_review_count: 0` - No PR reviews required (adjust per team policy)
+
 ## Related Documentation
 
 - [Vercel Preview Deployments](vercel-preview-deployments.md) - Preview URL configuration
