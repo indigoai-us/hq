@@ -9,6 +9,13 @@ import { test, expect } from '@playwright/test';
  * - Download buttons are present and functional
  * - FAQ accordion works
  * - Tab switching works
+ *
+ * Execution modes:
+ * - Browserbase (cloud): Set BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID
+ * - Local: Default when Browserbase credentials not present
+ *
+ * Session recordings (Browserbase only):
+ *   https://browserbase.com/sessions/{sessionId}
  */
 
 test.describe('Landing Page', () => {

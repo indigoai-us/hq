@@ -7,9 +7,13 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:ui": "playwright test --ui",
+    "test:browserbase": "USE_BROWSERBASE=true playwright test",
+    "test:local": "USE_BROWSERBASE=false playwright test",
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.0"
+    "@browserbasehq/sdk": "^2.6.0",
+    "@playwright/test": "^1.51.0",
+    "playwright-core": "^1.51.0"
   }
 }

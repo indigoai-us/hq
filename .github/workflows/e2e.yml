@@ -1,7 +1,7 @@
 # E2E Testing Workflow
 #
 # Runs Playwright E2E tests against Vercel preview deployments.
-# Designed for autonomous agent testing - no local browser resources needed.
+# Uses Browserbase for cloud browser execution when configured.
 #
 # Triggers:
 #   - Push to any branch (waits for Vercel preview)
@@ -10,10 +10,11 @@
 #
 # Features:
 #   - Waits for Vercel deployment to be ready
-#   - Runs Playwright tests against preview URL
+#   - Runs Playwright tests via Browserbase (cloud) or locally
 #   - Uploads test artifacts (screenshots, traces, videos) on failure
 #   - Posts test results as PR comment
 #   - JSON output for agent parsing
+#   - Session recordings for debugging (Browserbase only)
 
 name: E2E Tests
 
@@ -34,6 +35,11 @@ on:
         description: 'Enable debug mode (headed browser, slowmo)'
         required: false
         default: 'false'
+        type: boolean
+      use_browserbase:
+        description: 'Use Browserbase for cloud execution'
+        required: false
+        default: 'true'
         type: boolean
 
 concurrency:
@@ -158,15 +164,30 @@ jobs:
         working-directory: installer/tests/e2e
         run: npm ci
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (local fallback)
+        if: ${{ !secrets.BROWSERBASE_API_KEY || inputs.use_browserbase == 'false' }}
         working-directory: installer/tests/e2e
         run: npx playwright install --with-deps chromium
+
+      - name: Determine execution mode
+        id: mode
+        run: |
+          if [ -n "${{ secrets.BROWSERBASE_API_KEY }}" ] && [ "${{ inputs.use_browserbase }}" != "false" ]; then
+            echo "mode=browserbase" >> $GITHUB_OUTPUT
+            echo "Using Browserbase for cloud execution"
+          else
+            echo "mode=local" >> $GITHUB_OUTPUT
+            echo "Using local Playwright (Browserbase not configured)"
+          fi
 
       - name: Run Playwright tests
         id: test
         working-directory: installer/tests/e2e
         env:
           BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+          USE_BROWSERBASE: ${{ steps.mode.outputs.mode == 'browserbase' && 'true' || 'false' }}
           CI: true
         run: |
           # Run tests with JSON reporter for machine parsing
@@ -183,6 +204,8 @@ jobs:
       - name: Generate test summary
         if: always()
         working-directory: installer/tests/e2e
+        env:
+          EXECUTION_MODE: ${{ steps.mode.outputs.mode }}
         run: |
           # Parse JSON results for summary
           if [ -f test-results.json ]; then
@@ -193,6 +216,8 @@ jobs:
 
             echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Execution Mode:** $EXECUTION_MODE" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
@@ -201,6 +226,12 @@ jobs:
             echo "| Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Preview URL:** ${{ needs.deploy-preview.outputs.preview_url }}" >> $GITHUB_STEP_SUMMARY
+
+            # Add Browserbase session info if available
+            if [ "$EXECUTION_MODE" = "browserbase" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Session recordings:** Check Browserbase dashboard for session replays" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -240,12 +271,15 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
+        env:
+          EXECUTION_MODE: ${{ steps.mode.outputs.mode }}
         with:
           script: |
             const fs = require('fs');
             const previewUrl = '${{ needs.deploy-preview.outputs.preview_url }}';
             const testExitCode = '${{ steps.test.outputs.exit_code }}';
             const passed = testExitCode === '0';
+            const executionMode = process.env.EXECUTION_MODE;
 
             // Try to read test results
             let summary = '';
@@ -262,16 +296,19 @@ jobs:
             }
 
             const status = passed ? '✅ Passed' : '❌ Failed';
+            const modeEmoji = executionMode === 'browserbase' ? '☁️' : '💻';
             const body = `## E2E Test Results: ${status}
 
-            **Preview URL:** ${previewUrl}
+**Execution Mode:** ${modeEmoji} ${executionMode === 'browserbase' ? 'Browserbase (cloud)' : 'Local Playwright'}
+**Preview URL:** ${previewUrl}
 
-            ${summary}
+${summary}
 
-            ${!passed ? '### Debugging\nDownload the `e2e-failures` artifact for screenshots and traces.' : ''}
+${executionMode === 'browserbase' ? '**Session Recordings:** Check Browserbase dashboard for video replays of test execution.\n' : ''}
+${!passed ? '### Debugging\nDownload the `e2e-failures` artifact for screenshots and traces.' : ''}
 
-            ---
-            🤖 Generated with [Claude Code](https://claude.com/claude-code)`;
+---
+🤖 Generated with [Claude Code](https://claude.com/claude-code)`;
 
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
