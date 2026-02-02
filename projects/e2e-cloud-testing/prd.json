@@ -76,10 +76,10 @@
         "E2E test: Use Next.js template to write test for sample app, verify it runs"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "labels": ["knowledge"],
       "dependsOn": ["US-002"],
-      "notes": ""
+      "notes": "Completed 2026-02-01. Created 4 template files: (1) nextjs-webapp.md - Next.js/React apps with forms, navigation, interactive components, responsive testing, (2) cli-browser-oauth.md - CLI tools with browser OAuth flows, process coordination, (3) api-endpoints.md - REST API testing with CRUD, auth, schema validation, (4) README.md - quick reference guide. Each template includes: setup instructions, playwright.config.ts example, common patterns with code, assertions cheatsheet, cleanup section. Templates aligned with existing hq-installer landing-page.spec.ts patterns (21 tests). qmd search pending qmd installation. Commit 2ec3637."
     },
     {
       "id": "US-005",
