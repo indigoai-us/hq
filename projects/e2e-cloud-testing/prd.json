@@ -220,10 +220,10 @@
         "E2E test: Run full hq-installer E2E suite, all tests green"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "labels": ["validation"],
       "dependsOn": ["US-003", "US-004"],
-      "notes": ""
+      "notes": "Completed 2026-02-02. Full validation performed: (1) E2E test suite (21 tests) at installer/tests/e2e/ passes locally in 4s against https://hq-installer.vercel.app, (2) Tests cover: OS detection, download buttons, platform links, system requirements, version info, FAQ accordion, tab switching, footer, responsive design, accessibility, (3) GitHub Actions workflow validated - YAML fixed (commit 6385bc5, 2a6ec07), workflow runs correctly, (4) Issues documented in projects/e2e-cloud-testing/validation-notes.md. SETUP REQUIRED: Add VERCEL_TOKEN secret to GitHub repo to enable automated preview deployments. Browserbase secrets optional - falls back to local Playwright."
     }
   ],
   "metadata": {
