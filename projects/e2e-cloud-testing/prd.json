@@ -1,0 +1,240 @@
+{
+  "name": "e2e-cloud-testing",
+  "description": "Cloud-native E2E testing infrastructure that enables agents to autonomously test all code changes without local resources, with enforcement mechanisms ensuring nothing ships without passing tests",
+  "branchName": "feature/e2e-cloud-testing",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Set up Vercel Preview deployment pipeline",
+      "description": "As an agent, I want code pushes to automatically create Vercel preview deployments so I have a live URL to test against without manual setup",
+      "acceptanceCriteria": [
+        "Vercel project connected to GitHub repo",
+        "Every branch push creates preview deployment",
+        "Preview URL is predictable or discoverable via Vercel API/MCP",
+        "Deployments auto-expire after 7 days to control costs",
+        "Environment variables configured for test mode",
+        "E2E test: Push a test branch, verify preview URL is created within 3 minutes",
+        "E2E test: Query Vercel MCP to retrieve preview URL programmatically"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["infrastructure"],
+      "dependsOn": [],
+      "notes": "Completed 2026-02-01. Vercel project 'hq-installer' created with CLI deployment. Production: https://hq-installer.vercel.app. Manual CLI deployment works (vercel deploy --yes --target=preview). TEST_MODE env var configured. SSO protection disabled for public preview access. Documentation at knowledge/testing/vercel-preview-deployments.md. LIMITATIONS: (1) GitHub App auto-deploy requires manual setup in Vercel dashboard, (2) Deployment expiration is team-level setting (180 days default), (3) Vercel MCP requires projectId/teamId params - CLI works better."
+    },
+    {
+      "id": "US-002",
+      "title": "Create GitHub Actions E2E workflow",
+      "description": "As an agent, I want a GitHub Action that runs Playwright tests against preview deployments so tests execute automatically on every push",
+      "acceptanceCriteria": [
+        "Workflow file created at .github/workflows/e2e.yml",
+        "Workflow triggers on push to any branch",
+        "Waits for Vercel preview deployment to be ready",
+        "Runs Playwright test suite against preview URL",
+        "Uploads test artifacts (screenshots, traces, videos) on failure",
+        "Posts test results as PR comment",
+        "Workflow completes in under 10 minutes for typical test suite",
+        "E2E test: Push branch with intentionally failing test, verify workflow fails and artifacts uploaded",
+        "E2E test: Push branch with passing tests, verify workflow succeeds"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["infrastructure"],
+      "dependsOn": ["US-001"],
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Integrate Browserbase for headless execution",
+      "description": "As an agent, I want tests to run on Browserbase's cloud infrastructure so no local browser resources are needed and tests can parallelize",
+      "acceptanceCriteria": [
+        "Browserbase account configured with API key stored in GitHub secrets",
+        "Playwright configured to use Browserbase as browser provider",
+        "Tests run in parallel across multiple browser instances",
+        "Session recordings available for debugging failed tests",
+        "Fallback to standard Playwright if Browserbase unavailable",
+        "E2E test: Run test suite via Browserbase, verify all tests execute remotely",
+        "E2E test: Verify session recordings are accessible after test run"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["infrastructure"],
+      "dependsOn": ["US-002"],
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create E2E test templates for common app types",
+      "description": "As an agent writing tests, I want templates and examples for each app type so I can quickly create comprehensive E2E tests",
+      "acceptanceCriteria": [
+        "Template created: knowledge/testing/templates/nextjs-webapp.md",
+        "Template created: knowledge/testing/templates/cli-browser-oauth.md",
+        "Template created: knowledge/testing/templates/api-endpoints.md",
+        "Each template includes: setup, common patterns, assertions, cleanup",
+        "README at knowledge/testing/templates/README.md explaining when to use each",
+        "Templates discoverable via qmd search",
+        "E2E test: Use Next.js template to write test for sample app, verify it runs"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["knowledge"],
+      "dependsOn": ["US-002"],
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create E2E cloud testing knowledge base",
+      "description": "As an agent, I need documentation on how to write and run E2E tests so testing is part of my standard implementation workflow",
+      "acceptanceCriteria": [
+        "knowledge/testing/e2e-cloud.md documents full workflow",
+        "Documents: how to trigger tests, view results, download artifacts",
+        "Documents: how to interpret failures and debug",
+        "Documents: Browserbase session recording access",
+        "Documents: commands for gh CLI access to results",
+        "Linked from CLAUDE.md testing section"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["knowledge"],
+      "dependsOn": ["US-003"],
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add e2e-testing skill to dev-team workers",
+      "description": "As a code worker, I need an e2e-testing skill so I know how to write tests as part of implementation, not as an afterthought",
+      "acceptanceCriteria": [
+        "e2e-testing skill added to workers/dev-team/frontend-dev/worker.yaml",
+        "e2e-testing skill added to workers/dev-team/backend-dev/worker.yaml",
+        "e2e-testing skill added to workers/dev-team/fullstack-dev/worker.yaml",
+        "Skill definition includes: write tests, run tests, interpret results, fix failures",
+        "Skill references knowledge/testing/templates/ for patterns",
+        "E2E test: Run /run dev-team/frontend-dev e2e-testing, verify skill executes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["workers"],
+      "dependsOn": ["US-004", "US-005"],
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Update PRD schema to require e2eTests field",
+      "description": "As a PRD author, I must specify e2eTests for each user story so test requirements are defined upfront, not as an afterthought",
+      "acceptanceCriteria": [
+        "PRD schema documented at knowledge/hq-core/prd-schema.md updated",
+        "e2eTests[] array added as required field per user story",
+        "/prd command updated to prompt for e2eTests during story creation",
+        "Validation script created to check PRDs for e2eTests presence",
+        "E2E test: Create PRD without e2eTests, verify validation warns",
+        "E2E test: Create PRD with e2eTests, verify validation passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["enforcement", "schema"],
+      "dependsOn": [],
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Update Ralph loop to require E2E pass before task completion",
+      "description": "As the Ralph orchestrator, I must verify E2E tests pass before marking any task complete so untested code never ships",
+      "acceptanceCriteria": [
+        "pure-ralph-base.md updated with E2E verification step",
+        "Ralph checks GitHub Actions status before setting passes: true",
+        "If E2E tests fail, task stays in_progress with failure details logged",
+        "Ralph can trigger test runs via gh workflow run",
+        "Timeout handling: fail task after 15 minutes of no E2E result",
+        "E2E test: Execute task with failing E2E, verify Ralph blocks completion"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["enforcement", "workflow"],
+      "dependsOn": ["US-002", "US-007"],
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add PR quality gate blocking merge without E2E",
+      "description": "As a repository maintainer, I want PRs blocked from merging unless E2E tests pass so broken code cannot reach main branch",
+      "acceptanceCriteria": [
+        "GitHub branch protection rule configured for main branch",
+        "e2e workflow required to pass before merge",
+        "PR cannot be merged with failing E2E tests",
+        "Status check clearly shows E2E pass/fail in PR",
+        "Documentation for how to override in emergencies (admin only)",
+        "E2E test: Create PR with failing E2E, verify merge button is disabled"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["enforcement"],
+      "dependsOn": ["US-002"],
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Build agent-friendly test result viewer",
+      "description": "As an agent debugging a test failure, I want clear, parseable test results so I can quickly identify and fix issues",
+      "acceptanceCriteria": [
+        "Test results output in JSON format to artifacts",
+        "Failed tests include: screenshot path, error message, stack trace",
+        "gh CLI commands documented for downloading artifacts",
+        "PR comment template shows: test count, pass/fail, links to failures",
+        "Results parseable by agent without human interpretation",
+        "E2E test: Run failing test, verify agent can parse results JSON"
+      ],
+      "priority": 4,
+      "passes": false,
+      "labels": ["observability"],
+      "dependsOn": ["US-002"],
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Add test coverage tracking to /metrics",
+      "description": "As an HQ operator, I want to see test coverage trends so I can ensure testing quality is maintained over time",
+      "acceptanceCriteria": [
+        "/metrics command updated to show test statistics",
+        "Shows: total tests, passing tests, coverage percentage",
+        "Tracks trends over time (stored in workspace/metrics/)",
+        "Breaks down by project",
+        "Alerts if coverage drops below 80%",
+        "E2E test: Run /metrics, verify test coverage section appears"
+      ],
+      "priority": 5,
+      "passes": false,
+      "labels": ["observability"],
+      "dependsOn": ["US-008"],
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Validate infrastructure with hq-installer E2E tests",
+      "description": "As a proof of concept, I want to write and run E2E tests for hq-installer landing page so we validate the entire infrastructure works end-to-end",
+      "acceptanceCriteria": [
+        "E2E tests written in installer/tests/e2e/ for landing page",
+        "Tests verify: OS detection works, download buttons present, FAQ accordion works",
+        "Tests run via new infrastructure (Vercel + GH Actions + Browserbase)",
+        "All tests pass on first real execution",
+        "Issues discovered documented in projects/e2e-cloud-testing/validation-notes.md",
+        "E2E test: Run full hq-installer E2E suite, all tests green"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["validation"],
+      "dependsOn": ["US-003", "US-004"],
+      "notes": ""
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-02-01T00:00:00Z",
+    "baseBranch": "main",
+    "goal": "Every code change in HQ-managed projects is automatically E2E tested in the cloud before merge, with agents both writing and running tests as part of their standard workflow",
+    "successCriteria": "Agents can trigger E2E tests with a single command, view results clearly, and PRs cannot merge without green E2E tests",
+    "qualityGates": [],
+    "repoPath": "C:/my-hq",
+    "relatedWorkers": ["infra-dev", "qa-tester", "code-reviewer"],
+    "knowledge": ["knowledge/testing/"],
+    "relatedProjects": ["hq-installer", "protofit"]
+  }
+}
