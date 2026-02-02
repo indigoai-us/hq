@@ -130,10 +130,10 @@
         "E2E test: Create PRD with e2eTests, verify validation passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["enforcement", "schema"],
       "dependsOn": [],
-      "notes": ""
+      "notes": "Completed 2026-02-01. Created: (1) knowledge/hq-core/prd-schema.md - comprehensive PRD schema documentation with e2eTests as REQUIRED field, field definitions, validation rules, examples, and migration guide, (2) .claude/scripts/validate-prd.ps1 - PowerShell validation script checking JSON syntax, required fields, e2eTests presence per story, ID format, branch format, and dependency references, (3) Updated .claude/commands/prd.md with Batch 4 E2E Testing questions and e2eTests in JSON schema and README template. Validation tested: PRD without e2eTests fails with clear error, PRD with e2eTests passes."
     },
     {
       "id": "US-008",
