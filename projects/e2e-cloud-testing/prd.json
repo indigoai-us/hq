@@ -38,10 +38,10 @@
         "E2E test: Push branch with passing tests, verify workflow succeeds"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "labels": ["infrastructure"],
       "dependsOn": ["US-001"],
-      "notes": ""
+      "notes": "Completed 2026-02-01. Workflow at .github/workflows/e2e.yml triggers on push (non-main) and PRs. Features: (1) Deploys to Vercel preview, (2) Waits up to 5 min for deployment ready, (3) Runs Playwright tests with JSON/HTML reporters, (4) Uploads artifacts (screenshots, videos, traces) on failure, (5) Posts PR comment with pass/fail summary. Playwright test suite (21 tests) at installer/tests/e2e/ covers landing page. All tests pass locally against https://hq-installer.vercel.app (7.3s). REQUIREMENTS: Add VERCEL_TOKEN secret to GitHub repo. Commit b8e983c."
     },
     {
       "id": "US-003",
