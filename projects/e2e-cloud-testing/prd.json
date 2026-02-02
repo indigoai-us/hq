@@ -202,10 +202,10 @@
         "E2E test: Run /metrics, verify test coverage section appears"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "labels": ["observability"],
       "dependsOn": ["US-008"],
-      "notes": ""
+      "notes": "Completed 2026-02-02. Added test coverage tracking to /metrics command: (1) Updated .claude/commands/metrics.md with --tests flag documentation, test-coverage.jsonl schema, display format with trends, and 80% threshold alerts, (2) Created .claude/scripts/collect-test-metrics.ps1 to gather metrics from agent-results.json files, (3) Created .claude/scripts/show-test-coverage.ps1 for displaying coverage summary with trend tracking (last 5 runs per project), (4) Created workspace/metrics/test-coverage.jsonl for storing test data. Features: pass rate calculation, trend indicators (* = 100%, o = 80-99%, x = <80%), project breakdown, 80% alert threshold. Commit f0f203d."
     },
     {
       "id": "US-012",
