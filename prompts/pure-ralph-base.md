@@ -112,21 +112,337 @@ This is a **HARD BLOCK**, not a warning. Committing to main is NEVER acceptable 
 2. **READ** the PRD at {{PRD_PATH}}
 3. **PICK** the highest priority incomplete task (where `passes` is false/null and dependencies are met)
 4. **IMPLEMENT** that ONE task
-5. **UPDATE** the PRD: set `passes: true` and fill in `notes` with what you did
+5. **TEST** - Verify the implementation works locally (see Testing Requirements below)
 6. **COMMIT** with message: `feat(TASK-ID): Brief description`
-7. **CHECK** if all tasks complete:
-   - **If more tasks remain:** EXIT - the loop will spawn a fresh session
-   - **If all tasks complete:** CREATE PR (see "PR Creation" section below), then EXIT
+7. **PUSH** your changes: `git push origin feature/{{PROJECT_NAME}}`
+8. **VERIFY CI** - Wait for E2E workflow to pass (see "CI E2E Verification" section)
+9. **UPDATE** the PRD: set `passes: true` ONLY after CI passes, fill in `notes` with what you did
+10. **CHECK** if all tasks complete:
+    - **If more tasks remain:** EXIT - the loop will spawn a fresh session
+    - **If all tasks complete:** CREATE PR (see "PR Creation" section below), then EXIT
+
+---
+
+## Testing Requirements
+
+**HARD RULE: A task is NOT complete until it's tested AND all tests pass.**
+
+**This is NON-NEGOTIABLE. Untested code is broken code.**
+
+### Test-First Mindset
+
+- Design for testability from the start
+- If you can't test it, you can't ship it
+- Never mark `passes: true` without verification
+- Write the test BEFORE or DURING implementation, not after
+
+### Testing Strategy by Task Type
+
+| Task Type | Testing Approach |
+|-----------|------------------|
+| **API endpoints** | Unit tests + integration tests + manual curl/fetch verification |
+| **Web pages/UI** | Playwright E2E tests that open the actual page and verify content |
+| **CLI apps** | E2E tests that run the binary AND test any URLs it opens in Playwright |
+| **Database changes** | Migration tests + query verification |
+| **Integrations** | Integration tests with mocked externals where possible, real externals for E2E |
+| **Bug fixes** | Regression test that reproduces the bug, then verifies the fix |
+
+### E2E Testing is MANDATORY for User-Facing Features
+
+**Every feature a user touches MUST have E2E test coverage.**
+
+For web apps:
+```typescript
+// Example: Test that a page renders correctly
+test('cli-auth page shows Google button', async ({ page }) => {
+  await page.goto('http://localhost:3002/cli-auth?callback=http://localhost:9999/callback&state=test');
+  await expect(page.getByRole('button', { name: /google/i })).toBeVisible();
+  await expect(page.locator('body')).not.toBeEmpty(); // No blank screens!
+});
+```
+
+For CLI + web integrations:
+```typescript
+// Example: Test CLI opens correct URL and page works
+test('account create opens working auth page', async ({ page }) => {
+  // 1. Run CLI and capture the URL it would open
+  const result = execSync('indigo account create --dry-run', { encoding: 'utf8' });
+  const authUrl = extractUrl(result);
+
+  // 2. Open that URL in Playwright
+  await page.goto(authUrl);
+
+  // 3. Verify the page works
+  await expect(page.getByText('Sign in to Indigo')).toBeVisible();
+  await expect(page.getByRole('button', { name: /google/i })).toBeVisible();
+});
+```
+
+### When to Use Each Test Type
+
+**Unit Tests** (fast, isolated):
+- Pure functions, utilities, helpers
+- Business logic without external dependencies
+- Run with: `npm test` or `pnpm test`
+- **Required but NOT sufficient for user-facing features**
+
+**E2E Tests with Playwright** (browser-based):
+- User flows (login, form submission, navigation)
+- UI interactions and visual verification
+- API responses rendered in UI
+- CLI → browser → callback flows
+- Run with: `npx playwright test` or Playwright MCP tools
+- **REQUIRED for all user-facing features**
+
+**Integration Tests**:
+- API routes with database
+- External service integrations
+- Webhook handlers
+
+### Playwright Test Patterns
+
+**For standalone web pages:**
+```typescript
+test.describe('Auth Pages', () => {
+  test('renders login page', async ({ page }) => {
+    await page.goto('/cli-auth');
+    await expect(page).toHaveTitle(/Indigo/);
+    await expect(page.getByRole('button')).toBeVisible();
+  });
+});
+```
+
+**For CLI-triggered flows:**
+```typescript
+test.describe('CLI Auth Flow', () => {
+  test('CLI callback URL works', async ({ page }) => {
+    // Simulate CLI opening the auth URL
+    await page.goto('/cli-auth?callback=http://localhost:9876/callback&state=abc123');
+
+    // Verify page loaded correctly (not blank!)
+    await expect(page.locator('img[alt="Indigo"]')).toBeVisible();
+    await expect(page.getByText(/Continue with Google/)).toBeVisible();
+  });
+});
+```
+
+### Verification Checklist (ALL REQUIRED)
+
+Before marking a task complete:
+- [ ] Unit tests written and passing (`nx test` or `npm test`)
+- [ ] E2E tests written and passing (`npx playwright test`)
+- [ ] All existing tests still pass (no regressions)
+- [ ] Manually verified the feature works (opened it, clicked things, saw expected results)
+- [ ] Tested with the actual binary/build, not just source code
+
+### Test Failure = Task Incomplete
+
+If ANY test fails:
+1. The task is NOT complete
+2. Do NOT mark `passes: true`
+3. Fix the code or fix the test
+4. Re-run ALL tests
+5. Only proceed when everything passes
+
+### Running Tests Before Completion
+
+**Always run these commands before marking a task done:**
+
+```bash
+# Unit tests
+nx run {project}:test
+
+# E2E tests
+nx run {project}:test:e2e
+
+# Or if using npm/pnpm
+npm test && npx playwright test
+```
+
+If there's no E2E test target, that's a bug - create one.
+
+---
+
+## CI E2E Verification (Automated Quality Gate)
+
+**HARD RULE: For repositories with E2E workflows, CI tests MUST pass before setting `passes: true`.**
+
+This ensures code isn't just tested locally, but verified in the actual CI environment that runs on every push.
+
+### When This Applies
+
+CI E2E verification is **required** when:
+- The repository has `.github/workflows/e2e.yml`
+- The task involves user-facing changes (UI, CLI, API endpoints)
+- The task touches code covered by E2E tests
+
+CI E2E verification is **optional** when:
+- Task is documentation-only
+- Task is infrastructure/config changes without user impact
+- No E2E workflow exists in the repository
+
+### Workflow: Verify CI Tests Before Completion
+
+After pushing your commit, you MUST verify CI tests pass before marking the task complete.
+
+#### Step 1: Push Your Changes
+
+```bash
+git push origin feature/{{PROJECT_NAME}}
+```
+
+#### Step 2: Trigger E2E Workflow (if not auto-triggered)
+
+```bash
+# Trigger E2E workflow for current branch
+gh workflow run e2e.yml --ref $(git branch --show-current)
+```
+
+#### Step 3: Wait for CI Results (with timeout)
+
+```bash
+# Wait for the most recent workflow run to complete (max 15 minutes)
+MAX_WAIT=900  # 15 minutes in seconds
+START_TIME=$(date +%s)
+WORKFLOW_NAME="E2E Tests"
+
+echo "Waiting for '$WORKFLOW_NAME' to complete (timeout: 15 minutes)..."
+
+while true; do
+    ELAPSED=$(($(date +%s) - START_TIME))
+    if [ $ELAPSED -gt $MAX_WAIT ]; then
+        echo "TIMEOUT: E2E workflow did not complete within 15 minutes"
+        echo "Task BLOCKED - cannot mark as complete without CI verification"
+        exit 1
+    fi
+
+    # Get the most recent run for current branch
+    RUN_STATUS=$(gh run list \
+        --workflow=e2e.yml \
+        --branch=$(git branch --show-current) \
+        --limit=1 \
+        --json status,conclusion,headSha \
+        --jq '.[0] | "\(.status)|\(.conclusion)|\(.headSha)"')
+
+    STATUS=$(echo "$RUN_STATUS" | cut -d'|' -f1)
+    CONCLUSION=$(echo "$RUN_STATUS" | cut -d'|' -f2)
+    HEAD_SHA=$(echo "$RUN_STATUS" | cut -d'|' -f3)
+    CURRENT_SHA=$(git rev-parse HEAD)
+
+    # Verify the run is for our commit
+    if [ "$HEAD_SHA" != "$CURRENT_SHA" ]; then
+        echo "Latest run is for different commit. Waiting for new run..."
+        sleep 15
+        continue
+    fi
+
+    case "$STATUS" in
+        completed)
+            if [ "$CONCLUSION" = "success" ]; then
+                echo "✅ E2E tests PASSED - task can be marked complete"
+                exit 0
+            else
+                echo "❌ E2E tests FAILED with conclusion: $CONCLUSION"
+                echo "Task BLOCKED - fix failing tests before marking complete"
+                exit 1
+            fi
+            ;;
+        in_progress|queued|requested|waiting|pending)
+            echo "Status: $STATUS (elapsed: ${ELAPSED}s)..."
+            sleep 15
+            ;;
+        *)
+            echo "Unknown status: $STATUS"
+            sleep 15
+            ;;
+    esac
+done
+```
+
+#### Step 4: Handle Failures
+
+If CI E2E tests fail:
+
+1. **DO NOT mark task as complete** - keep `passes: false`
+2. **Analyze the failure:**
+   ```bash
+   # View the failed run details
+   gh run view --log-failed
+
+   # Download failure artifacts (screenshots, traces)
+   gh run download --name e2e-failures
+   ```
+3. **Fix the issue** in your code or tests
+4. **Commit and push the fix**
+5. **Repeat verification** from Step 2
+
+#### Step 5: Log CI Verification in Notes
+
+When CI passes, include verification in the task notes:
+
+```json
+{
+  "notes": "... CI E2E verified: workflow run #123 passed (21/21 tests). Commit: abc1234."
+}
+```
+
+### Quick Reference Commands
+
+```bash
+# Check if E2E workflow exists
+ls .github/workflows/e2e.yml
+
+# Trigger E2E workflow manually
+gh workflow run e2e.yml --ref $(git branch --show-current)
+
+# View recent E2E runs for this branch
+gh run list --workflow=e2e.yml --branch=$(git branch --show-current)
+
+# Watch a specific run
+gh run watch
+
+# View failed run details
+gh run view --log-failed
+
+# Download test artifacts
+gh run download --name e2e-failures
+gh run download --name e2e-results-json
+```
+
+### Timeout Handling
+
+- **Default timeout:** 15 minutes
+- **If timeout occurs:** Task is BLOCKED, not failed
+- **Recovery:** Check GitHub Actions UI for status, then resume verification
+
+### Skipping CI Verification (Emergency Only)
+
+In rare cases where CI is broken and cannot be fixed immediately:
+
+1. **Document the skip** in task notes with justification
+2. **File an issue** to fix CI
+3. **Add manual verification** steps taken instead
+4. **Never skip without documentation**
+
+Example notes for emergency skip:
+```json
+{
+  "notes": "... CI SKIPPED: GitHub Actions outage (status.github.com incident #1234). Manual verification performed: ran Playwright locally against preview URL, all 21 tests passed. Issue filed: #456 to re-verify when CI recovers."
+}
+```
 
 ---
 
 ## Task Selection
 
 When picking which task to do:
-- Find tasks where `passes` is false or null
-- Check `dependsOn` - skip tasks whose dependencies aren't complete
-- Pick the first eligible task (or use your judgment if priorities matter)
-- If ALL tasks have `passes: true`, respond: "ALL TASKS COMPLETE"
+1. Find tasks where `passes` is false or null (and `status` is not "completed")
+2. Check `dependsOn` - skip tasks whose dependencies aren't complete
+3. **Pick the MOST IMPORTANT eligible task** - consider:
+   - Dependencies: tasks that unblock others are higher priority
+   - Impact: core functionality before polish
+   - Risk: tackle uncertain/complex tasks early
+4. If ALL tasks have `passes: true` or `status: "completed"`, respond: "ALL TASKS COMPLETE"
 
 ---
 
@@ -444,6 +760,14 @@ Only add patterns that:
 ### [Conflict] Stale Lock Detection
 **Pattern:** If lock file exists but PID is not running, remove the stale lock and continue
 **Why:** Stale locks from crashed sessions shouldn't block future execution; checking process status distinguishes active vs stale locks
+
+### [CI] Verify E2E Before Marking Complete
+**Pattern:** Push changes, wait for CI E2E workflow to pass, then set `passes: true`
+**Why:** Local tests may pass while CI fails due to environment differences, missing dependencies, or race conditions; CI is the source of truth
+
+### [CI] Include Verification in Notes
+**Pattern:** Include CI run ID and test count in task notes (e.g., "CI E2E verified: run #123, 21/21 passed")
+**Why:** Creates audit trail proving task was properly verified; enables debugging if issues surface later
 
 ---
 
