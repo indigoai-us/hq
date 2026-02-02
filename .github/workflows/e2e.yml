@@ -297,18 +297,22 @@ jobs:
 
             const status = passed ? '✅ Passed' : '❌ Failed';
             const modeEmoji = executionMode === 'browserbase' ? '☁️' : '💻';
-            const body = `## E2E Test Results: ${status}
-
-**Execution Mode:** ${modeEmoji} ${executionMode === 'browserbase' ? 'Browserbase (cloud)' : 'Local Playwright'}
-**Preview URL:** ${previewUrl}
-
-${summary}
-
-${executionMode === 'browserbase' ? '**Session Recordings:** Check Browserbase dashboard for video replays of test execution.\n' : ''}
-${!passed ? '### Debugging\nDownload the `e2e-failures` artifact for screenshots and traces.' : ''}
-
----
-🤖 Generated with [Claude Code](https://claude.com/claude-code)`;
+            const modeText = executionMode === 'browserbase' ? 'Browserbase (cloud)' : 'Local Playwright';
+            const sessionNote = executionMode === 'browserbase' ? '\n\n_Session Recordings:_ Check Browserbase dashboard for video replays.' : '';
+            const debugNote = !passed ? '\n\n### Debugging\nDownload the `e2e-failures` artifact for screenshots and traces.' : '';
+            const body = [
+              `## E2E Test Results: ${status}`,
+              '',
+              `_Execution Mode:_ ${modeEmoji} ${modeText}`,
+              `_Preview URL:_ ${previewUrl}`,
+              '',
+              summary,
+              sessionNote,
+              debugNote,
+              '',
+              '---',
+              '🤖 Generated with [Claude Code](https://claude.com/claude-code)'
+            ].join('\n');
 
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
