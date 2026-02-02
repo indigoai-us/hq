@@ -12,11 +12,11 @@ Personal OS for orchestrating AI workers, projects, and content.
 
 ```
 HQ/
-├── .claude/commands/   # 22 slash commands
+├── .claude/commands/   # 16 slash commands
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
-├── knowledge/          # HQ-level (Ralph, workers, security)
+├── knowledge/          # HQ-level (Ralph, workers, security, pure-ralph, projects)
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
 │   ├── dev-team/       # 13 code workers
@@ -56,21 +56,14 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/handoff` | Prepare for fresh session |
 | `/reanchor` | Pause and realign |
 | `/nexttask` | Find next thing to work on |
+| `/remember` | Capture learnings as rules in relevant files |
 
 ### Projects
 | Command | Purpose |
 |---------|---------|
 | `/prd` | Generate PRD through discovery |
-| `/understand-project` | Deep interview-based context discovery |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Run single task with workers |
-
-### Content
-| Command | Purpose |
-|---------|---------|
-| `/contentidea` | Build idea into content suite |
-| `/suggestposts` | Research-driven suggestions |
-| `/scheduleposts` | Choose what to post |
 
 ### Workers
 | Command | Purpose |
@@ -82,10 +75,11 @@ Workers are autonomous agents with defined skills. They *do things*.
 ### System
 | Command | Purpose |
 |---------|---------|
-| `/search` | Full-text search across HQ |
-| `/hq-sync` | Sync modules from manifest |
+| `/search` | Semantic + full-text search across HQ (qmd-powered) |
+| `/search-reindex` | Reindex and re-embed HQ for qmd search |
 | `/cleanup` | Audit and clean HQ |
-| `/design-iterate` | Design A/B testing |
+| `/setup` | Interactive setup wizard |
+| `/exit-plan` | Force exit from plan mode |
 
 ## Auto-Checkpoint (PostToolsHook)
 
@@ -99,12 +93,73 @@ Sessions auto-save to `workspace/threads/` after:
 
 **Why:** Prevents lost work, enables session resumption, provides audit trail.
 
+## Auto-Handoff (Context Limit)
+
+When context usage reaches 70% (remaining drops to 30%), automatically run `/handoff`.
+
+**Rules:**
+- Check context status line — when `remaining_percentage` ≤ 30, trigger handoff
+- Before handoff, finish current atomic task (don't interrupt mid-edit)
+- Notify user: "Context at {X}% remaining. Running /handoff to preserve continuity."
+- Run `/handoff` with summary of remaining work
+- This overrides manual handoff — don't wait for user to request it
+
+## Search (qmd)
+
+HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
+
+**Commands (run via Bash tool):**
+- `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
+- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
+- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
+
+**Slash commands:** `/search <query>`, `/search-reindex`
+
 ## Core Principles
 
 1. **Infrastructure scales, effort doesn't** - Build reusable systems
 2. **Workers should grow smarter** - Capture learnings in knowledge bases
 3. **Context is precious** - Checkpoint often, don't let work evaporate
-4. **Ship, then iterate** - Working > perfect
+4. **Test before ship** - If you can't verify it works, you can't ship it
+5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
+
+## Testing Requirements (MANDATORY)
+
+**HARD RULE: Nothing ships without passing tests.**
+
+**Full E2E Testing Guide:** [knowledge/testing/e2e-cloud.md](../knowledge/testing/e2e-cloud.md)
+
+### Before Marking Any Task Complete
+
+1. **Write tests FIRST** - Tests define what "done" means
+2. **Run all tests** - New and existing tests must pass
+3. **Verify in context** - Run the actual feature, not just unit tests
+4. **E2E for user flows** - Anything a user touches needs E2E coverage
+
+### E2E Testing Standards
+
+For web apps:
+- Use Playwright for browser automation
+- Test actual user flows end-to-end
+- Screenshot on failure for debugging
+- Test on the actual URLs the user will see
+
+For CLI apps:
+- Run the actual binary, not source
+- Test the URLs it opens in a real browser
+- Verify the full flow works (CLI → browser → callback)
+
+### Quality Gate Checklist
+
+Before any PR or task completion:
+- [ ] Unit tests written and passing
+- [ ] E2E tests written and passing
+- [ ] Manual verification performed
+- [ ] No regressions in existing tests
+
+### Test Failure = Task Incomplete
+
+If tests fail, the task is NOT done. Fix the code or fix the tests, but never skip them.
 
 ## Pure Ralph Learnings
 
@@ -134,7 +189,42 @@ Format for adding learnings:
 **Pattern:** Task-level learnings go in workflow prompts; cross-project learnings go in CLAUDE.md
 **Impact:** Keeps learnings appropriately scoped; prevents prompt bloat while capturing valuable insights
 
-### [Context] Interview-Based Discovery Catches Misunderstandings
-**Discovered:** project-context-manager project
-**Pattern:** Use `/understand-project` for interview-based context discovery instead of relying solely on automatic repo analysis
-**Impact:** Automatic analysis misses nuance - e.g., identified webapp as main product when it was actually Electron; missed terminology changes (Insight→Signal); didn't catch deprecated features still in codebase. Human verification catches these gaps.
+### [PRD] Script/Schema Compatibility
+**Discovered:** hq-installer launch failure
+**Pattern:** When updating PRD schema (e.g., `features` → `userStories`), also update all scripts that consume PRDs
+**Impact:** Schema mismatches cause silent failures; pure-ralph found 0/0 tasks because script expected `features` but PRD had `userStories`
+
+### [Workflow] Pure Ralph Must Switch Branches
+**Discovered:** hq-installer launch failure
+**Pattern:** Pure Ralph must checkout the branch specified in `prd.branchName` before starting work
+**Impact:** Without branch switching, work happens on wrong branch, PRs go to wrong place, changes get mixed
+
+### [PRD] Include baseBranch for Feature Branches
+**Discovered:** electron-direct-auth setup
+**Pattern:** PRDs should include `metadata.baseBranch` (e.g., "staging", "main") so Pure Ralph creates feature branches from the correct base
+**Impact:** Without baseBranch, new feature branches are created from whatever branch happens to be checked out, leading to stale code or wrong base
+
+### [Testing] E2E Tests Must Cover Real User Flows
+**Discovered:** indigo-cli-tools webauth blank screen issue
+**Pattern:** Write E2E tests that exercise the actual user flow - run the CLI, open the URL in Playwright, verify the page renders correctly
+**Impact:** Without E2E tests, broken features ship to users; unit tests pass but the product doesn't work
+
+### [Testing] Test Before Marking Complete
+**Discovered:** indigo-cli-tools webauth blank screen issue
+**Pattern:** Never mark a task as `passes: true` without running tests AND manually verifying the feature works
+**Impact:** Shipping untested code wastes user time and erodes trust; catching issues before shipping is 10x cheaper than debugging in production
+
+### [PRD] Structure PRDs for Test-First Execution
+**Discovered:** protofit-coach-behavior project
+**Pattern:** PRDs should include: (1) E2E tests inline with each user story, (2) T-X.0 tasks that write tests BEFORE T-X.1+ implementation tasks, (3) verification commands for every task, (4) Phase 0 that creates all test infrastructure
+**Impact:** Ensures tests exist before implementation; prevents "will add tests later" that never happens; makes acceptance criteria executable
+
+### [PRD] Define What "Passes" Means Explicitly
+**Discovered:** protofit-coach-behavior project
+**Pattern:** PRDs should include explicit verification criteria - what console output means success, what exit codes to expect, examples of passing vs failing output
+**Impact:** Removes ambiguity about task completion; executor knows exactly what to check; prevents premature task completion
+
+### [Testing] Test Phase 0 Pattern
+**Discovered:** protofit-coach-behavior project
+**Pattern:** Always start projects with a "Phase 0 - Test Infrastructure" that writes ALL test files first (they will fail, that's expected)
+**Impact:** Forces test-first thinking; tests define the contract before implementation; makes it impossible to skip testing
