@@ -184,10 +184,10 @@
         "E2E test: Run failing test, verify agent can parse results JSON"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "labels": ["observability"],
       "dependsOn": ["US-002"],
-      "notes": ""
+      "notes": "Completed 2026-02-02. Created agent-friendly test result system: (1) scripts/process-results.js transforms Playwright JSON into clean agent-results.json with summary, failures (including screenshot/trace paths), passed tests, and metadata, (2) GitHub workflow generates agent-results.json and uploads to e2e-results-json artifact, (3) Enhanced PR comment template with expandable failure details, file:line locations, error messages, and gh CLI commands for artifact download, (4) Comprehensive documentation in e2e-cloud.md with jq parsing examples, schema reference, and one-liner for quick failure checks, (5) Added npm scripts: test:agent, process-results. Agent-results.json format: {summary, status, failures[], passed[], artifacts{}, meta{}}. Commit efa1f9f."
     },
     {
       "id": "US-011",
