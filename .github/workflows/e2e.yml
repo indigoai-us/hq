@@ -164,15 +164,17 @@ jobs:
         working-directory: installer/tests/e2e
         run: npm ci
 
-      - name: Install Playwright browsers (local fallback)
-        if: ${{ !secrets.BROWSERBASE_API_KEY || inputs.use_browserbase == 'false' }}
+      - name: Install Playwright browsers
         working-directory: installer/tests/e2e
         run: npx playwright install --with-deps chromium
 
       - name: Determine execution mode
         id: mode
+        env:
+          BB_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          USE_BB: ${{ inputs.use_browserbase }}
         run: |
-          if [ -n "${{ secrets.BROWSERBASE_API_KEY }}" ] && [ "${{ inputs.use_browserbase }}" != "false" ]; then
+          if [ -n "$BB_KEY" ] && [ "$USE_BB" != "false" ]; then
             echo "mode=browserbase" >> $GITHUB_OUTPUT
             echo "Using Browserbase for cloud execution"
           else
