@@ -1,0 +1,20 @@
+# GitHub Pages configuration for HQ download page
+
+title: HQ - Download
+description: Personal OS for AI Workers
+
+# Theme (minimal - we use custom HTML)
+theme: null
+
+# Don't process with Jekyll (we have raw HTML)
+include:
+  - index.html
+  - styles.css
+
+# Exclude files from build
+exclude:
+  - README.md
+  - "*.md"
+
+# No plugins needed
+plugins: []
