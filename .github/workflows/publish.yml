@@ -16,6 +16,23 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - name: Validate version tag matches package.json
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match root package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+          for pkg in packages/create-hq packages/hq-cli packages/hq-cloud; do
+            WS_VERSION=$(node -p "require('./$pkg/package.json').version")
+            if [ "$TAG_VERSION" != "$WS_VERSION" ]; then
+              echo "::error::Tag version ($TAG_VERSION) does not match $pkg version ($WS_VERSION)"
+              exit 1
+            fi
+          done
+          echo "All package versions match tag: v$TAG_VERSION"
+
       - run: npm ci
       - run: npm run build --workspaces --if-present
 

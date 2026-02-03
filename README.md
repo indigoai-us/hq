@@ -70,6 +70,19 @@ indigoai/hq/
 | `@indigoai/hq-cli` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cli)](https://www.npmjs.com/package/@indigoai/hq-cli) | Ongoing management |
 | `@indigoai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cloud)](https://www.npmjs.com/package/@indigoai/hq-cloud) | Cloud sync engine |
 
+## Publishing
+
+Packages are published to npm automatically when a version tag is pushed:
+
+```bash
+git tag v5.1.0
+git push origin v5.1.0
+```
+
+The workflow validates that the tag version matches all `package.json` versions, then publishes `@indigoai/hq-cloud`, `@indigoai/hq-cli`, and `create-hq` in order.
+
+**Required secret:** `NPM_TOKEN` — an npm access token with publish permissions. Configure it in the repository's Settings > Secrets > Actions.
+
 ## License
 
 MIT
