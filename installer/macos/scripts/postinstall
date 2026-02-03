@@ -1,0 +1,83 @@
+#!/bin/bash
+# =============================================================================
+# HQ macOS Installer - Post-install Script
+# Installs HQ files and Claude CLI
+# =============================================================================
+
+LOG="/tmp/hq-installer.log"
+echo "$(date): Starting postinstall" >> "$LOG"
+
+# Load install vars if available
+if [ -f /tmp/hq-install-vars ]; then
+    . /tmp/hq-install-vars
+    echo "$(date): Loaded install vars" >> "$LOG"
+fi
+
+# Fallbacks
+TARGET_USER="${TARGET_USER:-runner}"
+TARGET_HOME="${TARGET_HOME:-/Users/runner}"
+
+echo "$(date): User=$TARGET_USER Home=$TARGET_HOME" >> "$LOG"
+
+# Source and destination
+SOURCE_DIR="/usr/local/hq"
+DEST_DIR="$TARGET_HOME/hq"
+
+echo "$(date): Source=$SOURCE_DIR Dest=$DEST_DIR" >> "$LOG"
+
+# Create destination
+mkdir -p "$DEST_DIR" 2>/dev/null
+
+# Copy files if source exists
+if [ -d "$SOURCE_DIR" ]; then
+    echo "$(date): Copying files..." >> "$LOG"
+    cp -R "$SOURCE_DIR/"* "$DEST_DIR/" 2>/dev/null
+    chown -R "$TARGET_USER" "$DEST_DIR" 2>/dev/null
+    echo "$(date): Done copying" >> "$LOG"
+else
+    echo "$(date): Source not found" >> "$LOG"
+fi
+
+# Create version file
+echo "1.0.0" > "$DEST_DIR/.hq-version" 2>/dev/null
+
+# Install Claude CLI if npm is available
+echo "$(date): Checking for npm..." >> "$LOG"
+
+# Set PATH to include common locations where Node.js/npm might be
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:$PATH"
+echo "$(date): PATH set to $PATH" >> "$LOG"
+
+# Find npm - check common locations
+NPM_CMD=""
+for npm_path in /opt/homebrew/bin/npm /usr/local/bin/npm /usr/bin/npm; do
+    if [ -x "$npm_path" ]; then
+        NPM_CMD="$npm_path"
+        break
+    fi
+done
+
+if [ -n "$NPM_CMD" ]; then
+    echo "$(date): Found npm at $NPM_CMD" >> "$LOG"
+    echo "$(date): Installing Claude CLI..." >> "$LOG"
+
+    # Install Claude CLI globally
+    # Run as target user to install in their npm prefix
+    if [ "$EUID" -eq 0 ]; then
+        # Running as root, use sudo -u to run as target user with proper PATH
+        sudo -u "$TARGET_USER" PATH="$PATH" "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || {
+            echo "$(date): Claude CLI install failed as user, trying globally..." >> "$LOG"
+            "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || true
+        }
+    else
+        "$NPM_CMD" install -g @anthropic-ai/claude-code 2>> "$LOG" || true
+    fi
+
+    echo "$(date): Claude CLI installation attempted" >> "$LOG"
+else
+    echo "$(date): npm not found - please install Node.js first" >> "$LOG"
+    echo "$(date): Claude CLI was not installed" >> "$LOG"
+fi
+
+echo "$(date): Postinstall complete" >> "$LOG"
+exit 0
