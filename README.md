@@ -4,6 +4,8 @@ Personal OS for AI Workers. Install, personalize, and run AI agents from your te
 
 ## Install
 
+### Quick Start (recommended)
+
 ```bash
 npx create-hq
 ```
@@ -13,6 +15,26 @@ This creates an HQ directory with commands, workers, knowledge bases, and projec
 ```bash
 cd hq
 claude
+/setup
+```
+
+### Binary Installers
+
+For users who prefer a graphical installer (no command line required):
+
+- **Windows** — [Download .exe installer](https://github.com/indigoai-us/hq/releases/latest/download/HQ-Setup.exe)
+- **macOS** — [Download .pkg installer](https://github.com/indigoai-us/hq/releases/latest/download/HQ-Installer.pkg)
+
+Visit the [HQ download page](https://indigoai-us.github.io/hq/installer/docs/) for OS auto-detection and system requirements.
+
+### Manual
+
+Clone the template directory directly:
+
+```bash
+git clone https://github.com/indigoai-us/hq.git
+cp -r hq/template ~/hq
+cd ~/hq && claude
 /setup
 ```
 
