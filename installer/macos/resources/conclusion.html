@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Complete</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            color: #28a745;
+            font-size: 24px;
+            margin: 0 0 8px 0;
+        }
+        .tagline {
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .auth-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: white;
+            text-align: center;
+        }
+        .auth-section h2 {
+            color: white;
+            font-size: 18px;
+            margin: 0 0 12px 0;
+        }
+        .auth-section p {
+            margin: 8px 0;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .auth-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 12px;
+            cursor: pointer;
+        }
+        .auth-button:hover {
+            background: #f0f0f0;
+        }
+        .next-steps {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .next-steps h2 {
+            color: #764ba2;
+            font-size: 16px;
+            margin: 0 0 12px 0;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin: 12px 0;
+        }
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content strong {
+            color: #333;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+        }
+        .note {
+            background: #e7f3ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            text-align: left;
+            font-size: 12px;
+        }
+        .note strong {
+            color: #0c5460;
+        }
+        .or-divider {
+            display: flex;
+            align-items: center;
+            margin: 16px 0;
+            color: #999;
+        }
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        .or-divider span {
+            padding: 0 12px;
+            font-size: 12px;
+        }
+        .links {
+            margin-top: 20px;
+        }
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">&#x1F389;</div>
+        <h1>Installation Complete!</h1>
+        <div class="tagline">HQ is ready to use</div>
+
+        <div class="auth-section">
+            <h2>&#x1F510; Authenticate Claude CLI</h2>
+            <p>Claude CLI needs to be authenticated before use.</p>
+            <p>Open Terminal and run:</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 4px; margin: 12px 0; font-family: 'SF Mono', Monaco, monospace;">
+                claude setup-token
+            </div>
+            <p style="font-size: 11px; opacity: 0.8;">This will open your browser to sign in to claude.ai</p>
+        </div>
+
+        <div class="or-divider"><span>then</span></div>
+
+        <div class="next-steps">
+            <h2>Getting Started</h2>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Open Terminal</strong><br>
+                    <small>Find it in Applications &rarr; Utilities &rarr; Terminal</small>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Navigate to HQ</strong><br>
+                    <code>cd ~/hq</code>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Start Claude</strong><br>
+                    <code>claude</code>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <strong>Run the setup wizard</strong><br>
+                    <code>/setup</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>First time?</strong> When you run <code>claude</code> for the first time, you may be prompted to authenticate. Just follow the browser prompts to sign in with your Anthropic account.
+        </div>
+
+        <div class="note">
+            <strong>Tip:</strong> If you see a "command not found" error for <code>claude</code>, try opening a new Terminal window or run <code>source ~/.zshrc</code> to reload your PATH.
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/indigoai-us/hq">GitHub</a> |
+            <a href="https://github.com/indigoai-us/hq/issues">Support</a>
+        </div>
+    </div>
+</body>
+</html>

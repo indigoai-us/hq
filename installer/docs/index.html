@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HQ - Download</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #0f0f23;
+            --bg-card: #1a1a2e;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success: #22c55e;
+            --warning: #eab308;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        .download-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .detected-os {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .detected-os strong {
+            color: var(--text);
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+        }
+
+        .download-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .version-info {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .other-platforms {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .other-platforms h4 {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+
+        .platform-links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .platform-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .platform-link:hover {
+            text-decoration: underline;
+        }
+
+        .requirements {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .requirements h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .req-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .req-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .req-icon {
+            color: var(--success);
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .req-text strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .req-text span {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .advanced-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .advanced-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .tab-btn:hover:not(.active) {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .code-block {
+            background: #0d0d1a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            color: #e2e8f0;
+        }
+
+        .code-comment {
+            color: #6b7280;
+        }
+
+        .faq-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .faq-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+        }
+
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+
+        .faq-question {
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-question::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .faq-item.open .faq-question::after {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        .faq-item.open .faq-answer {
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+
+            .download-section {
+                padding: 1.5rem;
+            }
+
+            .download-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">HQ</h1>
+            <p class="tagline">Personal OS for AI Workers</p>
+        </header>
+
+        <section class="download-section">
+            <p class="detected-os" id="detected-os">Detecting your operating system...</p>
+
+            <a href="#" id="download-btn" class="download-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span id="download-text">Download</span>
+            </a>
+
+            <p class="version-info">Version 1.0.0 | <span id="file-size">~15 MB</span></p>
+
+            <div class="other-platforms">
+                <h4>Other platforms</h4>
+                <div class="platform-links">
+                    <a href="#" id="windows-link" class="platform-link">Windows (.exe)</a>
+                    <a href="#" id="macos-link" class="platform-link">macOS (.pkg)</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="requirements">
+            <h2>System Requirements</h2>
+            <div class="req-grid">
+                <div class="req-item">
+                    <span class="req-icon">&#10003;</span>
+                    <div class="req-text">
+                        <strong>Windows 10+</strong>
+                        <span>64-bit required</span>
+                    </div>
+                </div>
+                <div class="req-item">
+                    <span class="req-icon">&#10003;</span>
+                    <div class="req-text">
+                        <strong>macOS 12+</strong>
+                        <span>Monterey or later</span>
+                    </div>
+                </div>
+                <div class="req-item">
+                    <span class="req-icon">&#10003;</span>
+                    <div class="req-text">
+                        <strong>500 MB disk space</strong>
+                        <span>For HQ and dependencies</span>
+                    </div>
+                </div>
+                <div class="req-item">
+                    <span class="req-icon">&#10003;</span>
+                    <div class="req-text">
+                        <strong>Internet connection</strong>
+                        <span>Required for Claude CLI</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="advanced-section">
+            <h2>Manual Installation</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                For developers or if you prefer the command line.
+            </p>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="macos-cli">macOS / Linux</button>
+                <button class="tab-btn" data-tab="windows-cli">Windows</button>
+            </div>
+
+            <div id="macos-cli" class="tab-content active">
+                <div class="code-block">
+                    <code>
+<span class="code-comment"># Install Node.js (if not installed)</span>
+brew install node
+
+<span class="code-comment"># Install HQ via npx</span>
+npx create-hq my-hq
+
+<span class="code-comment"># Or install Claude CLI manually</span>
+npm install -g @anthropic-ai/claude-code
+
+<span class="code-comment"># Authenticate with Claude</span>
+claude login
+                    </code>
+                </div>
+            </div>
+
+            <div id="windows-cli" class="tab-content">
+                <div class="code-block">
+                    <code>
+<span class="code-comment"># Install Node.js from https://nodejs.org</span>
+
+<span class="code-comment"># Install HQ via npx (in PowerShell)</span>
+npx create-hq my-hq
+
+<span class="code-comment"># Or install Claude CLI manually</span>
+npm install -g @anthropic-ai/claude-code
+
+<span class="code-comment"># Authenticate with Claude</span>
+claude login
+                    </code>
+                </div>
+            </div>
+        </section>
+
+        <section class="faq-section">
+            <h2>Frequently Asked Questions</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">What is HQ?</div>
+                <div class="faq-answer">
+                    HQ is a personal operating system for AI workers. It helps you organize projects,
+                    manage AI assistants, and automate workflows using Claude CLI as the backbone.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Do I need a Claude account?</div>
+                <div class="faq-answer">
+                    Yes, you'll need a Claude account to use HQ. During installation, you'll be
+                    prompted to log in via your browser. You can also authenticate later by running
+                    <code>claude login</code> in your terminal.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Will the installer install Node.js automatically?</div>
+                <div class="faq-answer">
+                    Yes! If Node.js isn't detected on your system, the installer will download and
+                    install it automatically. No terminal commands required.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Is my data stored locally?</div>
+                <div class="faq-answer">
+                    Yes, all your HQ files are stored locally on your computer. The installer
+                    creates a folder in your home directory. Your projects, workers, and configurations
+                    never leave your machine unless you explicitly share them.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">The macOS installer shows a security warning</div>
+                <div class="faq-answer">
+                    If macOS blocks the installer, right-click the .pkg file and select "Open".
+                    Then click "Open" in the dialog. This is because the package may not be notarized
+                    yet. We're working on getting it signed with an Apple Developer ID.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Windows SmartScreen shows a warning</div>
+                <div class="faq-answer">
+                    Click "More info" then "Run anyway". This warning appears because the installer
+                    isn't yet signed with an EV certificate. We're working on code signing.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">How do I uninstall HQ?</div>
+                <div class="faq-answer">
+                    <strong>Windows:</strong> Use "Add or Remove Programs" in Settings, or run the uninstaller from the Start Menu.<br>
+                    <strong>macOS:</strong> Delete the ~/hq folder. Optionally, remove Claude CLI with <code>npm uninstall -g @anthropic-ai/claude-code</code>.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Can I update HQ?</div>
+                <div class="faq-answer">
+                    Yes! Run the "Check for Updates" shortcut from your Start Menu (Windows) or
+                    Desktop (macOS). The updater will preserve your configuration and data.
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>
+                <a href="https://github.com/indigoai-us/hq">GitHub</a> |
+                <a href="https://github.com/indigoai-us/hq/issues">Report Issues</a> |
+                <a href="https://github.com/indigoai-us/hq/blob/main/LICENSE">License</a>
+            </p>
+            <p style="margin-top: 0.5rem;">&copy; 2026 HQ</p>
+        </footer>
+    </div>
+
+    <script>
+        // Detect OS and configure download links
+        (function() {
+            const ua = navigator.userAgent;
+            let os = 'unknown';
+            let downloadUrl = '';
+            let fileName = '';
+
+            // Base URL for releases
+            const releaseBase = 'https://github.com/indigoai-us/hq/releases/latest/download/';
+            const windowsFile = 'hq-setup-1.0.0.exe';
+            const macosFile = 'hq-1.0.0.pkg';
+
+            if (ua.includes('Windows')) {
+                os = 'Windows';
+                downloadUrl = releaseBase + windowsFile;
+                fileName = windowsFile;
+            } else if (ua.includes('Mac')) {
+                os = 'macOS';
+                downloadUrl = releaseBase + macosFile;
+                fileName = macosFile;
+            } else if (ua.includes('Linux')) {
+                os = 'Linux';
+                // No native installer for Linux yet
+            }
+
+            // Update detected OS text
+            const detectedEl = document.getElementById('detected-os');
+            if (os === 'Linux') {
+                detectedEl.innerHTML = 'Detected: <strong>Linux</strong> - Use manual installation below';
+            } else if (os !== 'unknown') {
+                detectedEl.innerHTML = 'Detected: <strong>' + os + '</strong>';
+            } else {
+                detectedEl.innerHTML = 'Could not detect your OS. Choose a platform below.';
+            }
+
+            // Configure main download button
+            const downloadBtn = document.getElementById('download-btn');
+            const downloadText = document.getElementById('download-text');
+
+            if (os === 'Windows') {
+                downloadBtn.href = downloadUrl;
+                downloadText.textContent = 'Download for Windows';
+            } else if (os === 'macOS') {
+                downloadBtn.href = downloadUrl;
+                downloadText.textContent = 'Download for macOS';
+            } else {
+                downloadBtn.style.display = 'none';
+            }
+
+            // Configure platform links
+            document.getElementById('windows-link').href = releaseBase + windowsFile;
+            document.getElementById('macos-link').href = releaseBase + macosFile;
+
+            // Hide current platform from "other platforms" section
+            if (os === 'Windows') {
+                document.getElementById('windows-link').style.display = 'none';
+            } else if (os === 'macOS') {
+                document.getElementById('macos-link').style.display = 'none';
+            }
+        })();
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+
+                // Update buttons
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Update content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // FAQ accordion
+        document.querySelectorAll('.faq-question').forEach(q => {
+            q.addEventListener('click', () => {
+                const item = q.parentElement;
+                item.classList.toggle('open');
+            });
+        });
+    </script>
+</body>
+</html>

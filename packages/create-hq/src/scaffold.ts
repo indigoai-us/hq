@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { createInterface } from "readline";
 import { banner, success, warn, step, nextSteps } from "./ui.js";
 import { checkDeps } from "./deps.js";
@@ -35,12 +35,13 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
 }
 
 function getTemplateDir(): string {
-  // In the npm package, template is at ../../template relative to dist/
-  // In dev, it's at ../../../template relative to src/
+  // When installed from npm: dist/scaffold.js -> ../template
+  // In monorepo dev from dist: packages/create-hq/dist/scaffold.js -> ../../template
+  // In monorepo dev from src: packages/create-hq/src/scaffold.ts -> ../../template
   const candidates = [
-    path.resolve(__dirname, "..", "..", "template"),
-    path.resolve(__dirname, "..", "template"),
-    path.resolve(__dirname, "..", "..", "..", "template"),
+    path.resolve(__dirname, "..", "template"),           // npm installed (dist/../template)
+    path.resolve(__dirname, "..", "..", "template"),     // monorepo (packages/create-hq/template or ../../template)
+    path.resolve(__dirname, "..", "..", "..", "template"), // monorepo from dist (../../template)
   ];
 
   for (const candidate of candidates) {

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to HQ</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #764ba2;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+        .tagline {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+        p {
+            margin: 12px 0;
+            color: #555;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .feature-list li {
+            padding: 8px 0 8px 28px;
+            position: relative;
+            color: #444;
+        }
+        .feature-list li:before {
+            content: "\2713";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .requirements {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .requirements h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .requirements ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to HQ</h1>
+        <div class="tagline">Your Personal AI Operating System</div>
+
+        <p>This installer will set up HQ on your Mac, giving you a powerful system for orchestrating AI workers, managing projects, and creating content.</p>
+
+        <ul class="feature-list">
+            <li>AI-powered workers for code, content, and more</li>
+            <li>Project management with PRDs and task tracking</li>
+            <li>Content creation and social media workflows</li>
+            <li>Knowledge management and learnings capture</li>
+        </ul>
+
+        <p>Click <strong>Continue</strong> to begin the installation.</p>
+
+        <div class="requirements">
+            <h3>System Requirements</h3>
+            <ul>
+                <li>macOS 10.15 Catalina or later</li>
+                <li>Node.js 18+ (will be installed if missing)</li>
+                <li>~500 MB of disk space</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

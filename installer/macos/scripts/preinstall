@@ -1,0 +1,30 @@
+#!/bin/bash
+# =============================================================================
+# HQ macOS Installer - Pre-install Script
+# Minimal version for CI compatibility
+# =============================================================================
+
+# Simple logging
+echo "$(date): Starting preinstall" >> /tmp/hq-preinstall.log 2>&1
+
+# Get the target user
+TARGET_USER="${USER:-runner}"
+if [ "$TARGET_USER" = "root" ]; then
+    TARGET_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "runner")
+fi
+
+# Get home directory
+TARGET_HOME=$(eval echo "~$TARGET_USER" 2>/dev/null || echo "/Users/runner")
+TARGET_HOME="${TARGET_HOME:-/Users/runner}"
+
+# Save for postinstall
+cat > /tmp/hq-install-vars << EOF
+TARGET_USER=$TARGET_USER
+TARGET_HOME=$TARGET_HOME
+EOF
+
+echo "$(date): Target user: $TARGET_USER" >> /tmp/hq-preinstall.log 2>&1
+echo "$(date): Target home: $TARGET_HOME" >> /tmp/hq-preinstall.log 2>&1
+echo "$(date): Preinstall complete" >> /tmp/hq-preinstall.log 2>&1
+
+exit 0
