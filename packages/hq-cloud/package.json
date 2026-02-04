@@ -1,6 +1,6 @@
 {
   "name": "@indigoai/hq-cloud",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "HQ cloud sync engine — bidirectional S3 sync for mobile access",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
