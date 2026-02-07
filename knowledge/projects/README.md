@@ -62,8 +62,8 @@ If project has code:
 ## Examples
 
 Good project folders:
-- `projects/my-app/` - Mobile app
-- `projects/token-launch/` - Token launch
+- `projects/mobile-app/` - Mobile app
+- `projects/product-launch/` - Product launch
 - `projects/site-migration/` - Website migration
 
 Not projects (too small):

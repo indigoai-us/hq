@@ -37,7 +37,7 @@ Stop and realign before continuing. Use when you want to ensure the agent is on 
 
 5. **Load company context if needed**
    If user picks a company-specific focus, read that company's `knowledge/INDEX.md`:
-   - `companies/{company}/knowledge/INDEX.md`
+   - `companies/{company}/knowledge/INDEX.md` (for each company you have configured)
 
 6. **Wait for response** before proceeding
 

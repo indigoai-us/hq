@@ -25,7 +25,7 @@ Prepare for a new session to continue this work.
 3. **Commit dirty knowledge repos**
    Knowledge folders are separate git repos (symlinked). Before handoff, commit any uncommitted knowledge changes:
    ```bash
-   for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+   for symlink in knowledge/* companies/*/knowledge; do
      [ -L "$symlink" ] || continue
      repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
      dirty=$(cd "$repo_dir" && git status --porcelain)
@@ -33,6 +33,15 @@ Prepare for a new session to continue this work.
      (cd "$repo_dir" && git add -A && git commit -m "checkpoint: auto-commit before handoff")
    done
    ```
+
+3b. **Commit HQ changes**
+    Commit any uncommitted HQ changes before handoff:
+    ```bash
+    if [[ -n $(git status --porcelain) ]]; then
+      git add -A
+      git commit -m "checkpoint: auto-commit before handoff"
+    fi
+    ```
 
 4. **Update INDEX.md files**
    - Regenerate `INDEX.md` at HQ root with:

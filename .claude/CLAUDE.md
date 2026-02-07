@@ -23,15 +23,15 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 ```
 HQ/
-├── .claude/commands/   # Slash commands (17, visibility: public|private in frontmatter)
+├── .claude/commands/   # Slash commands (18, visibility: public|private in frontmatter)
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
 ├── knowledge/          # HQ-level (Ralph, workers, security, projects)
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
-│   ├── dev-team/       # 12 code workers
-│   └── content-*/      # 5 content workers
+│   ├── sample-worker/  # Example worker (copy + customize)
+│   └── registry.yaml   # Worker index
 ├── social-content/     # Content drafts
 │   └── drafts/         # x/, linkedin/
 └── workspace/
@@ -48,11 +48,13 @@ Workers are autonomous agents with defined skills. They *do things*.
 
 | Type | Purpose | Examples |
 |------|---------|----------|
-| CodeWorker | Implement features, fix bugs | dev-team/* |
-| ContentWorker | Draft content, maintain voice | content-brand, content-sales |
-| SocialWorker | Post to platforms | x-worker |
-| ResearchWorker | Analysis, market research | analyst |
-| OpsWorker | Reports, automation | cfo-worker |
+| CodeWorker | Implement features, fix bugs | dev-team/*, coder |
+| ContentWorker | Draft content, maintain voice | brand-writer, copywriter |
+| SocialWorker | Post to platforms | x-worker, linkedin-poster |
+| ResearchWorker | Analysis, market research | analyst, researcher |
+| OpsWorker | Reports, automation | cfo-worker, monitor |
+
+**Get started:** Copy `workers/sample-worker/` and customize. See `knowledge/workers/` for the full framework.
 
 **Run a worker:** `/run {worker} {skill}`
 
@@ -91,6 +93,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/search-reindex` | Reindex and re-embed HQ for qmd search |
 | `/cleanup` | Audit and clean HQ |
 | `/setup` | Interactive setup wizard |
+| `/personal-interview` | Deep interview to build your profile + voice |
 | `/exit-plan` | Force exit from plan mode |
 
 ## Knowledge Repos
@@ -111,12 +114,13 @@ Knowledge folders can be their own git repos, symlinked into HQ. This enables in
 
 HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
 
-**When to search:** Before any planning, research, or context-gathering task, search HQ first with `qmd` to find relevant knowledge, workers, skills, and prior work.
+**When to search:** Before any planning, research, or context-gathering task, search HQ first with `qmd` to find relevant knowledge, workers, skills, and prior work. Use qmd for codebase exploration — conceptual search instead of Grep.
 
 **Commands (run via Bash tool):**
 - `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
 - `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
 - `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
+- Add `-c {collection}` to scope to a specific collection
 
 **Slash commands:** `/search <query>`, `/search-reindex`
 
@@ -125,8 +129,9 @@ HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + f
 | Need | Tool | Example |
 |------|------|---------|
 | Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about API integration" |
+| Find code by concept | `qmd vsearch -c {repo}` | "where auth middleware is defined" |
 | Find files by path pattern | `Glob` | `workers/*/worker.yaml`, `projects/*/prd.json` |
-| Search code in `repos/` | `Grep` | Pattern matching in source code |
+| Exact pattern match in code | `Grep` | `import.*AuthService`, specific function references |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
 **Never use Grep/Glob to search HQ content by topic.** That's what qmd does. Commands and skills that scan HQ for related context must use `qmd vsearch` (semantic) or `qmd search` (keyword), not Grep.

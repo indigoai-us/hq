@@ -137,6 +137,19 @@ while (remaining tasks with passes: false):
         Progress: {completed}/{total}
         ```
 
+    5a.5 SYNC LINEAR (if configured, best-effort)
+
+        If the selected task has `linearIssueId` and prd.metadata has `linearCredentials`:
+        ```bash
+        LINEAR_KEY=$(cat {prd.metadata.linearCredentials} | python3 -c "import sys,json; print(json.load(sys.stdin)['apiKey'])")
+        IN_PROGRESS_STATE="{prd.metadata.linearInProgressStateId}"
+        curl -s -X POST https://api.linear.app/graphql \
+          -H "Content-Type: application/json" \
+          -H "Authorization: $LINEAR_KEY" \
+          -d "{\"query\": \"mutation { issueUpdate(id: \\\"{task.linearIssueId}\\\", input: { stateId: \\\"$IN_PROGRESS_STATE\\\" }) { success } }\"}"
+        ```
+        Skip silently if not configured. Never block execution on Linear sync.
+
     5b. EXECUTE task via sub-agent
 
         Spawn a SINGLE sub-agent for the entire task.

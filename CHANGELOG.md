@@ -1,5 +1,37 @@
 # Changelog
 
+## v5.0.0 (2026-02-07)
+
+### Added
+- **`/personal-interview`** — Deep conversational interview to build your profile and social voice. Populates `profile.md`, `voice-style.md`, and `agents.md` from ~18 thoughtful questions.
+- **`workers/sample-worker/`** — Example worker with `worker.yaml` and `skills/example.md`. Copy and customize to build your own.
+
+### Changed
+- **`/setup`** — Simplified from 5 phases to 3. Now asks just name, work, and goals. Recommends `/personal-interview` for deeper profile building.
+- **`.claude/CLAUDE.md`** — Updated structure (18 commands, sample-worker), added `/personal-interview` to commands table. Removed bundled worker listings.
+- **`/execute-task`** — Added codebase exploration guidance (qmd collection search for workers), Linear sync integration for completed tasks
+- **`/handoff`** — Added auto-commit of HQ changes before handoff (not just knowledge repos)
+- **`/prd`** — Added target repo scanning via qmd collections during PRD creation
+- **`/run-project`** — Added Linear sync integration (sets tasks to "In Progress" on execution start)
+- **`/search`** — Added company auto-detection from context (cwd, active worker, recent files), enhanced collection scoping
+- **`/search-reindex`** — Multi-collection architecture docs, instructions for adding new repo collections
+- **`/cleanup`**, **`/reanchor`** — Genericized company INDEX paths
+- `workers/registry.yaml` — Version 5.0, sample-worker only
+- `knowledge/Ralph/11-team-training-guide.md` — Expanded with week-by-week team training insights
+- `knowledge/hq-core/index-md-spec.md` — Genericized company references
+- `knowledge/workers/README.md`, `skill-schema.md` — Updated examples
+- `knowledge/projects/README.md` — Updated project examples
+
+### Removed
+- **All bundled workers** — `workers/dev-team/` (12 workers), `workers/content-*/` (5 workers), `workers/security-scanner/` removed. Build your own with `/newworker` using `sample-worker/` as reference.
+- **`starter-projects/`** — Removed. Use `/prd` to create projects.
+
+### Breaking
+- Workers directory restructured: all pre-built workers removed. If you use dev-team or content workers, keep your existing copies.
+- `/setup` no longer offers starter project selection. Use `/prd` + `/newworker` instead.
+
+---
+
 ## v4.0.0 (2026-01-31)
 
 ### Added

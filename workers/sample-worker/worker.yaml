@@ -1,0 +1,59 @@
+# Sample Worker
+# Copy this directory and customize for your own worker.
+# See knowledge/workers/ for the full worker framework docs.
+
+worker:
+  id: sample-worker
+  name: "Sample Worker"
+  type: CodeWorker           # CodeWorker, ContentWorker, SocialWorker, ResearchWorker, OpsWorker
+  version: "1.0"
+
+identity:
+  # voice_guide: companies/{company}/knowledge/voice-style.md
+
+execution:
+  mode: on-demand            # on-demand, scheduled, event-triggered
+  max_runtime: 15m
+
+context:
+  base:
+    - knowledge/Ralph/       # methodology
+  dynamic: []
+  exclude:
+    - node_modules/
+    - "*.log"
+
+verification:
+  post_execute:
+    - check: output_valid
+  approval_required: false
+
+tasks:
+  source: projects/{project}/prd.json
+  format: prd
+  one_at_a_time: true
+
+output:
+  format: git_commit
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  This is a sample worker. Replace these instructions with your own.
+
+  Protocol:
+  1. Read the task requirements
+  2. Implement the solution
+  3. Verify your work passes checks
+  4. Write a checkpoint
+
+  Build your own workers with: /newworker

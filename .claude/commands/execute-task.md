@@ -219,6 +219,9 @@ Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/
 ### Context from Previous Phase
 {handoff_context from previous worker, if any}
 
+### Codebase Exploration
+If the target repo has a qmd collection (check `qmd status`), prefer `qmd vsearch "<concept>" -c {collection} --json -n 10` for conceptual search (e.g. "where is auth handled", "billing service pattern"). Use Grep only for exact pattern matching (specific imports, function references, string literals).
+
 ### Your Instructions
 {worker.instructions}
 
@@ -297,6 +300,25 @@ When all phases complete:
 // Update projects/{project}/prd.json
 task.passes = true
 ```
+
+#### 7a.5 Sync to Linear (if configured)
+
+If the story has `linearIssueId` and prd metadata has `linearCredentials`:
+
+```bash
+# Read API key from credentials path in prd metadata
+LINEAR_KEY=$(cat {prd.metadata.linearCredentials} | python3 -c "import sys,json; print(json.load(sys.stdin)['apiKey'])")
+ISSUE_ID="{task.linearIssueId}"
+# "Done" state ID from prd metadata, or default lookup
+DONE_STATE="{prd.metadata.linearDoneStateId}"
+
+curl -s -X POST https://api.linear.app/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: $LINEAR_KEY" \
+  -d "{\"query\": \"mutation { issueUpdate(id: \\\"$ISSUE_ID\\\", input: { stateId: \\\"$DONE_STATE\\\" }) { success } }\"}"
+```
+
+Skip silently if no `linearIssueId` on the story or no credentials configured. Linear sync is best-effort — never block task completion on it.
 
 #### 7b. Capture Learnings via /learn
 

@@ -4,6 +4,64 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.0.0 (from v4.0.0)
+
+### What Changed
+Major restructure: bundled workers removed (build your own), simplified setup, new `/personal-interview` command. Commands updated with Linear integration, enhanced search, and codebase exploration.
+
+### New Command
+Copy to `.claude/commands/`:
+- `personal-interview.md` — Deep interview to populate profile + voice style
+
+### New Worker Structure
+- `workers/sample-worker/` — Example worker to copy and customize
+- `workers/registry.yaml` — Now contains only the sample worker + commented template
+
+### Removed (from starter kit)
+These directories are deleted in v5.0.0. **If you use them, keep your existing copies**:
+- `workers/dev-team/` (12 workers)
+- `workers/content-brand/`, `content-sales/`, `content-product/`, `content-legal/`, `content-shared/`
+- `workers/security-scanner/`
+- `starter-projects/` (personal-assistant, social-media, code-worker)
+
+### Updated Files
+Copy from starter kit:
+- `.claude/commands/setup.md` — Rewritten (simplified to 3 phases)
+- `.claude/commands/execute-task.md` — Linear sync, qmd codebase exploration
+- `.claude/commands/handoff.md` — Auto-commit HQ changes
+- `.claude/commands/prd.md` — Target repo scanning
+- `.claude/commands/run-project.md` — Linear sync
+- `.claude/commands/search.md` — Company auto-detection
+- `.claude/commands/search-reindex.md` — Multi-collection docs
+- `.claude/commands/cleanup.md` — Genericized INDEX paths
+- `.claude/commands/reanchor.md` — Genericized company paths
+- `.claude/CLAUDE.md` — Merge carefully: new structure, 18 commands, sample-worker
+- `workers/registry.yaml` — v5.0
+
+Updated knowledge:
+- `knowledge/Ralph/11-team-training-guide.md`
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/projects/README.md`
+- `knowledge/workers/README.md`, `skill-schema.md`
+
+### Migration Steps
+1. Copy `.claude/commands/personal-interview.md` (new)
+2. Copy updated commands (setup, execute-task, handoff, prd, run-project, search, search-reindex, cleanup, reanchor)
+3. Copy `workers/sample-worker/` directory (new example worker)
+4. Merge `.claude/CLAUDE.md` — update structure tree, commands table, workers section
+5. **If using bundled workers**: keep your existing `workers/dev-team/`, `workers/content-*/` directories — they still work
+6. **If NOT using bundled workers**: delete old worker directories, copy new `workers/registry.yaml`
+7. Copy updated knowledge files
+8. Delete `starter-projects/` if present
+9. Run `/search-reindex`
+
+### Breaking Changes
+- All bundled workers removed from starter kit. Existing copies in your HQ still work.
+- `/setup` no longer offers starter project selection. Use `/prd` + `/newworker`.
+- `workers/registry.yaml` format unchanged but contents stripped to sample-worker only.
+
+---
+
 ## Migrating to v4.0.0 (from v3.3.0)
 
 ### What Changed
