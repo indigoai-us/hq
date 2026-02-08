@@ -89,6 +89,25 @@ Phase 3:       [mobile-app]
 - **Storage:** S3 with versioning
 - **Tech:** Node/TypeScript primary
 
+## E2E Testing (inherited from feature/e2e-cloud-testing)
+
+This branch includes E2E cloud testing infrastructure (knowledge/testing/, .github/workflows/e2e.yml, worker skills, etc.) merged from `feature/e2e-cloud-testing`. This is intentional — we use E2E testing to validate hq-cloud features as they're built.
+
+### Decoupling E2E if needed
+
+The E2E work is **31 pure file additions with zero modifications to existing files**, making removal trivial:
+
+```bash
+# List the exact files to remove:
+git diff --name-only origin/main...origin/feature/e2e-cloud-testing
+
+# Remove them in one commit:
+git diff --name-only origin/main...origin/feature/e2e-cloud-testing | xargs git rm
+git commit -m "chore: remove e2e testing infrastructure"
+```
+
+Alternatively, rebase `feature/hq-cloud` onto `origin/main` instead of `feature/e2e-cloud-testing` to drop the e2e commits entirely. The `feature/e2e-cloud-testing` branch is preserved independently and has its own PR (#2) to main.
+
 ## Open Questions
 
 - [ ] Exact mobile framework: Expo vs bare React Native?
