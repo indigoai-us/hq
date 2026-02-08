@@ -417,7 +417,93 @@ ls -la e2e-failures/
 npx playwright show-trace e2e-failures/*/trace.zip
 ```
 
-### Agent-Results.json Schema
+### Agent-Results.json Schema Reference
+
+The `agent-results.json` file is produced by `scripts/process-results.js` (template at `knowledge/testing/templates/scripts/process-results.js`). It transforms Playwright's deeply nested JSON output into a flat, agent-parseable format.
+
+**Top-Level Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary` | object | Aggregate test counts and timing |
+| `status` | `"passed"` \| `"failed"` | Overall run result. `"failed"` if any test failed or timed out |
+| `failures` | array | List of failed/timed-out tests with full error details |
+| `passed` | array | List of passing tests with timing and flaky info |
+| `skipped` | array | List of skipped tests |
+| `artifacts` | object | Collected screenshots, traces, and videos indexed by test |
+| `meta` | object | Execution metadata (timestamp, URL, mode, version) |
+
+**`summary` Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total` | number | Total test count |
+| `passed` | number | Tests that passed (including flaky) |
+| `failed` | number | Tests that failed or timed out |
+| `skipped` | number | Tests that were skipped |
+| `flaky` | number | Tests that passed after a previous failure (subset of passed) |
+| `duration` | number | Total wall-clock duration in milliseconds |
+
+**`failures[]` Array Items:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test` | string | Test title (from `test('title', ...)`) |
+| `suite` | string | Parent suite/describe block name |
+| `file` | string | Test file path (e.g. `tests/landing-page.spec.ts`) |
+| `line` | number | Line number in source file |
+| `column` | number | Column number in source file |
+| `duration` | number | Total duration across all retries (ms) |
+| `retries` | number | Number of retry attempts (0 = first attempt only) |
+| `status` | `"failed"` \| `"timedOut"` | Final test status |
+| `error.message` | string | Error message text |
+| `error.stack` | string \| null | Full stack trace |
+| `error.snippet` | string \| null | Code snippet near failure point |
+| `screenshot` | string \| null | Relative path to failure screenshot |
+| `trace` | string \| null | Relative path to Playwright trace zip |
+| `video` | string \| null | Relative path to test video recording |
+
+**`passed[]` Array Items:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test` | string | Test title |
+| `suite` | string | Parent suite name |
+| `file` | string | Test file path |
+| `line` | number | Line number |
+| `column` | number | Column number |
+| `duration` | number | Total duration across all attempts (ms) |
+| `retries` | number | Number of retry attempts |
+| `flaky` | boolean | Present and `true` if test passed after a prior failure |
+
+**`skipped[]` Array Items:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test` | string | Test title |
+| `suite` | string | Parent suite name |
+| `file` | string | Test file path |
+| `line` | number | Line number |
+| `column` | number | Column number |
+
+**`artifacts` Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `screenshots` | array | `[{test: string, path: string}]` -- failure screenshots |
+| `traces` | array | `[{test: string, path: string}]` -- Playwright trace zips |
+| `videos` | array | `[{test: string, path: string}]` -- video recordings |
+
+**`meta` Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | string | ISO 8601 timestamp of processing time |
+| `baseUrl` | string | The URL tests ran against (from `BASE_URL` env var) |
+| `executionMode` | `"browserbase"` \| `"local"` | Whether tests used cloud or local browsers |
+| `playwrightVersion` | string | Playwright version from test config |
+
+**Full Example:**
 
 ```json
 {
@@ -462,8 +548,8 @@ npx playwright show-trace e2e-failures/*/trace.zip
   ],
   "skipped": [],
   "artifacts": {
-    "screenshots": [{"test": "page loads with correct title", "path": "..."}],
-    "traces": [{"test": "page loads with correct title", "path": "..."}],
+    "screenshots": [{"test": "page loads with correct title", "path": "test-results/Landing-Page-page-loads-with-correct-title/test-failed-1.png"}],
+    "traces": [{"test": "page loads with correct title", "path": "test-results/Landing-Page-page-loads-with-correct-title/trace.zip"}],
     "videos": []
   },
   "meta": {
@@ -475,16 +561,106 @@ npx playwright show-trace e2e-failures/*/trace.zip
 }
 ```
 
-### One-Liner for Agents
+### Quick Query Commands (jq)
+
+One-liner jq commands for common agent tasks against `agent-results.json`:
+
+**Status and Summary:**
 
 ```bash
-# Complete failure check in one command
+# Check overall pass/fail status
+jq -r '.status' agent-results.json
+
+# Get full summary counts
+jq '.summary' agent-results.json
+
+# Get total test count
+jq '.summary.total' agent-results.json
+
+# Check if all tests passed (exit code 0 = yes, 1 = no)
+jq -e '.status == "passed"' agent-results.json
+```
+
+**List Failures:**
+
+```bash
+# List failed test names
+jq -r '.failures[] | "\(.suite) > \(.test)"' agent-results.json
+
+# List failures with file:line location
+jq -r '.failures[] | "\(.file):\(.line) - \(.suite) > \(.test)"' agent-results.json
+
+# Get failure details as structured objects
+jq '.failures[] | {test: .test, suite: .suite, location: "\(.file):\(.line)", error: .error.message}' agent-results.json
+
+# Get full error messages
+jq -r '.failures[] | "[\(.status)] \(.test)\n  Error: \(.error.message)\n"' agent-results.json
+
+# Get full stack traces for each failure
+jq -r '.failures[] | "=== \(.test) ===\n\(.error.stack // "no stack trace")\n"' agent-results.json
+```
+
+**Find Screenshots and Traces:**
+
+```bash
+# List screenshot paths for failed tests
+jq -r '.failures[] | select(.screenshot) | "\(.test): \(.screenshot)"' agent-results.json
+
+# List trace paths for failed tests
+jq -r '.failures[] | select(.trace) | "\(.test): \(.trace)"' agent-results.json
+
+# List video paths for failed tests
+jq -r '.failures[] | select(.video) | "\(.test): \(.video)"' agent-results.json
+
+# Get all artifact paths (screenshots, traces, videos)
+jq '[.artifacts.screenshots[].path, .artifacts.traces[].path, .artifacts.videos[].path]' agent-results.json
+
+# Get all screenshots with their test names
+jq '.artifacts.screenshots' agent-results.json
+```
+
+**Flaky and Slow Tests:**
+
+```bash
+# Find flaky tests (passed after retry)
+jq -r '.passed[] | select(.flaky) | "\(.test) (retries: \(.retries))"' agent-results.json
+
+# Find slowest tests (top 5)
+jq '[.passed[] | {test: .test, duration: .duration}] | sort_by(.duration) | reverse | .[:5]' agent-results.json
+
+# Find tests that required retries
+jq -r '[.passed[], .failures[]] | map(select(.retries > 0)) | .[] | "\(.test) - \(.retries) retries"' agent-results.json
+```
+
+**Execution Metadata:**
+
+```bash
+# Get execution mode (local vs browserbase)
+jq -r '.meta.executionMode' agent-results.json
+
+# Get the URL tests ran against
+jq -r '.meta.baseUrl' agent-results.json
+
+# Get full metadata
+jq '.meta' agent-results.json
+```
+
+**Combined CI One-Liners:**
+
+```bash
+# Complete failure check: download, check status, show failures if any
 gh run download $(gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId') -n e2e-results-json && \
 jq -e '.status == "passed"' e2e-results-json/agent-results.json || \
 jq '.failures[] | {test: .test, error: .error.message}' e2e-results-json/agent-results.json
+
+# Download results and get a concise failure report
+gh run download $(gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId') -n e2e-results-json && \
+jq -r '"Status: \(.status)\nTotal: \(.summary.total) | Passed: \(.summary.passed) | Failed: \(.summary.failed) | Flaky: \(.summary.flaky)\n" + if (.failures | length > 0) then "Failures:\n" + (.failures | map("  - \(.suite) > \(.test) [\(.file):\(.line)]\n    \(.error.message | split("\n")[0])") | join("\n")) else "All tests passed." end' e2e-results-json/agent-results.json
 ```
 
 ## Branch Protection & Quality Gates
+
+**Note:** Branch protection rules must be configured per-repo by a repository admin. Each repository that uses the E2E testing workflow needs its own branch protection configuration.
 
 ### Required Status Checks
 
@@ -492,9 +668,9 @@ The `main` branch is protected with required status checks:
 
 | Check | Required | Description |
 |-------|----------|-------------|
-| `Run E2E Tests` | Yes | Playwright E2E test suite must pass |
+| `e2e-tests` | Yes | Playwright E2E test suite must pass |
 
-PRs cannot be merged until the E2E Tests workflow completes successfully.
+PRs cannot be merged until the `e2e-tests` job completes successfully.
 
 ### Verifying Protection Status
 
@@ -503,14 +679,24 @@ PRs cannot be merged until the E2E Tests workflow completes successfully.
 gh api repos/{owner}/{repo}/branches/main/protection/required_status_checks --jq '{strict, contexts}'
 
 # Example output:
-# {"strict":true,"contexts":["Run E2E Tests"]}
+# {"strict":true,"contexts":["e2e-tests"]}
+
+# Check full branch protection configuration
+gh api repos/{owner}/{repo}/branches/main/protection --jq '{
+  required_status_checks: .required_status_checks,
+  enforce_admins: .enforce_admins.enabled,
+  required_pull_request_reviews: .required_pull_request_reviews
+}'
+
+# Verify a specific check is required
+gh api repos/{owner}/{repo}/branches/main/protection/required_status_checks --jq '.contexts | index("e2e-tests") // "NOT CONFIGURED"'
 ```
 
 ### Merge Blocked Indicator
 
 When E2E tests fail:
 - Merge button shows "Merge blocked" with red X
-- Required status check shows "Run E2E Tests -- Failing"
+- Required status check shows "e2e-tests -- Failing"
 - PR comment includes failure details and artifact links
 
 ### Emergency Override (Admin Only)
@@ -545,6 +731,8 @@ gh api repos/{owner}/{repo}/branches/main/protection/enforce_admins --jq '.enabl
 
 ### Configuring Protection for New Repos
 
+Branch protection must be set up by a repo admin for each repository that uses the E2E workflow. Run the following `gh api` command, replacing `{owner}/{repo}` with the target repository:
+
 ```bash
 # Set up branch protection with E2E requirement
 gh api repos/{owner}/{repo}/branches/main/protection \
@@ -554,7 +742,7 @@ gh api repos/{owner}/{repo}/branches/main/protection \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Run E2E Tests"]
+    "contexts": ["e2e-tests"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
@@ -565,11 +753,14 @@ gh api repos/{owner}/{repo}/branches/main/protection \
   "restrictions": null
 }
 EOF
+
+# Verify protection was applied
+gh api repos/{owner}/{repo}/branches/main/protection/required_status_checks --jq '{strict, contexts}'
 ```
 
 **Parameters explained:**
 - `strict: true` - Requires branch to be up-to-date with base before merging
-- `contexts: ["Run E2E Tests"]` - The job name from e2e.yml workflow
+- `contexts: ["e2e-tests"]` - The job name from e2e.yml workflow
 - `enforce_admins: false` - Allows admin override in emergencies
 - `required_approving_review_count: 0` - No PR reviews required (adjust per team policy)
 
