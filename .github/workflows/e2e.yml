@@ -1,0 +1,444 @@
+# E2E Testing Workflow
+#
+# Runs Playwright E2E tests against Vercel preview deployments.
+# Uses Browserbase for cloud browser execution when configured.
+#
+# Triggers:
+#   - Push to any branch except main (waits for Vercel preview)
+#   - Pull requests to main (waits for Vercel preview)
+#   - Manual dispatch with custom URL
+#
+# Features:
+#   - Waits for Vercel deployment to be ready
+#   - Runs Playwright tests via Browserbase (cloud) or locally
+#   - Uploads test artifacts (screenshots, traces, videos) on failure
+#   - Posts test results as PR comment
+#   - JSON output for agent parsing
+#   - Session recordings for debugging (Browserbase only)
+#
+# Required repository variables (Settings > Variables):
+#   - VERCEL_PROJECT_ID: Your Vercel project ID
+#   - VERCEL_TEAM_ID: Your Vercel team ID
+#   - VERCEL_PROJECT_NAME: Your Vercel project name
+#
+# Required secrets:
+#   - VERCEL_TOKEN: Vercel API token
+#   - BROWSERBASE_API_KEY: (optional) Browserbase API key for cloud execution
+#   - BROWSERBASE_PROJECT_ID: (optional) Browserbase project ID
+
+name: E2E Tests
+
+on:
+  push:
+    branches-ignore:
+      - main  # Skip main - use PR workflow instead
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Custom preview URL to test (optional - will auto-detect if empty)'
+        required: false
+        type: string
+      debug:
+        description: 'Enable debug mode (headed browser, slowmo)'
+        required: false
+        default: 'false'
+        type: boolean
+      use_browserbase:
+        description: 'Use Browserbase for cloud execution'
+        required: false
+        default: 'true'
+        type: boolean
+      test_dir:
+        description: 'Test directory (relative to repo root)'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Default test directory - override via workflow_dispatch input or repository variable
+  E2E_TEST_DIR: ${{ inputs.test_dir || vars.E2E_TEST_DIR || 'tests/e2e' }}
+
+jobs:
+  # ============================================
+  # Deploy Preview (if not already deployed)
+  # ============================================
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.get-url.outputs.url }}
+      deployment_id: ${{ steps.get-url.outputs.deployment_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          if [ -z "${{ vars.VERCEL_PROJECT_ID }}" ]; then
+            echo "::error::VERCEL_PROJECT_ID repository variable is not set. Go to Settings > Variables to configure it."
+            exit 1
+          fi
+          if [ -z "${{ vars.VERCEL_TEAM_ID }}" ]; then
+            echo "::error::VERCEL_TEAM_ID repository variable is not set. Go to Settings > Variables to configure it."
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel Preview
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # Deploy and capture the URL
+          DEPLOYMENT_URL=$(vercel deploy \
+            --yes \
+            --token=$VERCEL_TOKEN \
+            --scope=${{ vars.VERCEL_TEAM_ID }} \
+            --meta gitCommitSha=${{ github.sha }} \
+            --meta gitCommitRef=${{ github.ref_name }} \
+            2>&1 | tail -1)
+
+          echo "Deployment URL: $DEPLOYMENT_URL"
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+      - name: Get Preview URL
+        id: get-url
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # Use provided URL or the one we just deployed
+          if [ -n "${{ inputs.preview_url }}" ]; then
+            PREVIEW_URL="${{ inputs.preview_url }}"
+          else
+            PREVIEW_URL="${{ steps.deploy.outputs.url }}"
+          fi
+
+          echo "Preview URL: $PREVIEW_URL"
+          echo "url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # Wait for Deployment Ready
+  # ============================================
+  wait-for-deployment:
+    name: Wait for Deployment
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.wait.outputs.ready }}
+
+    steps:
+      - name: Wait for deployment to be ready
+        id: wait
+        run: |
+          URL="${{ needs.deploy-preview.outputs.preview_url }}"
+          echo "Waiting for $URL to be ready..."
+
+          MAX_ATTEMPTS=60  # 5 minutes at 5-second intervals
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Deployment is ready (HTTP $HTTP_CODE)"
+              echo "ready=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "Attempt $((ATTEMPT+1))/$MAX_ATTEMPTS: HTTP $HTTP_CODE - waiting 5s..."
+            sleep 5
+            ATTEMPT=$((ATTEMPT+1))
+          done
+
+          echo "Deployment not ready after $MAX_ATTEMPTS attempts"
+          echo "ready=false" >> $GITHUB_OUTPUT
+          exit 1
+
+  # ============================================
+  # Run E2E Tests
+  # ============================================
+  e2e-tests:
+    name: Run E2E Tests
+    needs: [deploy-preview, wait-for-deployment]
+    if: needs.wait-for-deployment.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ env.E2E_TEST_DIR }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ${{ env.E2E_TEST_DIR }}
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ${{ env.E2E_TEST_DIR }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Determine execution mode
+        id: mode
+        env:
+          BB_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          USE_BB: ${{ inputs.use_browserbase }}
+        run: |
+          if [ -n "$BB_KEY" ] && [ "$USE_BB" != "false" ]; then
+            echo "mode=browserbase" >> $GITHUB_OUTPUT
+            echo "Using Browserbase for cloud execution"
+          else
+            echo "mode=local" >> $GITHUB_OUTPUT
+            echo "Using local Playwright (Browserbase not configured)"
+          fi
+
+      - name: Run Playwright tests
+        id: test
+        working-directory: ${{ env.E2E_TEST_DIR }}
+        env:
+          BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+          USE_BROWSERBASE: ${{ steps.mode.outputs.mode == 'browserbase' && 'true' || 'false' }}
+          CI: true
+        run: |
+          # Run tests with JSON reporter for machine parsing
+          npx playwright test \
+            --reporter=json,html,list \
+            ${{ inputs.debug == 'true' && '--headed --slowmo=500' || '' }} \
+            2>&1 | tee test-output.txt
+
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          exit $TEST_EXIT_CODE
+        continue-on-error: true
+
+      - name: Process results for agents
+        if: always()
+        working-directory: ${{ env.E2E_TEST_DIR }}
+        env:
+          BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          USE_BROWSERBASE: ${{ steps.mode.outputs.mode == 'browserbase' && 'true' || 'false' }}
+        run: |
+          # Generate agent-friendly JSON summary
+          if [ -f test-results.json ]; then
+            node scripts/process-results.js test-results.json agent-results.json || true
+          fi
+
+      - name: Generate test summary
+        if: always()
+        working-directory: ${{ env.E2E_TEST_DIR }}
+        env:
+          EXECUTION_MODE: ${{ steps.mode.outputs.mode }}
+        run: |
+          # Parse JSON results for summary
+          if [ -f test-results.json ]; then
+            TOTAL=$(jq '.suites | map(.specs | length) | add // 0' test-results.json)
+            PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status == "passed")] | length' test-results.json)
+            FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status == "failed")] | length' test-results.json)
+            SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status == "skipped")] | length' test-results.json)
+
+            echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Execution Mode:** $EXECUTION_MODE" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Preview URL:** ${{ needs.deploy-preview.outputs.preview_url }}" >> $GITHUB_STEP_SUMMARY
+
+            # Add Browserbase session info if available
+            if [ "$EXECUTION_MODE" = "browserbase" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Session recordings:** Check Browserbase dashboard for session replays" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No test results JSON found. Check test-output.txt artifact for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload test results (JSON)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-json
+          path: |
+            ${{ env.E2E_TEST_DIR }}/test-results.json
+            ${{ env.E2E_TEST_DIR }}/agent-results.json
+            ${{ env.E2E_TEST_DIR }}/test-output.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload test report (HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-html
+          path: ${{ env.E2E_TEST_DIR }}/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload failure artifacts
+        if: failure() || steps.test.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            ${{ env.E2E_TEST_DIR }}/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        env:
+          EXECUTION_MODE: ${{ steps.mode.outputs.mode }}
+          E2E_TEST_DIR: ${{ env.E2E_TEST_DIR }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const testDir = process.env.E2E_TEST_DIR;
+            const previewUrl = '${{ needs.deploy-preview.outputs.preview_url }}';
+            const testExitCode = '${{ steps.test.outputs.exit_code }}';
+            const passed = testExitCode === '0';
+            const executionMode = process.env.EXECUTION_MODE;
+            const runId = context.runId;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+
+            // Try to read agent-friendly results first, fall back to raw results
+            let summary = '';
+            let failureDetails = '';
+            let artifactInfo = '';
+            try {
+              // Prefer agent-results.json for cleaner parsing
+              let agentResults;
+              try {
+                agentResults = JSON.parse(fs.readFileSync(path.join(testDir, 'agent-results.json'), 'utf8'));
+              } catch {
+                // Fall back to raw test-results.json
+                const results = JSON.parse(fs.readFileSync(path.join(testDir, 'test-results.json'), 'utf8'));
+                const specs = results.suites?.flatMap(s => s.specs) || [];
+                const total = specs.length;
+                const passedCount = specs.filter(s => s.tests?.every(t => t.results?.every(r => r.status === 'passed'))).length;
+                agentResults = {
+                  summary: { total, passed: passedCount, failed: total - passedCount, skipped: 0, flaky: 0 },
+                  failures: []
+                };
+              }
+
+              const s = agentResults.summary;
+              summary = `| Metric | Count |\n|--------|-------|\n| Total | ${s.total} |\n| Passed | ${s.passed} |\n| Failed | ${s.failed} |\n| Skipped | ${s.skipped} |\n| Flaky | ${s.flaky} |`;
+
+              // Add failure details if any
+              if (agentResults.failures && agentResults.failures.length > 0) {
+                failureDetails = '\n\n### Failed Tests\n\n';
+                for (const f of agentResults.failures.slice(0, 5)) {
+                  failureDetails += `<details>\n<summary><code>${f.suite} > ${f.test}</code></summary>\n\n`;
+                  failureDetails += `**File:** \`${f.file}:${f.line}\`\n\n`;
+                  failureDetails += `**Error:**\n\`\`\`\n${(f.error?.message || 'Unknown error').slice(0, 500)}\n\`\`\`\n`;
+                  if (f.screenshot) {
+                    failureDetails += `\n**Screenshot:** \`${f.screenshot}\`\n`;
+                  }
+                  if (f.trace) {
+                    failureDetails += `**Trace:** \`${f.trace}\` (use \`npx playwright show-trace <path>\`)\n`;
+                  }
+                  failureDetails += '\n</details>\n';
+                }
+                if (agentResults.failures.length > 5) {
+                  failureDetails += `\n_...and ${agentResults.failures.length - 5} more failures. See artifacts for full details._\n`;
+                }
+              }
+
+              // Add artifact links
+              artifactInfo = `\n\n### Artifacts\n\n`;
+              artifactInfo += `Download via CLI:\n`;
+              artifactInfo += `\`\`\`bash\n`;
+              artifactInfo += `# Download agent-friendly results\n`;
+              artifactInfo += `gh run download ${runId} -R ${repo} -n e2e-results-json\n`;
+              artifactInfo += `\n# Parse failures\n`;
+              artifactInfo += `jq '.failures[] | {test: .test, error: .error.message}' e2e-results-json/agent-results.json\n`;
+              if (!passed) {
+                artifactInfo += `\n# Download failure artifacts (screenshots, traces)\n`;
+                artifactInfo += `gh run download ${runId} -R ${repo} -n e2e-failures\n`;
+              }
+              artifactInfo += `\`\`\`\n`;
+            } catch (e) {
+              summary = 'Unable to parse test results.';
+              console.error('Error parsing results:', e);
+            }
+
+            const status = passed ? 'Passed' : 'Failed';
+            const statusIcon = passed ? ':white_check_mark:' : ':x:';
+            const modeIcon = executionMode === 'browserbase' ? ':cloud:' : ':computer:';
+            const modeText = executionMode === 'browserbase' ? 'Browserbase (cloud)' : 'Local Playwright';
+            const sessionNote = executionMode === 'browserbase' ? '\n\n_Session Recordings:_ Check [Browserbase dashboard](https://browserbase.com) for video replays.' : '';
+            const body = [
+              `## E2E Test Results: ${statusIcon} ${status}`,
+              '',
+              `| | |`,
+              `|---|---|`,
+              `| **Execution Mode** | ${modeIcon} ${modeText} |`,
+              `| **Preview URL** | ${previewUrl} |`,
+              `| **Workflow Run** | [#${runId}](https://github.com/${repo}/actions/runs/${runId}) |`,
+              '',
+              summary,
+              failureDetails,
+              sessionNote,
+              artifactInfo,
+              '---',
+              '_Generated with [Claude Code](https://claude.com/claude-code)_'
+            ].join('\n');
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('E2E Test Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Fail if tests failed
+        if: steps.test.outputs.exit_code != '0'
+        run: |
+          echo "E2E tests failed with exit code ${{ steps.test.outputs.exit_code }}"
+          exit 1
