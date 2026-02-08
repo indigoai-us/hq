@@ -152,10 +152,10 @@
         "Owner can revoke write access"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["sharing", "phase-2"],
       "dependsOn": ["SYNC-008", "SYNC-005"],
-      "notes": ""
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/sharing/ - extended types with write permission, added ShareAuditLog, buildShareWritePolicy, checkWriteAccess, revokeWriteAccess, multi-writer support, and comprehensive audit logging"
     },
     {
       "id": "SYNC-010",
@@ -168,10 +168,10 @@
         "Manual sync trigger endpoint"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "labels": ["api", "mobile", "phase-2"],
       "dependsOn": ["SYNC-003", "SYNC-004"],
-      "notes": "Maps to Navigator screen status"
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/status/ - route handlers (sync-status-routes.ts), WebSocket broadcaster (sync-ws-broadcaster.ts), types and manager (types.ts, sync-status-manager.ts)"
     }
   ],
   "metadata": {

@@ -9,3 +9,7 @@
 [2026-02-08T08:10:00Z] SYNC-006: Selective sync with .hqignore, gitignore-style patterns, default security rules, live reload. 82 tests. (6/10)
 [2026-02-08T08:25:00Z] SYNC-004: Download from S3 with change detection, timestamp preservation, deletion policies, polling. 83 tests. (7/10)
 [2026-02-08T08:35:00Z] SYNC-005: Conflict detection and resolution with keep_both/local_wins/remote_wins/manual strategies. 53 tests. (8/10)
+[2026-02-08T16:30:00Z] SYNC-009: Write sharing with multi-writer support, conflict resolution integration, audit logging (9 action types), owner revocation. 143 tests. (9/10)
+[2026-02-08T17:00:00Z] SYNC-010: Sync status API for mobile with GET/POST endpoints, WebSocket events (sync_status/progress/error/complete), error management. 30 tests. (10/10)
+
+# COMPLETED — 10/10 stories

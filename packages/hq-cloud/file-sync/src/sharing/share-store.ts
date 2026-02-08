@@ -12,6 +12,9 @@ import type {
   ShareQuery,
   SharePermission,
   ShareValidation,
+  AuditLogEntry,
+  AuditLogQuery,
+  AuditAction,
 } from './types.js';
 import { SHARE_PERMISSIONS } from './types.js';
 
@@ -282,6 +285,54 @@ export class ShareStore {
     return undefined;
   }
 
+  /**
+   * Check if a recipient has write access to a specific path.
+   * Returns the share granting write access, or undefined if no write access.
+   */
+  checkWriteAccess(recipientId: string, ownerId: string, path: string): Share | undefined {
+    const shares = this.query({
+      ownerId,
+      recipientId,
+      status: 'active',
+    });
+
+    for (const share of shares) {
+      if (!share.permissions.includes('write')) {
+        continue;
+      }
+      for (const sharedPath of share.paths) {
+        if (path === sharedPath || path.startsWith(sharedPath)) {
+          return share;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get all active shares that grant write access to a specific path.
+   * Returns all shares from any owner that give write to this path.
+   */
+  getWritersForPath(ownerId: string, path: string): Share[] {
+    const results: Share[] = [];
+
+    for (const share of this.shares.values()) {
+      if (share.status !== 'active') continue;
+      if (share.ownerId !== ownerId) continue;
+      if (!share.permissions.includes('write')) continue;
+
+      for (const sharedPath of share.paths) {
+        if (path === sharedPath || path.startsWith(sharedPath)) {
+          results.push(share);
+          break;
+        }
+      }
+    }
+
+    return results;
+  }
+
   /** Get total count of shares */
   count(): number {
     return this.shares.size;
@@ -294,9 +345,124 @@ export class ShareStore {
   }
 }
 
+// ─── Audit Log ──────────────────────────────────────────────────────
+
+/**
+ * In-memory audit log for tracking file share actions.
+ *
+ * Records all share-related actions (create, update, revoke, file access)
+ * for accountability and compliance. Production would persist to DynamoDB/Postgres.
+ */
+export class ShareAuditLog {
+  private readonly entries: AuditLogEntry[] = [];
+  private counter = 0;
+  private readonly maxEntries: number;
+
+  constructor(maxEntries = 10000) {
+    this.maxEntries = maxEntries;
+  }
+
+  /** Generate a unique audit entry ID */
+  private generateId(): string {
+    this.counter++;
+    return `audit-${Date.now()}-${this.counter}`;
+  }
+
+  /**
+   * Record an audit log entry.
+   */
+  record(params: {
+    shareId: string;
+    userId: string;
+    action: AuditAction;
+    path?: string | null;
+    details?: string | null;
+  }): AuditLogEntry {
+    const entry: AuditLogEntry = {
+      id: this.generateId(),
+      shareId: params.shareId,
+      userId: params.userId,
+      action: params.action,
+      path: params.path ?? null,
+      timestamp: new Date(),
+      details: params.details ?? null,
+    };
+
+    this.entries.push(entry);
+
+    // Evict oldest entries if over capacity
+    while (this.entries.length > this.maxEntries) {
+      this.entries.shift();
+    }
+
+    return entry;
+  }
+
+  /**
+   * Query audit log entries with filters.
+   */
+  query(filters: AuditLogQuery): AuditLogEntry[] {
+    let results = [...this.entries];
+
+    if (filters.shareId) {
+      results = results.filter((e) => e.shareId === filters.shareId);
+    }
+    if (filters.userId) {
+      results = results.filter((e) => e.userId === filters.userId);
+    }
+    if (filters.action) {
+      results = results.filter((e) => e.action === filters.action);
+    }
+    if (filters.after) {
+      const afterTime = filters.after.getTime();
+      results = results.filter((e) => e.timestamp.getTime() > afterTime);
+    }
+    if (filters.before) {
+      const beforeTime = filters.before.getTime();
+      results = results.filter((e) => e.timestamp.getTime() < beforeTime);
+    }
+
+    // Sort by timestamp descending (newest first)
+    results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    // Pagination
+    const offset = filters.offset ?? 0;
+    const limit = filters.limit ?? 100;
+    results = results.slice(offset, offset + limit);
+
+    return results;
+  }
+
+  /** Get all entries for a specific share */
+  getByShareId(shareId: string): AuditLogEntry[] {
+    return this.entries
+      .filter((e) => e.shareId === shareId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  /** Get all entries for a specific user */
+  getByUserId(userId: string): AuditLogEntry[] {
+    return this.entries
+      .filter((e) => e.userId === userId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  /** Get total count of audit entries */
+  count(): number {
+    return this.entries.length;
+  }
+
+  /** Clear all entries (for testing) */
+  clear(): void {
+    this.entries.length = 0;
+    this.counter = 0;
+  }
+}
+
 // ─── Singleton accessor ─────────────────────────────────────────────
 
 let _shareStore: ShareStore | undefined;
+let _auditLog: ShareAuditLog | undefined;
 
 /** Get the global share store instance */
 export function getShareStore(): ShareStore {
@@ -306,7 +472,20 @@ export function getShareStore(): ShareStore {
   return _shareStore;
 }
 
+/** Get the global audit log instance */
+export function getAuditLog(): ShareAuditLog {
+  if (!_auditLog) {
+    _auditLog = new ShareAuditLog();
+  }
+  return _auditLog;
+}
+
 /** Reset the global share store (for testing) */
 export function resetShareStore(): void {
   _shareStore = undefined;
+}
+
+/** Reset the global audit log (for testing) */
+export function resetAuditLog(): void {
+  _auditLog = undefined;
 }

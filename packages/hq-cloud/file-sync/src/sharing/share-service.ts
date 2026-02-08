@@ -2,7 +2,14 @@
  * Share service: business logic for file sharing.
  *
  * Orchestrates share creation, S3 policy generation,
- * and access verification.
+ * access verification, audit logging, and write access management.
+ *
+ * Supports:
+ * - Read and write permissions on shared paths
+ * - Multiple writers on the same shared paths
+ * - Conflict resolution integration for shared files
+ * - Audit log of all changes by user
+ * - Owner can revoke write access independently of read
  */
 
 import type {
@@ -13,9 +20,12 @@ import type {
   SharePolicyResult,
   SharePolicyStatement,
   ShareValidation,
+  AuditLogEntry,
+  AuditLogQuery,
+  WriteAccessResult,
 } from './types.js';
-import { ShareStore, validateCreateShareInput } from './share-store.js';
-import { buildSharePolicy, toAwsPolicyDocument } from '../s3/policies.js';
+import { ShareStore, ShareAuditLog, validateCreateShareInput } from './share-store.js';
+import { buildSharePolicy, buildShareWritePolicy, toAwsPolicyDocument } from '../s3/policies.js';
 
 /** Configuration for the share service */
 export interface ShareServiceConfig {
@@ -40,15 +50,17 @@ const DEFAULT_CONFIG: ShareServiceConfig = {
 export class ShareService {
   private readonly store: ShareStore;
   private readonly config: ShareServiceConfig;
+  private readonly auditLog: ShareAuditLog;
 
-  constructor(store: ShareStore, config?: Partial<ShareServiceConfig>) {
+  constructor(store: ShareStore, config?: Partial<ShareServiceConfig>, auditLog?: ShareAuditLog) {
     this.store = store;
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.auditLog = auditLog ?? new ShareAuditLog();
   }
 
   /**
    * Create a new share.
-   * Validates input, checks limits, creates the share, and generates the S3 policy.
+   * Validates input, checks limits, creates the share, and logs the action.
    */
   createShare(input: CreateShareInput): { share: Share; validation: ShareValidation } {
     // Validate input
@@ -95,6 +107,25 @@ export class ShareService {
 
     // Create the share
     const share = this.store.create(input);
+
+    // Audit log
+    const permissions = input.permissions ?? ['read'];
+    this.auditLog.record({
+      shareId: share.id,
+      userId: input.ownerId,
+      action: 'share_created',
+      details: `Shared paths [${input.paths.join(', ')}] with ${input.recipientId} (permissions: ${permissions.join(', ')})`,
+    });
+
+    if (permissions.includes('write')) {
+      this.auditLog.record({
+        shareId: share.id,
+        userId: input.ownerId,
+        action: 'write_access_granted',
+        details: `Write access granted to ${input.recipientId}`,
+      });
+    }
+
     return { share, validation: { valid: true, errors: [] } };
   }
 
@@ -168,13 +199,98 @@ export class ShareService {
       }
     }
 
+    // Track permission changes for audit
+    const hadWrite = existing.permissions.includes('write');
+    const willHaveWrite = input.permissions ? input.permissions.includes('write') : hadWrite;
+
     const share = this.store.update(id, input);
+
+    // Audit log
+    if (share) {
+      this.auditLog.record({
+        shareId: id,
+        userId: existing.ownerId,
+        action: 'share_updated',
+        details: `Share updated: ${JSON.stringify(input)}`,
+      });
+
+      // Track write access changes
+      if (!hadWrite && willHaveWrite) {
+        this.auditLog.record({
+          shareId: id,
+          userId: existing.ownerId,
+          action: 'write_access_granted',
+          details: `Write access granted to ${existing.recipientId}`,
+        });
+      } else if (hadWrite && !willHaveWrite) {
+        this.auditLog.record({
+          shareId: id,
+          userId: existing.ownerId,
+          action: 'write_access_revoked',
+          details: `Write access revoked from ${existing.recipientId}`,
+        });
+      }
+    }
+
     return { share, validation: { valid: true, errors: [] } };
   }
 
   /** Revoke a share (soft delete - marks as revoked) */
   revokeShare(id: string): Share | undefined {
-    return this.store.revoke(id);
+    const existing = this.store.get(id);
+    const result = this.store.revoke(id);
+
+    if (result && existing) {
+      this.auditLog.record({
+        shareId: id,
+        userId: existing.ownerId,
+        action: 'share_revoked',
+        details: `Share revoked for recipient ${existing.recipientId}`,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Revoke only write access from a share, keeping read access intact.
+   * The owner can downgrade a share from read+write to read-only.
+   */
+  revokeWriteAccess(id: string): { share: Share | undefined; validation: ShareValidation } {
+    const existing = this.store.get(id);
+    if (!existing) {
+      return {
+        share: undefined,
+        validation: { valid: false, errors: [`Share '${id}' not found`] },
+      };
+    }
+
+    if (existing.status !== 'active') {
+      return {
+        share: undefined,
+        validation: { valid: false, errors: ['Cannot modify a non-active share'] },
+      };
+    }
+
+    if (!existing.permissions.includes('write')) {
+      return {
+        share: undefined,
+        validation: { valid: false, errors: ['Share does not have write access to revoke'] },
+      };
+    }
+
+    const share = this.store.update(id, { permissions: ['read'] });
+
+    if (share) {
+      this.auditLog.record({
+        shareId: id,
+        userId: existing.ownerId,
+        action: 'write_access_revoked',
+        details: `Write access revoked from ${existing.recipientId}, retaining read access`,
+      });
+    }
+
+    return { share, validation: { valid: true, errors: [] } };
   }
 
   /** Delete a share (hard delete) */
@@ -206,9 +322,90 @@ export class ShareService {
   }
 
   /**
+   * Check if a user has write access to a specific path.
+   * Returns a WriteAccessResult indicating whether write access is granted.
+   */
+  checkWriteAccess(recipientId: string, ownerId: string, path: string): WriteAccessResult {
+    const share = this.store.checkWriteAccess(recipientId, ownerId, path);
+    return {
+      hasWriteAccess: share !== undefined,
+      share,
+    };
+  }
+
+  /**
+   * Get all users who currently have write access to a specific path.
+   * Returns shares that grant write permission covering the given path.
+   */
+  getWritersForPath(ownerId: string, path: string): Share[] {
+    return this.store.getWritersForPath(ownerId, path);
+  }
+
+  /**
+   * Record a file write action in the audit log.
+   * Called when a user writes to a shared file.
+   */
+  recordFileWrite(shareId: string, userId: string, path: string): AuditLogEntry {
+    return this.auditLog.record({
+      shareId,
+      userId,
+      action: 'file_write',
+      path,
+      details: `File written by ${userId}`,
+    });
+  }
+
+  /**
+   * Record a file read action in the audit log.
+   * Called when a user reads from a shared file.
+   */
+  recordFileRead(shareId: string, userId: string, path: string): AuditLogEntry {
+    return this.auditLog.record({
+      shareId,
+      userId,
+      action: 'file_read',
+      path,
+      details: `File read by ${userId}`,
+    });
+  }
+
+  /**
+   * Record a file deletion action in the audit log.
+   * Called when a user deletes a shared file.
+   */
+  recordFileDelete(shareId: string, userId: string, path: string): AuditLogEntry {
+    return this.auditLog.record({
+      shareId,
+      userId,
+      action: 'file_delete',
+      path,
+      details: `File deleted by ${userId}`,
+    });
+  }
+
+  /**
+   * Query the audit log with filters.
+   */
+  queryAuditLog(query: AuditLogQuery): AuditLogEntry[] {
+    return this.auditLog.query(query);
+  }
+
+  /**
+   * Get all audit log entries for a specific share.
+   */
+  getShareAuditLog(shareId: string): AuditLogEntry[] {
+    return this.auditLog.getByShareId(shareId);
+  }
+
+  /** Get the audit log instance (for testing) */
+  getAuditLogInstance(): ShareAuditLog {
+    return this.auditLog;
+  }
+
+  /**
    * Generate an S3 policy for a share.
-   * This produces the IAM policy statements needed to grant
-   * the recipient read access to the shared paths.
+   * Produces IAM policy statements for read or read+write access
+   * depending on the share's permissions.
    */
   generateSharePolicy(shareId: string): SharePolicyResult | undefined {
     const share = this.store.get(shareId);
@@ -216,7 +413,10 @@ export class ShareService {
       return undefined;
     }
 
-    const policy = buildSharePolicy(this.config.bucketName, share.ownerId, share.paths);
+    const hasWrite = share.permissions.includes('write');
+    const policy = hasWrite
+      ? buildShareWritePolicy(this.config.bucketName, share.ownerId, share.paths)
+      : buildSharePolicy(this.config.bucketName, share.ownerId, share.paths);
 
     const statements: SharePolicyStatement[] = policy.statements.map((stmt) => ({
       sid: stmt.sid,
@@ -233,7 +433,7 @@ export class ShareService {
 
   /**
    * Generate a complete AWS IAM policy document for a share.
-   * Returns the AWS-formatted JSON policy.
+   * Returns the AWS-formatted JSON policy with appropriate permissions.
    */
   generateAwsPolicyDocument(shareId: string): Record<string, unknown> | undefined {
     const share = this.store.get(shareId);
@@ -241,19 +441,24 @@ export class ShareService {
       return undefined;
     }
 
-    const policy = buildSharePolicy(this.config.bucketName, share.ownerId, share.paths);
+    const hasWrite = share.permissions.includes('write');
+    const policy = hasWrite
+      ? buildShareWritePolicy(this.config.bucketName, share.ownerId, share.paths)
+      : buildSharePolicy(this.config.bucketName, share.ownerId, share.paths);
+
     return toAwsPolicyDocument(policy);
   }
 
   /**
    * Get a consolidated list of all S3 paths accessible to a recipient.
-   * Aggregates across all active shares.
+   * Aggregates across all active shares, including permission info.
    */
   getAccessiblePaths(recipientId: string): Array<{
     ownerId: string;
     paths: string[];
     shareId: string;
     label: string | null;
+    permissions: string[];
   }> {
     const shares = this.store.getReceivedShares(recipientId);
     return shares.map((share) => ({
@@ -261,6 +466,7 @@ export class ShareService {
       paths: [...share.paths],
       shareId: share.id,
       label: share.label,
+      permissions: [...share.permissions],
     }));
   }
 }

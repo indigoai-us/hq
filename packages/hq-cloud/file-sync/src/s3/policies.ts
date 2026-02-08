@@ -153,6 +153,42 @@ export function buildSharePolicy(
 }
 
 /**
+ * Build a read-write sharing policy for a specific set of paths.
+ * Used when a user grants write access to shared files/folders.
+ * Includes PutObject and DeleteObject in addition to read permissions.
+ */
+export function buildShareWritePolicy(
+  bucketName: string,
+  ownerUserId: string,
+  sharedPaths: string[]
+): S3BucketPolicy {
+  const bucketArn = `arn:aws:s3:::${bucketName}`;
+  const resources = sharedPaths.map(
+    (path) => `${bucketArn}/${ownerUserId}/hq/${path}*`
+  );
+
+  return {
+    version: '2012-10-17',
+    statements: [
+      {
+        sid: 'ShareReadAccess',
+        effect: 'Allow',
+        principal: '*',
+        actions: ['s3:GetObject', 's3:GetObjectVersion'],
+        resources,
+      },
+      {
+        sid: 'ShareWriteAccess',
+        effect: 'Allow',
+        principal: '*',
+        actions: ['s3:PutObject', 's3:DeleteObject'],
+        resources,
+      },
+    ],
+  };
+}
+
+/**
  * Convert a policy to AWS IAM policy JSON format.
  * Maps our internal representation to the AWS policy document structure.
  */

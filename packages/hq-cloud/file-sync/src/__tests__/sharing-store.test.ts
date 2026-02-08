@@ -476,10 +476,18 @@ describe('validateCreateShareInput', () => {
   it('should reject invalid permissions', () => {
     const result = validateCreateShareInput({
       ...validInput,
-      permissions: ['write' as 'read'],
+      permissions: ['execute' as 'read'],
     });
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes('permission'))).toBe(true);
+  });
+
+  it('should accept write permission', () => {
+    const result = validateCreateShareInput({
+      ...validInput,
+      permissions: ['read', 'write'],
+    });
+    expect(result.valid).toBe(true);
   });
 
   it('should reject past expiration date', () => {

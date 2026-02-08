@@ -1,15 +1,16 @@
 /**
  * File sharing types for HQ Cloud.
  *
- * Shares allow a user (owner) to grant read access to specific
- * S3 paths for another user (recipient).
+ * Shares allow a user (owner) to grant read or write access to specific
+ * S3 paths for another user (recipient). Multiple writers are supported
+ * with conflict resolution and audit logging.
  */
 
 /** Permissions that can be granted on a share */
-export type SharePermission = 'read';
+export type SharePermission = 'read' | 'write';
 
 /** All valid share permissions */
-export const SHARE_PERMISSIONS: readonly SharePermission[] = ['read'] as const;
+export const SHARE_PERMISSIONS: readonly SharePermission[] = ['read', 'write'] as const;
 
 /** Status of a share */
 export type ShareStatus = 'active' | 'revoked' | 'expired';
@@ -105,4 +106,60 @@ export interface SharePolicyStatement {
 export interface ShareValidation {
   valid: boolean;
   errors: string[];
+}
+
+/** Types of auditable actions on shared files */
+export type AuditAction =
+  | 'file_read'
+  | 'file_write'
+  | 'file_delete'
+  | 'share_created'
+  | 'share_updated'
+  | 'share_revoked'
+  | 'permission_changed'
+  | 'write_access_granted'
+  | 'write_access_revoked';
+
+/** An entry in the share audit log */
+export interface AuditLogEntry {
+  /** Unique audit entry identifier */
+  id: string;
+  /** Share ID this audit entry relates to */
+  shareId: string;
+  /** User who performed the action */
+  userId: string;
+  /** Type of action performed */
+  action: AuditAction;
+  /** S3 path affected (if applicable) */
+  path: string | null;
+  /** ISO 8601 timestamp */
+  timestamp: Date;
+  /** Additional details about the action */
+  details: string | null;
+}
+
+/** Query filters for listing audit log entries */
+export interface AuditLogQuery {
+  /** Filter by share ID */
+  shareId?: string;
+  /** Filter by user ID */
+  userId?: string;
+  /** Filter by action type */
+  action?: AuditAction;
+  /** Filter entries after this date */
+  after?: Date;
+  /** Filter entries before this date */
+  before?: Date;
+  /** Maximum number of results (default: 100) */
+  limit?: number;
+  /** Offset for pagination */
+  offset?: number;
+}
+
+/** Result of checking write access for a user on a path */
+export interface WriteAccessResult {
+  /** Whether write access is granted */
+  hasWriteAccess: boolean;
+  /** The share granting write access (if any) */
+  share: Share | undefined;
 }

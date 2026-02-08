@@ -5,6 +5,7 @@ export {
   buildWorkerPolicy,
   buildAdminPolicy,
   buildSharePolicy,
+  buildShareWritePolicy,
   toAwsPolicyDocument,
 } from './policies.js';
 export type {

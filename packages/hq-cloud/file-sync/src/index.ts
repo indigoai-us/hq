@@ -6,6 +6,7 @@ export {
   buildWorkerPolicy,
   buildAdminPolicy,
   buildSharePolicy,
+  buildShareWritePolicy,
   toAwsPolicyDocument,
   HQ_FOLDER_STRUCTURE,
 } from './s3/index.js';
@@ -52,9 +53,12 @@ export type {
 // Sharing module
 export {
   ShareStore,
+  ShareAuditLog,
   ShareService,
   getShareStore,
+  getAuditLog,
   resetShareStore,
+  resetAuditLog,
   validateCreateShareInput,
   SHARE_PERMISSIONS,
   SHARE_STATUSES,
@@ -71,6 +75,10 @@ export type {
   SharePolicyStatement,
   ShareValidation,
   ShareServiceConfig,
+  AuditAction,
+  AuditLogEntry,
+  AuditLogQuery,
+  WriteAccessResult,
 } from './sharing/index.js';
 
 // S3 Mount module
