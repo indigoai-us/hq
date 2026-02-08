@@ -4,6 +4,43 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.1.0 (from v5.0.0)
+
+### What Changed
+Context Diet: lazy-loading rules reduce context burn at session start. Commands updated to write recent threads to a dedicated file instead of bloating INDEX.md.
+
+### Updated Files
+Copy from starter kit:
+- `.claude/CLAUDE.md` — Merge the new "Context Diet" section (after Key Files) into yours
+- `.claude/commands/checkpoint.md` — Step 7 now writes to `workspace/threads/recent.md`
+- `.claude/commands/handoff.md` — Step 4 now writes to `workspace/threads/recent.md`
+- `.claude/commands/reanchor.md` — New "When to Use" section
+
+Updated knowledge:
+- `knowledge/Ralph/11-team-training-guide.md`
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/hq-core/thread-schema.md`
+- `knowledge/workers/README.md`, `skill-schema.md`, `state-machine.md`, `templates/base-worker.yaml`
+- `knowledge/projects/README.md`
+
+### New File
+Create `workspace/threads/recent.md` — this is where `/checkpoint` and `/handoff` now write the recent threads table.
+
+### Optional: Slim INDEX.md
+If your INDEX.md is large (200+ lines), consider trimming it to just the directory map and navigation table. Move workers, commands, companies tables out (they're already in CLAUDE.md). Move recent threads list to `workspace/threads/recent.md`.
+
+### Migration Steps
+1. Merge Context Diet section from starter kit's `.claude/CLAUDE.md` into yours
+2. Copy updated `checkpoint.md`, `handoff.md`, `reanchor.md`
+3. Create `workspace/threads/recent.md` (can be empty — next checkpoint/handoff populates it)
+4. Copy updated knowledge files
+5. Run `/search-reindex`
+
+### Breaking Changes
+- (none — all changes are additive)
+
+---
+
 ## Migrating to v5.0.0 (from v4.0.0)
 
 ### What Changed

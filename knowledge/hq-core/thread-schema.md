@@ -21,8 +21,8 @@ Example: `T-20260123-143052-mrr-report`
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:35:00.000Z",
 
-  "workspace_root": "~/Documents/HQ",
-  "cwd": "repos/private/{company}",
+  "workspace_root": "~/HQ",
+  "cwd": "repos/private/{repo}",
 
   "git": {
     "branch": "main",
@@ -36,7 +36,7 @@ Example: `T-20260123-143052-mrr-report`
   },
 
   "worker": {
-    "id": "{worker-id}",
+    "id": "cfo-{company}",
     "skill": "mrr",
     "state": "completed",
     "started_at": "2026-01-23T14:30:52.000Z",

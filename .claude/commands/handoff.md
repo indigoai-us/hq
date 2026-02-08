@@ -43,13 +43,12 @@ Prepare for a new session to continue this work.
     fi
     ```
 
-4. **Update INDEX.md files**
-   - Regenerate `INDEX.md` at HQ root with:
-     - Workers from `workers/registry.yaml`
-     - Recent threads from `workspace/threads/`
+4. **Update INDEX files and recent threads**
+   - Update `workspace/threads/recent.md` with last 15 threads (table format)
+   - Update `INDEX.md` timestamp only (do NOT regenerate full content -- it's now slim)
    - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
    - Regenerate `workspace/orchestrator/INDEX.md` (project progress)
-   - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
+   - Check files_touched for any `companies/*/knowledge/` paths -- if found, regenerate that company's `knowledge/INDEX.md`
    - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
 5. **Update search index**

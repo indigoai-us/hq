@@ -9,6 +9,11 @@ visibility: public
 
 Stop and realign before continuing. Use when you want to ensure the agent is on track.
 
+## When to Use
+
+Only run when explicitly called or genuinely disoriented.
+Never auto-trigger on session start -- most tasks don't need full HQ orientation.
+
 ## Process
 
 1. **Load INDEX context**

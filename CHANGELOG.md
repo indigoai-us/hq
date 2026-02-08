@@ -1,5 +1,19 @@
 # Changelog
 
+## v5.1.0 (2026-02-08)
+
+### Added
+- **Context Diet** — New section in `.claude/CLAUDE.md` with lazy-loading rules to minimize context burn on session start. Sessions no longer pre-load INDEX.md or agents.md unless the task requires it.
+
+### Changed
+- **`.claude/CLAUDE.md`** — Added Context Diet section, updated Key Files to discourage eager loading
+- **`/checkpoint`** — Recent threads now written to `workspace/threads/recent.md` (not embedded in INDEX.md). INDEX.md gets timestamp-only updates.
+- **`/handoff`** — Same change: threads to `recent.md`, slim INDEX.md updates
+- **`/reanchor`** — Added "When to Use" guidance: only run when explicitly called or disoriented, never auto-trigger
+- Knowledge files refreshed: `Ralph/11-team-training-guide.md`, `hq-core/index-md-spec.md`, `hq-core/thread-schema.md`, `workers/README.md`, `workers/skill-schema.md`, `workers/state-machine.md`, `workers/templates/base-worker.yaml`, `projects/README.md`
+
+---
+
 ## v5.0.0 (2026-02-07)
 
 ### Added

@@ -4,10 +4,20 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ## Key Files
 
-- `INDEX.md` - Root directory map, recent threads, workers (start here)
+- `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
 - `USER-GUIDE.md` - Commands, workers, typical session
-- `agents.md` - Your profile, preferences, companies (load for writing/communication tasks)
+- `agents.md` - Your profile, preferences (load only for writing/comms tasks)
 - `workers/registry.yaml` - Worker index
+
+## Context Diet
+
+Minimize context burn on session start:
+- Do NOT read INDEX.md, agents.md, or company knowledge unless task requires it
+- Do NOT run qmd searches "to orient" — search only with a specific question
+- For repo coding tasks: go directly to repo. HQ context rarely needed
+- For worker execution: load only worker.yaml — it has its own knowledge pointers
+- When unsure what to load: ask user, don't explore
+- Prefer `workspace/threads/handoff.json` (7 lines) over INDEX.md for session state
 
 ## INDEX.md System
 

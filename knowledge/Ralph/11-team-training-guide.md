@@ -1,7 +1,7 @@
 # Ralph & Building AGI: Team Training Guide
 
-*Synthesized from dev team standups (Week 1 Day 1-26, 2026), Zoom sessions, and HQ Ralph Knowledge Base*
-*Sources: 80+ signals from meeting signals, 12 Ralph knowledge files, 15 meetings*
+*Synthesized from dev team standups (Jan 13-26, 2026), Zoom sessions, and HQ Ralph Knowledge Base*
+*Sources: 80+ signals from meeting notes, 12 Ralph knowledge files, 15 meetings*
 
 ---
 
@@ -79,7 +79,7 @@ tmux new-session -d -s ralph && tmux send-keys -t ralph './ralph.sh 100' Enter
 nohup ./ralph.sh 100 > ralph.log 2>&1 &
 ```
 
-Team lead on this topic (Week 3 Day 2 Zoom): *"Your goal is to get it where you can set up your computer overnight and let it just run."*
+{your-name} on this topic (Jan 21 Zoom): *"Your goal is to get it where you can set up your computer overnight and let it just run."*
 
 ### Monitoring
 ```bash
@@ -122,18 +122,18 @@ echo "Remaining: $(grep -c '"passes": false' plans/prd.json)"
 
 The `passes` field is critical -- it tells the loop whether the feature has been verified. The PRD serves dual purpose: specification AND test harness.
 
-**From the team** (Week 1 Day 2): Developer created a PRD for the Daily Brief feature using Ralph, demonstrating the spec-first approach.
+**From the team** (Jan 14): Developer created a PRD for the Daily Brief feature using Ralph, demonstrating the spec-first approach.
 
 ### 2. Progress File (progress.txt) -- The Audit Trail
 
 Running log with timestamps showing: which feature was started, tests passed/failed, git commit hashes, PRD updates. Provides audit trail for human review, context for subsequent runs, and handoff capability.
 
-**From the team** (Week 3 Day 2): Developer's Ralph session logged progress as it cleaned 300+ files from the Electron app, enabling review of what was changed.
+**From the team** (Jan 21): Developer's Ralph session logged progress as it cleaned 300+ files from the Electron app, enabling review of what was changed.
 
 ### 3. agents.md / CLAUDE.md -- The Brain
 
 Minimal config file. Include only:
-- the project overview (1-2 sentences)
+- Project overview (1-2 sentences)
 - Tech stack
 - Build/test commands
 - Task loop protocol
@@ -165,18 +165,18 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 
 **Speed is critical**: TypeScript + ESLint + Jest = ~10 seconds. Rust compilation = 5-30 minutes (problematic for rapid iteration). Optimize for fast feedback.
 
-**From the team** (Week 2 Day 1): Team lead emphasized speed optimization for testing -- *"start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
+**From the team** (Jan 16): {your-name} emphasized speed optimization for testing -- *"start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
 
-**From the team** (Week 2 Day 1): Developer integrated Playwright MCP server for browser automation testing -- *"Your cloud will use the same Playwright MCP server that I have integrated in the application."*
+**From the team** (Jan 16): Developer integrated Playwright MCP server for browser automation testing -- *"Your cloud will use the same Playwright MCP server that I have integrated in the application."*
 
 ---
 
 ## Part 4: What the Team Learned (Meeting-by-Meeting)
 
-### Week 1 Day 1 Standup: Exploring Frameworks
+### Jan 13 Standup: Exploring Frameworks
 
 **Decision: Try multiple agent frameworks**
-- Team lead: Explore Ralph TUI, Cursor Grind Mode, etc.
+- {your-name}: Explore Ralph TUI, Cursor Grind Mode, etc.
 - *"Cursor also just added a new mode that's supposedly a loop mode. It's called Grind."*
 - Goal: find what works, get things cleaned up and running
 
@@ -190,7 +190,7 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 
 **Developer's agent performing well** in development environment -- early validation of the AI agent approach.
 
-### Week 1 Day 2 Standup: First Ralph Implementations
+### Jan 14 Standup: First Ralph Implementations
 
 **Developer: Auth flow implemented with Ralph**
 - All tests passing, no bugs
@@ -204,7 +204,7 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 - Agent responses needed to be more concise and human-readable
 - Formatting and prompting improvements prioritized
 
-### Week 1 Day 3 Standup: Workflow Crystallizes
+### Jan 15 Standup: Workflow Crystallizes
 
 **Developer completed auth in 1 day vs 3-4 days** -- the breakthrough moment.
 - *"Developer completed authentication implementation in 1 day using Ralph, compared to 3-4 days it would have taken previously"*
@@ -217,16 +217,16 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 
 **Team established efficient workflow** using Ralph with significant, measurable productivity gains
 
-### Week 2 Day 1 Standup: Training Deep Dive
+### Jan 16 Standup: Training Deep Dive
 
-This was the richest training session. Team lead laid out the approach for the whole team:
+This was the richest training session. {your-name} laid out the approach for the whole team:
 
 **Decision: Start with a single feature per dev**
-- Team lead: *"For devs, the best way to do that with an active project is to choose a single feature and build a Ralph pipeline just for that feature."*
+- {your-name}: *"For devs, the best way to do that with an active project is to choose a single feature and build a Ralph pipeline just for that feature."*
 - *"Kind of what Developer did with Auth."* -- referencing the proof of concept
 
 **Action: End-to-end testing with Ralph Loop**
-- Team lead: *"Get the Ralph Loop on this. Get a loop on end-to-end agent testing. Find some... start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
+- {your-name}: *"Get the Ralph Loop on this. Get a loop on end-to-end agent testing. Find some... start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
 
 **Developer's learning approach**
 - *"I'm using it as a quick, safe sandbox to tune in... start using the screwdriver on Ralph, and learn the principles, and set up my own workflow."*
@@ -234,22 +234,22 @@ This was the richest training session. Team lead laid out the approach for the w
 - *"I think once I get that in... I think we're gonna start seeing better results on bookmarks."*
 
 **Decision: Study and fork Loom for their environment**
-- Team lead: *"I don't think it's adopting it exactly, it's like, trying to figure out what's going on in there, and then once you understand everything, start stripping out what's not for us."*
+- {your-name}: *"I don't think it's adopting it exactly, it's like, trying to figure out what's going on in there, and then once you understand everything, start stripping out what's not for us."*
 
 **Decision: Fix deep agent issues before new features**
-- Team lead: *"That's what I need you focused on now"* -- prioritizing stability over new features
+- {your-name}: *"That's what I need you focused on now"* -- prioritizing stability over new features
 
 **Developer: Playwright MCP integration completed**
 - Browser automation testing now available for the agent pipeline
 
-### Week 2 Day 4 Standup: Architecture Decisions
+### Jan 19 Standup: Architecture Decisions
 
 **Decision: Clean codebase = 10x Ralph speed**
-- Team lead: *"I think the only thing we need to focus on right now is just getting everything cleaned out of the the project codebase that's messy. And not relevant, so that Ralph just starts moving 10 times faster."*
+- {your-name}: *"I think the only thing we need to focus on right now is just getting everything cleaned out of the project codebase that's messy. And not relevant, so that Ralph just starts moving 10 times faster."*
 - This became the team's #1 priority
 
 **Decision: Single environment architecture**
-- Team lead: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."*
+- {your-name}: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."*
 - Developer: *"Yeah, I think we can start from cleaning up staging for now."*
 - Eliminate unnecessary intermediate environments to reduce key management complexity
 
@@ -258,11 +258,11 @@ This was the richest training session. Team lead laid out the approach for the w
 - Fixed prompt issue in follow-up messages to deep agent
 - Developer at 70-80% completion on his development branch
 
-### Week 3 Day 1 Standup: HQ Adoption
+### Jan 20 Standup: HQ Adoption
 
 **Decision: Developer should implement HQ system**
-- Team lead recommended HQ for managing projects and tasks since Developer was working solo
-- *"Team lead recommended that Developer implement the HQ system to manage projects and tasks since he's working solo"*
+- {your-name} recommended HQ for managing projects and tasks since Developer was working solo
+- *"{your-name} recommended that Developer implement the HQ system to manage projects and tasks since he's working solo"*
 
 **Action items:**
 - Install and set up HQ locally
@@ -271,7 +271,7 @@ This was the richest training session. Team lead laid out the approach for the w
 
 **Developer decided to manually clean up code** rather than using an agent -- *"He knows what is redundant and what is not, making manual cleanup more effective than automated approaches"*. This is an important nuance: Ralph is for building, but sometimes human judgment is faster for targeted cleanup.
 
-### Week 3 Day 2 Standup: Scaling Results
+### Jan 21 Standup: Scaling Results
 
 **Ralph cleaned 300+ files in one hour**
 - Developer used Ralph to clean up the Electron app
@@ -282,12 +282,12 @@ This was the richest training session. Team lead laid out the approach for the w
 **Developer reran Ralph on planning mode** feature after cleanup was complete -- demonstrating the iterative pattern
 
 **Decision: Use HQ as central system**
-- Team lead pushed team to adopt HQ setup repo for project tracking
-- Both Developer and Developer to start using it, even beyond work projects
+- {your-name} pushed team to adopt HQ setup repo for project tracking
+- Both developers to start using it, even beyond work projects
 
 **Developer: Developed system for launching terminals** with predefined context for Claude Code sessions -- workflow optimization
 
-### Week 3 Day 3 Standup: Infrastructure & Tooling
+### Jan 22 Standup: Infrastructure & Tooling
 
 **Developer: Claude Max account + HQ in cloud**
 - Cloud-based HQ setup enables working from anywhere
@@ -302,25 +302,25 @@ This was the richest training session. Team lead laid out the approach for the w
 - Standard shimmer animation, button styling
 - Multiple-choice UI based on Claude's implementation
 
-### Week 4 Day 1: Design Review
+### Jan 26: Design Review
 
 **Positive feedback on design work** -- one-pager received well
-- Team lead: *"Everyone's really happy with the stuff you're doing. The one-pager is way better."*
+- {your-name}: *"Everyone's really happy with the stuff you're doing. The one-pager is way better."*
 
 **Decision: Redesign product flow** to horizontal/linear timeline layout
-- Team lead: *"Try putting it linear according to how it makes sense to you, and then we'll clean up from there."*
+- {your-name}: *"Try putting it linear according to how it makes sense to you, and then we'll clean up from there."*
 
-### Week 3 Day 2 Zoom (Late Night): AGI & AI Automation Demo
+### Jan 21 Zoom (Late Night): AGI & AI Automation Demo
 
-**Team lead demonstrated AI-powered website migration from Webflow** -- completed in under one hour
+**{your-name} demonstrated AI-powered website migration from Webflow** -- completed in under one hour
 - *"5:19 PM, V1 is up, and I've given him a repo, and now he can take it over, you just woke up. And it's already... our site is basically cloned."*
 - This demonstrated the practical power of autonomous AI coding in a real-world scenario
 
 **Hardware for overnight AI automation**
-- Team lead: *"Your goal is to get it where you can set up your computer overnight and let it just run."*
+- {your-name}: *"Your goal is to get it where you can set up your computer overnight and let it just run."*
 
 **AI tools to automate project asset creation**
-- Team lead: *"This will guide us through that too. It'll be like, okay, now go create an X account for you. Okay, I'm gonna go do this for you."*
+- {your-name}: *"This will guide us through that too. It'll be like, okay, now go create an X account for you. Okay, I'm gonna go do this for you."*
 
 ---
 
@@ -371,7 +371,7 @@ Each feature should be:
 ### agents.md Template
 
 ```markdown
-# the project: [Name]
+# Project: [Name]
 
 ## Overview
 [1-2 sentences]
@@ -426,7 +426,7 @@ Benefits:
 3. Checkpoints preserve state across context resets
 4. Parallel execution possible (spawn multiple sub-agents)
 
-### Single Environment Architecture (Team Decision Week 2 Day 4)
+### Single Environment Architecture (Team Decision Jan 19)
 
 Instead of managing staging/dev/prod:
 - Single production environment
@@ -434,7 +434,7 @@ Instead of managing staging/dev/prod:
 - Alpha-beta release channels
 - Single set of API keys
 
-Why: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."* -- Team lead
+Why: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."* -- {your-name}
 
 ### Separate Ralph Instances
 
@@ -496,7 +496,7 @@ Running 24/7: ~$250/day or ~$7,500/month
 
 9. **Hardware enables AFK coding** -- Goal is overnight runs. Upgrade hardware if needed. Use tmux/nohup.
 
-10. **HQ centralizes everything** -- the project tracking, PRDs, checkpoints, progress files all in one system.
+10. **HQ centralizes everything** -- Project tracking, PRDs, checkpoints, progress files all in one system.
 
 ---
 
@@ -504,10 +504,10 @@ Running 24/7: ~$250/day or ~$7,500/month
 
 | Person | Ralph Stage | Key Achievements | Next Steps |
 |--------|-------------|-----------------|------------|
-| **Developer** | Production user | Auth in 1 day (3-4x), 300+ file cleanup in 1hr, sandbox setup, Playwright MCP, Claude Max + cloud HQ | Separate bug Ralph instance, Daily Brief PRD |
-| **Developer** | Active learner | Sandbox workflow setup, RDF/ontological changes, agent-runnable testing framework, citation feature, terminal context system | Complete sandbox learning, apply to insights work |
-| **Developer** | Setting up | Claude Max + HQ, deep agent work, cloud setup | Test HQ, Docker setup |
-| **Developer** | Building agents | Insights Agent as sub-agent with deep agent capabilities | Integration with main system |
+| **Developer A** | Production user | Auth in 1 day (3-4x), 300+ file cleanup in 1hr, sandbox setup, Playwright MCP, Claude Max + cloud HQ | Separate bug Ralph instance, Daily Brief PRD |
+| **Developer B** | Active learner | Sandbox workflow setup, RDF/ontological changes, agent-runnable testing framework, citation feature, terminal context system | Complete sandbox learning, apply to insights work |
+| **Developer C** | Setting up | Claude Max + HQ, deep agent work, cloud setup | Test HQ, Docker setup |
+| **Developer D** | Building agents | Insights Agent as sub-agent with deep agent capabilities | Integration with main system |
 
 ---
 
@@ -543,4 +543,4 @@ Running 24/7: ~$250/day or ~$7,500/month
 
 ---
 
-*Compiled from: 80+ signals via the project Signals MCP, 15 completed meetings (Jan 5-26 2026), Ralph knowledge base (12 files). Covers dev team standups, David/Team lead/Keghan syncs, the team/Team lead 1:1, and late-night Zoom sessions.*
+*Compiled from: 80+ signals via meeting notes, 15 completed meetings (Jan 5-26 2026), Ralph knowledge base (12 files). Covers dev team standups, leadership syncs, team 1:1s, and late-night Zoom sessions.*
