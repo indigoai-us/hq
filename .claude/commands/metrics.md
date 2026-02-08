@@ -1,13 +1,13 @@
 ---
-description: View worker execution metrics and E2E test coverage
+description: View worker execution metrics
 allowed-tools: Bash, Read
-argument-hint: [worker-id] [--days N] [--tests] [--tests --project NAME]
+argument-hint: [worker-id] [--days N]
 visibility: public
 ---
 
 # /metrics - Worker Observability
 
-View worker execution metrics, statistics, and E2E test coverage.
+View worker execution metrics and statistics.
 
 **Arguments:** $ARGUMENTS
 
@@ -18,8 +18,6 @@ View worker execution metrics, statistics, and E2E test coverage.
 /metrics cfo-{company}        # Metrics for specific worker
 /metrics --days 7             # Last 7 days only
 /metrics cfo-{company} mrr    # Specific worker + skill
-/metrics --tests              # E2E test coverage summary
-/metrics --tests --project X  # Test coverage for specific project
 ```
 
 ## Metrics File
@@ -31,34 +29,6 @@ Each line is a JSON object:
 ```json
 {"ts":"2026-01-23T14:30:52.000Z","worker":"cfo-{company}","skill":"mrr","duration_ms":5000,"status":"completed","files":1}
 ```
-
-## Test Coverage File
-
-Location: `workspace/metrics/test-coverage.jsonl`
-
-Each line is a JSON object representing a test run:
-
-```json
-{"ts":"2026-02-08T10:00:00.000Z","project":"my-project","total":10,"passed":9,"failed":1,"skipped":0,"flaky":0,"pass_rate":90.0,"duration_ms":45000,"status":"passed","source":"agent-results.json","critical_passed":5,"critical_total":5}
-```
-
-### Test Coverage Fields
-
-| Field | Description |
-|-------|-------------|
-| `ts` | ISO8601 timestamp of the test run |
-| `project` | Project name/slug |
-| `total` | Total number of tests |
-| `passed` | Number of tests that passed |
-| `failed` | Number of tests that failed |
-| `skipped` | Number of tests skipped |
-| `flaky` | Number of flaky tests (passed after retry) |
-| `pass_rate` | Pass rate as percentage (0-100) |
-| `duration_ms` | Total test duration in milliseconds |
-| `status` | Overall status: `passed` or `failed` |
-| `source` | Source file (e.g., `agent-results.json`) |
-| `critical_passed` | Critical path tests that passed |
-| `critical_total` | Total critical path tests |
 
 ## Fields
 
@@ -115,61 +85,6 @@ Each line is a JSON object representing a test run:
    Total: 80 runs | 97% success | 6.2s avg
    ```
 
-## --tests Flag: E2E Test Coverage
-
-When `--tests` is passed, display test coverage metrics instead of worker metrics.
-
-### Collection
-
-Collect test metrics from `agent-results.json` files:
-
-```powershell
-.\.claude\scripts\collect-test-metrics.ps1 -ResultsPath path\to\agent-results.json -Project my-project
-```
-
-### Display
-
-Show test coverage dashboard:
-
-```powershell
-.\.claude\scripts\show-test-coverage.ps1
-.\.claude\scripts\show-test-coverage.ps1 -Project my-project
-.\.claude\scripts\show-test-coverage.ps1 -Days 7
-```
-
-### Test Coverage Display
-
-```
-E2E Test Coverage
-═══════════════════════════════════════════════════
-
-my-project
-  Tests: 10 total | 9 passed | 1 failed | 0 skipped
-  Pass Rate: 90.0%  [!!! BELOW 80% THRESHOLD]
-  Critical: 5/5 passed
-  Trend: 90% -> 95% -> 90% (last 3 runs)
-  Duration: 45.0s
-
-other-project
-  Tests: 25 total | 25 passed | 0 failed | 0 skipped
-  Pass Rate: 100.0%
-  Critical: 8/8 passed
-  Trend: 100% -> 100% -> 100% (last 3 runs)
-  Duration: 120.5s
-
-───────────────────────────────────────────────────
-Overall: 35 tests | 97.1% pass rate
-ALERTS:
-  [!] my-project pass rate 90.0% is below 80% threshold
-```
-
-### Alerts
-
-The test coverage display triggers alerts when:
-- Pass rate drops below **80%** for any project
-- Critical path tests fail
-- Pass rate trend is declining (3+ consecutive drops)
-
 ## Detailed View
 
 For specific worker:
@@ -201,6 +116,3 @@ Errors (1):
 - Metrics auto-appended by PostToolsHook after each skill run
 - File is append-only JSONL for efficiency
 - Rotate/archive manually if file grows large
-- Test coverage collected via `collect-test-metrics.ps1` from `agent-results.json` files
-- Test coverage stored in `workspace/metrics/test-coverage.jsonl` (same JSONL convention)
-- Alert threshold for pass rate is 80% (configurable in `show-test-coverage.ps1`)

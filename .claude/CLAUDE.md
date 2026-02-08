@@ -8,32 +8,6 @@ Personal OS for orchestrating work across companies, workers, and AI.
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `agents.md` - Your profile, preferences, companies (load for writing/communication tasks)
 - `workers/registry.yaml` - Worker index
-- `knowledge/testing/` - E2E testing knowledge base (cloud infrastructure, templates, integrations)
-
-## Testing Requirements
-
-E2E tests verify deployed features work correctly in real browsers via cloud infrastructure (Browserbase + Playwright).
-
-**When E2E tests are required:**
-- Any user story with an `e2eTests` field in its PRD (see `knowledge/hq-core/prd-schema.md`)
-- Features that modify user-facing flows, authentication, or critical paths
-- The `/prd` command's test-plan discovery process identifies test scenarios during planning
-
-**How to run E2E tests:**
-- Workers: `/run frontend-dev e2e-testing` or `/run backend-dev e2e-testing`
-- Test planning: `/run qa-tester test-plan` (user-pattern discovery for meaningful scenarios)
-- CI: `.github/workflows/e2e.yml` runs tests automatically against Vercel preview deployments
-
-**Where templates live:**
-- `knowledge/testing/templates/` - Test templates for Next.js, API endpoints, CLI OAuth flows
-- `knowledge/testing/templates/fixtures/` - Reusable Browserbase/Playwright config and fixtures
-- `knowledge/testing/templates/scripts/` - Result processing utilities
-
-**Key references:**
-- `knowledge/testing/e2e-cloud.md` - Architecture and patterns overview
-- `knowledge/testing/browserbase-integration.md` - Browserbase setup and configuration
-- `knowledge/testing/vercel-preview-deployments.md` - Preview deployment testing strategy
-- `knowledge/workers/ralph-loop-pattern.md` - E2E CI verification in the Ralph loop
 
 ## INDEX.md System
 
@@ -54,7 +28,6 @@ HQ/
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
 ├── knowledge/          # HQ-level (Ralph, workers, security, projects)
-│   └── testing/        # E2E testing knowledge, templates, fixtures
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
 │   ├── dev-team/       # 12 code workers

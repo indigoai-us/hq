@@ -35,7 +35,7 @@ Before asking questions, explore HQ:
 - Glob `projects/*/prd.json` (check overlap)
 
 **Knowledge (use qmd, not Grep):**
-- `qmd vsearch "<description keywords>" --json -n 10` -- semantic search for related knowledge, prior work, workers
+- `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
 
 Present:
 ```
@@ -78,39 +78,6 @@ Ask questions in batches. Users respond: "1A, 2C"
 10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 11. Branch name? (default: `feature/{project-name}`)
 
-**Batch 4: E2E Testing**
-For each user story that will be generated, we need end-to-end test definitions.
-After generating initial stories (Step 5), present this batch per story:
-
-12. For each user story, define E2E test scenarios:
-    - What are the critical user journeys this story enables?
-    - What should an end-to-end test verify from the user's perspective?
-    - Which scenarios are critical paths (must never break)?
-
-Present per story:
-```
-Story US-{NNN}: {title}
-Acceptance Criteria:
-- {criterion 1}
-- {criterion 2}
-
-Suggested E2E Tests:
-  a) {scenario} [critical path: yes/no]
-     Journey: {step-by-step user journey}
-  b) {scenario} [critical path: yes/no]
-     Journey: {step-by-step user journey}
-
-Accept suggestions, modify, or add more? (a/m/+)
-```
-
-Rules for Batch 4:
-- Every story must have at least one E2E test
-- Every story must have at least one critical path test (`criticalPath: true`)
-- Suggest tests based on acceptance criteria (auto-generate sensible defaults)
-- If user accepts defaults, proceed; if they modify, capture changes
-- Test scenarios should describe user-observable behavior, not implementation details
-- User journeys should be step-by-step: "Navigate to X -> Click Y -> Verify Z"
-
 ## Step 5: Generate PRD
 
 Create `projects/{name}/` folder with two files.
@@ -130,13 +97,6 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
       "title": "{Story title}",
       "description": "{As a [user], I want [feature] so that [benefit]}",
       "acceptanceCriteria": ["{Specific verifiable criterion}"],
-      "e2eTests": [
-        {
-          "scenario": "{Test scenario name}",
-          "userJourney": "{Navigate to X -> Do Y -> Verify Z}",
-          "criticalPath": true
-        }
-      ],
       "priority": 1,
       "passes": false,
       "labels": [],
@@ -185,11 +145,6 @@ Generate FROM the prd.json data. Human-friendly view.
 - [ ] {criterion 1}
 - [ ] {criterion 2}
 
-**E2E Tests:**
-| Scenario | User Journey | Critical Path |
-|----------|-------------|---------------|
-| {scenario} | {userJourney} | {criticalPath} |
-
 ## Non-Goals
 {What's out of scope}
 
@@ -224,7 +179,7 @@ If project already exists in state.json, update it instead of duplicating.
 npx tsx scripts/prd-to-beads.ts --project={name}
 ```
 
-Silent -- just log success/failure.
+Silent — just log success/failure.
 
 ## Step 7.5: Capture Learning (Auto-Learn)
 
@@ -241,7 +196,7 @@ Run `/learn` to register the new project in the learning system:
 
 Also reindex: `qmd update 2>/dev/null || true`
 
-**Update INDEX.md:** Regenerate `projects/INDEX.md` per `knowledge/hq-core/index-md-spec.md`.
+**Update INDEX.md:** Regenerate `projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
 ## Step 8: Execution Choice
 
@@ -268,19 +223,16 @@ Recommended execution:
 
 - Each story completable in one AI session
 - Acceptance criteria must be verifiable (not "works correctly")
-- Order: schema -> backend -> UI -> integration
+- Order: schema → backend → UI → integration
 - Keep stories atomic (one deliverable each)
 - Every story starts with `passes: false`
-- Every story must include at least one `e2eTests` entry
-- Every story must have at least one `e2eTests` entry with `criticalPath: true`
 
 ## Rules
 
 - Scan HQ first, ask questions second
 - Batch questions (don't overwhelm)
-- **prd.json is the source of truth** -- README.md is derived from it, never the reverse
-- **All stories start with `passes: false`** -- `/run-project` marks them true
-- **All stories must have `e2eTests`** -- validated by `.claude/scripts/validate-prd.ps1`
-- **Do NOT use EnterPlanMode** -- this skill IS planning
-- **Do NOT use TodoWrite** -- PRD stories track tasks
-- **Do NOT implement** -- just create the PRD
+- **prd.json is the source of truth** — README.md is derived from it, never the reverse
+- **All stories start with `passes: false`** — `/run-project` marks them true
+- **Do NOT use EnterPlanMode** — this skill IS planning
+- **Do NOT use TodoWrite** — PRD stories track tasks
+- **Do NOT implement** — just create the PRD
