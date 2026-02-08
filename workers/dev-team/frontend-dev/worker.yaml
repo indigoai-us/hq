@@ -1,0 +1,145 @@
+worker:
+  id: frontend-dev
+  name: "Frontend Developer"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 20m
+  retry_attempts: 2
+
+context:
+  base:
+    - workers/dev-team/frontend-dev/
+    - workers/dev-team/frontend-dev/skills/
+    - knowledge/dev-team/patterns/frontend/
+    - knowledge/testing/
+  dynamic:
+    - pattern: "{target_repo}/src/components/"
+      when: always
+    - pattern: "{target_repo}/src/app/"
+      when: always
+    - pattern: "{target_repo}/tests/e2e/"
+      when: skill == "e2e-testing"
+  exclude:
+    - node_modules/
+    - dist/
+    - api/
+    - server/
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: lint
+      command: npm run lint
+  approval_required: true
+
+external_skills:
+  # Vercel React Best Practices (https://github.com/vercel-labs/agent-skills)
+  - vercel/react-best-practices  # Full skill set
+  # Key areas:
+  # - Eliminating waterfalls (defer await, parallel fetching, Suspense)
+  # - Bundle optimization (dynamic imports, avoid barrel files)
+  # - Server-side performance (RSC serialization, React.cache)
+  # - Re-render optimization (useMemo patterns, state management)
+  # - Rendering performance (hydration, CSS content-visibility)
+
+output:
+  destination: workspace/reports/dev-team/
+  format: both
+  naming: "{date}-frontend-dev-{task}.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/dev-team/frontend-dev
+  tools:
+    - create_component
+    - create_page
+    - fix_ui_bug
+    - add_form
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # Frontend Developer
+
+  React/Next.js components and pages.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | create-component | Create new React component |
+  | create-page | Create new page/route |
+  | fix-ui-bug | Fix frontend bug |
+  | add-form | Add form with validation |
+  | e2e-testing | Write, run, debug, and fix E2E tests for frontend features |
+
+  ## Patterns
+
+  - Follow existing component structure
+  - Use TypeScript strict mode
+  - Include accessibility attributes
+  - Add responsive styles
+
+  ## React Best Practices (Vercel)
+
+  CRITICAL - Eliminating Waterfalls:
+  - Defer await until needed (don't await at top of function)
+  - Use Promise.all() for independent operations
+  - Strategic Suspense boundaries
+
+  CRITICAL - Bundle Optimization:
+  - Avoid barrel file imports (import from specific files)
+  - Dynamic imports for heavy components
+  - Preload based on user intent
+
+  HIGH - Server Components:
+  - Minimize serialization at RSC boundaries
+  - Use React.cache() for per-request deduplication
+  - Parallel data fetching with component composition
+
+  MEDIUM - Re-render Optimization:
+  - Don't wrap simple expressions in useMemo
+  - Extract to memoized components for isolation
+  - Use functional setState updates
+  - Use Transitions for non-urgent updates
+
+  ## E2E Testing
+
+  When using the e2e-testing skill:
+  - ALWAYS require a test plan before writing tests (from qa-tester test-plan skill)
+  - Reference knowledge/testing/templates/ for test structure patterns
+  - Reference knowledge/testing/e2e-cloud.md for infrastructure configuration
+  - Use Browserbase for cloud execution; local Playwright for dev iteration
+  - Every test must trace back to a test plan flow
+
+  ## E2E Requirements
+
+  When working in a project with E2E tests:
+  - Every new or modified page MUST have a corresponding E2E spec in `tests/e2e/pages/`
+  - After adding or modifying specs, run: `npm run generate-manifest`
+  - Commit the updated `tests/e2e/manifest.json` alongside your changes
+  - Run `npm run check-coverage` to verify no routes are uncovered
+  - Test categories: page-load, navigation, forms, components, accessibility, responsive, performance, visual
+
+  ## Human-in-the-loop
+
+  - Approve component design
+  - Review styling approach
+  - Confirm accessibility compliance

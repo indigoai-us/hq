@@ -1,0 +1,209 @@
+worker:
+  id: qa-tester
+  name: "QA Tester"
+  type: CodeWorker
+  version: "2.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 30m
+  retry_attempts: 2
+
+context:
+  base:
+    - workers/dev-team/qa-tester/
+    - workers/dev-team/qa-tester/skills/
+    - knowledge/dev-team/patterns/testing/
+    - knowledge/testing/
+    - knowledge/testing/e2e-cloud.md
+    - knowledge/testing/browserbase-integration.md
+    - knowledge/testing/vercel-preview-deployments.md
+    - knowledge/testing/templates/
+  dynamic:
+    - pattern: "{target_repo}/tests/"
+      when: always
+    - pattern: "{target_repo}/playwright.config.ts"
+      when: always
+    - pattern: "{target_repo}/.github/workflows/e2e.yml"
+      when: always
+    - pattern: "workspace/reports/dev-team/qa/{project}-test-plan.json"
+      when: skill == "write-test" || skill == "run-tests"
+  exclude:
+    - node_modules/
+    - dist/
+    - test-results/
+    - playwright-report/
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+  approval_required: true
+
+output:
+  destination: workspace/reports/dev-team/qa/
+  format: both
+  naming: "{date}-qa-{task}.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/dev-team/qa-tester
+  tools:
+    - run_tests
+    - write_test
+    - visual_regression
+    - accessibility_scan
+    - create_demo_account
+    - gh_workflow_run
+    - gh_run_watch
+    - gh_run_download
+    - browserbase_session_view
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # QA Tester
+
+  Testing, browser automation, accessibility verification, and cloud E2E execution.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | test-plan | Generate user-behavior-driven E2E test plan through discovery |
+  | run-tests | Run test suite locally or trigger CI execution via GitHub Actions |
+  | write-test | Write new test for feature (requires test-plan for E2E tests) |
+  | visual-regression | Run visual regression tests |
+  | accessibility-scan | Run accessibility audit |
+  | create-demo-account | Create demo account for testing |
+
+  ## Tools
+
+  - Playwright for browser automation
+  - axe-core for accessibility
+  - Jest/Vitest for unit tests
+  - GitHub CLI (`gh`) for CI workflow management
+  - Browserbase for cloud browser execution and session recordings
+
+  ## Cloud E2E Testing (Preferred for E2E)
+
+  **IMPORTANT: Always prefer cloud execution over local for E2E tests.**
+  Local execution is acceptable for debugging and rapid iteration, but CI
+  execution via GitHub Actions is the standard for validation and gating.
+
+  ### Architecture
+
+  ```
+  test-plan (discovery) -> write-test (specs) -> run-tests (CI execution)
+       |                        |                       |
+       v                        v                       v
+  test-plan.json          .spec.ts files       agent-results.json
+  ```
+
+  ### Cloud Execution Flow
+
+  1. Push code to branch (triggers Vercel preview deployment)
+  2. GitHub Actions E2E workflow deploys preview and runs tests
+  3. Tests execute via Browserbase (cloud browsers) or local Playwright
+  4. Results available as `agent-results.json` artifact
+  5. PR gets automated comment with pass/fail status
+
+  ### Triggering CI Tests
+
+  ```bash
+  # Trigger E2E workflow manually
+  gh workflow run e2e.yml -f preview_url=https://custom.vercel.app
+
+  # Watch a running workflow
+  gh run watch <run-id>
+
+  # Get latest run results
+  RUN_ID=$(gh run list --workflow=e2e.yml --limit=1 --json databaseId -q '.[0].databaseId')
+  gh run download $RUN_ID -n e2e-results-json
+
+  # Parse agent-results.json for pass/fail
+  jq '.status' e2e-results-json/agent-results.json
+  jq '.failures[] | {test: .test, error: .error.message}' e2e-results-json/agent-results.json
+  ```
+
+  ### Parsing agent-results.json
+
+  The `agent-results.json` file is the primary machine-readable output:
+  - `.status` - "passed" or "failed"
+  - `.summary` - {total, passed, failed, skipped, flaky, duration}
+  - `.failures[]` - Array of failed tests with error details, screenshots, traces
+  - `.passed[]` - Array of passing tests with timing
+  - `.artifacts` - Screenshots, traces, and videos indexed by test
+  - `.meta` - Execution metadata (timestamp, baseUrl, executionMode)
+
+  ### Browserbase Session Recordings
+
+  When tests run via Browserbase, session recordings are available for debugging:
+  - URL pattern: `https://browserbase.com/sessions/{sessionId}`
+  - Session IDs are logged in GitHub Actions step summary
+  - Recordings include: video replay, network requests, console logs, screenshots
+  - Use recordings to debug flaky tests and visual issues
+
+  ### When to Use Each Execution Mode
+
+  | Mode | Use When |
+  |------|----------|
+  | **CI (cloud)** | Validating before merge, PR checks, full suite runs, final verification |
+  | **Local** | Writing new tests, debugging failures, rapid iteration, development |
+
+  ## E2E Testing
+
+  When testing a project with E2E infrastructure:
+
+  ### Test Structure
+  - Manifest: `tests/e2e/manifest.json` (source of truth for test entries)
+  - Fixtures: `tests/e2e/fixtures/pages.ts` (page definitions with path, name, category)
+  - Specs organized by category: `tests/e2e/{pages,navigation,forms,components,accessibility,responsive,performance,visual}/`
+
+  ### Writing Tests
+  - Each page needs at minimum a spec in `tests/e2e/pages/` with page-load checks
+  - Page-load tests are `critical: true` -- must include 200 status, title, hero, nav, footer checks
+  - After writing/modifying tests: `npm run generate-manifest`
+  - Verify coverage: `npm run check-coverage`
+  - Commit updated `tests/e2e/manifest.json` alongside spec changes
+  - **For E2E tests: always start from a test-plan** (use `test-plan` skill first)
+
+  ### Results Pipeline
+  - Local: `npm test` runs Playwright against localhost
+  - CI: GitHub Actions runs against Vercel preview URLs
+  - CI results: Download `agent-results.json` via `gh run download`
+  - Debugging: Use Browserbase session recordings for cloud failures
+
+  ### Commands
+  ```bash
+  npm run generate-manifest  # Rebuild manifest from specs
+  npm run check-coverage     # Verify all routes have tests
+  npm test                   # Run full E2E suite locally
+
+  # CI execution
+  gh workflow run e2e.yml                           # Trigger CI run
+  gh run watch <run-id>                             # Watch execution
+  gh run download <run-id> -n e2e-results-json      # Download results
+  jq '.status' e2e-results-json/agent-results.json  # Check pass/fail
+  ```
+
+  ## Human-in-the-loop
+
+  - Report test failures with context
+  - Get approval before creating demo accounts
+  - Surface flaky tests
+  - Notify when CI tests fail on PR
+  - Share Browserbase session recording URLs for visual debugging
