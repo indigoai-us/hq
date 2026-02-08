@@ -1,0 +1,24 @@
+{
+  "name": "@hq-cloud/worker-runtime",
+  "version": "0.1.0",
+  "description": "Docker base image for HQ workers",
+  "private": true,
+  "scripts": {
+    "build": "docker build -t hq-worker-runtime:latest .",
+    "build:dev": "docker build -t hq-worker-runtime:dev .",
+    "run": "docker run --rm -it hq-worker-runtime:latest",
+    "run:shell": "docker run --rm -it hq-worker-runtime:latest shell",
+    "test": "bash tests/bootstrap.test.sh",
+    "test:docker": "docker build -t hq-worker-runtime:test . && docker run --rm hq-worker-runtime:test claude version",
+    "test:integration": "bash tests/bootstrap.test.sh --integration",
+    "size": "docker images hq-worker-runtime:latest --format '{{.Size}}'"
+  },
+  "keywords": [
+    "hq",
+    "worker",
+    "docker",
+    "runtime"
+  ],
+  "author": "HQ Cloud Team",
+  "license": "UNLICENSED"
+}

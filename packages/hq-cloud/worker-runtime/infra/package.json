@@ -1,0 +1,49 @@
+{
+  "name": "@hq-cloud/worker-runtime-infra",
+  "version": "0.1.0",
+  "description": "AWS CDK infrastructure for HQ Worker Runtime",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.173.2",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "aws-cdk": "^2.173.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.173.2",
+    "constructs": "^10.4.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "hq",
+    "worker",
+    "aws",
+    "cdk",
+    "ecs",
+    "fargate"
+  ],
+  "author": "HQ Cloud Team",
+  "license": "UNLICENSED"
+}
