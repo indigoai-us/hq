@@ -1,0 +1,40 @@
+{
+  "task_id": "API-005",
+  "project": "hq-cloud/core-api",
+  "started_at": "2026-02-05T21:24:00Z",
+  "completed_at": "2026-02-05T21:27:00Z",
+  "status": "completed",
+  "phases": [
+    {"worker": "backend-dev", "status": "completed"},
+    {"worker": "code-reviewer", "status": "skipped", "reason": "direct implementation"},
+    {"worker": "dev-qa-tester", "status": "completed", "test_count": 9}
+  ],
+  "handoffs": [],
+  "files_created": [
+    "packages/hq-cloud/api/src/__tests__/worker-status-streaming.test.ts"
+  ],
+  "files_modified": [
+    "packages/hq-cloud/api/src/workers/types.ts",
+    "packages/hq-cloud/api/src/workers/worker-store.ts",
+    "packages/hq-cloud/api/src/workers/index.ts",
+    "packages/hq-cloud/api/src/ws/types.ts",
+    "packages/hq-cloud/api/src/ws/connection-registry.ts",
+    "packages/hq-cloud/api/src/ws/websocket-plugin.ts",
+    "packages/hq-cloud/api/src/ws/index.ts",
+    "packages/hq-cloud/api/src/routes/workers.ts"
+  ],
+  "key_decisions": [
+    "Extended Worker model with currentTask, progress, and lastActivity fields",
+    "Added WorkerProgress type for structured progress tracking (current/total/description)",
+    "Implemented subscribe/unsubscribe WebSocket message types for worker updates",
+    "Added onWorkerChange callback system to worker-store for decoupled status broadcasting",
+    "Extended ClientConnection to track workerSubscriptions and subscribedToAll flags",
+    "Added broadcastWorkerStatus function to push updates to subscribed clients"
+  ],
+  "back_pressure": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass"
+  }
+}

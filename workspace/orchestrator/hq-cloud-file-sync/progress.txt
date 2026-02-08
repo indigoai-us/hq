@@ -1,0 +1,11 @@
+# hq-cloud/file-sync Progress Log
+# Started: 2026-02-08T06:50:00Z
+
+[2026-02-08T07:00:00Z] SYNC-001: S3 bucket structure with versioning, encryption, lifecycle policies, IAM policies. 37 tests. (1/10)
+[2026-02-08T07:15:00Z] SYNC-002: Local sync daemon with chokidar watcher, event queue dedup, PID locking, batch sync. 75 tests. (2/10)
+[2026-02-08T07:35:00Z] SYNC-007: Worker container S3 mount with s3fs/goofys, AWS CLI fallback, cache presets. 103 tests. (3/10)
+[2026-02-08T07:50:00Z] SYNC-008: File sharing read access with share service, S3 policies, REST API endpoints. 121 tests. (4/10)
+[2026-02-08T08:00:00Z] SYNC-003: Upload to S3 with SHA-256 hashing, batched concurrency, multipart support, metadata. 54 tests. (5/10)
+[2026-02-08T08:10:00Z] SYNC-006: Selective sync with .hqignore, gitignore-style patterns, default security rules, live reload. 82 tests. (6/10)
+[2026-02-08T08:25:00Z] SYNC-004: Download from S3 with change detection, timestamp preservation, deletion policies, polling. 83 tests. (7/10)
+[2026-02-08T08:35:00Z] SYNC-005: Conflict detection and resolution with keep_both/local_wins/remote_wins/manual strategies. 53 tests. (8/10)

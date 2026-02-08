@@ -1,0 +1,186 @@
+{
+  "name": "hq-cloud-file-sync",
+  "description": "Bidirectional file synchronization between local HQ and S3 with sharing capabilities",
+  "branchName": "feature/hq-cloud-file-sync",
+  "parentProject": "hq-cloud",
+  "userStories": [
+    {
+      "id": "SYNC-001",
+      "title": "S3 bucket structure for HQ files",
+      "description": "As the system, I want an S3 bucket structure so that HQ files can be stored in the cloud",
+      "acceptanceCriteria": [
+        "S3 bucket created with versioning enabled",
+        "Folder structure: /{userId}/hq/ mirrors local HQ",
+        "Encryption at rest enabled",
+        "Lifecycle policy for old versions",
+        "IAM policies for access control"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["infrastructure", "aws", "phase-2"],
+      "dependsOn": [],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/s3/"
+    },
+    {
+      "id": "SYNC-002",
+      "title": "Local sync agent daemon",
+      "description": "As a desktop user, I want a background agent so that my HQ syncs automatically",
+      "acceptanceCriteria": [
+        "Node.js daemon that runs in background",
+        "Watches HQ directory for changes (chokidar)",
+        "Configurable sync interval",
+        "System tray icon with status (optional)",
+        "Starts on login (optional)"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["sync", "desktop", "phase-2"],
+      "dependsOn": [],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/daemon/"
+    },
+    {
+      "id": "SYNC-003",
+      "title": "Upload changed files to S3",
+      "description": "As a desktop user, I want local changes to upload so that cloud workers see my updates",
+      "acceptanceCriteria": [
+        "Detect file changes via watcher",
+        "Compute file hash to detect actual changes",
+        "Upload changed files to S3 with metadata",
+        "Batch uploads for efficiency",
+        "Progress reporting to user"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["sync", "phase-2"],
+      "dependsOn": ["SYNC-001", "SYNC-002"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/upload/"
+    },
+    {
+      "id": "SYNC-004",
+      "title": "Download changed files from S3",
+      "description": "As a desktop user, I want cloud changes to download so that I see worker outputs",
+      "acceptanceCriteria": [
+        "Poll S3 for changes (compare LastModified)",
+        "Download new/updated files to local HQ",
+        "Preserve file timestamps",
+        "Handle deleted files (configurable)",
+        "Sync status shown in daemon"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["sync", "phase-2"],
+      "dependsOn": ["SYNC-001", "SYNC-002"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/download/"
+    },
+    {
+      "id": "SYNC-005",
+      "title": "Conflict detection and resolution",
+      "description": "As a user, I want conflicts handled so that I don't lose work",
+      "acceptanceCriteria": [
+        "Detect when both local and remote changed",
+        "Default strategy: keep both (rename local to .conflict)",
+        "Optional strategies: local wins, remote wins, manual",
+        "Log conflicts for user review",
+        "API endpoint to list conflicts"
+      ],
+      "priority": 2,
+      "passes": true,
+      "labels": ["sync", "phase-2"],
+      "dependsOn": ["SYNC-003", "SYNC-004"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/conflict/"
+    },
+    {
+      "id": "SYNC-006",
+      "title": "Selective sync with .hqignore",
+      "description": "As a user, I want to exclude files from sync so that secrets stay local",
+      "acceptanceCriteria": [
+        ".hqignore file in HQ root",
+        "Gitignore-style pattern matching",
+        "Default ignores: .env, *.secret, credentials/",
+        "companies/*/settings/ ignored by default",
+        "Sync agent respects ignore patterns"
+      ],
+      "priority": 2,
+      "passes": true,
+      "labels": ["sync", "security", "phase-2"],
+      "dependsOn": ["SYNC-002"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/ignore/"
+    },
+    {
+      "id": "SYNC-007",
+      "title": "Worker container S3 mount",
+      "description": "As a worker container, I want access to S3 files so that I can read/write HQ",
+      "acceptanceCriteria": [
+        "s3fs or goofys mounted in container",
+        "Read/write access to user's HQ folder",
+        "Changes visible to local sync agent",
+        "Cache configuration for performance",
+        "Fallback to AWS CLI sync if mount fails"
+      ],
+      "priority": 2,
+      "passes": true,
+      "labels": ["sync", "runtime", "phase-2"],
+      "dependsOn": ["SYNC-001"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/mount/"
+    },
+    {
+      "id": "SYNC-008",
+      "title": "File sharing - read access",
+      "description": "As a user, I want to share files with others so that they can view my knowledge bases",
+      "acceptanceCriteria": [
+        "API endpoint: POST /api/shares - create share",
+        "Share includes: paths[], recipientId, permissions (read)",
+        "Shared paths accessible in recipient's S3 view",
+        "Share revocation supported",
+        "Share list visible in UI"
+      ],
+      "priority": 3,
+      "passes": true,
+      "labels": ["sharing", "phase-2"],
+      "dependsOn": ["SYNC-001"],
+      "notes": "Implemented in packages/hq-cloud/file-sync/src/sharing/ and api/src/routes/shares.ts"
+    },
+    {
+      "id": "SYNC-009",
+      "title": "File sharing - write access",
+      "description": "As a team, I want shared write access so that we can collaborate on knowledge",
+      "acceptanceCriteria": [
+        "Share permissions extended with write option",
+        "Multiple writers supported",
+        "Conflict resolution applies to shared files",
+        "Audit log of changes by user",
+        "Owner can revoke write access"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["sharing", "phase-2"],
+      "dependsOn": ["SYNC-008", "SYNC-005"],
+      "notes": ""
+    },
+    {
+      "id": "SYNC-010",
+      "title": "Sync status API for mobile",
+      "description": "As a mobile user, I want to see sync status so that I know if files are current",
+      "acceptanceCriteria": [
+        "GET /api/sync/status returns last sync time, pending changes",
+        "WebSocket events for sync progress",
+        "Error reporting for failed syncs",
+        "Manual sync trigger endpoint"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["api", "mobile", "phase-2"],
+      "dependsOn": ["SYNC-003", "SYNC-004"],
+      "notes": "Maps to Navigator screen status"
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-02-05T12:00:00Z",
+    "goal": "Bidirectional file sync between local HQ and cloud with sharing",
+    "successCriteria": "Local HQ changes appear in cloud workers, worker outputs appear locally, files can be shared",
+    "qualityGates": ["pnpm typecheck && pnpm lint && pnpm test"],
+    "repoPath": "packages/hq-cloud/file-sync",
+    "relatedWorkers": ["backend-dev", "infra-dev"],
+    "knowledge": []
+  }
+}

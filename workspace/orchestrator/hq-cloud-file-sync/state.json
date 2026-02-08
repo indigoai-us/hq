@@ -1,0 +1,12 @@
+{
+  "project": "hq-cloud/file-sync",
+  "prd_path": "projects/hq-cloud/sub-projects/file-sync/prd.json",
+  "status": "in_progress",
+  "started_at": "2026-02-06T00:00:00Z",
+  "updated_at": "2026-02-08T08:35:00Z",
+  "progress": { "total": 10, "completed": 8, "failed": 0, "in_progress": 1 },
+  "current_task": null,
+  "completed_tasks": ["SYNC-001", "SYNC-002", "SYNC-003", "SYNC-004", "SYNC-005", "SYNC-006", "SYNC-007", "SYNC-008"],
+  "in_progress_tasks": ["SYNC-009", "SYNC-010"],
+  "retries": 0
+}

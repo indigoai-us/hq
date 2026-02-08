@@ -1,0 +1,15 @@
+# hq-cloud/core-api Progress Log
+# Started: 2026-02-05T12:30:00Z
+
+[2026-02-05T12:35:00Z] API-001: Created pnpm workspace with TypeScript, ESLint, Prettier, and Fastify API - all back pressure checks pass. (1/10)
+[2026-02-05T12:50:00Z] API-002: Added WebSocket with connection registry, heartbeat, and 25 passing tests. (2/10)
+[2026-02-05T13:00:00Z] API-003: Implemented API key auth with SHA-256 hashing, rate limiting, device registration. (3/10)
+[2026-02-05T13:10:00Z] API-004: Created worker registry with CRUD operations, status enum, heartbeat tracking. (4/10)
+[2026-02-05T13:25:00Z] API-005: Implemented real-time worker status streaming with WebSocket subscriptions. (5/10)
+[2026-02-05T13:35:00Z] API-006: Implemented Q&A routing with REST endpoints, WebSocket broadcasts, answer callbacks. (6/10)
+[2026-02-05T13:45:00Z] API-007: Added worker spawn endpoint with validation and in-memory queue. (7/10)
+[2026-02-05T13:55:00Z] API-008: Implemented chat history with pagination and WebSocket broadcast. (8/10)
+[2026-02-05T14:05:00Z] API-009: Implemented push notifications with provider abstraction and auto-push on questions. (9/10)
+[2026-02-05T14:15:00Z] API-010: Added health checks, structured logging, request tracing, CloudWatch abstraction. (10/10)
+
+# PROJECT COMPLETE: 2026-02-05T14:15:00Z

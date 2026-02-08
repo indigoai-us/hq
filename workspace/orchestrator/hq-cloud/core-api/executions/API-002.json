@@ -1,0 +1,39 @@
+{
+  "task_id": "API-002",
+  "project": "hq-cloud/core-api",
+  "started_at": "2026-02-05T12:00:00Z",
+  "completed_at": "2026-02-05T21:00:00Z",
+  "status": "completed",
+  "current_phase": 3,
+  "phases": [
+    {"worker": "backend-dev", "status": "completed", "completed_at": "2026-02-05T20:58:00Z"},
+    {"worker": "code-reviewer", "status": "completed", "completed_at": "2026-02-05T20:59:00Z"},
+    {"worker": "dev-qa-tester", "status": "completed", "completed_at": "2026-02-05T21:00:00Z"}
+  ],
+  "handoffs": [
+    {
+      "from": "backend-dev",
+      "to": "code-reviewer",
+      "summary": "Implemented WebSocket endpoint with @fastify/websocket, connection registry, heartbeat timer",
+      "files_created": [
+        "src/ws/types.ts",
+        "src/ws/connection-registry.ts",
+        "src/ws/websocket-plugin.ts",
+        "src/ws/index.ts",
+        "src/__tests__/connection-registry.test.ts",
+        "src/__tests__/websocket.test.ts",
+        "vitest.config.ts"
+      ],
+      "files_modified": [
+        "src/index.ts",
+        "src/config.ts",
+        "package.json"
+      ]
+    }
+  ],
+  "back_pressure": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "test": "pass"
+  }
+}

@@ -1,0 +1,276 @@
+{
+  "name": "hq-cloud-mobile-app",
+  "description": "React Native mobile app for monitoring workers, answering questions, and browsing HQ files",
+  "branchName": "feature/hq-cloud-mobile-app",
+  "parentProject": "hq-cloud",
+  "userStories": [
+    {
+      "id": "MOB-001",
+      "title": "React Native project scaffolding",
+      "description": "As a developer, I want a React Native project so that we can build the mobile app",
+      "acceptanceCriteria": [
+        "React Native project with TypeScript",
+        "Expo or bare workflow configured",
+        "Navigation library installed (React Navigation)",
+        "Basic folder structure: screens/, components/, services/",
+        "Builds for iOS simulator and Android emulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["infrastructure", "mobile", "phase-3"],
+      "dependsOn": [],
+      "notes": ""
+    },
+    {
+      "id": "MOB-002",
+      "title": "Authentication flow",
+      "description": "As a user, I want to log in so that I can access my workers",
+      "acceptanceCriteria": [
+        "Login screen with API key input",
+        "Secure storage for API key (Keychain/Keystore)",
+        "Auto-login on app launch if key stored",
+        "Logout functionality",
+        "Error handling for invalid keys"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["auth", "mobile", "phase-3"],
+      "dependsOn": ["MOB-001"],
+      "notes": ""
+    },
+    {
+      "id": "MOB-003",
+      "title": "WebSocket connection management",
+      "description": "As a user, I want real-time updates so that I see worker status immediately",
+      "acceptanceCriteria": [
+        "WebSocket client connects on app foreground",
+        "Automatic reconnection on disconnect",
+        "Connection status indicator in UI",
+        "Background disconnect to save battery",
+        "Push notifications when backgrounded"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["realtime", "mobile", "phase-3"],
+      "dependsOn": ["MOB-002"],
+      "notes": ""
+    },
+    {
+      "id": "MOB-004",
+      "title": "Agents list screen",
+      "description": "As a user, I want to see all my workers so that I know what's running",
+      "acceptanceCriteria": [
+        "List of worker cards matching Figma design",
+        "Each card shows: worker type icon, name, status, progress bar with fraction (e.g., 4/6)",
+        "Worker type icons differentiate agent types (research, content, ops, etc.)",
+        "Progress bar visualized as colored bar (yellow active, green complete) alongside numeric fraction",
+        "Most recent question shown if waiting_input, including multi-choice options",
+        "Pull-to-refresh",
+        "Empty state when no workers"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-003"],
+      "notes": "Maps to Figma Agents screen"
+    },
+    {
+      "id": "MOB-005",
+      "title": "Quick answer from worker card",
+      "description": "As a user, I want to answer questions from the list so that I can unblock quickly",
+      "acceptanceCriteria": [
+        "Question with options displayed as tappable buttons on card",
+        "Tap option to answer immediately",
+        "Freeform 'Type something else...' input below options for custom answers",
+        "Answer sent to API",
+        "Card updates to show answered state",
+        "Haptic feedback on answer"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-004"],
+      "notes": "Core value prop - quick unblocking"
+    },
+    {
+      "id": "MOB-006",
+      "title": "Agent detail screen with chat",
+      "description": "As a user, I want to see full worker conversation so that I have context",
+      "acceptanceCriteria": [
+        "Navigate from worker card to detail (back arrow + worker name header)",
+        "Chat-style message list with agent reasoning/chain-of-thought visible",
+        "Inline tool/task execution blocks shown (e.g., 'Task Explore HQ knowledge structure')",
+        "Messages show role (worker/user/system) with distinct styling",
+        "Inline permission prompts (Allow/Deny) for tool execution within the chat",
+        "Scroll to bottom on new messages",
+        "Loading state while fetching history"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-004"],
+      "notes": "Maps to Figma Agent Details screen"
+    },
+    {
+      "id": "MOB-007",
+      "title": "Answer input on detail screen",
+      "description": "As a user, I want to answer with custom text so that I can provide detailed feedback",
+      "acceptanceCriteria": [
+        "Text input at bottom of chat",
+        "Send button",
+        "Options shown as quick-reply buttons if available",
+        "Keyboard handling (avoid covering input)",
+        "Sent message appears immediately (optimistic)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-006"],
+      "notes": ""
+    },
+    {
+      "id": "MOB-008",
+      "title": "Navigator screen - file browser",
+      "description": "As a user, I want to browse HQ files so that I can see what workers are working with",
+      "acceptanceCriteria": [
+        "Semantic tree view organized by: Companies > Projects > Workers/Knowledge (not raw filesystem)",
+        "Top-level groupings: Companies, Standalone Projects",
+        "Folders expandable/collapsible with chevron indicators",
+        "Distinct icons by node type (company, project, worker, knowledge base, file)",
+        "Colored status dots per item (green=healthy, yellow=warning, red=error)",
+        "Tap file/knowledge node to view contents",
+        "Sync status reflected in status dots"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-003"],
+      "notes": "Maps to Figma Navigator screen"
+    },
+    {
+      "id": "MOB-009",
+      "title": "File viewer",
+      "description": "As a user, I want to read file contents so that I can review worker outputs",
+      "acceptanceCriteria": [
+        "Markdown rendering for .md files",
+        "Syntax highlighting for code files",
+        "JSON pretty-printing",
+        "Scroll for long files",
+        "Share button to export file"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-008"],
+      "notes": ""
+    },
+    {
+      "id": "MOB-010",
+      "title": "Push notification handling",
+      "description": "As a user, I want notifications when workers need me so that I don't miss questions",
+      "acceptanceCriteria": [
+        "Register for push notifications on login",
+        "Notification shows worker name + question preview",
+        "Tap notification opens agent detail screen",
+        "Badge count for pending questions",
+        "Notification settings in app"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["notifications", "mobile", "phase-3"],
+      "dependsOn": ["MOB-002"],
+      "notes": "Critical for 'away from desk' use case"
+    },
+    {
+      "id": "MOB-011",
+      "title": "Spawn worker from mobile",
+      "description": "As a user, I want to start workers from my phone so that I can kick off tasks remotely",
+      "acceptanceCriteria": [
+        "Worker picker from registry",
+        "Skill selection for worker",
+        "Optional parameters input",
+        "Spawn confirmation",
+        "Navigate to worker card after spawn"
+      ],
+      "priority": 4,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-004"],
+      "notes": "Nice to have for MVP"
+    },
+    {
+      "id": "MOB-012",
+      "title": "Inline permission prompts on agent cards",
+      "description": "As a user, I want to approve or deny worker tool executions from the agents list so that I can grant permissions without opening the full chat",
+      "acceptanceCriteria": [
+        "Permission prompt displayed inline on agent card (e.g., 'Allow to Read Desktop?')",
+        "Allow and Deny buttons with distinct styling (Deny muted, Allow prominent)",
+        "Permission response sent to API and forwarded to worker via WebSocket",
+        "Card updates immediately after response",
+        "Timestamp shown on permission request (e.g., '5m')",
+        "Haptic feedback on Allow/Deny tap"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-004"],
+      "notes": "Visible in Figma Agents screen - distinct from question answering. Workers request tool permissions (file read, command execution) that need user approval."
+    },
+    {
+      "id": "MOB-013",
+      "title": "Global input bar with voice and attachments",
+      "description": "As a user, I want a persistent input bar so that I can quickly communicate with any worker or the system",
+      "acceptanceCriteria": [
+        "Persistent 'Ask anything...' input bar at bottom of Agents and Navigator screens",
+        "Microphone icon for voice input (speech-to-text)",
+        "Paperclip icon opens attachment menu",
+        "Attachment menu options: Photos, Camera, Files, + Agent, + Project",
+        "Photos/Camera/Files attach media to the current message",
+        "+ Agent opens worker spawn flow (links to MOB-011)",
+        "+ Project opens project creation flow",
+        "Input bar does not overlap with agent cards or navigation"
+      ],
+      "priority": 3,
+      "passes": false,
+      "labels": ["ui", "mobile", "phase-3"],
+      "dependsOn": ["MOB-004"],
+      "notes": "Visible in all Figma screens. The attachment menu is shown in the popover screenshot. Voice input and the + Agent/+ Project actions are key differentiators from a basic chat app."
+    },
+    {
+      "id": "MOB-014",
+      "title": "Dark theme and design system",
+      "description": "As a user, I want a consistent dark UI so that the app matches the Figma design system",
+      "acceptanceCriteria": [
+        "Dark background theme as default (matches Figma)",
+        "Consistent color palette: dark cards on darker background",
+        "Yellow/gold accent for active progress bars",
+        "Green accent for completed items",
+        "Status dot color system: green (healthy), yellow (warning), red (error)",
+        "Typography: clean sans-serif, section headers in caps (e.g., 'AGENTS', 'NAVIGATOR')",
+        "Card styling: rounded corners, subtle elevation/border",
+        "Branded header with app logo ('Indigo') and top-right icon group"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["ui", "design-system", "mobile", "phase-3"],
+      "dependsOn": ["MOB-001"],
+      "notes": "All Figma screens use a dark theme. This story establishes the shared design tokens and component library before building individual screens."
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-02-05T12:00:00Z",
+    "goal": "Mobile app for monitoring and controlling HQ workers remotely",
+    "successCriteria": "User can see worker status, answer questions, and browse files from phone",
+    "qualityGates": ["pnpm typecheck && pnpm lint && pnpm test"],
+    "repoPath": "packages/hq-cloud/mobile",
+    "relatedWorkers": ["frontend-dev", "motion-designer"],
+    "knowledge": [],
+    "figma": "https://www.figma.com/design/Oc9UoitPAeewhVuDjcBRt9/AI-OS-Design-System?node-id=15624-2726",
+    "uxScreenshots": [
+      "C:/repos/hq/ux_designs/Screenshot 2026-02-07 054829.png (Agents list - cards, permissions, questions)",
+      "C:/repos/hq/ux_designs/Screenshot 2026-02-07 055003.png (Navigator - company/project tree with status dots)",
+      "C:/repos/hq/ux_designs/Screenshot 2026-02-07 055032.png (Attachment menu - photos, camera, files, +agent, +project)",
+      "C:/repos/hq/ux_designs/Screenshot 2026-02-07 055056.png (Agent detail - chat with tool execution and permissions)"
+    ]
+  }
+}
