@@ -118,7 +118,12 @@ Knowledge folders can be their own git repos, symlinked into HQ. This enables in
 1. `cd` to the symlink target (e.g. `repos/public/knowledge-ralph/`)
 2. `git add`, `git commit`, `git push` in that repo
 
-**Adding new knowledge:** Create repo in `repos/{public|private}/knowledge-{name}`, symlink into the appropriate knowledge path.
+**Adding new knowledge:**
+1. Create repo: `mkdir -p repos/public/knowledge-{name} && cd repos/public/knowledge-{name} && git init && echo "# {Name}" > README.md && git add . && git commit -m "init"`
+2. Symlink: `ln -s ../../repos/public/knowledge-{name} knowledge/{name}`
+3. For company knowledge: `ln -s ../../../repos/private/knowledge-{name} companies/{co}/knowledge/{name}`
+
+Always use relative paths for symlinks so they work on any machine.
 
 ## Search (qmd)
 

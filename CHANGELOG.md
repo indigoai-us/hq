@@ -1,5 +1,20 @@
 # Changelog
 
+## v5.2.0 (2026-02-11)
+
+### Added
+- **`/setup` — CLI dependency checks**: Now checks for GitHub CLI (`gh`) and Vercel CLI (`vercel`) during setup, with install + auth instructions. Non-blocking (recommended, not required except `claude` itself).
+- **`/setup` — Knowledge repo scaffolding**: Setup now creates a personal knowledge repo (`repos/private/knowledge-personal/`) as a proper git repo and symlinks it into `companies/personal/knowledge/`. Explains the symlink pattern and how to convert bundled knowledge later.
+- **README — Prerequisites table**: New section listing all CLI tools (claude, gh, qmd, vercel) with install commands.
+- **README — Knowledge Repos guide**: Full walkthrough: how symlinks work, creating repos, committing changes, converting bundled knowledge.
+- **README — `repos/` in directory tree**: Directory structure now shows `repos/public/` and `repos/private/`.
+
+### Changed
+- **`.claude/CLAUDE.md`** — Knowledge Repos "Adding new knowledge" expanded from one-liner to step-by-step with commands for HQ-level and company-scoped knowledge.
+- **`/setup`** — Phase 0 expanded (2 checks → 4), Phase 2 now includes knowledge repo creation + symlinks + `.gitignore` updates. Time estimate 2min → 5min.
+
+---
+
 ## v5.1.0 (2026-02-08)
 
 ### Added

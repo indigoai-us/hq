@@ -55,6 +55,17 @@ Not just files. Active systems that:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Prerequisites
+
+| Tool | Required | Install |
+|------|----------|---------|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Yes | `npm install -g @anthropic-ai/claude-code` |
+| [GitHub CLI](https://cli.github.com/) | Yes | `brew install gh` then `gh auth login` |
+| [qmd](https://github.com/tobi/qmd) | Recommended | `brew install tobi/tap/qmd` |
+| [Vercel CLI](https://vercel.com/docs/cli) | Optional | `npm install -g vercel` then `vercel login` |
+
+`/setup` checks for these automatically and guides you through anything missing.
+
 ## Quick Start
 
 ```bash
@@ -65,14 +76,14 @@ cd my-hq
 # 2. Open in Claude Code
 claude
 
-# 3. Run setup wizard
+# 3. Run setup wizard (checks deps, creates profile, scaffolds knowledge repos)
 /setup
 
 # 4. Build your profile (optional but recommended)
 /personal-interview
 ```
 
-Setup asks your name, work, and goals. The personal interview goes deeper — 18 questions to build your voice, preferences, and working style.
+Setup asks your name, work, and goals. It also scaffolds your first knowledge repo as a symlinked git repo (see [Knowledge Repos](#knowledge-repos) below). The personal interview goes deeper — 18 questions to build your voice, preferences, and working style.
 
 ## What's New in v5
 
@@ -301,6 +312,62 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 
 ---
 
+## Knowledge Repos
+
+Knowledge bases in HQ are **independent git repos**, symlinked into the `knowledge/` directory. This lets you version, share, and publish each knowledge base separately from HQ itself.
+
+### How it works
+
+```
+repos/private/knowledge-personal/    ← actual git repo
+    └── README.md, notes.md, ...
+
+knowledge/personal → ../../repos/private/knowledge-personal   ← symlink
+```
+
+HQ git tracks the symlink. The repo contents are tracked by their own git. Tools (`qmd`, `Glob`, `Read`) follow symlinks transparently.
+
+### Creating a knowledge repo
+
+```bash
+# 1. Create and init the repo
+mkdir -p repos/public/knowledge-my-topic
+cd repos/public/knowledge-my-topic
+git init
+echo "# My Topic" > README.md
+git add . && git commit -m "init knowledge repo"
+cd -
+
+# 2. Symlink into HQ
+ln -s ../../repos/public/knowledge-my-topic knowledge/my-topic
+```
+
+For company-scoped knowledge:
+```bash
+ln -s ../../../repos/private/knowledge-acme companies/acme/knowledge/acme
+```
+
+### Committing knowledge changes
+
+Changes appear in `git status` of the *target repo*, not HQ:
+```bash
+cd repos/public/knowledge-my-topic
+git add . && git commit -m "update notes" && git push
+```
+
+### Bundled knowledge
+
+The starter kit ships Ralph, workers, security framework, etc. as plain directories. These work as-is. To convert one to a versioned repo later:
+
+```bash
+mv knowledge/Ralph repos/public/knowledge-ralph
+cd repos/public/knowledge-ralph && git init && git add . && git commit -m "init"
+cd -
+ln -s ../../repos/public/knowledge-ralph knowledge/Ralph
+```
+
+---
+
 ## Directory Structure
 
 ```
@@ -309,7 +376,7 @@ my-hq/
 │   ├── CLAUDE.md              # Session protocol + Context Diet
 │   └── commands/              # 18 slash commands
 ├── agents.md                  # Your profile
-├── knowledge/
+├── knowledge/                 # Symlinks → repos/ (or plain dirs)
 │   ├── Ralph/                 # Coding methodology
 │   ├── workers/               # Worker framework + templates
 │   ├── ai-security-framework/ # Security practices
@@ -318,6 +385,9 @@ my-hq/
 │   ├── hq-core/               # Thread schema, INDEX spec
 │   ├── loom/                  # Agent patterns
 │   └── projects/              # Project guidelines
+├── repos/
+│   ├── public/                # Public repos + knowledge repos
+│   └── private/               # Private repos + knowledge repos
 ├── workers/
 │   ├── registry.yaml          # Worker index
 │   └── sample-worker/         # Example (copy + customize)

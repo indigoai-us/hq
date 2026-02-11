@@ -4,6 +4,40 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.2.0 (from v5.1.0)
+
+### What Changed
+`/setup` now checks for GitHub CLI and Vercel CLI, and scaffolds knowledge as symlinked git repos instead of plain directories. README expanded with prerequisites and knowledge repo guide.
+
+### Updated Files
+Copy from starter kit:
+- `.claude/commands/setup.md` — Rewritten with CLI checks (gh, vercel) and knowledge repo scaffolding
+- `.claude/CLAUDE.md` — Knowledge Repos section expanded with step-by-step commands
+- `README.md` — Prerequisites table, Knowledge Repos section, updated directory tree
+
+### For Existing HQ Users
+If your knowledge is already in plain directories (not symlinked repos), no action needed — everything still works. To adopt the repo pattern for an existing knowledge base:
+
+1. Move: `mv knowledge/{name} repos/public/knowledge-{name}`
+2. Init: `cd repos/public/knowledge-{name} && git init && git add . && git commit -m "init" && cd -`
+3. Symlink: `ln -s ../../repos/public/knowledge-{name} knowledge/{name}`
+
+### CLI Tools
+If you don't have them yet:
+- `brew install gh && gh auth login` (GitHub CLI — for PRs, repo management)
+- `npm install -g vercel && vercel login` (Vercel — for deployments, optional)
+
+### Migration Steps
+1. Copy updated `setup.md`, `CLAUDE.md`, `README.md`
+2. Optionally install `gh` and `vercel` CLIs
+3. Optionally convert knowledge directories to symlinked repos (instructions above)
+4. Run `/search-reindex`
+
+### Breaking Changes
+- (none — all changes are additive)
+
+---
+
 ## Migrating to v5.1.0 (from v5.0.0)
 
 ### What Changed
