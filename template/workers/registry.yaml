@@ -9,12 +9,42 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "4.0"
-updated: "2026-01-31"
+version: "5.0"
+updated: "2026-02-11"
 
 workers:
   # ===================
-  # Dev Team (12 workers)
+  # Dev Team — Codex Workers (3)
+  # ===================
+  # AI-powered code generation, review, and debugging via OpenAI Codex SDK.
+  # Shared MCP server: codex-engine (requires CODEX_API_KEY).
+
+  - id: codex-coder
+    path: workers/dev-team/codex-coder/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Code generation via Codex SDK — scaffolding, features, components"
+
+  - id: codex-reviewer
+    path: workers/dev-team/codex-reviewer/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Code review and improvement via Codex SDK — second-opinion after Claude reviewer"
+
+  - id: codex-debugger
+    path: workers/dev-team/codex-debugger/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Debugging and root-cause analysis via Codex SDK — auto-escalation on back-pressure failure"
+
+  # ===================
+  # Dev Team — Core Workers (12)
   # ===================
   # Full development team for autonomous project execution
   # See workers/dev-team/README.md for workflow

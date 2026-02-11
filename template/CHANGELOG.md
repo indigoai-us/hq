@@ -1,5 +1,86 @@
 # Changelog
 
+## v5.3.0 (2026-02-11)
+
+### Added
+- **Codex Workers (3)** — Production-ready AI workers powered by OpenAI Codex SDK via MCP:
+  - `codex-coder` — Code generation, feature implementation, component scaffolding (3 skills)
+  - `codex-reviewer` — Code review, targeted improvements, best-practices pass (3 skills)
+  - `codex-debugger` — Error diagnosis, root-cause analysis, bug fixing with back-pressure loop (3 skills)
+- **MCP Integration Pattern** — Workers can now connect to external AI tools via Model Context Protocol. Codex workers demonstrate the shared MCP server pattern (codex-engine wraps the Codex SDK, three workers share it).
+- **9 skill files** — Full markdown skill definitions with process steps, arguments, output schemas, and human checkpoints for all codex workers.
+- **README — Codex Workers section** — Complete documentation with usage examples, prerequisites, and architecture overview.
+- **README — OpenAI Codex** added to prerequisites table (optional).
+
+### Changed
+- **`workers/sample-worker/worker.yaml`** — Enhanced with modern patterns: MCP integration (commented-out template), reporting section, spawn_method, retry_attempts, dynamic context loading, verification with back-pressure commands, human checkpoints.
+- **`workers/registry.yaml`** — Version 5.0 → 6.0. Added dev-team section with 3 codex workers.
+- **`.claude/CLAUDE.md`** — Added MCP Integration section, updated Workers section with bundled worker listings, updated structure tree with dev-team directory.
+- **README** — Updated "What's New" to lead with Codex Workers + MCP (v5.3). Worker YAML example updated to show modern patterns (execution, verification, MCP, state_machine). Updated worker type examples.
+
+---
+
+## v5.2.0 (2026-02-11)
+
+### Added
+- **`/setup` — CLI dependency checks**: Now checks for GitHub CLI (`gh`) and Vercel CLI (`vercel`) during setup, with install + auth instructions. Non-blocking (recommended, not required except `claude` itself).
+- **`/setup` — Knowledge repo scaffolding**: Setup now creates a personal knowledge repo (`repos/private/knowledge-personal/`) as a proper git repo and symlinks it into `companies/personal/knowledge/`. Explains the symlink pattern and how to convert bundled knowledge later.
+- **README — Prerequisites table**: New section listing all CLI tools (claude, gh, qmd, vercel) with install commands.
+- **README — Knowledge Repos guide**: Full walkthrough: how symlinks work, creating repos, committing changes, converting bundled knowledge.
+- **README — `repos/` in directory tree**: Directory structure now shows `repos/public/` and `repos/private/`.
+
+### Changed
+- **`.claude/CLAUDE.md`** — Knowledge Repos "Adding new knowledge" expanded from one-liner to step-by-step with commands for HQ-level and company-scoped knowledge.
+- **`/setup`** — Phase 0 expanded (2 checks → 4), Phase 2 now includes knowledge repo creation + symlinks + `.gitignore` updates. Time estimate 2min → 5min.
+
+---
+
+## v5.1.0 (2026-02-08)
+
+### Added
+- **Context Diet** — New section in `.claude/CLAUDE.md` with lazy-loading rules to minimize context burn on session start. Sessions no longer pre-load INDEX.md or agents.md unless the task requires it.
+
+### Changed
+- **`.claude/CLAUDE.md`** — Added Context Diet section, updated Key Files to discourage eager loading
+- **`/checkpoint`** — Recent threads now written to `workspace/threads/recent.md` (not embedded in INDEX.md). INDEX.md gets timestamp-only updates.
+- **`/handoff`** — Same change: threads to `recent.md`, slim INDEX.md updates
+- **`/reanchor`** — Added "When to Use" guidance: only run when explicitly called or disoriented, never auto-trigger
+- Knowledge files refreshed: `Ralph/11-team-training-guide.md`, `hq-core/index-md-spec.md`, `hq-core/thread-schema.md`, `workers/README.md`, `workers/skill-schema.md`, `workers/state-machine.md`, `workers/templates/base-worker.yaml`, `projects/README.md`
+
+---
+
+## v5.0.0 (2026-02-07)
+
+### Added
+- **`/personal-interview`** — Deep conversational interview to build your profile and social voice. Populates `profile.md`, `voice-style.md`, and `agents.md` from ~18 thoughtful questions.
+- **`workers/sample-worker/`** — Example worker with `worker.yaml` and `skills/example.md`. Copy and customize to build your own.
+
+### Changed
+- **`/setup`** — Simplified from 5 phases to 3. Now asks just name, work, and goals. Recommends `/personal-interview` for deeper profile building.
+- **`.claude/CLAUDE.md`** — Updated structure (18 commands, sample-worker), added `/personal-interview` to commands table. Removed bundled worker listings.
+- **`/execute-task`** — Added codebase exploration guidance (qmd collection search for workers), Linear sync integration for completed tasks
+- **`/handoff`** — Added auto-commit of HQ changes before handoff (not just knowledge repos)
+- **`/prd`** — Added target repo scanning via qmd collections during PRD creation
+- **`/run-project`** — Added Linear sync integration (sets tasks to "In Progress" on execution start)
+- **`/search`** — Added company auto-detection from context (cwd, active worker, recent files), enhanced collection scoping
+- **`/search-reindex`** — Multi-collection architecture docs, instructions for adding new repo collections
+- **`/cleanup`**, **`/reanchor`** — Genericized company INDEX paths
+- `workers/registry.yaml` — Version 5.0, sample-worker only
+- `knowledge/Ralph/11-team-training-guide.md` — Expanded with week-by-week team training insights
+- `knowledge/hq-core/index-md-spec.md` — Genericized company references
+- `knowledge/workers/README.md`, `skill-schema.md` — Updated examples
+- `knowledge/projects/README.md` — Updated project examples
+
+### Removed
+- **All bundled workers** — `workers/dev-team/` (12 workers), `workers/content-*/` (5 workers), `workers/security-scanner/` removed. Build your own with `/newworker` using `sample-worker/` as reference.
+- **`starter-projects/`** — Removed. Use `/prd` to create projects.
+
+### Breaking
+- Workers directory restructured: all pre-built workers removed. If you use dev-team or content workers, keep your existing copies.
+- `/setup` no longer offers starter project selection. Use `/prd` + `/newworker` instead.
+
+---
+
 ## v4.0.0 (2026-01-31)
 
 ### Added

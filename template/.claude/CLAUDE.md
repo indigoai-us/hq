@@ -4,10 +4,20 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ## Key Files
 
-- `INDEX.md` - Root directory map, recent threads, workers (start here)
+- `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
 - `USER-GUIDE.md` - Commands, workers, typical session
-- `agents.md` - Your profile, preferences, companies (load for writing/communication tasks)
+- `agents.md` - Your profile, preferences (load only for writing/comms tasks)
 - `workers/registry.yaml` - Worker index
+
+## Context Diet
+
+Minimize context burn on session start:
+- Do NOT read INDEX.md, agents.md, or company knowledge unless task requires it
+- Do NOT run qmd searches "to orient" — search only with a specific question
+- For repo coding tasks: go directly to repo. HQ context rarely needed
+- For worker execution: load only worker.yaml — it has its own knowledge pointers
+- When unsure what to load: ask user, don't explore
+- Prefer `workspace/threads/handoff.json` (7 lines) over INDEX.md for session state
 
 ## INDEX.md System
 
@@ -23,15 +33,16 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 ```
 HQ/
-├── .claude/commands/   # Slash commands (17, visibility: public|private in frontmatter)
+├── .claude/commands/   # Slash commands (18, visibility: public|private in frontmatter)
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
 ├── knowledge/          # HQ-level (Ralph, workers, security, projects)
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
-│   ├── dev-team/       # 12 code workers
-│   └── content-*/      # 5 content workers
+│   ├── sample-worker/  # Example worker (copy + customize)
+│   ├── dev-team/       # Codex workers (coder, reviewer, debugger)
+│   └── registry.yaml   # Worker index
 ├── social-content/     # Content drafts
 │   └── drafts/         # x/, linkedin/
 └── workspace/
@@ -48,15 +59,28 @@ Workers are autonomous agents with defined skills. They *do things*.
 
 | Type | Purpose | Examples |
 |------|---------|----------|
-| CodeWorker | Implement features, fix bugs | dev-team/* |
-| ContentWorker | Draft content, maintain voice | content-brand, content-sales |
-| SocialWorker | Post to platforms | x-worker |
-| ResearchWorker | Analysis, market research | analyst |
-| OpsWorker | Reports, automation | cfo-worker |
+| CodeWorker | Implement features, fix bugs | codex-coder, backend-dev |
+| ContentWorker | Draft content, maintain voice | brand-writer, copywriter |
+| SocialWorker | Post to platforms | x-worker, linkedin-poster |
+| ResearchWorker | Analysis, market research | analyst, researcher |
+| OpsWorker | Reports, automation | cfo-worker, monitor |
+
+**Bundled workers:**
+- `workers/dev-team/codex-coder/` — Code generation via Codex SDK (3 skills)
+- `workers/dev-team/codex-reviewer/` — Code review + improvement via Codex SDK (3 skills)
+- `workers/dev-team/codex-debugger/` — Debugging + root-cause analysis via Codex SDK (3 skills)
+
+**Get started:** Copy `workers/sample-worker/` and customize. See `knowledge/workers/` for the full framework.
 
 **Run a worker:** `/run {worker} {skill}`
 
 **Build a worker:** `/newworker`
+
+## MCP Integration
+
+Workers can connect to external AI tools via [Model Context Protocol](https://modelcontextprotocol.io/). The codex workers demonstrate this — they share a codex-engine MCP server wrapping the OpenAI Codex SDK.
+
+**Pattern:** Define `mcp:` in worker.yaml to declare server command + tools. See `workers/sample-worker/worker.yaml` for the commented-out template.
 
 ## Commands
 
@@ -91,6 +115,7 @@ Workers are autonomous agents with defined skills. They *do things*.
 | `/search-reindex` | Reindex and re-embed HQ for qmd search |
 | `/cleanup` | Audit and clean HQ |
 | `/setup` | Interactive setup wizard |
+| `/personal-interview` | Deep interview to build your profile + voice |
 | `/exit-plan` | Force exit from plan mode |
 
 ## Knowledge Repos
@@ -105,18 +130,24 @@ Knowledge folders can be their own git repos, symlinked into HQ. This enables in
 1. `cd` to the symlink target (e.g. `repos/public/knowledge-ralph/`)
 2. `git add`, `git commit`, `git push` in that repo
 
-**Adding new knowledge:** Create repo in `repos/{public|private}/knowledge-{name}`, symlink into the appropriate knowledge path.
+**Adding new knowledge:**
+1. Create repo: `mkdir -p repos/public/knowledge-{name} && cd repos/public/knowledge-{name} && git init && echo "# {Name}" > README.md && git add . && git commit -m "init"`
+2. Symlink: `ln -s ../../repos/public/knowledge-{name} knowledge/{name}`
+3. For company knowledge: `ln -s ../../../repos/private/knowledge-{name} companies/{co}/knowledge/{name}`
+
+Always use relative paths for symlinks so they work on any machine.
 
 ## Search (qmd)
 
 HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
 
-**When to search:** Before any planning, research, or context-gathering task, search HQ first with `qmd` to find relevant knowledge, workers, skills, and prior work.
+**When to search:** Before any planning, research, or context-gathering task, search HQ first with `qmd` to find relevant knowledge, workers, skills, and prior work. Use qmd for codebase exploration — conceptual search instead of Grep.
 
 **Commands (run via Bash tool):**
 - `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
 - `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
 - `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
+- Add `-c {collection}` to scope to a specific collection
 
 **Slash commands:** `/search <query>`, `/search-reindex`
 
@@ -125,8 +156,9 @@ HQ can be indexed with [qmd](https://github.com/tobi/qmd) for local semantic + f
 | Need | Tool | Example |
 |------|------|---------|
 | Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about API integration" |
+| Find code by concept | `qmd vsearch -c {repo}` | "where auth middleware is defined" |
 | Find files by path pattern | `Glob` | `workers/*/worker.yaml`, `projects/*/prd.json` |
-| Search code in `repos/` | `Grep` | Pattern matching in source code |
+| Exact pattern match in code | `Grep` | `import.*AuthService`, specific function references |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
 **Never use Grep/Glob to search HQ content by topic.** That's what qmd does. Commands and skills that scan HQ for related context must use `qmd vsearch` (semantic) or `qmd search` (keyword), not Grep.

@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#whats-new-in-v20">What's New</a> •
+  <a href="#whats-new-in-v5">What's New</a> •
   <a href="#core-concepts">Core Concepts</a> •
   <a href="#commands">Commands</a> •
   <a href="#workers">Workers</a>
@@ -25,13 +25,13 @@
 
 ## What is HQ?
 
-HQ is infrastructure for orchestrating **AI workers** - autonomous agents that code, write content, research, and automate tasks.
+HQ is infrastructure for orchestrating **AI workers** — autonomous agents that code, write content, research, and automate tasks.
 
 Not just files. Active systems that:
-- **Execute** - Workers do real work autonomously
-- **Learn** - Knowledge bases grow smarter over time
-- **Scale** - Add workers for new domains
-- **Survive** - Checkpoints persist across sessions
+- **Execute** — Workers do real work autonomously
+- **Learn** — Rules get injected into the files they govern
+- **Scale** — Build workers for any domain with `/newworker`
+- **Survive** — Threads persist across sessions, auto-handoff at context limits
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -47,13 +47,25 @@ Not just files. Active systems that:
 │          └──────────────────┼──────────────────┘                │
 │                             ▼                                   │
 │                    ┌─────────────┐                              │
-│                    │ CHECKPOINTS │                              │
+│                    │   THREADS   │                              │
 │                    │   Survive   │                              │
 │                    │   sessions  │                              │
 │                    └─────────────┘                              │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Prerequisites
+
+| Tool | Required | Install |
+|------|----------|---------|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Yes | `npm install -g @anthropic-ai/claude-code` |
+| [GitHub CLI](https://cli.github.com/) | Yes | `brew install gh` then `gh auth login` |
+| [qmd](https://github.com/tobi/qmd) | Recommended | `brew install tobi/tap/qmd` |
+| [OpenAI Codex](https://openai.com/codex) | Optional | `npm install -g @openai/codex` then `codex login` |
+| [Vercel CLI](https://vercel.com/docs/cli) | Optional | `npm install -g vercel` then `vercel login` |
+
+`/setup` checks for these automatically and guides you through anything missing.
 
 ## Quick Start
 
@@ -65,48 +77,75 @@ cd my-hq
 # 2. Open in Claude Code
 claude
 
-# 3. Run setup wizard
+# 3. Run setup wizard (checks deps, creates profile, scaffolds knowledge repos)
 /setup
+
+# 4. Build your profile (optional but recommended)
+/personal-interview
 ```
 
-That's it. You now have a personal OS with 18 workers ready to deploy.
+Setup asks your name, work, and goals. It also scaffolds your first knowledge repo as a symlinked git repo (see [Knowledge Repos](#knowledge-repos) below). The personal interview goes deeper — 18 questions to build your voice, preferences, and working style.
 
-## What's New in v2.0
+## What's New
 
-### Project Orchestration
-Execute entire projects autonomously with the Ralph loop:
+### Codex Workers + MCP Integration (v5.3)
+Three production-ready workers powered by OpenAI Codex SDK via MCP:
+
 ```bash
-/prd "Build a dashboard"     # Create PRD through discovery
-/run-project my-dashboard    # Execute all tasks via workers
+/run codex-coder generate-code --task "Create a rate limiter"
+/run codex-reviewer review-code --files src/auth/*.ts --focus security
+/run codex-debugger fix-bug --issue "Session not persisting"
 ```
 
-### Content Pipeline
-Full content workflow from idea to publish:
+Workers connect to external AI via **Model Context Protocol** — a shared `codex-engine` MCP server wraps the Codex SDK and exposes tools (`codex_generate`, `codex_review`, `codex_debug`, `codex_improve`). The `sample-worker` template now includes MCP, reporting, and verification patterns.
+
+### Context Diet (v5.1)
+Sessions no longer pre-load INDEX.md or agents.md. Lazy-loading rules in CLAUDE.md tell Claude to load only what the task needs:
+
+```
+Writing task    → loads agents.md + voice-style.md
+Coding task     → goes straight to the repo
+Worker task     → loads just worker.yaml
+Resuming work   → reads handoff.json (7 lines)
+```
+
+### Learning System (v5.0)
+Rules get injected directly into the files they govern:
+
 ```bash
-/contentidea "AI agents"     # Build out idea → drafts
-/suggestposts               # Research-driven suggestions
-/scheduleposts              # Smart timing for posting
+/learn              # Auto-capture learnings after task execution
+/remember           # Manual correction → injects rule into source file
 ```
 
-### Dev Team (13 Workers)
-Complete development team for autonomous coding:
-- `project-manager` - PRD lifecycle
-- `task-executor` - Route tasks to workers
-- `architect` - System design
-- `backend-dev` / `frontend-dev` / `database-dev`
-- `qa-tester` - Testing & validation
-- `code-reviewer` - PR management
-- And more...
+Worker rules → `worker.yaml`. Command rules → command `.md`. Global rules → `CLAUDE.md`.
 
-### Auto-Checkpoint
-Never lose work. Sessions auto-save to `workspace/threads/`.
+### Build Your Own Workers
+Start from `sample-worker` or the bundled codex workers:
 
-### Design Iteration
-A/B test designs with git branches:
 ```bash
-/design-iterate hero-section  # Create variations
-# Review, compare, choose winner
+/newworker          # Interactive scaffold from sample-worker template
 ```
+
+Copy `workers/sample-worker/` (or any codex worker), customize the YAML, and you have a production worker.
+
+### Personal Interview
+Deep conversational interview builds your profile and voice:
+
+```bash
+/personal-interview # ~18 questions → agents.md, voice-style.md, profile.md
+```
+
+### Semantic Search
+[qmd](https://github.com/tobi/qmd)-powered search across all HQ content:
+
+```bash
+/search "auth middleware"           # BM25 keyword search
+/search "how billing works" -v     # Semantic/conceptual search
+/search-reindex                    # Rebuild search index
+```
+
+### Auto-Handoff
+Claude auto-runs `/handoff` when context hits 70%. Threads capture full git state, worker progress, and next steps. Fresh sessions resume seamlessly.
 
 ---
 
@@ -117,20 +156,20 @@ Autonomous agents with defined skills. They *do things*.
 
 | Type | Purpose | Examples |
 |------|---------|----------|
-| **CodeWorker** | Implement features, fix bugs | frontend-dev, backend-dev |
-| **ContentWorker** | Draft content, maintain voice | content-brand, content-sales |
-| **SocialWorker** | Post to platforms | x-worker, linkedin-worker |
+| **CodeWorker** | Implement features, fix bugs | codex-coder, backend-dev |
+| **ContentWorker** | Draft content, maintain voice | brand-writer, copywriter |
+| **SocialWorker** | Post to platforms | x-worker, linkedin-poster |
 | **ResearchWorker** | Analyze data, markets | analyst, researcher |
-| **OpsWorker** | Reports, automation | cfo-worker, cmo-worker |
+| **OpsWorker** | Reports, automation | cfo-worker, monitor |
 
 ### Knowledge Bases
 Workers learn from and contribute to shared knowledge:
 
-- `knowledge/Ralph/` - Autonomous coding methodology
-- `knowledge/workers/` - Worker patterns & templates
-- `knowledge/ai-security-framework/` - Security best practices
-- `knowledge/dev-team/` - Development patterns
-- `knowledge/design-styles/` - Design guidelines
+- `knowledge/Ralph/` — Autonomous coding methodology
+- `knowledge/workers/` — Worker patterns & templates
+- `knowledge/ai-security-framework/` — Security best practices
+- `knowledge/dev-team/` — Development patterns
+- `knowledge/design-styles/` — Design guidelines
 
 ### Commands
 Slash commands orchestrate everything:
@@ -141,32 +180,37 @@ Slash commands orchestrate everything:
 /handoff                  # Prepare for fresh session
 ```
 
-### Checkpoints
+### Threads
 Work survives context limits:
 
 ```bash
 /checkpoint feature-x     # Save state
-# ... context fills up ...
-/nexttask                 # Finds checkpoint, continues work
+# ... context fills up → auto-handoff triggers ...
+/nexttask                 # Finds thread, continues work
 ```
 
 ---
 
 ## Commands
 
-### Session Management
+### Session
 | Command | What it does |
 |---------|--------------|
-| `/checkpoint` | Save progress, survive context limits |
+| `/checkpoint` | Save progress to thread |
 | `/handoff` | Prepare handoff for fresh session |
 | `/reanchor` | Pause, show state, realign |
 | `/nexttask` | Find next thing to work on |
+
+### Learning
+| Command | What it does |
+|---------|--------------|
+| `/learn` | Auto-capture learnings from task execution |
+| `/remember` | Manual correction → injects rule into source file |
 
 ### Workers
 | Command | What it does |
 |---------|--------------|
 | `/run` | List all workers |
-| `/run {worker}` | Show worker's skills |
 | `/run {worker} {skill}` | Execute a skill |
 | `/newworker` | Create a new worker |
 | `/metrics` | View worker execution metrics |
@@ -176,79 +220,113 @@ Work survives context limits:
 |---------|--------------|
 | `/prd` | Generate PRD through discovery |
 | `/run-project` | Execute project via Ralph loop |
-| `/pure-ralph` | External terminal loop (fully autonomous) |
 | `/execute-task` | Run single task with workers |
-
-### Content
-| Command | What it does |
-|---------|--------------|
-| `/contentidea` | Build idea into full content suite |
-| `/suggestposts` | Research-driven post suggestions |
-| `/scheduleposts` | Choose what to post now |
 
 ### System
 | Command | What it does |
 |---------|--------------|
-| `/search` | Full-text search across HQ |
-| `/hq-sync` | Sync modules from manifest |
+| `/search` | Semantic + full-text search across HQ |
+| `/search-reindex` | Rebuild search index |
 | `/cleanup` | Audit and clean HQ |
-| `/design-iterate` | Manage design A/B tests |
+| `/setup` | Interactive setup wizard |
+| `/personal-interview` | Deep interview to build profile + voice |
+| `/exit-plan` | Force exit from plan mode |
 
 ---
 
 ## Workers
 
-### Dev Team (13 workers)
-Full development team for autonomous project execution:
+### Bundled: Codex Workers
 
-```yaml
-project-manager    → PRD lifecycle, task selection
-task-executor      → Analyze & route to workers
-architect          → System design, API design
-backend-dev        → API endpoints, business logic
-frontend-dev       → React/Next components
-database-dev       → Schema, migrations
-qa-tester          → Testing, validation
-motion-designer    → Animations, polish
-infra-dev          → CI/CD, deployment
-code-reviewer      → PR review, quality gates
-knowledge-curator  → Update knowledge bases
-product-planner    → Technical specs
-```
+Three production workers that use OpenAI Codex SDK via MCP:
 
-### Content Team (5 workers)
-Specialized content analysis:
-
-```yaml
-content-brand     → Voice, messaging, tone
-content-sales     → Conversion copy, CTAs
-content-product   → Technical accuracy
-content-legal     → Compliance, claims
-content-shared    → Shared utilities (library)
-```
-
-### Creating Your Own
+| Worker | Skills | Purpose |
+|--------|--------|---------|
+| **codex-coder** | generate-code, implement-feature, scaffold-component | Code generation in Codex sandbox |
+| **codex-reviewer** | review-code, improve-code, apply-best-practices | Second-opinion review + automated improvements |
+| **codex-debugger** | debug-issue, root-cause-analysis, fix-bug | Auto-escalation on back-pressure failure |
 
 ```bash
-/newworker  # Interactive scaffold
+# Generate code
+/run codex-coder generate-code --task "Create a rate limiter middleware"
+
+# Review for security issues
+/run codex-reviewer review-code --files src/auth/*.ts --focus security
+
+# Debug a failing test
+/run codex-debugger debug-issue --issue "TS2345 type error" --error-output "$(cat errors.txt)"
 ```
 
-Or manually create `workers/my-worker/worker.yaml`:
+These workers share a **codex-engine** MCP server. To use them, you'll need a Codex API key (`CODEX_API_KEY` env var). See `workers/dev-team/codex-coder/worker.yaml` for the full pattern.
+
+### Build Your Own
+
+Start from the included sample worker:
+
+```bash
+# Option 1: Interactive scaffold
+/newworker
+
+# Option 2: Manual
+cp -r workers/sample-worker workers/my-worker
+# Edit workers/my-worker/worker.yaml
+```
+
+Worker YAML structure (with modern patterns):
 
 ```yaml
 worker:
   id: my-worker
   name: "My Worker"
-  type: OpsWorker
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on-demand
+  max_runtime: 15m
+  retry_attempts: 1
+  spawn_method: task_tool
 
 skills:
-  - name: do-thing
-    description: "Does the thing"
-    execution:
-      steps:
-        - "Step 1"
-        - "Step 2"
+  - id: do-thing
+    file: skills/do-thing.md
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: test
+      command: npm test
+  approval_required: true
+
+# MCP Integration (optional)
+# mcp:
+#   server:
+#     command: node
+#     args: [path/to/mcp-server.js]
+#   tools:
+#     - tool_name
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute: [auto_checkpoint, log_metrics]
+    on_error: [log_error, checkpoint_error_state]
 ```
+
+### Worker Types
+
+| Type | Purpose |
+|------|---------|
+| **CodeWorker** | Features, bugs, refactors |
+| **ContentWorker** | Writing, voice, messaging |
+| **SocialWorker** | Platform posting |
+| **ResearchWorker** | Analysis, data, markets |
+| **OpsWorker** | Reports, automation, ops |
+| **Library** | Shared utilities (no skills) |
+
+See `knowledge/workers/` for the full framework, templates, and patterns.
 
 ---
 
@@ -268,10 +346,10 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 
 ### Why It Works
 
-- **Fresh context per task** - No accumulated confusion
-- **Back pressure validates** - Code that doesn't pass isn't done
-- **Atomic commits** - One task = one commit
-- **PRD is truth** - Simple JSON, easy to inspect
+- **Fresh context per task** — No accumulated confusion
+- **Back pressure validates** — Code that doesn't pass isn't done
+- **Atomic commits** — One task = one commit
+- **PRD is truth** — Simple JSON, easy to inspect
 
 ### Running a Project
 
@@ -286,23 +364,61 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 /run-project auth-system --status
 ```
 
-### Pure Ralph Mode
+---
 
-For fully autonomous execution, use `/pure-ralph` to spawn an external terminal that runs the loop independently:
+## Knowledge Repos
 
-```bash
-# Auto mode (default) - fully autonomous, no intervention needed
-/pure-ralph my-project
+Knowledge bases in HQ are **independent git repos**, symlinked into the `knowledge/` directory. This lets you version, share, and publish each knowledge base separately from HQ itself.
 
-# Manual mode - see chain of thought, close windows between tasks
-/pure-ralph my-project -m
+### How it works
+
+```
+repos/private/knowledge-personal/    ← actual git repo
+    └── README.md, notes.md, ...
+
+knowledge/personal → ../../repos/private/knowledge-personal   ← symlink
 ```
 
-**Why Pure Ralph?**
-- **Fresh context every task** - Each task runs in a new Claude session, preventing context rot
-- **External orchestrator** - Loop runs outside Claude, immune to context compression
-- **Self-improving** - Claude can update its own prompt as it learns
-- **Watchable** - See progress in a visible terminal window
+HQ git tracks the symlink. The repo contents are tracked by their own git. Tools (`qmd`, `Glob`, `Read`) follow symlinks transparently.
+
+### Creating a knowledge repo
+
+```bash
+# 1. Create and init the repo
+mkdir -p repos/public/knowledge-my-topic
+cd repos/public/knowledge-my-topic
+git init
+echo "# My Topic" > README.md
+git add . && git commit -m "init knowledge repo"
+cd -
+
+# 2. Symlink into HQ
+ln -s ../../repos/public/knowledge-my-topic knowledge/my-topic
+```
+
+For company-scoped knowledge:
+```bash
+ln -s ../../../repos/private/knowledge-acme companies/acme/knowledge/acme
+```
+
+### Committing knowledge changes
+
+Changes appear in `git status` of the *target repo*, not HQ:
+```bash
+cd repos/public/knowledge-my-topic
+git add . && git commit -m "update notes" && git push
+```
+
+### Bundled knowledge
+
+The starter kit ships Ralph, workers, security framework, etc. as plain directories. These work as-is. To convert one to a versioned repo later:
+
+```bash
+mv knowledge/Ralph repos/public/knowledge-ralph
+cd repos/public/knowledge-ralph && git init && git add . && git commit -m "init"
+cd -
+ln -s ../../repos/public/knowledge-ralph knowledge/Ralph
+```
 
 ---
 
@@ -311,28 +427,32 @@ For fully autonomous execution, use `/pure-ralph` to spawn an external terminal 
 ```
 my-hq/
 ├── .claude/
-│   ├── CLAUDE.md              # Session protocol
-│   └── commands/              # 22 slash commands
-├── knowledge/
+│   ├── CLAUDE.md              # Session protocol + Context Diet
+│   └── commands/              # 18 slash commands
+├── agents.md                  # Your profile
+├── knowledge/                 # Symlinks → repos/ (or plain dirs)
 │   ├── Ralph/                 # Coding methodology
 │   ├── workers/               # Worker framework + templates
 │   ├── ai-security-framework/ # Security practices
 │   ├── dev-team/              # Development patterns
 │   ├── design-styles/         # Design guidelines
-│   └── loom/                  # Agent patterns
+│   ├── hq-core/               # Thread schema, INDEX spec
+│   ├── loom/                  # Agent patterns
+│   └── projects/              # Project guidelines
+├── repos/
+│   ├── public/                # Public repos + knowledge repos
+│   └── private/               # Private repos + knowledge repos
 ├── workers/
 │   ├── registry.yaml          # Worker index
-│   ├── dev-team/              # 13 dev workers
-│   └── content-*/             # Content workers
+│   ├── sample-worker/         # Example (copy + customize)
+│   └── dev-team/              # Codex workers (coder, reviewer, debugger)
 ├── projects/                  # Your PRDs
-├── social-content/
-│   └── drafts/                # Content drafts (x/, linkedin/)
 ├── workspace/
-│   ├── checkpoints/           # Manual saves
 │   ├── threads/               # Auto-saved sessions
+│   │   └── recent.md          # Recent thread index
 │   ├── orchestrator/          # Project state
 │   └── learnings/             # Captured insights
-└── companies/                 # Multi-company setup
+└── companies/                 # Multi-company setup (optional)
 ```
 
 ---
@@ -341,7 +461,7 @@ my-hq/
 
 | Component | Purpose |
 |-----------|---------|
-| **hq-starter-kit** | This repo - personal OS template |
+| **hq-starter-kit** | This repo — personal OS template |
 | **[hq-cli](https://github.com/coreyepstein/hq-cli)** | Module management CLI |
 
 ---
@@ -350,19 +470,20 @@ my-hq/
 
 This is a **template**. Make it yours:
 
-- Add workers for your workflows
-- Build knowledge bases for your domains
-- Create commands for your patterns
+- Build workers for your workflows (`/newworker`)
+- Create knowledge bases for your domains
+- Add commands for your patterns
 - Connect tools via MCP
+- Run `/personal-interview` to teach it your voice
 
 ---
 
 ## Credits
 
 - **Ralph Methodology** by [Geoffrey Huntley](https://ghuntley.com/ralph/)
-- **Loom Agent Architecture** by [Geoffrey Huntley](https://github.com/ghuntley/loom) - Thread system, state machine, and agent patterns
+- **Loom Agent Architecture** by [Geoffrey Huntley](https://github.com/ghuntley/loom) — Thread system, state machine, and agent patterns
 - Inspired by personal knowledge systems and AI workflow patterns
 
 ## License
 
-MIT - Do whatever you want with it.
+MIT — Do whatever you want with it.
