@@ -1,0 +1,79 @@
+# review-code
+
+Review code files for quality issues using the codex_review MCP tool. Outputs severity-grouped findings with actionable suggestions.
+
+## Arguments
+
+`$ARGUMENTS` = `--files <glob-or-list>` (required, e.g., "src/auth/*.ts" or "src/api/handler.ts,src/lib/db.ts")
+
+Optional:
+- `--focus <area>` - Review focus: `security` | `performance` | `style` | `correctness` | `all` (default: `all`)
+- `--cwd <path>` - Working directory / target repo
+
+## Process
+
+1. **Resolve Files**
+   - Expand glob patterns in `--files` to concrete file list
+   - Verify each file exists; skip missing files with warning
+   - Read files to confirm they are non-empty source files
+   - Cap at 20 files per review (warn if exceeded, review first 20)
+
+2. **Determine Focus Area**
+   - If `--focus` provided, use directly
+   - Default: `all` (reviews across all categories)
+   - Focus areas map to review priorities:
+     - `security`: injection, auth bypass, secret exposure, SSRF, XSS
+     - `performance`: N+1 queries, memory leaks, unnecessary re-renders, O(n^2) loops
+     - `style`: naming conventions, code organization, pattern consistency, dead code
+     - `correctness`: logic errors, edge cases, null handling, race conditions
+     - `all`: balanced review across all categories
+
+3. **Call codex_review**
+   - Invoke MCP tool with:
+     - `cwd`: Resolved working directory
+     - `files`: Array of resolved file paths (relative to cwd)
+     - `focus`: Selected focus area
+   - Wait for Codex to complete review
+
+4. **Parse and Group Results**
+   - Receive structured response: `overallScore`, `issues[]`, `summary`, `threadId`
+   - Group issues by severity: `critical` > `high` > `medium` > `low` > `info`
+   - Within each severity, sort by file path then line number
+   - Count totals per severity level
+
+5. **Format Output**
+   - Present severity-grouped findings:
+     ```
+     ## Review Summary
+     Overall Score: 7/10
+     Files Reviewed: 5
+     Issues Found: 12 (2 critical, 3 high, 4 medium, 2 low, 1 info)
+
+     ### Critical (2)
+     - src/auth/login.ts:45 [security] SQL injection in user lookup
+       Suggested fix: Use parameterized query instead of string interpolation
+
+     ### High (3)
+     ...
+     ```
+   - Include Codex `summary` as closing paragraph
+   - Include `threadId` for follow-up via improve-code
+
+6. **Present for Decision**
+   - Show grouped findings
+   - Offer options: accept findings, run improve-code on flagged files, dismiss
+
+## Output
+
+Review report with:
+- `overallScore`: Quality score 1-10
+- `issues`: Array of `{ file, line, severity, category, description, suggestedFix }`
+- `summary`: Codex narrative summary
+- `threadId`: Codex thread ID for follow-up
+- `counts`: Issues per severity level
+
+## Human Checkpoints
+
+- Review findings before taking action
+- Decide which issues to address vs. accept as-is
+- Approve if running improve-code as follow-up

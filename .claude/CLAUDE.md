@@ -41,6 +41,7 @@ HQ/
 ├── projects/           # Project PRDs
 ├── workers/            # Worker definitions
 │   ├── sample-worker/  # Example worker (copy + customize)
+│   ├── dev-team/       # Codex workers (coder, reviewer, debugger)
 │   └── registry.yaml   # Worker index
 ├── social-content/     # Content drafts
 │   └── drafts/         # x/, linkedin/
@@ -58,17 +59,28 @@ Workers are autonomous agents with defined skills. They *do things*.
 
 | Type | Purpose | Examples |
 |------|---------|----------|
-| CodeWorker | Implement features, fix bugs | dev-team/*, coder |
+| CodeWorker | Implement features, fix bugs | codex-coder, backend-dev |
 | ContentWorker | Draft content, maintain voice | brand-writer, copywriter |
 | SocialWorker | Post to platforms | x-worker, linkedin-poster |
 | ResearchWorker | Analysis, market research | analyst, researcher |
 | OpsWorker | Reports, automation | cfo-worker, monitor |
+
+**Bundled workers:**
+- `workers/dev-team/codex-coder/` — Code generation via Codex SDK (3 skills)
+- `workers/dev-team/codex-reviewer/` — Code review + improvement via Codex SDK (3 skills)
+- `workers/dev-team/codex-debugger/` — Debugging + root-cause analysis via Codex SDK (3 skills)
 
 **Get started:** Copy `workers/sample-worker/` and customize. See `knowledge/workers/` for the full framework.
 
 **Run a worker:** `/run {worker} {skill}`
 
 **Build a worker:** `/newworker`
+
+## MCP Integration
+
+Workers can connect to external AI tools via [Model Context Protocol](https://modelcontextprotocol.io/). The codex workers demonstrate this — they share a codex-engine MCP server wrapping the OpenAI Codex SDK.
+
+**Pattern:** Define `mcp:` in worker.yaml to declare server command + tools. See `workers/sample-worker/worker.yaml` for the commented-out template.
 
 ## Commands
 

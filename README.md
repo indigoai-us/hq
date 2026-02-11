@@ -62,6 +62,7 @@ Not just files. Active systems that:
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Yes | `npm install -g @anthropic-ai/claude-code` |
 | [GitHub CLI](https://cli.github.com/) | Yes | `brew install gh` then `gh auth login` |
 | [qmd](https://github.com/tobi/qmd) | Recommended | `brew install tobi/tap/qmd` |
+| [OpenAI Codex](https://openai.com/codex) | Optional | `npm install -g @openai/codex` then `codex login` |
 | [Vercel CLI](https://vercel.com/docs/cli) | Optional | `npm install -g vercel` then `vercel login` |
 
 `/setup` checks for these automatically and guides you through anything missing.
@@ -85,9 +86,20 @@ claude
 
 Setup asks your name, work, and goals. It also scaffolds your first knowledge repo as a symlinked git repo (see [Knowledge Repos](#knowledge-repos) below). The personal interview goes deeper — 18 questions to build your voice, preferences, and working style.
 
-## What's New in v5
+## What's New
 
-### Context Diet
+### Codex Workers + MCP Integration (v5.3)
+Three production-ready workers powered by OpenAI Codex SDK via MCP:
+
+```bash
+/run codex-coder generate-code --task "Create a rate limiter"
+/run codex-reviewer review-code --files src/auth/*.ts --focus security
+/run codex-debugger fix-bug --issue "Session not persisting"
+```
+
+Workers connect to external AI via **Model Context Protocol** — a shared `codex-engine` MCP server wraps the Codex SDK and exposes tools (`codex_generate`, `codex_review`, `codex_debug`, `codex_improve`). The `sample-worker` template now includes MCP, reporting, and verification patterns.
+
+### Context Diet (v5.1)
 Sessions no longer pre-load INDEX.md or agents.md. Lazy-loading rules in CLAUDE.md tell Claude to load only what the task needs:
 
 ```
@@ -97,7 +109,7 @@ Worker task     → loads just worker.yaml
 Resuming work   → reads handoff.json (7 lines)
 ```
 
-### Learning System
+### Learning System (v5.0)
 Rules get injected directly into the files they govern:
 
 ```bash
@@ -108,13 +120,13 @@ Rules get injected directly into the files they govern:
 Worker rules → `worker.yaml`. Command rules → command `.md`. Global rules → `CLAUDE.md`.
 
 ### Build Your Own Workers
-No bundled workers — you build what you need:
+Start from `sample-worker` or the bundled codex workers:
 
 ```bash
 /newworker          # Interactive scaffold from sample-worker template
 ```
 
-Copy `workers/sample-worker/`, customize the YAML, and you have a production worker.
+Copy `workers/sample-worker/` (or any codex worker), customize the YAML, and you have a production worker.
 
 ### Personal Interview
 Deep conversational interview builds your profile and voice:
@@ -144,7 +156,7 @@ Autonomous agents with defined skills. They *do things*.
 
 | Type | Purpose | Examples |
 |------|---------|----------|
-| **CodeWorker** | Implement features, fix bugs | frontend-dev, backend-dev |
+| **CodeWorker** | Implement features, fix bugs | codex-coder, backend-dev |
 | **ContentWorker** | Draft content, maintain voice | brand-writer, copywriter |
 | **SocialWorker** | Post to platforms | x-worker, linkedin-poster |
 | **ResearchWorker** | Analyze data, markets | analyst, researcher |
@@ -224,6 +236,29 @@ Work survives context limits:
 
 ## Workers
 
+### Bundled: Codex Workers
+
+Three production workers that use OpenAI Codex SDK via MCP:
+
+| Worker | Skills | Purpose |
+|--------|--------|---------|
+| **codex-coder** | generate-code, implement-feature, scaffold-component | Code generation in Codex sandbox |
+| **codex-reviewer** | review-code, improve-code, apply-best-practices | Second-opinion review + automated improvements |
+| **codex-debugger** | debug-issue, root-cause-analysis, fix-bug | Auto-escalation on back-pressure failure |
+
+```bash
+# Generate code
+/run codex-coder generate-code --task "Create a rate limiter middleware"
+
+# Review for security issues
+/run codex-reviewer review-code --files src/auth/*.ts --focus security
+
+# Debug a failing test
+/run codex-debugger debug-issue --issue "TS2345 type error" --error-output "$(cat errors.txt)"
+```
+
+These workers share a **codex-engine** MCP server. To use them, you'll need a Codex API key (`CODEX_API_KEY` env var). See `workers/dev-team/codex-coder/worker.yaml` for the full pattern.
+
 ### Build Your Own
 
 Start from the included sample worker:
@@ -237,28 +272,47 @@ cp -r workers/sample-worker workers/my-worker
 # Edit workers/my-worker/worker.yaml
 ```
 
-Worker YAML structure:
+Worker YAML structure (with modern patterns):
 
 ```yaml
 worker:
   id: my-worker
   name: "My Worker"
-  type: OpsWorker
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on-demand
+  max_runtime: 15m
+  retry_attempts: 1
+  spawn_method: task_tool
 
 skills:
-  - name: do-thing
-    description: "Does the thing"
-    execution:
-      steps:
-        - "Step 1"
-        - "Step 2"
+  - id: do-thing
+    file: skills/do-thing.md
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: test
+      command: npm test
+  approval_required: true
+
+# MCP Integration (optional)
+# mcp:
+#   server:
+#     command: node
+#     args: [path/to/mcp-server.js]
+#   tools:
+#     - tool_name
 
 state_machine:
-  states: [idle, executing, blocked, done]
-  transitions:
-    idle: { start: executing }
-    executing: { complete: done, block: blocked }
-    blocked: { unblock: executing }
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute: [auto_checkpoint, log_metrics]
+    on_error: [log_error, checkpoint_error_state]
 ```
 
 ### Worker Types
@@ -390,7 +444,8 @@ my-hq/
 │   └── private/               # Private repos + knowledge repos
 ├── workers/
 │   ├── registry.yaml          # Worker index
-│   └── sample-worker/         # Example (copy + customize)
+│   ├── sample-worker/         # Example (copy + customize)
+│   └── dev-team/              # Codex workers (coder, reviewer, debugger)
 ├── projects/                  # Your PRDs
 ├── workspace/
 │   ├── threads/               # Auto-saved sessions

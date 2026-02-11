@@ -1,5 +1,25 @@
 # Changelog
 
+## v5.3.0 (2026-02-11)
+
+### Added
+- **Codex Workers (3)** — Production-ready AI workers powered by OpenAI Codex SDK via MCP:
+  - `codex-coder` — Code generation, feature implementation, component scaffolding (3 skills)
+  - `codex-reviewer` — Code review, targeted improvements, best-practices pass (3 skills)
+  - `codex-debugger` — Error diagnosis, root-cause analysis, bug fixing with back-pressure loop (3 skills)
+- **MCP Integration Pattern** — Workers can now connect to external AI tools via Model Context Protocol. Codex workers demonstrate the shared MCP server pattern (codex-engine wraps the Codex SDK, three workers share it).
+- **9 skill files** — Full markdown skill definitions with process steps, arguments, output schemas, and human checkpoints for all codex workers.
+- **README — Codex Workers section** — Complete documentation with usage examples, prerequisites, and architecture overview.
+- **README — OpenAI Codex** added to prerequisites table (optional).
+
+### Changed
+- **`workers/sample-worker/worker.yaml`** — Enhanced with modern patterns: MCP integration (commented-out template), reporting section, spawn_method, retry_attempts, dynamic context loading, verification with back-pressure commands, human checkpoints.
+- **`workers/registry.yaml`** — Version 5.0 → 6.0. Added dev-team section with 3 codex workers.
+- **`.claude/CLAUDE.md`** — Added MCP Integration section, updated Workers section with bundled worker listings, updated structure tree with dev-team directory.
+- **README** — Updated "What's New" to lead with Codex Workers + MCP (v5.3). Worker YAML example updated to show modern patterns (execution, verification, MCP, state_machine). Updated worker type examples.
+
+---
+
 ## v5.2.0 (2026-02-11)
 
 ### Added
