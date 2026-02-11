@@ -1,0 +1,103 @@
+# Sample Worker
+# Copy this directory and customize for your own worker.
+# See knowledge/workers/ for the full worker framework docs.
+
+worker:
+  id: sample-worker
+  name: "Sample Worker"
+  type: CodeWorker           # CodeWorker, ContentWorker, SocialWorker, ResearchWorker, OpsWorker
+  version: "1.0"
+  # team: dev-team           # Optional: group workers into teams
+
+identity:
+  # voice_guide: companies/{company}/knowledge/voice-style.md
+
+execution:
+  mode: on-demand            # on-demand, scheduled, event-triggered
+  max_runtime: 15m
+  retry_attempts: 1
+  spawn_method: task_tool    # task_tool (sub-agent) or inline
+
+context:
+  base:
+    - knowledge/Ralph/       # methodology
+    # - workers/sample-worker/skills/    # this worker's skills
+    # - knowledge/dev-team/patterns/     # shared patterns
+  dynamic:
+    # - pattern: "{target_repo}/src/"
+    #   when: always
+    # - pattern: "{target_repo}/package.json"
+    #   when: always
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+    - "*.lock"
+
+skills:
+  - id: example
+    file: skills/example.md
+
+verification:
+  post_execute:
+    - check: output_valid
+    # - check: typescript
+    #   command: npm run typecheck
+    # - check: lint
+    #   command: npm run lint
+    # - check: test
+    #   command: npm test
+  approval_required: false
+  # human_checkpoints:
+  #   - before_feature_implementation
+  #   - on_breaking_changes
+
+# MCP Integration (optional)
+# Connect external AI tools via Model Context Protocol
+# mcp:
+#   server:
+#     command: node
+#     args: [path/to/mcp-server.js]
+#     cwd: workers/sample-worker
+#   tools:
+#     - tool_name
+
+tasks:
+  source: projects/{project}/prd.json
+  format: prd
+  one_at_a_time: true
+
+output:
+  format: git_commit
+  # destination: workspace/reports/
+  # naming: "{date}-{worker-id}-{skill}.{ext}"
+
+reporting:
+  on_complete:
+    - extract_learnings
+  # metrics:
+  #   - execution_time
+  #   - files_created
+  #   - back_pressure_pass_rate
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  This is a sample worker. Replace these instructions with your own.
+
+  Protocol:
+  1. Read the task requirements
+  2. Implement the solution
+  3. Verify your work passes checks
+  4. Write a checkpoint
+
+  Build your own workers with: /newworker
