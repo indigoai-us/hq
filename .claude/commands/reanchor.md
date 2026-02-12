@@ -12,7 +12,7 @@ Stop and realign before continuing. Use when you want to ensure the agent is on 
 ## When to Use
 
 Only run when explicitly called or genuinely disoriented.
-Never auto-trigger on session start -- most tasks don't need full HQ orientation.
+Never auto-trigger on session start — most tasks don't need full HQ orientation.
 
 ## Process
 
@@ -42,7 +42,9 @@ Never auto-trigger on session start -- most tasks don't need full HQ orientation
 
 5. **Load company context if needed**
    If user picks a company-specific focus, read that company's `knowledge/INDEX.md`:
-   - `companies/{company}/knowledge/INDEX.md` (for each company you have configured)
+   - Widgets Inc → `companies/widgets/knowledge/INDEX.md`
+   - Acme Corp → `companies/acme/knowledge/INDEX.md`
+   - Design Co → `companies/designco/knowledge/INDEX.md`
 
 6. **Wait for response** before proceeding
 

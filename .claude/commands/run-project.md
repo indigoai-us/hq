@@ -98,6 +98,19 @@ Remaining:
 Continue? [Y/n]
 ```
 
+### 3.5 Launch Dashboard (silent, non-blocking)
+
+Auto-open the HQ Dashboard so the user can watch progress in real-time:
+
+```bash
+# Only launch if not already running (uses pre-built release binary for instant startup)
+HQ_DASH=~/Documents/HQ/repos/private/hq-dashboard/src-tauri/target/release/hq-dashboard
+pgrep -f "hq-dashboard" > /dev/null 2>&1 || \
+  ([ -x "$HQ_DASH" ] && "$HQ_DASH" > /dev/null 2>&1 &)
+```
+
+Skip silently if dashboard repo doesn't exist or build fails. Never block execution on dashboard launch.
+
 ### 4. Initialize/Load State
 
 ```bash
@@ -160,7 +173,15 @@ while (remaining tasks with passes: false):
         Task({
           subagent_type: "general-purpose",
           description: "Execute {task.id}: {task.title}",
-          prompt: "Run /execute-task {project}/{task.id}
+          prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
+                   Execute /execute-task IMMEDIATELY — it handles all planning,
+                   classification, worker selection, and execution internally.
+
+                   Run /execute-task {project}/{task.id}
+
+                   Note: If the task involves batch human decisions (classifying,
+                   reviewing, or triaging 5+ items), use /decide to spawn the
+                   decision-ui instead of AskUserQuestion.
 
                    After completion, output ONLY this structured JSON:
                    {
@@ -293,13 +314,16 @@ COMPLETED:
 | Task Type | Worker Sequence |
 |-----------|----------------|
 | schema_change | database-dev → backend-dev → code-reviewer → dev-qa-tester |
-| api_development | backend-dev → code-reviewer → dev-qa-tester |
-| ui_component | frontend-dev → motion-designer → code-reviewer → dev-qa-tester |
-| full_stack | architect → database-dev → backend-dev → frontend-dev → code-reviewer → dev-qa-tester |
+| api_development | backend-dev → [codex-coder] → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
+| ui_component | frontend-dev → [codex-coder] → motion-designer → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
+| full_stack | architect → database-dev → backend-dev → frontend-dev → [codex-coder] → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
+| codex_fullstack | architect → database-dev → codex-coder → codex-reviewer → dev-qa-tester |
 | content | content-brand → content-product → content-sales → content-legal |
-| enhancement | (relevant dev) → code-reviewer |
+| enhancement | (relevant dev) → code-reviewer → [codex-debugger] |
 
 Prepend **product-planner** if task spec is unclear or acceptance criteria are vague.
+
+`[brackets]` = optional codex workers, included when `worker_hints` contain codex or task indicators match codex patterns. **codex_fullstack** uses codex-coder instead of backend-dev/frontend-dev for Codex-native generation.
 
 ## Handoff Context Format
 
@@ -352,6 +376,7 @@ Prepend **product-planner** if task spec is unclear or acceptance criteria are v
 - **Fail fast** — pause on errors, surface to user
 - **prd.json is required** — never read or fall back to README.md
 - **Validate prd.json on load** — fail loudly on missing/malformed fields
+- **Sub-agents must NOT use EnterPlanMode** — /execute-task is the planning pipeline; ad-hoc planning bypasses the PRD orchestrator
 
 ## Integration
 

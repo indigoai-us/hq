@@ -4,6 +4,48 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.4.0 (from v5.3.0)
+
+### New Commands
+Copy these files from starter-kit to your HQ:
+- `.claude/commands/checkemail.md` — Inbox cleanup with auto-archive + triage
+- `.claude/commands/decide.md` — Batch decision UI for human-in-the-loop workflows
+- `.claude/commands/email.md` — Multi-account Gmail management
+
+### Updated Commands
+Review and merge changes to these 12 commands:
+- `.claude/commands/run-project.md` — **Important:** Anti-plan directive added to sub-agent prompt
+- `.claude/commands/execute-task.md` — **Important:** Anti-plan rule added to Rules section
+- `.claude/commands/checkpoint.md`, `cleanup.md`, `handoff.md`, `metrics.md`, `newworker.md`, `reanchor.md`, `remember.md`, `run.md`, `search.md`, `search-reindex.md`
+
+### New Knowledge
+Copy the new knowledge files:
+- `knowledge/hq-core/quick-reference.md`
+- `knowledge/hq-core/starter-kit-compatibility-contract.md`
+- `knowledge/hq-core/desktop-claude-code-integration.md`
+- `knowledge/hq-core/desktop-company-isolation.md`
+- `knowledge/hq-core/hq-structure-detection.md`
+- `knowledge/hq-core/hq-desktop/` (entire directory — 12 spec files for HQ Desktop)
+
+### Updated Knowledge
+Review and merge:
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/hq-core/thread-schema.md`
+- `knowledge/workers/skill-schema.md`
+- `knowledge/workers/state-machine.md`
+- `knowledge/workers/README.md`
+- `knowledge/projects/README.md`
+
+### Updated Workers
+- `workers/dev-team/codex-coder/worker.yaml`
+- `workers/dev-team/codex-debugger/worker.yaml` + `skills/debug-issue.md`
+- `workers/dev-team/codex-reviewer/worker.yaml` + `skills/apply-best-practices.md` + `skills/improve-code.md`
+
+### Breaking Changes
+- (none this release)
+
+---
+
 ## Migrating to v5.2.0 (from v5.1.0)
 
 ### What Changed
@@ -205,7 +247,7 @@ Claude auto-runs `/handoff` at 70% context usage. This is in `.claude/CLAUDE.md`
 ### Removed Commands (now private)
 If you use any of these, keep your existing copies — they just won't be in future starter kit releases:
 - Content: `contentidea`, `suggestposts`, `scheduleposts`, `preview-post`, `post-now`, `humanize`
-- Design: `generateimage`, `svg`, `style-american-industrial`, `mj-abacus`, `design-iterate`
+- Design: `generateimage`, `svg`, `style-american-industrial`, `design-iterate`
 - System: `publish-kit`, `pure-ralph`, `hq-sync`
 
 ### Migration Steps

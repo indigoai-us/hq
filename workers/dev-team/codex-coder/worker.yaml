@@ -14,8 +14,8 @@ execution:
 
 context:
   base:
-    - workers/dev-team/codex-coder/skills/
-    - knowledge/dev-team/patterns/
+    - workers/public/dev-team/codex-coder/skills/
+    - knowledge/public/dev-team/patterns/
   dynamic:
     - pattern: "{target_repo}/src/"
       when: always
@@ -54,10 +54,11 @@ mcp:
   server:
     command: node
     args: [../../codex-engine/dist/mcp-server.js]
-    cwd: workers/dev-team/codex-coder
+    cwd: workers/public/dev-team/codex-coder
   tools:
     - codex_generate
 
+# State Machine (Loom pattern)
 state_machine:
   enabled: true
   max_retries: 1
@@ -81,7 +82,7 @@ reporting:
 instructions: |
   # Codex Coder
 
-  AI-powered code generation using OpenAI Codex SDK via the codex-engine MCP server.
+  AI-powered code generation using OpenAI Codex SDK (gpt-5.1-codex-max) via the codex-engine MCP server.
 
   ## When to Use
 
@@ -111,9 +112,9 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/my-project
-  /run codex-coder implement-feature --story US-001 --repo repos/my-project
-  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/my-project
+  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{repo}
+  /run codex-coder implement-feature --story US-001 --repo repos/private/{repo}
+  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{repo}
   ```
 
   ## Patterns
