@@ -4,6 +4,177 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.4.0 (from v5.3.0)
+
+### New Commands
+Copy these files from starter-kit to your HQ:
+- `.claude/commands/checkemail.md` — Inbox cleanup with auto-archive + triage
+- `.claude/commands/decide.md` — Batch decision UI for human-in-the-loop workflows
+- `.claude/commands/email.md` — Multi-account Gmail management
+
+### Updated Commands
+Review and merge changes to these 12 commands:
+- `.claude/commands/run-project.md` — **Important:** Anti-plan directive added to sub-agent prompt
+- `.claude/commands/execute-task.md` — **Important:** Anti-plan rule added to Rules section
+- `.claude/commands/checkpoint.md`, `cleanup.md`, `handoff.md`, `metrics.md`, `newworker.md`, `reanchor.md`, `remember.md`, `run.md`, `search.md`, `search-reindex.md`
+
+### New Knowledge
+Copy the new knowledge files:
+- `knowledge/hq-core/quick-reference.md`
+- `knowledge/hq-core/starter-kit-compatibility-contract.md`
+- `knowledge/hq-core/desktop-claude-code-integration.md`
+- `knowledge/hq-core/desktop-company-isolation.md`
+- `knowledge/hq-core/hq-structure-detection.md`
+- `knowledge/hq-core/hq-desktop/` (entire directory — 12 spec files for HQ Desktop)
+
+### Updated Knowledge
+Review and merge:
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/hq-core/thread-schema.md`
+- `knowledge/workers/skill-schema.md`
+- `knowledge/workers/state-machine.md`
+- `knowledge/workers/README.md`
+- `knowledge/projects/README.md`
+
+### Updated Workers
+- `workers/dev-team/codex-coder/worker.yaml`
+- `workers/dev-team/codex-debugger/worker.yaml` + `skills/debug-issue.md`
+- `workers/dev-team/codex-reviewer/worker.yaml` + `skills/apply-best-practices.md` + `skills/improve-code.md`
+
+### Breaking Changes
+- (none this release)
+
+---
+
+## Migrating to v5.2.0 (from v5.1.0)
+
+### What Changed
+`/setup` now checks for GitHub CLI and Vercel CLI, and scaffolds knowledge as symlinked git repos instead of plain directories. README expanded with prerequisites and knowledge repo guide.
+
+### Updated Files
+Copy from starter kit:
+- `.claude/commands/setup.md` — Rewritten with CLI checks (gh, vercel) and knowledge repo scaffolding
+- `.claude/CLAUDE.md` — Knowledge Repos section expanded with step-by-step commands
+- `README.md` — Prerequisites table, Knowledge Repos section, updated directory tree
+
+### For Existing HQ Users
+If your knowledge is already in plain directories (not symlinked repos), no action needed — everything still works. To adopt the repo pattern for an existing knowledge base:
+
+1. Move: `mv knowledge/{name} repos/public/knowledge-{name}`
+2. Init: `cd repos/public/knowledge-{name} && git init && git add . && git commit -m "init" && cd -`
+3. Symlink: `ln -s ../../repos/public/knowledge-{name} knowledge/{name}`
+
+### CLI Tools
+If you don't have them yet:
+- `brew install gh && gh auth login` (GitHub CLI — for PRs, repo management)
+- `npm install -g vercel && vercel login` (Vercel — for deployments, optional)
+
+### Migration Steps
+1. Copy updated `setup.md`, `CLAUDE.md`, `README.md`
+2. Optionally install `gh` and `vercel` CLIs
+3. Optionally convert knowledge directories to symlinked repos (instructions above)
+4. Run `/search-reindex`
+
+### Breaking Changes
+- (none — all changes are additive)
+
+---
+
+## Migrating to v5.1.0 (from v5.0.0)
+
+### What Changed
+Context Diet: lazy-loading rules reduce context burn at session start. Commands updated to write recent threads to a dedicated file instead of bloating INDEX.md.
+
+### Updated Files
+Copy from starter kit:
+- `.claude/CLAUDE.md` — Merge the new "Context Diet" section (after Key Files) into yours
+- `.claude/commands/checkpoint.md` — Step 7 now writes to `workspace/threads/recent.md`
+- `.claude/commands/handoff.md` — Step 4 now writes to `workspace/threads/recent.md`
+- `.claude/commands/reanchor.md` — New "When to Use" section
+
+Updated knowledge:
+- `knowledge/Ralph/11-team-training-guide.md`
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/hq-core/thread-schema.md`
+- `knowledge/workers/README.md`, `skill-schema.md`, `state-machine.md`, `templates/base-worker.yaml`
+- `knowledge/projects/README.md`
+
+### New File
+Create `workspace/threads/recent.md` — this is where `/checkpoint` and `/handoff` now write the recent threads table.
+
+### Optional: Slim INDEX.md
+If your INDEX.md is large (200+ lines), consider trimming it to just the directory map and navigation table. Move workers, commands, companies tables out (they're already in CLAUDE.md). Move recent threads list to `workspace/threads/recent.md`.
+
+### Migration Steps
+1. Merge Context Diet section from starter kit's `.claude/CLAUDE.md` into yours
+2. Copy updated `checkpoint.md`, `handoff.md`, `reanchor.md`
+3. Create `workspace/threads/recent.md` (can be empty — next checkpoint/handoff populates it)
+4. Copy updated knowledge files
+5. Run `/search-reindex`
+
+### Breaking Changes
+- (none — all changes are additive)
+
+---
+
+## Migrating to v5.0.0 (from v4.0.0)
+
+### What Changed
+Major restructure: bundled workers removed (build your own), simplified setup, new `/personal-interview` command. Commands updated with Linear integration, enhanced search, and codebase exploration.
+
+### New Command
+Copy to `.claude/commands/`:
+- `personal-interview.md` — Deep interview to populate profile + voice style
+
+### New Worker Structure
+- `workers/sample-worker/` — Example worker to copy and customize
+- `workers/registry.yaml` — Now contains only the sample worker + commented template
+
+### Removed (from starter kit)
+These directories are deleted in v5.0.0. **If you use them, keep your existing copies**:
+- `workers/dev-team/` (12 workers)
+- `workers/content-brand/`, `content-sales/`, `content-product/`, `content-legal/`, `content-shared/`
+- `workers/security-scanner/`
+- `starter-projects/` (personal-assistant, social-media, code-worker)
+
+### Updated Files
+Copy from starter kit:
+- `.claude/commands/setup.md` — Rewritten (simplified to 3 phases)
+- `.claude/commands/execute-task.md` — Linear sync, qmd codebase exploration
+- `.claude/commands/handoff.md` — Auto-commit HQ changes
+- `.claude/commands/prd.md` — Target repo scanning
+- `.claude/commands/run-project.md` — Linear sync
+- `.claude/commands/search.md` — Company auto-detection
+- `.claude/commands/search-reindex.md` — Multi-collection docs
+- `.claude/commands/cleanup.md` — Genericized INDEX paths
+- `.claude/commands/reanchor.md` — Genericized company paths
+- `.claude/CLAUDE.md` — Merge carefully: new structure, 18 commands, sample-worker
+- `workers/registry.yaml` — v5.0
+
+Updated knowledge:
+- `knowledge/Ralph/11-team-training-guide.md`
+- `knowledge/hq-core/index-md-spec.md`
+- `knowledge/projects/README.md`
+- `knowledge/workers/README.md`, `skill-schema.md`
+
+### Migration Steps
+1. Copy `.claude/commands/personal-interview.md` (new)
+2. Copy updated commands (setup, execute-task, handoff, prd, run-project, search, search-reindex, cleanup, reanchor)
+3. Copy `workers/sample-worker/` directory (new example worker)
+4. Merge `.claude/CLAUDE.md` — update structure tree, commands table, workers section
+5. **If using bundled workers**: keep your existing `workers/dev-team/`, `workers/content-*/` directories — they still work
+6. **If NOT using bundled workers**: delete old worker directories, copy new `workers/registry.yaml`
+7. Copy updated knowledge files
+8. Delete `starter-projects/` if present
+9. Run `/search-reindex`
+
+### Breaking Changes
+- All bundled workers removed from starter kit. Existing copies in your HQ still work.
+- `/setup` no longer offers starter project selection. Use `/prd` + `/newworker`.
+- `workers/registry.yaml` format unchanged but contents stripped to sample-worker only.
+
+---
+
 ## Migrating to v4.0.0 (from v3.3.0)
 
 ### What Changed
@@ -76,7 +247,7 @@ Claude auto-runs `/handoff` at 70% context usage. This is in `.claude/CLAUDE.md`
 ### Removed Commands (now private)
 If you use any of these, keep your existing copies — they just won't be in future starter kit releases:
 - Content: `contentidea`, `suggestposts`, `scheduleposts`, `preview-post`, `post-now`, `humanize`
-- Design: `generateimage`, `svg`, `style-american-industrial`, `mj-abacus`, `design-iterate`
+- Design: `generateimage`, `svg`, `style-american-industrial`, `design-iterate`
 - System: `publish-kit`, `pure-ralph`, `hq-sync`
 
 ### Migration Steps

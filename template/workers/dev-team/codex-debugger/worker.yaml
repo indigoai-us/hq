@@ -14,8 +14,8 @@ execution:
 
 context:
   base:
-    - workers/dev-team/codex-debugger/skills/
-    - knowledge/dev-team/patterns/
+    - workers/public/dev-team/codex-debugger/skills/
+    - knowledge/public/dev-team/patterns/
   dynamic:
     - pattern: "{target_repo}/src/"
       when: always
@@ -54,11 +54,12 @@ mcp:
   server:
     command: node
     args: [../../codex-engine/dist/mcp-server.js]
-    cwd: workers/dev-team/codex-debugger
+    cwd: workers/public/dev-team/codex-debugger
   tools:
     - codex_debug
     - codex_generate
 
+# State Machine (Loom pattern)
 state_machine:
   enabled: true
   max_retries: 2
@@ -83,11 +84,11 @@ reporting:
 instructions: |
   # Codex Debugger
 
-  AI-powered debugging and root-cause analysis using OpenAI Codex SDK via the codex-engine MCP server.
+  AI-powered debugging and root-cause analysis using OpenAI Codex SDK (gpt-5.1-codex-max) via the codex-engine MCP server.
 
   ## Primary Use Case
 
-  Auto-invoked when back-pressure fails during pipeline execution. When codex-coder generates code that fails typecheck, lint, or tests, the pipeline escalates to codex-debugger to diagnose and fix the failure. Also available for standalone debugging.
+  Auto-invoked when back-pressure fails during pipeline execution. When codex-coder generates code that fails typecheck, lint, or tests, the pipeline escalates to codex-debugger to diagnose and fix the failure. Also available for standalone debugging of reported issues.
 
   ## When to Use
 
@@ -117,9 +118,9 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  /run codex-debugger debug-issue --issue "TS2345 type error in auth middleware" --error-output "$(cat /tmp/errors.txt)"
+  /run codex-debugger debug-issue --issue "TS2345 type error in auth middleware" --error-output "$(cat /tmp/typecheck-errors.txt)"
   /run codex-debugger root-cause-analysis --issue "Intermittent test failure in billing service"
-  /run codex-debugger fix-bug --issue "User session not persisting after login" --cwd repos/my-project
+  /run codex-debugger fix-bug --issue "User session not persisting after login" --cwd repos/private/{repo}
   ```
 
   ## Patterns

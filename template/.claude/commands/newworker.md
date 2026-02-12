@@ -26,7 +26,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-{your-name}")
+- **What's its name/id?** (e.g., "competitive-researcher", "x-poster")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -61,7 +61,7 @@ worker:
   version: "1.0"
 
 identity:
-  persona: {your-username}  # or company_context, voice_guide
+  persona: {your-name}  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}

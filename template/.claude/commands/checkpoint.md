@@ -65,7 +65,7 @@ Save current work state as a thread to survive context loss.
        "commits_made": ["hash: message"],
        "dirty": false,
        "knowledge_repos": {
-         "knowledge-acme": {"commit": "abc1234", "dirty": true},
+         "knowledge-widgets": {"commit": "abc1234", "dirty": true},
          "knowledge-ralph": {"commit": "def5678", "dirty": false}
        }
      },
@@ -89,11 +89,9 @@ Save current work state as a thread to survive context loss.
 
 6. **Also write legacy checkpoint** to `workspace/checkpoints/{task-id}.json` for backward compat
 
-7. **Update INDEX.md files**
-   - Regenerate `INDEX.md` at HQ root with current:
-     - Workers from `workers/registry.yaml`
-     - Recent threads from `workspace/threads/`
-     - Update timestamp
+7. **Update INDEX files and recent threads**
+   - Update `workspace/threads/recent.md` with last 15 threads (table format)
+   - Update `INDEX.md` timestamp only (do NOT regenerate full content — it's now slim)
    - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
    - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
    - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format

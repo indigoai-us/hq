@@ -1,5 +1,29 @@
 # Changelog
 
+## v5.4.0 (2026-02-12)
+
+### Added
+- `/checkemail` — Quick inbox cleanup: auto-archive junk, then triage what matters one at a time
+- `/decide` — Human-in-the-loop batch decision UI for classifying, reviewing, or triaging 5+ items
+- `/email` — Multi-account Gmail management via gmail-local MCP
+- **HQ Desktop knowledge** — 12 spec files for the upcoming HQ Desktop app (terminal sessions, knowledge browser, worker management, project views, notifications, event sources)
+- `hq-core/quick-reference.md` — Lookup tables for workers, commands, repos
+- `hq-core/starter-kit-compatibility-contract.md` — Contract between HQ and starter-kit
+- `hq-core/desktop-claude-code-integration.md` — Claude Code integration specs
+- `hq-core/desktop-company-isolation.md` — Company isolation for desktop
+- `hq-core/hq-structure-detection.md` — HQ structure detection logic
+
+### Changed
+- `/run-project` — Sub-agents now explicitly forbidden from using EnterPlanMode/TodoWrite (prevents Claude from overriding the PRD orchestrator with its own plan)
+- `/execute-task` — Added anti-plan rule to Rules section (defense-in-depth)
+- `/checkpoint`, `/cleanup`, `/handoff`, `/metrics`, `/newworker`, `/reanchor`, `/remember`, `/run`, `/search`, `/search-reindex` — Various improvements and refinements
+- Codex workers (codex-coder, codex-reviewer, codex-debugger) — Updated worker configs and skills
+- Knowledge files updated: `index-md-spec.md`, `thread-schema.md`, `skill-schema.md`, `state-machine.md`, `projects/README.md`, `workers/README.md`
+
+### Fixed
+- Scrubbed remaining PII from prior releases (company names in examples, absolute paths)
+- Removed `mj-abacus` command reference from changelog and migration guide
+
 ## v5.3.0 (2026-02-11)
 
 ### Added
@@ -127,7 +151,7 @@
 ### Removed
 - `/contentidea`, `/suggestposts`, `/scheduleposts`, `/preview-post`, `/post-now` — moved to private (content pipeline)
 - `/humanize` — moved to private (content polish)
-- `/generateimage`, `/svg`, `/style-american-industrial`, `/mj-abacus`, `/design-iterate` — moved to private (design tools)
+- `/generateimage`, `/svg`, `/style-american-industrial`, `/design-iterate` — moved to private (design tools)
 - `/publish-kit`, `/pure-ralph` — moved to private
 - `/hq-sync` — moved to private
 

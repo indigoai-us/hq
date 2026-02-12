@@ -41,6 +41,26 @@ Optional:
    - Combine improvements from all goal passes
    - Deduplicate: if multiple goals modified the same line range, keep the last change
    - Generate unified diff for each modified file (before first pass vs. after last pass)
+   - Summarize per-goal:
+     ```
+     ## Best Practices Applied
+
+     ### Error Handling (3 improvements)
+     - src/api/auth.ts: Added typed catch blocks for JWT verification
+     - src/services/billing.ts: Added error recovery for Stripe webhook failures
+     - src/lib/db.ts: Added connection error handling with retry
+
+     ### Type Safety (5 improvements)
+     - src/api/auth.ts: Replaced `any` with `JWTPayload` interface
+     ...
+
+     ### Performance (1 improvement)
+     - src/services/analytics.ts: Memoized expensive aggregation query
+
+     ### Readability (2 improvements)
+     - src/api/auth.ts: Extracted token validation to `validateBearerToken()`
+     - src/lib/db.ts: Added JSDoc for public connection methods
+     ```
 
 5. **Run Back-Pressure**
    - `npm run typecheck` - TypeScript compilation

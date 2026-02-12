@@ -6,22 +6,30 @@ visibility: public
 
 # HQ Setup Wizard
 
-Welcome! This wizard will configure your personal HQ.
+Quick setup to get your HQ running. Takes ~5 minutes.
 
 ## Phase 0: Dependencies
 
-Check and guide installation of key dependencies before proceeding.
+Check silently. Only prompt if missing.
 
-### Required
-Run these checks silently. Only prompt user if something is missing.
+**Claude Code CLI**:
+```bash
+which claude
+```
+If missing:
+```
+Claude Code CLI not found. Required to run HQ.
 
-**qmd** (HQ search - semantic + full-text):
+Install: npm install -g @anthropic-ai/claude-code
+```
+
+**qmd** (search):
 ```bash
 which qmd
 ```
-If missing, show:
+If missing:
 ```
-qmd not found. HQ uses qmd for semantic search across knowledge bases.
+qmd not found. HQ uses qmd for semantic search across knowledge, workers, and code.
 
 Install: cargo install qmd
   OR: brew install tobi/tap/qmd
@@ -29,353 +37,208 @@ Install: cargo install qmd
 After install, index HQ: qmd index .
 ```
 
-**Claude Code CLI**:
-```bash
-which claude
-```
-If missing, show:
-```
-Claude Code CLI not found. Required to run HQ.
-
-Install: npm install -g @anthropic-ai/claude-code
-```
-
-### Optional (check based on starter selection)
-
-**gh CLI** (for code workers):
+**GitHub CLI** (`gh`):
 ```bash
 which gh
 ```
-If missing and Code Worker selected:
+If missing:
 ```
-gh CLI recommended for code workers (PRs, issues).
+GitHub CLI not found. Required for PRs, repo management, and worker deployments.
+
 Install: brew install gh
+Then authenticate: gh auth login
+```
+If installed but not authenticated (`gh auth status` exits non-zero):
+```
+GitHub CLI installed but not authenticated.
+
+Run: gh auth login
 ```
 
-### Post-install: Index HQ
-If qmd was just installed or index doesn't exist:
+**Vercel CLI**:
 ```bash
-qmd index .
+which vercel
+```
+If missing:
+```
+Vercel CLI not found. Needed if you deploy sites or previews from HQ.
+
+Install: npm install -g vercel
+Then authenticate: vercel login
+
+Skip if you don't use Vercel.
+```
+If installed but not authenticated (`vercel whoami` exits non-zero):
+```
+Vercel CLI installed but not authenticated.
+
+Run: vercel login
 ```
 
----
-
-## Context to Load
-
-1. Read `starter-projects/` to understand available options
-2. Read `knowledge/public/workers/templates/` for worker patterns
+Post-install: run `qmd index .` if qmd was just installed or no index exists.
 
 ## Phase 1: Identity
 
-Ask these questions one at a time. Wait for answers before proceeding.
+Ask these 3 questions. One at a time.
 
-1. **What's your name or handle?** (used for folder naming)
-2. **What do you do?** (1-2 sentences about your roles/work)
-3. **What domains do you focus on?** (e.g., tech, business, creative, health)
-4. **Company/context name?** (default: "personal" - used for organizing your settings/knowledge)
+1. **What's your name?**
+2. **What do you do?** (1-2 sentences — your roles, work, domain)
+3. **What are your goals for using HQ?** (what do you want AI workers to help with?)
 
-## Phase 2: Starter Project Selection
+Use "personal" as the company/context name.
 
-Present these options:
+## Phase 2: Generate Files
 
-```
-Choose your starter project(s):
-
-1. PERSONAL ASSISTANT
-   - Daily email digest
-   - Task scanning
-   - Calendar awareness
-   Best for: Productivity-focused users
-
-2. SOCIAL MEDIA WORKER
-   - Content drafting (X, LinkedIn)
-   - Voice consistency
-   - Post scheduling queue
-   Best for: Personal brand builders
-
-3. CODE WORKER
-   - Ralph loop implementation
-   - Back pressure verification
-   - PRD-driven development
-   Best for: Developers shipping autonomously
-
-Enter numbers (e.g., "1,3" or "2" or "all"):
+### Company structure
+```bash
+mkdir -p companies/personal/settings companies/personal/data companies/personal/knowledge
 ```
 
-## Phase 3: Customization
+### Knowledge repos
 
-Based on selection, ask relevant questions:
+HQ knowledge bases are independent git repos symlinked into `knowledge/`. This keeps each knowledge base versioned separately and shareable.
 
-### If Personal Assistant selected:
-- How many email accounts do you manage?
-- Preferred digest time? (morning/evening)
+For each knowledge base the user wants to create:
 
-### If Social Media selected:
-- Which platforms? (X, LinkedIn, both)
-- Posting voice: professional / casual / direct
-- Content topics (3-5 keywords)
-
-### If Code Worker selected:
-- Primary tech stack? (Node/TypeScript, Python, Go, etc.)
-- Project name for first PRD?
-- Verification commands? (default: `npm run typecheck && npm run build`)
-
-## Phase 4: Generate Files
-
-### Always create company structure:
-
-```
-companies/{company}/
-├── settings/      # API credentials (gitignored)
-├── data/          # Exports, reports
-└── knowledge/
-    ├── profile.md
-    └── voice-style.md
+1. Create the repo directory:
+```bash
+mkdir -p repos/public/knowledge-{name}
+cd repos/public/knowledge-{name}
+git init
+echo "# {Name} Knowledge Base" > README.md
+git add . && git commit -m "init knowledge repo"
+cd -
 ```
 
-Create directories with `mkdir -p companies/{company}/settings companies/{company}/data companies/{company}/knowledge`
+2. Symlink into HQ:
+```bash
+ln -s ../../repos/public/knowledge-{name} knowledge/{name}
+```
 
-**companies/{company}/knowledge/profile.md:**
+**At minimum, create one knowledge repo for the user's personal/company context:**
+```bash
+mkdir -p repos/public repos/private
+
+# Personal knowledge repo
+mkdir -p repos/private/knowledge-personal
+cd repos/private/knowledge-personal
+git init
+echo "# Personal Knowledge Base" > README.md
+git add . && git commit -m "init knowledge repo"
+cd -
+
+# Symlink into company knowledge
+ln -s ../../../repos/private/knowledge-personal companies/personal/knowledge/personal
+```
+
+**The starter kit's bundled knowledge (Ralph, workers, ai-security-framework, etc.) ships as plain directories. Explain to the user:**
+```
+Bundled knowledge (Ralph, workers, security framework) ships as plain directories.
+To version them independently, you can convert any to a repo later:
+
+  1. Move: mv knowledge/Ralph repos/public/knowledge-ralph
+  2. Init: cd repos/public/knowledge-ralph && git init && git add . && git commit -m "init"
+  3. Symlink: ln -s ../../repos/public/knowledge-ralph knowledge/Ralph
+  4. Add to .gitignore: knowledge/Ralph
+
+This is optional — plain directories work fine for read-only knowledge.
+```
+
+### Profile files
+
+**companies/personal/knowledge/profile.md:**
 ```markdown
 # {Name}'s Profile
 
 ## About
-{description from Phase 1, Q2}
+{Answer from Q2}
 
-## Focus Areas
-{domains from Phase 1, Q3}
+## Goals
+{Answer from Q3}
 
 ## Preferences
-- Communication style: [direct/detailed/casual]
-- Working hours: [your timezone/schedule]
-- Autonomy level: [how much should agents do without asking?]
-
-## Context Notes
-[Add notes agents should know when working for you]
+- Communication style: [to be filled by /personal-interview]
+- Autonomy level: [to be filled by /personal-interview]
 ```
 
-**companies/{company}/knowledge/voice-style.md:**
+**companies/personal/knowledge/voice-style.md:**
 ```markdown
 # {Name}'s Voice Style
 
-## Tone
-{based on answers - professional/casual/direct}
-
-## Guidelines
-- [Customize as you use HQ]
-- [Add patterns you like]
-- [Note things to avoid]
-
-## Example Phrases
-- [Add phrases that sound like you]
+Run `/personal-interview` to populate this file with your authentic voice and communication style.
 ```
 
-### Based on selection:
+**agents.md** (root level):
+```markdown
+# {Name}
 
-**If Personal Assistant:**
-1. Copy `starter-projects/personal-assistant/` to `projects/personal-assistant/`
-2. Create `workers/private/email-digest/worker.yaml`:
-```yaml
-worker:
-  id: email-digest
-  name: "Email Digest"
-  type: AssistantWorker
-  version: "1.0"
+{Answer from Q2}
 
-identity:
-  voice_guide: companies/{company}/knowledge/voice-style.md
-
-execution:
-  mode: scheduled
-  schedule: "0 {hour} * * *"  # from digest time preference
-  max_runtime: 10m
-
-context:
-  base:
-    - companies/{company}/knowledge/profile.md
-    - companies/{company}/settings/email-accounts.json
-
-verification:
-  post_execute:
-    - check: digest_generated
-  approval_required: false
-
-tasks:
-  source: workers/private/email-digest/prd.json
-  one_at_a_time: true
-
-output:
-  destination: workspace/digests/
-  format: markdown
-  naming: "{date}-digest.md"
-
-instructions: |
-  Generate email digest following the Presidential Daily Brief format.
-  Classify emails: urgent | actionable | fyi | archive
-  Focus on what needs attention, not comprehensive summary.
-```
-3. Create `companies/{company}/settings/email-accounts.json.example`:
-```json
-{
-  "accounts": [
-    {
-      "name": "Primary",
-      "email": "you@example.com",
-      "provider": "gmail|outlook|imap"
-    }
-  ]
-}
-```
-4. Add to `workers/registry.yaml`
-
-**If Social Media:**
-1. Copy `starter-projects/social-media/` to `projects/social-presence/`
-2. Create `workers/private/{platform}-{name}/worker.yaml`:
-```yaml
-worker:
-  id: {platform}-{name}
-  name: "{Platform} Content"
-  type: SocialWorker
-  version: "1.0"
-
-identity:
-  voice_guide: companies/{company}/knowledge/voice-style.md
-
-execution:
-  mode: on-demand
-  max_runtime: 15m
-
-context:
-  base:
-    - companies/{company}/knowledge/profile.md
-    - companies/{company}/knowledge/voice-style.md
-  dynamic:
-    - workspace/content-ideas/
-
-verification:
-  post_execute:
-    - check: character_count
-      max: 280  # for X
-    - check: voice_consistency
-  approval_required: true
-
-tasks:
-  source: workers/private/{platform}-{name}/queue.json
-  one_at_a_time: true
-
-output:
-  destination: workspace/social-drafts/
-  format: markdown
-  naming: "{date}-{topic}.md"
-
-instructions: |
-  Draft content matching voice style guide.
-  Always verify character limits before marking complete.
-  Never post without human approval.
-```
-3. Create `workers/private/{platform}-{name}/queue.json`:
-```json
-{
-  "worker": "{platform}-{name}",
-  "queue": []
-}
-```
-4. Add to `workers/registry.yaml`
-
-**If Code Worker:**
-1. Copy `starter-projects/code-worker/` to `projects/{project-name}/`
-2. Create `workers/private/{project-name}-coder/worker.yaml`:
-```yaml
-worker:
-  id: {project-name}-coder
-  name: "{Project} Code Worker"
-  type: CodeWorker
-  version: "1.0"
-
-execution:
-  mode: on-demand
-  max_runtime: 30m
-
-context:
-  base:
-    - knowledge/public/Ralph/
-    - projects/{project-name}/prd.json
-  dynamic:
-    - "{repo-path}/"
-  exclude:
-    - node_modules/
-    - "*.log"
-    - dist/
-
-verification:
-  post_execute:
-    - check: typecheck
-      command: "{verify-command}"
-      must_pass: true
-    - check: build
-      command: "{build-command}"
-      must_pass: true
-  approval_required: false
-
-tasks:
-  source: projects/{project-name}/prd.json
-  format: prd
-  one_at_a_time: true
-
-output:
-  format: git_commit
-
-instructions: |
-  Implement features following Ralph methodology.
-  Run back pressure checks after each change.
-  Commit with format: feat({feature-id}): {description}
-  Write checkpoint after each completed feature.
-```
-3. Add to `workers/registry.yaml`
-
-### Update Registry
-
-Add entries to `workers/registry.yaml`:
-```yaml
-workers:
-  - id: {worker-id}
-    path: workers/private/{worker-id}/
-    type: {WorkerType}
-    visibility: private
-    status: active
-    description: "{1-sentence description}"
+## Goals
+{Answer from Q3}
 ```
 
-## Phase 5: Summary
+### Repos directory
+Ensure `repos/` structure exists:
+```bash
+mkdir -p repos/public repos/private
+```
 
-Output:
+Add to `.gitignore` if not already present:
+```
+# Knowledge repo contents (tracked by their own git)
+knowledge/*/
+!knowledge/Ralph/
+!knowledge/workers/
+!knowledge/ai-security-framework/
+!knowledge/dev-team/
+!knowledge/design-styles/
+!knowledge/hq-core/
+!knowledge/loom/
+!knowledge/projects/
+```
+
+### Index
+```bash
+qmd update 2>/dev/null || qmd index . 2>/dev/null || true
+```
+
+## Phase 3: Summary
+
 ```
 HQ Setup Complete!
 
 Created:
-- Company context: companies/{company}/
-  - knowledge/profile.md
-  - knowledge/voice-style.md
-  - settings/ (for credentials)
-  - data/ (for exports)
-- Workers: {list with paths}
-- Projects: {list with paths}
+- companies/personal/ (settings, data, knowledge)
+- companies/personal/knowledge/profile.md
+- companies/personal/knowledge/voice-style.md
+- agents.md
+- repos/public/, repos/private/ (for code and knowledge repos)
+- Knowledge repo: repos/private/knowledge-personal/ → companies/personal/knowledge/personal
+
+Dependencies:
+✓ claude (Claude Code CLI)
+✓ qmd (semantic search) — or skipped
+✓ gh (GitHub CLI) — or skipped
+✓ vercel (Vercel CLI) — or skipped
+
+Knowledge Repos:
+Your knowledge bases can be independent git repos symlinked into knowledge/.
+This lets you version, share, and publish each knowledge base separately.
+See "Knowledge Repos" in CLAUDE.md for details.
 
 Next steps:
-1. Review and customize companies/{company}/knowledge/profile.md
-2. {If email} Copy settings/email-accounts.json.example → email-accounts.json and add credentials
-3. Run `/search <topic>` to find relevant HQ knowledge
-4. Run `/nexttask` to see available work
-5. Run `/run {worker-id}` to execute a worker
-6. Run `/newworker` when you want to add more workers
-
-Happy building!
+1. Run /personal-interview — deep interview to build your voice + profile
+2. Run /newworker — create your first worker
+3. Run /prd — plan your first project
+4. Run /search <topic> — find relevant knowledge in HQ
 ```
 
 ## Rules
 
-- Ask questions one at a time (avoid overwhelming)
-- Use defaults when user says "skip" or "default"
-- Always validate paths before writing
+- Ask questions one at a time
+- Use defaults when user says "skip"
 - Never overwrite existing files without asking
 - Create parent directories as needed
+- For CLI tools (gh, vercel): inform but don't block setup if missing. These are "recommended" not "required" (except claude itself)
+- Always use relative paths for symlinks (../../repos/... not absolute paths)

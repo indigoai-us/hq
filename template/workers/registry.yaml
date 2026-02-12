@@ -9,20 +9,32 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "5.0"
+version: "6.0"
 updated: "2026-02-11"
 
 workers:
+  # ===================
+  # Example Worker
+  # ===================
+  # Copy workers/sample-worker/ and customize for your own workers.
+  # Run /newworker for guided creation.
+
+  - id: sample-worker
+    path: workers/sample-worker/
+    type: CodeWorker
+    status: active
+    description: "Example worker — copy and customize for your own"
+
   # ===================
   # Dev Team — Codex Workers (3)
   # ===================
   # AI-powered code generation, review, and debugging via OpenAI Codex SDK.
   # Shared MCP server: codex-engine (requires CODEX_API_KEY).
+  # See workers/dev-team/ for setup and workflow.
 
   - id: codex-coder
     path: workers/dev-team/codex-coder/
     type: CodeWorker
-    visibility: public
     team: dev-team
     status: active
     description: "Code generation via Codex SDK — scaffolding, features, components"
@@ -30,7 +42,6 @@ workers:
   - id: codex-reviewer
     path: workers/dev-team/codex-reviewer/
     type: CodeWorker
-    visibility: public
     team: dev-team
     status: active
     description: "Code review and improvement via Codex SDK — second-opinion after Claude reviewer"
@@ -38,7 +49,6 @@ workers:
   - id: codex-debugger
     path: workers/dev-team/codex-debugger/
     type: CodeWorker
-    visibility: public
     team: dev-team
     status: active
     description: "Debugging and root-cause analysis via Codex SDK — auto-escalation on back-pressure failure"
@@ -199,3 +209,12 @@ workers:
     team: content-team
     status: active
     description: "Shared utilities for content analysis workers (types, parser, scorer, reporter)"
+
+  # ===================
+  # Add your workers below
+  # ===================
+  # - id: my-worker
+  #   path: workers/my-worker/
+  #   type: CodeWorker
+  #   status: active
+  #   description: "What this worker does"

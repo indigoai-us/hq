@@ -14,8 +14,8 @@ execution:
 
 context:
   base:
-    - workers/dev-team/codex-reviewer/skills/
-    - knowledge/dev-team/patterns/
+    - workers/public/dev-team/codex-reviewer/skills/
+    - knowledge/public/dev-team/patterns/
   dynamic:
     - pattern: "{target_repo}/src/"
       when: always
@@ -54,11 +54,12 @@ mcp:
   server:
     command: node
     args: [../../codex-engine/dist/mcp-server.js]
-    cwd: workers/dev-team/codex-reviewer
+    cwd: workers/public/dev-team/codex-reviewer
   tools:
     - codex_review
     - codex_improve
 
+# State Machine (Loom pattern)
 state_machine:
   enabled: true
   max_retries: 1
@@ -83,11 +84,11 @@ reporting:
 instructions: |
   # Codex Reviewer
 
-  AI-powered code review and improvement using OpenAI Codex SDK via the codex-engine MCP server.
+  AI-powered code review and improvement using OpenAI Codex SDK (gpt-5.1-codex-max) via the codex-engine MCP server.
 
   ## Role in Pipeline
 
-  Codex Reviewer is a **second-opinion reviewer** that complements the Claude-based code-reviewer worker. In the dev-team pipeline:
+  Codex Reviewer is a **second-opinion reviewer** that complements the Claude-based code-reviewer worker. In the dev-team pipeline, codex-reviewer sits **AFTER** code-reviewer:
 
   ```
   ... -> code-reviewer (Claude) -> codex-reviewer (Codex) -> qa-tester -> ...
@@ -100,9 +101,9 @@ instructions: |
 
   ## When to Use
 
-  - **review-code**: Analyze files for quality issues. Outputs severity-grouped findings.
-  - **improve-code**: Apply targeted improvements. Shows before/after diffs.
-  - **apply-best-practices**: Standard improvement pass with predefined goals. Final polish before PR.
+  - **review-code**: Analyze files for quality issues. Best for focused review of specific files or changes with severity-grouped findings.
+  - **improve-code**: Apply targeted improvements to files. Best when you know what goals to optimize for (e.g., "add error handling", "improve types").
+  - **apply-best-practices**: Run a standard improvement pass with predefined goals. Best as a final polish step before PR.
 
   Use codex-reviewer when:
   - Code has already passed code-reviewer (Claude) and you want a second opinion

@@ -49,7 +49,10 @@ Optional:
 
 6. **Iterate on Failures** (max `--max-iterations` times)
    - Parse new error output from failed checks
-   - Feed errors back to `codex_debug` with previous diagnosis as context
+   - Feed errors back to `codex_debug` with previous diagnosis as context:
+     - `issue`: "Fix attempt introduced new errors"
+     - `errorOutput`: New error output
+     - `previousDiagnosis`: Prior root cause and fix
    - Apply updated fix, re-run back-pressure
    - If max iterations reached: pause for human intervention
 

@@ -34,10 +34,18 @@ Prepare for a new session to continue this work.
    done
    ```
 
-4. **Update INDEX.md files**
-   - Regenerate `INDEX.md` at HQ root with:
-     - Workers from `workers/registry.yaml`
-     - Recent threads from `workspace/threads/`
+3b. **Commit HQ changes**
+    Commit any uncommitted HQ changes before handoff:
+    ```bash
+    if [[ -n $(git status --porcelain) ]]; then
+      git add -A
+      git commit -m "checkpoint: auto-commit before handoff"
+    fi
+    ```
+
+4. **Update INDEX files and recent threads**
+   - Update `workspace/threads/recent.md` with last 15 threads (table format)
+   - Update `INDEX.md` timestamp only (do NOT regenerate full content — it's now slim)
    - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
    - Regenerate `workspace/orchestrator/INDEX.md` (project progress)
    - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`

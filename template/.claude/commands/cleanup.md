@@ -148,7 +148,9 @@ find . -name "SKILL.md" -not -path "./repos/*"
 
 **Expected locations:**
 - `projects/INDEX.md`
-- `companies/{company}/knowledge/INDEX.md` (for each company)
+- `companies/acme/knowledge/INDEX.md`
+- `companies/widgets/knowledge/INDEX.md`
+- `companies/designco/knowledge/INDEX.md`
 - `knowledge/public/INDEX.md`
 - `workers/public/INDEX.md`
 - `workers/private/INDEX.md`
@@ -304,4 +306,4 @@ Reference for what we're enforcing:
 | Metrics | Append to `workspace/metrics/metrics.jsonl` |
 | Git | Clean working tree |
 | Knowledge repos | Symlinks in `knowledge/` and `companies/*/knowledge/` point to repos; all repos committed |
-| INDEX.md | Exist at key dirs, match contents (see spec) |
+| INDEX.md | Exist at 10 key dirs, match contents (see spec) |
