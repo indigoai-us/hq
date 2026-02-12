@@ -37,6 +37,10 @@ Before asking questions, explore HQ:
 **Knowledge (use qmd, not Grep):**
 - `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
 
+**Target Repo (if repo specified or discovered):**
+- If target repo has a qmd collection (e.g. `my-app`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- Present: "Found related code: {list of relevant files}"
+
 Present:
 ```
 Scanned HQ:

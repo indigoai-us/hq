@@ -36,10 +36,10 @@ Max 80 chars per description. If no metadata extractable, use filename.
 ## Locations (10 directories)
 
 1. `projects/`
-2. `companies/{company-1}/knowledge/`
-3. `companies/{company-2}/knowledge/`
-4. `companies/{company-3}/knowledge/`
-5. `knowledge/`
+2. `companies/acme/knowledge/`
+3. `companies/widgets/knowledge/`
+4. `companies/designco/knowledge/`
+5. `knowledge/public/`
 6. `workers/public/`
 7. `workers/private/`
 8. `workspace/orchestrator/`

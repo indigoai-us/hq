@@ -62,9 +62,9 @@ If project has code:
 ## Examples
 
 Good project folders:
-- `projects/my-app/` - Mobile app
-- `projects/token-launch/` - Token launch
-- `projects/site-migration/` - Website migration
+- `projects/sol-reader/` - iPad app
+- `projects/designco-capital/` - Token launch
+- `projects/acme-site/` - Website migration
 
 Not projects (too small):
 - Fix a typo in docs

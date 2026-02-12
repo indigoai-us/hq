@@ -48,7 +48,27 @@ Optional:
    - Generate unified diff for each modified file
 
 5. **Present Before/After**
-   - Show each improvement with context and diffs
+   - Show each improvement with context:
+     ```
+     ## Improvements Applied
+
+     ### src/services/billing.ts
+     **Goal: error handling**
+     Added try/catch around Stripe API calls with typed error recovery
+
+     ```diff
+     - const charge = await stripe.charges.create(params);
+     + let charge: Stripe.Charge;
+     + try {
+     +   charge = await stripe.charges.create(params);
+     + } catch (err) {
+     +   if (err instanceof Stripe.errors.StripeCardError) {
+     +     throw new BillingError('card_declined', err.message);
+     +   }
+     +   throw new BillingError('charge_failed', 'Unexpected error');
+     + }
+     ```
+     ```
    - Include Codex `summary` as closing paragraph
 
 6. **Run Back-Pressure** (after human approval)

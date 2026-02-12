@@ -9,7 +9,7 @@ worker:
 
 identity:
   # Choose one:
-  # persona: your-name
+  # persona: {your-name}
   # company_context: companies/acme/
   # voice_guide: knowledge/my-brand/voice-style.md
 
