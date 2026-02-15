@@ -105,7 +105,7 @@ export function buildRunTaskParams(
   // Build container overrides with environment variables
   const containerOverrides: ContainerOverride[] = [
     {
-      name: 'worker',
+      name: 'session',
       environment: envArray,
       ...(config.overrides?.containerOverrides?.[0] ?? {}),
     },

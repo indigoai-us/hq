@@ -28,7 +28,7 @@ function createMockConfig(
   return {
     logGroupName: '/hq/workers',
     region: 'us-east-1',
-    logStreamPrefix: 'worker',
+    logStreamPrefix: 'session',
     defaultRetentionDays: 30,
     defaultLimit: DEFAULT_LOG_LIMIT,
     liveTailPollIntervalMs: 100000, // Very slow for tests
@@ -269,7 +269,7 @@ describe('WorkerLogsService', () => {
 
       expect(filterSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          logStreamNamePrefix: 'worker/worker/taskid-abc123',
+          logStreamNamePrefix: 'session/session/taskid-abc123',
         })
       );
     });
@@ -389,7 +389,7 @@ describe('WorkerLogsService', () => {
 
       expect(describeSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          logStreamNamePrefix: 'worker/worker/taskid-xyz',
+          logStreamNamePrefix: 'session/session/taskid-xyz',
         })
       );
     });
@@ -577,13 +577,13 @@ describe('buildCloudWatchLogConfig', () => {
     const config = buildCloudWatchLogConfig({
       logGroupName: '/hq/workers',
       region: 'us-east-1',
-      streamPrefix: 'worker',
+      streamPrefix: 'session',
     });
 
     expect(config.logDriver).toBe('awslogs');
     expect(config.options['awslogs-group']).toBe('/hq/workers');
     expect(config.options['awslogs-region']).toBe('us-east-1');
-    expect(config.options['awslogs-stream-prefix']).toBe('worker');
+    expect(config.options['awslogs-stream-prefix']).toBe('session');
     expect(config.options['awslogs-create-group']).toBe('true');
   });
 
@@ -591,7 +591,7 @@ describe('buildCloudWatchLogConfig', () => {
     const config = buildCloudWatchLogConfig({
       logGroupName: '/hq/workers',
       region: 'us-east-1',
-      streamPrefix: 'worker',
+      streamPrefix: 'session',
       createGroup: false,
     });
 

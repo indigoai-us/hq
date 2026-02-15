@@ -15,6 +15,24 @@ export type {
   HqWorkerRuntimeStackProps,
 } from './task-definition.js';
 
+export { HqS3Stack } from './s3-stack.js';
+export type { HqS3StackProps } from './s3-stack.js';
+
+export { HqEcrStack } from './ecr-stack.js';
+export type { HqEcrStackProps } from './ecr-stack.js';
+
+export { HqBudgetStack } from './budget-stack.js';
+export type { HqBudgetStackProps } from './budget-stack.js';
+
+export { HqCodeBuildStack } from './codebuild-stack.js';
+export type { HqCodeBuildStackProps } from './codebuild-stack.js';
+
+export { HqApiServiceStack } from './api-service-stack.js';
+export type { HqApiServiceStackProps } from './api-service-stack.js';
+
+export { HqSecretsStack, SECRET_KEYS } from './secrets-stack.js';
+export type { HqSecretsStackProps, SecretKey } from './secrets-stack.js';
+
 // Export task runner utilities
 export {
   buildRunTaskParams,

@@ -1,0 +1,56 @@
+##
+## HQ Cloud - CodeBuild buildspec
+##
+## Builds and pushes both container images to ECR:
+##   1. hq-cloud/api         (API server)
+##   2. hq-cloud/worker-runtime (session runtime)
+##
+## Environment variables (set by CDK stack):
+##   AWS_ACCOUNT_ID, AWS_DEFAULT_REGION,
+##   API_REPO_URI, WORKER_RUNTIME_REPO_URI
+##
+## Trigger: aws codebuild start-build --project-name hq-cloud-build-dev
+##
+
+version: 0.2
+
+env:
+  variables:
+    DOCKER_BUILDKIT: "1"
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - COMMIT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-8)
+      - echo "Build started on $(date)"
+      - echo "Commit SHA = $COMMIT_SHA"
+
+  build:
+    commands:
+      # --- Build API image ---
+      - echo "Building API image..."
+      - docker build --platform linux/amd64 -t $API_REPO_URI:latest -f packages/hq-cloud/api/Dockerfile packages/hq-cloud/
+      - docker tag $API_REPO_URI:latest $API_REPO_URI:$COMMIT_SHA
+
+      # --- Build session-runtime image ---
+      - echo "Building session-runtime image..."
+      - docker build --platform linux/amd64 -t $WORKER_RUNTIME_REPO_URI:latest -f packages/hq-cloud/worker-runtime/Dockerfile.session packages/hq-cloud/worker-runtime/
+      - docker tag $WORKER_RUNTIME_REPO_URI:latest $WORKER_RUNTIME_REPO_URI:$COMMIT_SHA
+
+  post_build:
+    commands:
+      # --- Push API image ---
+      - echo "Pushing API image..."
+      - docker push $API_REPO_URI:latest
+      - docker push $API_REPO_URI:$COMMIT_SHA
+
+      # --- Push session-runtime image ---
+      - echo "Pushing session-runtime image..."
+      - docker push $WORKER_RUNTIME_REPO_URI:latest
+      - docker push $WORKER_RUNTIME_REPO_URI:$COMMIT_SHA
+
+      - echo "Build completed on $(date)"
+      - echo "API image = $API_REPO_URI:$COMMIT_SHA"
+      - echo "Worker runtime image = $WORKER_RUNTIME_REPO_URI:$COMMIT_SHA"

@@ -1,11 +1,10 @@
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { createInterface } from "readline";
 import { banner, success, warn, step, nextSteps } from "./ui.js";
 import { checkDeps } from "./deps.js";
-import { initGit, hasGit } from "./git.js";
 import { fileURLToPath } from "url";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +12,7 @@ const __dirname = path.dirname(__filename);
 interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
-  skipSync?: boolean;
+  skipCloud?: boolean;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -105,15 +104,7 @@ export async function scaffold(
 
   success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
 
-  // 3. Git init
-  if (hasGit()) {
-    initGit(targetDir);
-    success("Initialized git repository");
-  } else {
-    warn("git not found — skipping git init");
-  }
-
-  // 4. Check dependencies
+  // 3. Check dependencies
   if (!options.skipDeps) {
     checkDeps();
   }
@@ -135,15 +126,86 @@ export async function scaffold(
     }
   }
 
-  // 6. Cloud sync setup
-  if (!options.skipSync) {
+  // 5. Cloud sync + session setup
+  if (!options.skipCloud) {
     console.log();
-    const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
+    const setupCloud = await confirm(
+      "Set up HQ Cloud? (syncs your HQ files and enables remote AI sessions)"
     );
-    if (setupSync) {
-      step("Cloud sync setup will be available after running /setup in Claude Code");
-      step("Run: hq sync init");
+    if (setupCloud) {
+      // Step 5a: Authenticate with Clerk
+      let authOk = false;
+      try {
+        step("Authenticating with HQ Cloud...");
+        const authResult = spawnSync("hq", ["auth", "login"], {
+          stdio: "inherit",
+          shell: true,
+        });
+        if (authResult.status === 0) {
+          success("Authenticated with HQ Cloud");
+          authOk = true;
+        } else {
+          warn("Authentication did not complete — you can retry later with: hq auth login");
+        }
+      } catch {
+        warn("Could not run hq auth login — you can retry later with: hq auth login");
+      }
+
+      // Step 5b: Upload HQ files to cloud
+      if (authOk) {
+        let uploadOk = false;
+        try {
+          step("Uploading HQ files to cloud...");
+          const uploadResult = spawnSync(
+            "hq",
+            ["cloud", "upload", "--hq-root", targetDir, "--on-conflict", "merge"],
+            { stdio: "inherit", shell: true },
+          );
+          if (uploadResult.status === 0) {
+            success("HQ files uploaded to cloud");
+            uploadOk = true;
+          } else {
+            warn("Upload did not complete — you can run later with: hq cloud upload");
+          }
+        } catch {
+          warn("Could not upload files — you can run later with: hq cloud upload");
+        }
+
+        // Step 5c: Verify sync is working
+        if (uploadOk) {
+          try {
+            const statusResult = spawnSync(
+              "hq",
+              ["sync", "status"],
+              { stdio: "inherit", shell: true, cwd: targetDir },
+            );
+            if (statusResult.status === 0) {
+              success("Cloud sync is configured and working");
+            }
+          } catch {
+            // Non-fatal — sync status is informational
+          }
+        }
+      }
+
+      // Step 5d: Set up Claude token for cloud sessions
+      if (authOk) {
+        console.log();
+        try {
+          step("Setting up Claude token for cloud sessions...");
+          const tokenResult = spawnSync("hq", ["cloud", "setup-token"], {
+            stdio: "inherit",
+            shell: true,
+          });
+          if (tokenResult.status === 0) {
+            success("Claude token configured for cloud sessions");
+          } else {
+            warn("Token setup did not complete — you can retry later with: hq cloud setup-token");
+          }
+        } catch {
+          warn("Could not run hq cloud setup-token — you can retry later with: hq cloud setup-token");
+        }
+      }
     }
   }
 

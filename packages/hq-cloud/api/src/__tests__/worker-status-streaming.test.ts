@@ -1,20 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WebSocket, type RawData } from 'ws';
 import { buildApp } from '../index.js';
 import { resetWorkerStore } from '../workers/index.js';
 import { resetConnectionRegistry } from '../ws/index.js';
-import { resetApiKeyStore } from '../auth/index.js';
-import { resetRateLimiter } from '../auth/rate-limiter.js';
 import type { FastifyInstance } from 'fastify';
 
-interface ApiKeyResponse {
-  key: string;
-  prefix: string;
-  name: string;
-  rateLimit: number;
-  createdAt: string;
-  message: string;
-}
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 
 interface WorkerStatusPayload {
   workerId: string;
@@ -41,13 +38,10 @@ describe('Worker Status Streaming', () => {
   let app: FastifyInstance;
   let baseUrl: string;
   let wsUrl: string;
-  let apiKey: string;
 
   beforeEach(async () => {
     resetWorkerStore();
     resetConnectionRegistry();
-    resetApiKeyStore();
-    resetRateLimiter();
     app = await buildApp();
     await app.listen({ port: 0, host: '127.0.0.1' });
     const address = app.server.address();
@@ -55,28 +49,16 @@ describe('Worker Status Streaming', () => {
       baseUrl = `http://127.0.0.1:${address.port}`;
       wsUrl = `ws://127.0.0.1:${address.port}`;
     }
-
-    // Generate an API key
-    const response = await fetch(`${baseUrl}/api/auth/keys/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Test Key' }),
-    });
-    const data = (await response.json()) as ApiKeyResponse;
-    apiKey = data.key;
   });
 
   afterEach(async () => {
     await app.close();
     resetWorkerStore();
-    resetConnectionRegistry();
-    resetApiKeyStore();
-    resetRateLimiter();
-  });
+    resetConnectionRegistry();  });
 
   describe('Subscribe/Unsubscribe', () => {
     it('should allow subscribing to all workers', async () => {
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-1`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-1`);
       const messages: WebSocketMessageData[] = [];
 
       const done = await new Promise<boolean>((resolve) => {
@@ -109,7 +91,7 @@ describe('Worker Status Streaming', () => {
     });
 
     it('should allow subscribing to specific workers', async () => {
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-2`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-2`);
       const messages: WebSocketMessageData[] = [];
 
       const done = await new Promise<boolean>((resolve) => {
@@ -142,7 +124,7 @@ describe('Worker Status Streaming', () => {
     });
 
     it('should allow unsubscribing from workers', async () => {
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-3`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-3`);
       let subscribedCount = 0;
       let finalPayload: { workerIds: string[]; all: boolean } | null = null;
 
@@ -182,7 +164,7 @@ describe('Worker Status Streaming', () => {
 
   describe('Status Broadcasting', () => {
     it('should broadcast worker creation to subscribers', async () => {
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-4`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-4`);
       let workerStatusMsg: WebSocketMessageData | null = null;
 
       const done = await new Promise<boolean>((resolve) => {
@@ -200,7 +182,7 @@ describe('Worker Status Streaming', () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': apiKey,
+                Authorization: 'Bearer test-clerk-jwt',
               },
               body: JSON.stringify({
                 id: 'new-worker',
@@ -238,7 +220,7 @@ describe('Worker Status Streaming', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           id: 'update-worker',
@@ -246,7 +228,7 @@ describe('Worker Status Streaming', () => {
         }),
       });
 
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-5`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-5`);
       let workerStatusMsg: WebSocketMessageData | null = null;
 
       const done = await new Promise<boolean>((resolve) => {
@@ -264,7 +246,7 @@ describe('Worker Status Streaming', () => {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': apiKey,
+                Authorization: 'Bearer test-clerk-jwt',
               },
               body: JSON.stringify({
                 status: 'running',
@@ -303,7 +285,7 @@ describe('Worker Status Streaming', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-a', name: 'Worker A' }),
       });
@@ -312,12 +294,12 @@ describe('Worker Status Streaming', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-b', name: 'Worker B' }),
       });
 
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-6`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-6`);
       let workerStatusMsg: WebSocketMessageData | null = null;
 
       const done = await new Promise<boolean>((resolve) => {
@@ -335,7 +317,7 @@ describe('Worker Status Streaming', () => {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': apiKey,
+                Authorization: 'Bearer test-clerk-jwt',
               },
               body: JSON.stringify({ status: 'running' }),
             });
@@ -365,12 +347,12 @@ describe('Worker Status Streaming', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'delete-worker', name: 'Delete Worker' }),
       });
 
-      const ws = new WebSocket(`${wsUrl}/ws?deviceId=test-device-7`);
+      const ws = new WebSocket(`${wsUrl}/ws?token=test-clerk-jwt&deviceId=test-device-7`);
       let workerStatusMsg: WebSocketMessageData | null = null;
 
       const done = await new Promise<boolean>((resolve) => {
@@ -386,7 +368,7 @@ describe('Worker Status Streaming', () => {
             // Delete the worker
             void fetch(`${baseUrl}/api/workers/delete-worker`, {
               method: 'DELETE',
-              headers: { 'x-api-key': apiKey },
+              headers: { Authorization: 'Bearer test-clerk-jwt' },
             });
           }
 
@@ -411,13 +393,13 @@ describe('Worker Status Streaming', () => {
   });
 
   describe('Worker Response Format', () => {
-    it('should include currentTask, progress, and lastActivity in GET /api/workers', async () => {
+    it('should include currentTask, progress, and lastActivity in GET /api/workers?status=running', async () => {
       // Create a worker with task and progress
       await fetch(`${baseUrl}/api/workers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           id: 'task-worker',
@@ -428,8 +410,8 @@ describe('Worker Status Streaming', () => {
         }),
       });
 
-      const response = await fetch(`${baseUrl}/api/workers`, {
-        headers: { 'x-api-key': apiKey },
+      const response = await fetch(`${baseUrl}/api/workers?status=running`, {
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);
@@ -457,7 +439,7 @@ describe('Worker Status Streaming', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           id: 'single-worker',
@@ -468,7 +450,7 @@ describe('Worker Status Streaming', () => {
       });
 
       const response = await fetch(`${baseUrl}/api/workers/single-worker`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);

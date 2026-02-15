@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../index.js';
-import { resetApiKeyStore } from '../auth/index.js';
-import { resetRateLimiter } from '../auth/rate-limiter.js';
 import {
   clearHealthChecks,
   registerHealthCheck,
@@ -13,16 +11,21 @@ import {
   REQUEST_ID_HEADER,
 } from '../observability/index.js';
 import type { FastifyInstance } from 'fastify';
+
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 import type { HealthCheckResponse, ReadinessResponse, LivenessResponse } from '../observability/index.js';
 
 describe('Observability', () => {
   let app: FastifyInstance;
   let baseUrl: string;
 
-  beforeEach(async () => {
-    resetApiKeyStore();
-    resetRateLimiter();
-    clearHealthChecks();
+  beforeEach(async () => {    clearHealthChecks();
     resetMetrics();
     resetAlertProvider();
     app = await buildApp();
@@ -35,8 +38,6 @@ describe('Observability', () => {
 
   afterEach(async () => {
     await app.close();
-    resetApiKeyStore();
-    resetRateLimiter();
     clearHealthChecks();
     resetMetrics();
     resetAlertProvider();

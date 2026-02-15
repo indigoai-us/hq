@@ -60,21 +60,27 @@ export function registerTracing(fastify: FastifyInstance): void {
       return;
     }
 
+    // Skip WebSocket upgrade requests — they're long-lived, not request/response
+    if (request.traceContext.path.startsWith('/ws')) {
+      return;
+    }
+
+    // Skip OPTIONS preflight requests — just noise in dev logs
+    if (request.method === 'OPTIONS') {
+      return;
+    }
+
     const duration = Date.now() - request.traceContext.startTime;
 
-    // Log structured request completion
+    // Log structured request completion (compact: method path status duration)
     request.log.info(
       {
-        correlationId: request.traceContext.correlationId,
-        requestId: request.traceContext.requestId,
         method: request.traceContext.method,
         path: request.traceContext.path,
         statusCode: reply.statusCode,
         duration,
-        userAgent: request.traceContext.userAgent,
-        clientIp: request.traceContext.clientIp,
       },
-      'request completed'
+      `${request.traceContext.method} ${request.traceContext.path} ${reply.statusCode} ${duration}ms`
     );
   });
 }

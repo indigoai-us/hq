@@ -1,0 +1,714 @@
+{
+ "Resources": {
+  "AlbSecurityGroup86A59E99": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Security group for HQ Cloud API ALB",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow inbound HTTP",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     },
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow inbound HTTPS",
+      "FromPort": 443,
+      "IpProtocol": "tcp",
+      "ToPort": 443
+     }
+    ],
+    "VpcId": {
+     "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcA12AC6F9C16EE317"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/AlbSecurityGroup/Resource"
+   }
+  },
+  "ApiAlbDD21E9E1": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     },
+     {
+      "Key": "idle_timeout.timeout_seconds",
+      "Value": "3600"
+     }
+    ],
+    "Name": "hq-cloud-api-dev",
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "AlbSecurityGroup86A59E99",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186"
+     },
+     {
+      "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93"
+     }
+    ],
+    "Type": "application"
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiAlb/Resource"
+   }
+  },
+  "ApiAlbHttpListenerA8172EA3": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "ApiTargetGroup5723F19D"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "ApiAlbDD21E9E1"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiAlb/HttpListener/Resource"
+   }
+  },
+  "ApiExecutionRole6C67842D": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Execution role for HQ Cloud API task",
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiExecutionRole/Resource"
+   }
+  },
+  "ApiExecutionRoleDefaultPolicyCA8C38F6": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "secretsmanager:GetSecretValue",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+       }
+      },
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudEcr-dev:ExportsOutputFnGetAttApiRepoEFA7BA97ArnACFF43BA"
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "ApiLogGroup1DEDFC07",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ApiExecutionRoleDefaultPolicyCA8C38F6",
+    "Roles": [
+     {
+      "Ref": "ApiExecutionRole6C67842D"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "ApiTaskRole12FAD4A7": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Task role for HQ Cloud API application permissions"
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiTaskRole/Resource"
+   }
+  },
+  "ApiTaskRoleDefaultPolicyBEF5D530": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecs:RunTask",
+        "ecs:StopTask",
+        "ecs:DescribeTasks",
+        "ecs:ListTasks"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "iam:PassRole",
+       "Condition": {
+        "StringEquals": {
+         "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        }
+       },
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ApiTaskRoleDefaultPolicyBEF5D530",
+    "Roles": [
+     {
+      "Ref": "ApiTaskRole12FAD4A7"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiTaskRole/DefaultPolicy/Resource"
+   }
+  },
+  "ApiTaskDef37DBDBD0": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "NODE_ENV",
+        "Value": "production"
+       },
+       {
+        "Name": "PORT",
+        "Value": "3001"
+       },
+       {
+        "Name": "S3_BUCKET_NAME",
+        "Value": {
+         "Fn::ImportValue": "HqCloudS3-dev:ExportsOutputRefFilesBucket164501139A977DFC"
+        }
+       },
+       {
+        "Name": "S3_REGION",
+        "Value": "us-east-1"
+       },
+       {
+        "Name": "ECS_CLUSTER_ARN",
+        "Value": {
+         "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputFnGetAttWorkerClusterB2BB5BD9Arn11A9DB92"
+        }
+       },
+       {
+        "Name": "ECS_SESSION_TASK_DEFINITION_ARN",
+        "Value": {
+         "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefTaskDef5B6DBE4013858CCC"
+        }
+       },
+       {
+        "Name": "ECS_SUBNETS",
+        "Value": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186"
+           },
+           ",",
+           {
+            "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93"
+           }
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "ECS_SECURITY_GROUPS",
+        "Value": {
+         "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputFnGetAttWorkerSecurityGroup5529CF0BGroupId178F84DF"
+        }
+       },
+       {
+        "Name": "ECS_API_URL",
+        "Value": {
+         "Fn::Join": [
+          "",
+          [
+           "http://",
+           {
+            "Fn::GetAtt": [
+             "ApiAlbDD21E9E1",
+             "DNSName"
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ],
+      "Essential": true,
+      "Image": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "Fn::Select": [
+           4,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "HqCloudEcr-dev:ExportsOutputFnGetAttApiRepoEFA7BA97ArnACFF43BA"
+             }
+            ]
+           }
+          ]
+         },
+         ".dkr.ecr.",
+         {
+          "Fn::Select": [
+           3,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "HqCloudEcr-dev:ExportsOutputFnGetAttApiRepoEFA7BA97ArnACFF43BA"
+             }
+            ]
+           }
+          ]
+         },
+         ".",
+         {
+          "Ref": "AWS::URLSuffix"
+         },
+         "/",
+         {
+          "Fn::ImportValue": "HqCloudEcr-dev:ExportsOutputRefApiRepoEFA7BA97FC7F6607"
+         },
+         ":latest"
+        ]
+       ]
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "ApiLogGroup1DEDFC07"
+        },
+        "awslogs-stream-prefix": "api",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "api",
+      "PortMappings": [
+       {
+        "ContainerPort": 3001,
+        "Protocol": "tcp"
+       }
+      ],
+      "Secrets": [
+       {
+        "Name": "CLERK_SECRET_KEY",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":CLERK_SECRET_KEY::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "CLERK_JWT_KEY",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":CLERK_JWT_KEY::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "MONGODB_URI",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":MONGODB_URI::"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "ApiExecutionRole6C67842D",
+      "Arn"
+     ]
+    },
+    "Family": "hq-cloud-api-dev",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "RuntimePlatform": {
+     "CpuArchitecture": "X86_64",
+     "OperatingSystemFamily": "LINUX"
+    },
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "ApiTaskRole12FAD4A7",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiTaskDef/Resource"
+   }
+  },
+  "ApiLogGroup1DEDFC07": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/hq/api/dev",
+    "RetentionInDays": 30
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiLogGroup/Resource"
+   }
+  },
+  "ApiServiceSecurityGroup671A461D": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Security group for HQ Cloud API ECS service",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcA12AC6F9C16EE317"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiServiceSecurityGroup/Resource"
+   }
+  },
+  "ApiServiceSecurityGroupfromHqCloudApiServicedevAlbSecurityGroupE518E0B23001D40F7F1E": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Allow traffic from ALB",
+    "FromPort": 3001,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceSecurityGroup671A461D",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "AlbSecurityGroup86A59E99",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3001
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiServiceSecurityGroup/from HqCloudApiServicedevAlbSecurityGroupE518E0B2:3001"
+   }
+  },
+  "ApiServiceC9037CF0": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerClusterB2BB5BD9F1FBB7D9"
+    },
+    "DeploymentConfiguration": {
+     "Alarms": {
+      "AlarmNames": [],
+      "Enable": false,
+      "Rollback": false
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 100
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "api",
+      "ContainerPort": 3001,
+      "TargetGroupArn": {
+       "Ref": "ApiTargetGroup5723F19D"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "ENABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "ApiServiceSecurityGroup671A461D",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186"
+       },
+       {
+        "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93"
+       }
+      ]
+     }
+    },
+    "ServiceName": "hq-cloud-api-dev",
+    "TaskDefinition": {
+     "Ref": "ApiTaskDef37DBDBD0"
+    }
+   },
+   "DependsOn": [
+    "ApiAlbHttpListenerA8172EA3",
+    "ApiTaskRoleDefaultPolicyBEF5D530",
+    "ApiTaskRole12FAD4A7"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiService/Service"
+   }
+  },
+  "ApiTargetGroup5723F19D": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckIntervalSeconds": 30,
+    "HealthCheckPath": "/api/health",
+    "HealthCheckTimeoutSeconds": 10,
+    "HealthyThresholdCount": 2,
+    "Matcher": {
+     "HttpCode": "200"
+    },
+    "Port": 3001,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "deregistration_delay.timeout_seconds",
+      "Value": "30"
+     },
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "UnhealthyThresholdCount": 3,
+    "VpcId": {
+     "Fn::ImportValue": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcA12AC6F9C16EE317"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/ApiTargetGroup/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/31QTWvDMAz9Lb272uoddt4HG4PCRtP7UB3VqHHtYCspxfi/jyRtSS876X1Ij4c06KdnWC3wlJambpaOd5ArQdMoPKXfTEZDrsh0keX8GUPXqre9/1/48jZSSkWRwyRsXMB6hw69YW97DfmlbR0bFA5+HbB+HT2KQ9Adn+9xEvKXnSue+VuMluTWZ0aLYjxC3gRHgzPOn+DYnAc6oaLIJMgfGC0KbTE177Rnz0PyFHevBC/InuJMu9xWFHs2NP1khEW5YBPkdbC3eldcysC+O2k7KcqHmuCQHnqtYaXhcXFIzMvYeeEjwWaaf9LMitixAQAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqCloudApiService-dev/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "AlbDnsName": {
+   "Description": "HQ Cloud API ALB DNS Name",
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiAlbDD21E9E1",
+     "DNSName"
+    ]
+   },
+   "Export": {
+    "Name": "HqCloudApiAlbDns-dev"
+   }
+  },
+  "AlbUrl": {
+   "Description": "HQ Cloud API URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "http://",
+      {
+       "Fn::GetAtt": [
+        "ApiAlbDD21E9E1",
+        "DNSName"
+       ]
+      }
+     ]
+    ]
+   },
+   "Export": {
+    "Name": "HqCloudApiUrl-dev"
+   }
+  },
+  "ServiceArn": {
+   "Description": "HQ Cloud API ECS Service ARN",
+   "Value": {
+    "Ref": "ApiServiceC9037CF0"
+   },
+   "Export": {
+    "Name": "HqCloudApiServiceArn-dev"
+   }
+  },
+  "TaskDefinitionArn": {
+   "Description": "HQ Cloud API Task Definition ARN",
+   "Value": {
+    "Ref": "ApiTaskDef37DBDBD0"
+   },
+   "Export": {
+    "Name": "HqCloudApiTaskDefArn-dev"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

@@ -236,13 +236,21 @@ export function resetSpawnQueue(): void {
   queue = null;
 }
 
+import { readWorkerRegistry } from '../data/hq-reader.js';
+import type { DataSource } from '../data/data-source.js';
+
 /**
- * Stub validator for worker existence in HQ registry.
- * In production, this would query the actual HQ worker registry.
- * For now, returns true for any alphanumeric worker ID.
+ * Validate that a worker ID exists in the HQ registry.
+ * Falls back to format validation if registry cannot be read.
+ * @param workerId - Worker ID to validate
+ * @param ds - DataSource to read the registry from
  */
-export function validateWorkerExists(workerId: string): boolean {
-  // Stub: accept any valid-looking worker ID
-  // TODO: Connect to actual HQ worker registry
-  return /^[a-zA-Z0-9_-]+$/.test(workerId) && workerId.length >= 1 && workerId.length <= 128;
+export async function validateWorkerExists(workerId: string, ds: DataSource): Promise<boolean> {
+  try {
+    const definitions = await readWorkerRegistry(ds);
+    return definitions.some((w) => w.id === workerId);
+  } catch {
+    // Fallback: accept any valid-looking ID if registry is unreadable
+    return /^[a-zA-Z0-9_-]+$/.test(workerId) && workerId.length >= 1 && workerId.length <= 128;
+  }
 }

@@ -114,7 +114,7 @@ describe('buildRunTaskParams', () => {
     const params = buildRunTaskParams(baseInput, baseConfig);
 
     const containerOverride = params.overrides.containerOverrides[0];
-    expect(containerOverride?.name).toBe('worker');
+    expect(containerOverride?.name).toBe('session');
     expect(containerOverride?.environment).toContainEqual({
       name: 'WORKER_ID',
       value: 'content-writer',

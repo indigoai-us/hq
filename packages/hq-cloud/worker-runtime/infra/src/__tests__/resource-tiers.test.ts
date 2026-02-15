@@ -283,7 +283,7 @@ describe('mergeTierOverrides', () => {
       taskRoleArn: 'arn:aws:iam::123:role/custom',
       executionRoleArn: 'arn:aws:iam::123:role/exec',
       ephemeralStorage: { sizeInGiB: 50 },
-      containerOverrides: [{ name: 'worker', command: ['/custom'] }],
+      containerOverrides: [{ name: 'session', command: ['/custom'] }],
     };
     const result = mergeTierOverrides('large', existing);
     expect(result.taskRoleArn).toBe('arn:aws:iam::123:role/custom');

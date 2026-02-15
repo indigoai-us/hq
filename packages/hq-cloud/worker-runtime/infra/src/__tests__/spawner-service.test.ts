@@ -308,7 +308,7 @@ describe('WorkerSpawnerService', () => {
         taskArn: 'arn:aws:ecs:us-east-1:123:task/hq-workers/abc',
         lastStatus: 'RUNNING',
         desiredStatus: 'RUNNING',
-        containers: [{ name: 'worker', lastStatus: 'RUNNING' }],
+        containers: [{ name: 'session', lastStatus: 'RUNNING' }],
       };
 
       mockEcsClient.describeTasks = vi.fn().mockResolvedValue([mockDescription]);

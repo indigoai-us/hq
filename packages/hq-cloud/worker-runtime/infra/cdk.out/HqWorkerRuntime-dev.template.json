@@ -1,0 +1,740 @@
+{
+ "Resources": {
+  "WorkerVpcA12AC6F9": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/Resource"
+   }
+  },
+  "WorkerVpcpublicSubnet1Subnet90B7DDA1": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/Subnet"
+   }
+  },
+  "WorkerVpcpublicSubnet1RouteTableCDC403C9": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/RouteTable"
+   }
+  },
+  "WorkerVpcpublicSubnet1RouteTableAssociationB20A99FC": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "WorkerVpcpublicSubnet1RouteTableCDC403C9"
+    },
+    "SubnetId": {
+     "Ref": "WorkerVpcpublicSubnet1Subnet90B7DDA1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/RouteTableAssociation"
+   }
+  },
+  "WorkerVpcpublicSubnet1DefaultRouteD774E335": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "WorkerVpcIGWC2B94A1A"
+    },
+    "RouteTableId": {
+     "Ref": "WorkerVpcpublicSubnet1RouteTableCDC403C9"
+    }
+   },
+   "DependsOn": [
+    "WorkerVpcVPCGWDDC7E69B"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/DefaultRoute"
+   }
+  },
+  "WorkerVpcpublicSubnet2Subnet56E2D843": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/Subnet"
+   }
+  },
+  "WorkerVpcpublicSubnet2RouteTable00A8970E": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/RouteTable"
+   }
+  },
+  "WorkerVpcpublicSubnet2RouteTableAssociationD996D932": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "WorkerVpcpublicSubnet2RouteTable00A8970E"
+    },
+    "SubnetId": {
+     "Ref": "WorkerVpcpublicSubnet2Subnet56E2D843"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/RouteTableAssociation"
+   }
+  },
+  "WorkerVpcpublicSubnet2DefaultRoute96126EA5": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "WorkerVpcIGWC2B94A1A"
+    },
+    "RouteTableId": {
+     "Ref": "WorkerVpcpublicSubnet2RouteTable00A8970E"
+    }
+   },
+   "DependsOn": [
+    "WorkerVpcVPCGWDDC7E69B"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/DefaultRoute"
+   }
+  },
+  "WorkerVpcIGWC2B94A1A": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "HqWorkerRuntime-dev/WorkerVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/IGW"
+   }
+  },
+  "WorkerVpcVPCGWDDC7E69B": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "WorkerVpcIGWC2B94A1A"
+    },
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerVpc/VPCGW"
+   }
+  },
+  "S3EndpointD570F362": {
+   "Type": "AWS::EC2::VPCEndpoint",
+   "Properties": {
+    "RouteTableIds": [
+     {
+      "Ref": "WorkerVpcpublicSubnet1RouteTableCDC403C9"
+     },
+     {
+      "Ref": "WorkerVpcpublicSubnet2RouteTable00A8970E"
+     }
+    ],
+    "ServiceName": {
+     "Fn::Join": [
+      "",
+      [
+       "com.amazonaws.",
+       {
+        "Ref": "AWS::Region"
+       },
+       ".s3"
+      ]
+     ]
+    },
+    "VpcEndpointType": "Gateway",
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/S3Endpoint/Resource"
+   }
+  },
+  "WorkerSecurityGroup5529CF0B": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Security group for HQ worker Fargate tasks",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "WorkerVpcA12AC6F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerSecurityGroup/Resource"
+   }
+  },
+  "WorkerClusterB2BB5BD9": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterName": "hq-cloud-dev",
+    "ClusterSettings": [
+     {
+      "Name": "containerInsights",
+      "Value": "enabled"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/WorkerCluster/Resource"
+   }
+  },
+  "TaskDefLogGroup37AE0CF6": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/hq/workers",
+    "RetentionInDays": 30
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/LogGroup/Resource"
+   }
+  },
+  "TaskDefExecutionRoleB4775C97": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Task execution role for HQ worker containers",
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/ExecutionRole/Resource"
+   }
+  },
+  "TaskDefExecutionRoleDefaultPolicy0DBB737A": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "TaskDefLogGroup37AE0CF6",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+       }
+      },
+      {
+       "Action": "secretsmanager:GetSecretValue",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TaskDefExecutionRoleDefaultPolicy0DBB737A",
+    "Roles": [
+     {
+      "Ref": "TaskDefExecutionRoleB4775C97"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "TaskDefTaskRole1EDB4A67": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Task role for HQ worker application permissions"
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/TaskRole/Resource"
+   }
+  },
+  "TaskDefTaskRoleDefaultPolicyA592CB18": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::ImportValue": "HqCloudS3-dev:ExportsOutputFnGetAttFilesBucket16450113Arn55CDC1C6"
+          },
+          "/*"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": "s3:ListBucket",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "HqCloudS3-dev:ExportsOutputFnGetAttFilesBucket16450113Arn55CDC1C6"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TaskDefTaskRoleDefaultPolicyA592CB18",
+    "Roles": [
+     {
+      "Ref": "TaskDefTaskRole1EDB4A67"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/TaskRole/DefaultPolicy/Resource"
+   }
+  },
+  "TaskDef5B6DBE40": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "NODE_ENV",
+        "Value": "production"
+       },
+       {
+        "Name": "HQ_ROOT",
+        "Value": "/hq"
+       }
+      ],
+      "Essential": true,
+      "HealthCheck": {
+       "Command": [
+        "CMD-SHELL",
+        "/usr/local/bin/healthcheck.sh || exit 1"
+       ],
+       "Interval": 30,
+       "Retries": 3,
+       "StartPeriod": 60,
+       "Timeout": 10
+      },
+      "Image": ":latest",
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "TaskDefLogGroup37AE0CF6"
+        },
+        "awslogs-stream-prefix": "session",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "session",
+      "Secrets": [
+       {
+        "Name": "CLERK_SECRET_KEY",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":CLERK_SECRET_KEY::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "CLERK_JWT_KEY",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":CLERK_JWT_KEY::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "MONGODB_URI",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":MONGODB_URI::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "CLAUDE_CREDENTIALS_JSON",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "HqCloudSecrets-dev:ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+           },
+           ":CLAUDE_CREDENTIALS_JSON::"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "TaskDefExecutionRoleB4775C97",
+      "Arn"
+     ]
+    },
+    "Family": "HqWorkerRuntimedevTaskDefD33C43C4",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "RuntimePlatform": {
+     "CpuArchitecture": "X86_64",
+     "OperatingSystemFamily": "LINUX"
+    },
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "TaskDefTaskRole1EDB4A67",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/TaskDef/TaskDef/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/12QT2uEQAzFP8vex2nXHnpebLsUChUtXss4Zt2smpGZTGURv3vxf+kpL788yEtCGT49y+NBdS7QRRXUmMs+ZaUroTr33YMOZZ+1WkQXyuJIxD6vUac+J+CR7SoxnuFL5TXsfGcn54xGxWhoM4/inRgsAZ8VQ6fuy5qlOzErfW2AWCwka/UrFa1B4sW6tSlob5HvZ2t8O0X4CwYB2sk+qr1jsON4lW/KlmpM6aoXuCDhmvE/McQKCezOBlGb0sn+w5Tb1lUPAlUj+8TM/5hqbGrU042zGgaRgDPe6snz6bn1PAgyBcibe/gJQ3kM5ePh5hAD64mxAZnM9RcGlviLuQEAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "HqWorkerRuntime-dev/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "TaskDefTaskDefinitionArn437BDD40": {
+   "Description": "HQ Worker Task Definition ARN",
+   "Value": {
+    "Ref": "TaskDef5B6DBE40"
+   },
+   "Export": {
+    "Name": "HqWorkerTaskDefinitionArn"
+   }
+  },
+  "TaskDefTaskRoleArn1BCB3899": {
+   "Description": "HQ Worker Task Role ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "TaskDefTaskRole1EDB4A67",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerTaskRoleArn"
+   }
+  },
+  "TaskDefExecutionRoleArn73455AD9": {
+   "Description": "HQ Worker Execution Role ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "TaskDefExecutionRoleB4775C97",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerExecutionRoleArn"
+   }
+  },
+  "ClusterArn": {
+   "Description": "HQ Worker ECS Cluster ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "WorkerClusterB2BB5BD9",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerClusterArn"
+   }
+  },
+  "ClusterName": {
+   "Description": "HQ Worker ECS Cluster Name",
+   "Value": {
+    "Ref": "WorkerClusterB2BB5BD9"
+   },
+   "Export": {
+    "Name": "HqWorkerClusterName"
+   }
+  },
+  "SecurityGroupId": {
+   "Description": "HQ Worker Security Group ID",
+   "Value": {
+    "Fn::GetAtt": [
+     "WorkerSecurityGroup5529CF0B",
+     "GroupId"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerSecurityGroupId"
+   }
+  },
+  "VpcId": {
+   "Description": "HQ Worker VPC ID",
+   "Value": {
+    "Ref": "WorkerVpcA12AC6F9"
+   },
+   "Export": {
+    "Name": "HqWorkerVpcId"
+   }
+  },
+  "ExportsOutputRefWorkerVpcA12AC6F9C16EE317": {
+   "Value": {
+    "Ref": "WorkerVpcA12AC6F9"
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcA12AC6F9C16EE317"
+   }
+  },
+  "ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186": {
+   "Value": {
+    "Ref": "WorkerVpcpublicSubnet1Subnet90B7DDA1"
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186"
+   }
+  },
+  "ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93": {
+   "Value": {
+    "Ref": "WorkerVpcpublicSubnet2Subnet56E2D843"
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93"
+   }
+  },
+  "ExportsOutputFnGetAttWorkerClusterB2BB5BD9Arn11A9DB92": {
+   "Value": {
+    "Fn::GetAtt": [
+     "WorkerClusterB2BB5BD9",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputFnGetAttWorkerClusterB2BB5BD9Arn11A9DB92"
+   }
+  },
+  "ExportsOutputRefTaskDef5B6DBE4013858CCC": {
+   "Value": {
+    "Ref": "TaskDef5B6DBE40"
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputRefTaskDef5B6DBE4013858CCC"
+   }
+  },
+  "ExportsOutputFnGetAttWorkerSecurityGroup5529CF0BGroupId178F84DF": {
+   "Value": {
+    "Fn::GetAtt": [
+     "WorkerSecurityGroup5529CF0B",
+     "GroupId"
+    ]
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputFnGetAttWorkerSecurityGroup5529CF0BGroupId178F84DF"
+   }
+  },
+  "ExportsOutputRefWorkerClusterB2BB5BD9F1FBB7D9": {
+   "Value": {
+    "Ref": "WorkerClusterB2BB5BD9"
+   },
+   "Export": {
+    "Name": "HqWorkerRuntime-dev:ExportsOutputRefWorkerClusterB2BB5BD9F1FBB7D9"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

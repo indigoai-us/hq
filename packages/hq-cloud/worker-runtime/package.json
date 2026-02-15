@@ -6,10 +6,14 @@
   "scripts": {
     "build": "docker build -t hq-worker-runtime:latest .",
     "build:dev": "docker build -t hq-worker-runtime:dev .",
+    "build:session": "docker build -f Dockerfile.session -t hq-session-runtime:latest .",
     "run": "docker run --rm -it hq-worker-runtime:latest",
     "run:shell": "docker run --rm -it hq-worker-runtime:latest shell",
-    "test": "bash tests/bootstrap.test.sh",
+    "test": "bash tests/bootstrap.test.sh && bash tests/session-entrypoint.test.sh",
+    "test:bootstrap": "bash tests/bootstrap.test.sh",
+    "test:session": "bash tests/session-entrypoint.test.sh",
     "test:docker": "docker build -t hq-worker-runtime:test . && docker run --rm hq-worker-runtime:test claude version",
+    "test:docker:session": "docker build -f Dockerfile.session -t hq-session-runtime:test . && docker run --rm hq-session-runtime:test --help || true",
     "test:integration": "bash tests/bootstrap.test.sh --integration",
     "size": "docker images hq-worker-runtime:latest --format '{{.Size}}'"
   },

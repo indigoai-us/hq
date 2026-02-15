@@ -132,7 +132,7 @@ describe('HqWorkerTaskDefinition', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Name: 'worker',
+          Name: 'session',
           Essential: true,
           HealthCheck: Match.objectLike({
             Command: ['CMD-SHELL', '/usr/local/bin/healthcheck.sh || exit 1'],
@@ -187,10 +187,106 @@ describe('HqWorkerTaskDefinition', () => {
       ]),
     });
   });
+
+  it('does not inject secrets when secretsArn is not provided', () => {
+    new HqWorkerTaskDefinition(stack, 'TaskDef', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Container should NOT have Secrets property
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          Secrets: Match.absent(),
+        }),
+      ]),
+    });
+  });
+
+  it('injects all four default secret keys when secretsArn is provided', () => {
+    new HqWorkerTaskDefinition(stack, 'TaskDef', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+      secretsArn:
+        'arn:aws:secretsmanager:us-east-1:804849608251:secret:hq-cloud/dev/api-config-AbCdEf',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Container should have Secrets entries referencing the secret ARN with JSON keys
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          Secrets: Match.arrayWith([
+            Match.objectLike({ Name: 'CLERK_SECRET_KEY' }),
+            Match.objectLike({ Name: 'CLERK_JWT_KEY' }),
+            Match.objectLike({ Name: 'MONGODB_URI' }),
+            Match.objectLike({ Name: 'CLAUDE_CREDENTIALS_JSON' }),
+          ]),
+        }),
+      ]),
+    });
+  });
+
+  it('grants execution role secretsmanager:GetSecretValue when secretsArn is provided', () => {
+    new HqWorkerTaskDefinition(stack, 'TaskDef', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+      secretsArn:
+        'arn:aws:secretsmanager:us-east-1:804849608251:secret:hq-cloud/dev/api-config-AbCdEf',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Execution role should have a policy with secretsmanager:GetSecretValue
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Effect: 'Allow',
+            Resource:
+              'arn:aws:secretsmanager:us-east-1:804849608251:secret:hq-cloud/dev/api-config-AbCdEf',
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('injects only custom secret keys when secretKeys is provided', () => {
+    new HqWorkerTaskDefinition(stack, 'TaskDef', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+      secretsArn:
+        'arn:aws:secretsmanager:us-east-1:804849608251:secret:hq-cloud/dev/api-config-AbCdEf',
+      secretKeys: {
+        CLAUDE_CREDENTIALS_JSON: 'CLAUDE_CREDENTIALS_JSON',
+      },
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Container should have only the specified secret
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          Secrets: [
+            Match.objectLike({ Name: 'CLAUDE_CREDENTIALS_JSON' }),
+          ],
+        }),
+      ]),
+    });
+  });
 });
 
 describe('HqWorkerRuntimeStack', () => {
-  it('creates complete infrastructure stack', () => {
+  it('creates complete infrastructure stack with public-only VPC', () => {
     const app = new cdk.App();
     const stack = new HqWorkerRuntimeStack(app, 'TestStack', {
       imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
@@ -202,9 +298,9 @@ describe('HqWorkerRuntimeStack', () => {
     // Verify VPC is created
     template.resourceCountIs('AWS::EC2::VPC', 1);
 
-    // Verify ECS cluster is created
+    // Verify ECS cluster is created with new name
     template.hasResourceProperties('AWS::ECS::Cluster', {
-      ClusterName: 'hq-workers',
+      ClusterName: 'hq-cloud-dev',
       ClusterSettings: Match.arrayWith([
         {
           Name: 'containerInsights',
@@ -218,6 +314,44 @@ describe('HqWorkerRuntimeStack', () => {
 
     // Verify task definition is created
     template.resourceCountIs('AWS::ECS::TaskDefinition', 1);
+  });
+
+  it('creates VPC with no NAT gateway (public subnets only)', () => {
+    const app = new cdk.App();
+    const stack = new HqWorkerRuntimeStack(app, 'TestStack', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // No NAT Gateway should be created
+    template.resourceCountIs('AWS::EC2::NatGateway', 0);
+
+    // Should have public subnets (with route to Internet Gateway)
+    template.resourceCountIs('AWS::EC2::InternetGateway', 1);
+  });
+
+  it('creates S3 VPC Gateway Endpoint', () => {
+    const app = new cdk.App();
+    const stack = new HqWorkerRuntimeStack(app, 'TestStack', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // S3 VPC endpoint should exist
+    template.hasResourceProperties('AWS::EC2::VPCEndpoint', {
+      ServiceName: Match.objectLike({
+        'Fn::Join': Match.arrayWith([
+          Match.arrayWith([
+            Match.stringLikeRegexp('s3'),
+          ]),
+        ]),
+      }),
+      VpcEndpointType: 'Gateway',
+    });
   });
 
   it('creates stack with custom CPU and memory', () => {
@@ -251,5 +385,63 @@ describe('HqWorkerRuntimeStack', () => {
     template.hasOutput('ClusterName', {});
     template.hasOutput('SecurityGroupId', {});
     template.hasOutput('VpcId', {});
+  });
+
+  it('passes secretsArn to task definition when provided', () => {
+    const app = new cdk.App();
+    const stack = new HqWorkerRuntimeStack(app, 'TestStack', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+      secretsArn:
+        'arn:aws:secretsmanager:us-east-1:804849608251:secret:hq-cloud/dev/api-config-AbCdEf',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Task definition container should have secrets
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          Secrets: Match.arrayWith([
+            Match.objectLike({ Name: 'CLERK_SECRET_KEY' }),
+            Match.objectLike({ Name: 'CLERK_JWT_KEY' }),
+            Match.objectLike({ Name: 'MONGODB_URI' }),
+            Match.objectLike({ Name: 'CLAUDE_CREDENTIALS_JSON' }),
+          ]),
+        }),
+      ]),
+    });
+
+    // Execution role should have secretsmanager:GetSecretValue permission
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Effect: 'Allow',
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('does not add secrets when secretsArn is not provided', () => {
+    const app = new cdk.App();
+    const stack = new HqWorkerRuntimeStack(app, 'TestStack', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+    });
+
+    const template = Template.fromStack(stack);
+
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          Secrets: Match.absent(),
+        }),
+      ]),
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../index.js';
 import {
   resetSyncStatusManager,
@@ -6,9 +6,15 @@ import {
   feedDownloadStats,
   recordSyncError,
 } from '../routes/sync.js';
-import { resetApiKeyStore } from '../auth/index.js';
-import { resetRateLimiter } from '../auth/rate-limiter.js';
 import type { FastifyInstance } from 'fastify';
+
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 import type {
   SyncStatus,
   SyncTriggerResult,
@@ -17,23 +23,11 @@ import type {
   DownloadManagerStats,
 } from '@hq-cloud/file-sync';
 
-interface ErrorResponse {
-  error: string;
-  message?: string;
-}
+// ErrorResponse interface removed (unused)
 
 interface ErrorListResponse {
   count: number;
   errors: SyncError[];
-}
-
-interface ApiKeyResponse {
-  key: string;
-  prefix: string;
-  name: string;
-  rateLimit: number;
-  createdAt: string;
-  message: string;
 }
 
 function makeDaemonStats(overrides: Partial<SyncDaemonStats> = {}): SyncDaemonStats {
@@ -67,39 +61,24 @@ function makeDownloadStats(overrides: Partial<DownloadManagerStats> = {}): Downl
 describe('Sync Routes', () => {
   let app: FastifyInstance;
   let baseUrl: string;
-  let apiKey: string;
 
   beforeEach(async () => {
     resetSyncStatusManager();
-    resetApiKeyStore();
-    resetRateLimiter();
     app = await buildApp();
     await app.listen({ port: 0, host: '127.0.0.1' });
     const address = app.server.address();
     if (address && typeof address === 'object') {
       baseUrl = `http://127.0.0.1:${address.port}`;
     }
-
-    // Generate an API key for authenticated requests
-    const response = await fetch(`${baseUrl}/api/auth/keys/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Test Key' }),
-    });
-    const data = (await response.json()) as ApiKeyResponse;
-    apiKey = data.key;
   });
 
   afterEach(async () => {
     await app.close();
-    resetSyncStatusManager();
-    resetApiKeyStore();
-    resetRateLimiter();
-  });
+    resetSyncStatusManager();  });
 
   const authHeaders = (): Record<string, string> => ({
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
+    Authorization: 'Bearer test-clerk-jwt',
   });
 
   // ─── GET /api/sync/status ──────────────────────────────────────────
@@ -282,7 +261,7 @@ describe('Sync Routes', () => {
     });
 
     it('accepts when daemon is running', async () => {
-      feedDaemonStats(makeDaemonStats({ state: 'running', pendingEvents: 5 }));
+      feedDaemonStats(makeDaemonStats({ state: 'running', pendingEvents: 0 }));
 
       const res = await fetch(`${baseUrl}/api/sync/trigger`, {
         method: 'POST',
@@ -294,7 +273,7 @@ describe('Sync Routes', () => {
       const body = (await res.json()) as SyncTriggerResult;
       expect(body.accepted).toBe(true);
       expect(body.reason).toBeNull();
-      expect(body.pendingEvents).toBe(5);
+      expect(body.pendingEvents).toBe(0);
       expect(body.triggeredAt).toBeTruthy();
     });
 
@@ -313,7 +292,7 @@ describe('Sync Routes', () => {
     });
 
     it('rejects duplicate trigger', async () => {
-      feedDaemonStats(makeDaemonStats({ state: 'running' }));
+      feedDaemonStats(makeDaemonStats({ state: 'running', pendingEvents: 0 }));
 
       // First trigger should succeed
       const res1 = await fetch(`${baseUrl}/api/sync/trigger`, {

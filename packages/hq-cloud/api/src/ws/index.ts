@@ -2,9 +2,6 @@ export {
   websocketPlugin,
   getConnectionRegistry,
   broadcastWorkerStatus,
-  broadcastWorkerQuestion,
-  broadcastQuestionAnswered,
-  broadcastChatMessage,
 } from './websocket-plugin.js';
 export {
   broadcastSyncStatus,
@@ -16,6 +13,38 @@ export {
   InMemoryConnectionRegistry,
   resetConnectionRegistry,
 } from './connection-registry.js';
+export {
+  getOrCreateRelay,
+  getRelay,
+  removeRelay,
+  handleClaudeCodeConnection,
+  addBrowserToSession,
+  handleBrowserMessage,
+  setRelayLogger,
+  getAllRelays,
+  resetRelays,
+  sendToClaudeCode,
+  sendUserMessage,
+  sendControlResponse,
+  sendControlCancelRequest,
+  sendInterrupt,
+  sendInitialize,
+  sendSetPermissionMode,
+  sendSetModel,
+  sendUpdateEnvironmentVariables,
+  broadcastStartupPhase,
+  MessageBuffer,
+} from './session-relay.js';
+export type {
+  SessionRelay,
+  StartupPhase,
+  ClaudeCodeMessage,
+  SystemInitMessage,
+  ControlRequest,
+  ControlResponse,
+  ResultMessage,
+  BufferedMessage,
+} from './session-relay.js';
 export type {
   ClientConnection,
   ConnectionRegistry,
@@ -29,9 +58,4 @@ export type {
   SubscribedMessage,
   WorkerStatusMessage,
   WorkerProgressPayload,
-  WorkerQuestionMessage,
-  QuestionAnsweredMessage,
-  QuestionOptionPayload,
-  ChatMessageNotification,
-  ChatMessageRole,
 } from './types.js';

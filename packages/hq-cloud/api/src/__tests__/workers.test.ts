@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../index.js';
 import { resetWorkerStore, getWorkerStore, resetSpawnQueue, getSpawnQueue } from '../workers/index.js';
-import { resetApiKeyStore } from '../auth/index.js';
-import { resetRateLimiter } from '../auth/rate-limiter.js';
 import type { FastifyInstance } from 'fastify';
+
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 
 interface WorkerResponse {
   id: string;
@@ -25,15 +31,6 @@ interface ErrorResponse {
   message?: string;
 }
 
-interface ApiKeyResponse {
-  key: string;
-  prefix: string;
-  name: string;
-  rateLimit: number;
-  createdAt: string;
-  message: string;
-}
-
 interface SpawnRequestResponse {
   trackingId: string;
   workerId: string;
@@ -47,36 +44,22 @@ interface SpawnRequestResponse {
 describe('Worker Registry', () => {
   let app: FastifyInstance;
   let baseUrl: string;
-  let apiKey: string;
 
   beforeEach(async () => {
     resetWorkerStore();
     resetSpawnQueue();
-    resetApiKeyStore();
-    resetRateLimiter();
     app = await buildApp();
     await app.listen({ port: 0, host: '127.0.0.1' });
     const address = app.server.address();
     if (address && typeof address === 'object') {
       baseUrl = `http://127.0.0.1:${address.port}`;
     }
-
-    // Generate an API key for authenticated requests
-    const response = await fetch(`${baseUrl}/api/auth/keys/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Test Key' }),
-    });
-    const data = (await response.json()) as ApiKeyResponse;
-    apiKey = data.key;
   });
 
   afterEach(async () => {
     await app.close();
     resetWorkerStore();
     resetSpawnQueue();
-    resetApiKeyStore();
-    resetRateLimiter();
   });
 
   describe('Create Worker', () => {
@@ -85,7 +68,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           id: 'worker-1',
@@ -108,7 +91,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           id: 'worker-full',
@@ -134,7 +117,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-dup', name: 'First' }),
       });
@@ -143,7 +126,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-dup', name: 'Second' }),
       });
@@ -158,7 +141,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'invalid id!@#', name: 'Bad Worker' }),
       });
@@ -173,7 +156,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ name: 'No ID' }),
       });
@@ -183,7 +166,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'no-name' }),
       });
@@ -195,7 +178,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-bad-status', name: 'Bad Status', status: 'invalid' }),
       });
@@ -212,7 +195,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-get', name: 'Get Worker' }),
       });
@@ -220,7 +203,7 @@ describe('Worker Registry', () => {
 
     it('should get an existing worker', async () => {
       const response = await fetch(`${baseUrl}/api/workers/worker-get`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);
@@ -231,7 +214,7 @@ describe('Worker Registry', () => {
 
     it('should return 404 for non-existent worker', async () => {
       const response = await fetch(`${baseUrl}/api/workers/non-existent`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(404);
@@ -254,27 +237,40 @@ describe('Worker Registry', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': apiKey,
+            Authorization: 'Bearer test-clerk-jwt',
           },
           body: JSON.stringify(worker),
         });
       }
     });
 
-    it('should list all workers', async () => {
+    it('should list all workers from HQ registry', async () => {
+      // GET /api/workers without ?status now returns WorkerDefinition[] from registry
       const response = await fetch(`${baseUrl}/api/workers`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
+      });
+
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as unknown[];
+      // Should return definitions from registry.yaml (array, not { count, workers })
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should list runtime workers by status', async () => {
+      // GET /api/workers?status=pending returns runtime instances in old format
+      const response = await fetch(`${baseUrl}/api/workers?status=pending`, {
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);
       const data = (await response.json()) as WorkerListResponse;
-      expect(data.count).toBe(4);
-      expect(data.workers).toHaveLength(4);
+      expect(data.count).toBe(1);
+      expect(data.workers).toHaveLength(1);
     });
 
     it('should filter workers by status', async () => {
       const response = await fetch(`${baseUrl}/api/workers?status=running`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);
@@ -285,7 +281,7 @@ describe('Worker Registry', () => {
 
     it('should reject invalid status filter', async () => {
       const response = await fetch(`${baseUrl}/api/workers?status=invalid`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(400);
@@ -298,7 +294,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-update', name: 'Update Worker' }),
       });
@@ -309,7 +305,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ name: 'Updated Name' }),
       });
@@ -324,7 +320,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ status: 'running' }),
       });
@@ -339,7 +335,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ containerId: 'container-xyz' }),
       });
@@ -354,7 +350,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ metadata: { key1: 'value1' } }),
       });
@@ -363,7 +359,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ metadata: { key2: 'value2' } }),
       });
@@ -379,7 +375,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ name: 'New Name' }),
       });
@@ -392,7 +388,7 @@ describe('Worker Registry', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ status: 'invalid_status' }),
       });
@@ -407,7 +403,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-delete', name: 'Delete Worker' }),
       });
@@ -416,14 +412,14 @@ describe('Worker Registry', () => {
     it('should delete an existing worker', async () => {
       const deleteResponse = await fetch(`${baseUrl}/api/workers/worker-delete`, {
         method: 'DELETE',
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(deleteResponse.status).toBe(204);
 
       // Verify worker is gone
       const getResponse = await fetch(`${baseUrl}/api/workers/worker-delete`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(getResponse.status).toBe(404);
@@ -432,7 +428,7 @@ describe('Worker Registry', () => {
     it('should return 404 for non-existent worker', async () => {
       const response = await fetch(`${baseUrl}/api/workers/non-existent`, {
         method: 'DELETE',
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(404);
@@ -445,7 +441,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({ id: 'worker-heartbeat', name: 'Heartbeat Worker' }),
       });
@@ -454,7 +450,7 @@ describe('Worker Registry', () => {
     it('should update worker heartbeat', async () => {
       const response = await fetch(`${baseUrl}/api/workers/worker-heartbeat/heartbeat`, {
         method: 'POST',
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(200);
@@ -465,7 +461,7 @@ describe('Worker Registry', () => {
     it('should return 404 for non-existent worker', async () => {
       const response = await fetch(`${baseUrl}/api/workers/non-existent/heartbeat`, {
         method: 'POST',
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(404);
@@ -520,7 +516,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -529,14 +525,12 @@ describe('Worker Registry', () => {
       });
 
       expect(response.status).toBe(202);
-      const data = (await response.json()) as SpawnRequestResponse;
+      const data = (await response.json()) as { agentId: string; agentName: string; status: string; trackingId: string };
       expect(data.trackingId).toBeDefined();
       expect(data.trackingId).toMatch(/^spawn-[a-z0-9]+-[a-z0-9]+$/);
-      expect(data.workerId).toBe('backend-dev');
-      expect(data.skill).toBe('implement-feature');
-      expect(data.parameters).toEqual({});
+      expect(data.agentId).toBeDefined();
+      expect(data.agentName).toBeDefined();
       expect(data.status).toBe('pending');
-      expect(data.queuedAt).toBeDefined();
     });
 
     it('should create a spawn request with all fields', async () => {
@@ -544,7 +538,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'frontend-dev',
@@ -555,12 +549,11 @@ describe('Worker Registry', () => {
       });
 
       expect(response.status).toBe(202);
-      const data = (await response.json()) as SpawnRequestResponse;
-      expect(data.workerId).toBe('frontend-dev');
-      expect(data.skill).toBe('build-component');
-      expect(data.parameters).toEqual({ component: 'Button', props: ['onClick', 'variant'] });
-      expect(data.metadata?.priority).toBe('high');
-      expect(data.metadata?.project).toBe('ui-lib');
+      const data = (await response.json()) as { agentId: string; agentName: string; status: string; trackingId: string };
+      expect(data.agentId).toBeDefined();
+      expect(data.agentName).toBeDefined();
+      expect(data.status).toBe('pending');
+      expect(data.trackingId).toBeDefined();
     });
 
     it('should reject missing workerId', async () => {
@@ -568,7 +561,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           skill: 'implement-feature',
@@ -586,7 +579,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -604,7 +597,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'invalid worker!@#',
@@ -622,7 +615,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -640,7 +633,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -660,7 +653,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -670,7 +663,7 @@ describe('Worker Registry', () => {
       });
 
       expect(response.status).toBe(202);
-      const data = (await response.json()) as SpawnRequestResponse;
+      const data = (await response.json()) as { trackingId: string };
 
       // Verify it was added to the queue
       const queue = getSpawnQueue();
@@ -688,7 +681,7 @@ describe('Worker Registry', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: 'Bearer test-clerk-jwt',
         },
         body: JSON.stringify({
           workerId: 'backend-dev',
@@ -700,7 +693,7 @@ describe('Worker Registry', () => {
 
       // Get the status
       const getResponse = await fetch(`${baseUrl}/api/workers/spawn/${createData.trackingId}`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(getResponse.status).toBe(200);
@@ -713,7 +706,7 @@ describe('Worker Registry', () => {
 
     it('should return 404 for non-existent tracking ID', async () => {
       const response = await fetch(`${baseUrl}/api/workers/spawn/spawn-nonexistent-id123`, {
-        headers: { 'x-api-key': apiKey },
+        headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
 
       expect(response.status).toBe(404);

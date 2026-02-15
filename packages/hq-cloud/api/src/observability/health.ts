@@ -146,19 +146,22 @@ export const BuiltInChecks = {
   memory: (): ComponentHealth => {
     const usage = process.memoryUsage();
     const heapUsedMB = usage.heapUsed / 1024 / 1024;
-    const heapTotalMB = usage.heapTotal / 1024 / 1024;
-    const usagePercent = (heapUsedMB / heapTotalMB) * 100;
+    const rssMB = usage.rss / 1024 / 1024;
+    // Use RSS against a 512MB threshold (half of 1024 MiB task memory)
+    // heapUsed/heapTotal ratio is misleading for small-footprint processes
+    const rssThresholdMB = 512;
+    const rssPercent = (rssMB / rssThresholdMB) * 100;
 
     let status: HealthStatus = 'healthy';
-    if (usagePercent > 90) {
+    if (rssPercent > 90) {
       status = 'unhealthy';
-    } else if (usagePercent > 75) {
+    } else if (rssPercent > 75) {
       status = 'degraded';
     }
 
     return {
       status,
-      message: `Heap: ${heapUsedMB.toFixed(1)}MB / ${heapTotalMB.toFixed(1)}MB (${usagePercent.toFixed(1)}%)`,
+      message: `RSS: ${rssMB.toFixed(1)}MB / ${rssThresholdMB}MB (${rssPercent.toFixed(1)}%), Heap: ${heapUsedMB.toFixed(1)}MB`,
     };
   },
 

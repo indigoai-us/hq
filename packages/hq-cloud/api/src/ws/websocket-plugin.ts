@@ -3,6 +3,14 @@ import type { SocketStream } from '@fastify/websocket';
 import type { WebSocket, RawData } from 'ws';
 import websocket from '@fastify/websocket';
 import { getConnectionRegistry } from './connection-registry.js';
+import { verifyClerkToken } from '../auth/clerk.js';
+import {
+  handleClaudeCodeConnection,
+  addBrowserToSession,
+  handleBrowserMessage,
+  setRelayLogger,
+} from './session-relay.js';
+import { validateSessionAccessToken } from '../data/sessions.js';
 import type {
   WebSocketMessage,
   ConnectedMessage,
@@ -11,15 +19,9 @@ import type {
   SubscribeMessage,
   SubscribedMessage,
   WorkerStatusMessage,
-  WorkerQuestionMessage,
-  QuestionAnsweredMessage,
-  ChatMessageNotification,
 } from './types.js';
 import type { Worker } from '../workers/types.js';
-import type { Question } from '../questions/types.js';
-import type { ChatMessage } from '../chat/types.js';
 import { onWorkerChange } from '../workers/worker-store.js';
-import { onQuestionAnswered } from '../questions/question-store.js';
 
 interface WebSocketPluginOptions {
   /** Interval in ms between heartbeat checks (default: 30000) */
@@ -59,15 +61,18 @@ function sendMessage(socket: WebSocket, message: WebSocketMessage): void {
 }
 
 /**
- * Extract deviceId from query string.
+ * Extract query params from WebSocket URL.
  */
-function getDeviceId(url: string | undefined): string | null {
-  if (!url) return null;
+function getQueryParams(url: string | undefined): { deviceId: string | null; token: string | null } {
+  if (!url) return { deviceId: null, token: null };
   try {
     const urlObj = new URL(url, 'http://localhost');
-    return urlObj.searchParams.get('deviceId');
+    return {
+      deviceId: urlObj.searchParams.get('deviceId'),
+      token: urlObj.searchParams.get('token'),
+    };
   } catch {
-    return null;
+    return { deviceId: null, token: null };
   }
 }
 
@@ -106,98 +111,6 @@ export function broadcastWorkerStatus(
   }
 }
 
-/**
- * Broadcast a new worker question to all subscribed clients.
- */
-export function broadcastWorkerQuestion(question: Question): void {
-  const registry = getConnectionRegistry();
-  const subscribers = registry.getSubscribersForWorker(question.workerId);
-
-  if (subscribers.length === 0) return;
-
-  const message: WorkerQuestionMessage = {
-    type: 'worker_question',
-    payload: {
-      questionId: question.id,
-      workerId: question.workerId,
-      text: question.text,
-      options: question.options.map((o) => ({
-        id: o.id,
-        text: o.text,
-        metadata: o.metadata,
-      })),
-      timestamp: Date.now(),
-    },
-  };
-
-  const messageStr = JSON.stringify(message);
-
-  for (const subscriber of subscribers) {
-    if (subscriber.socket.readyState === subscriber.socket.OPEN) {
-      subscriber.socket.send(messageStr);
-    }
-  }
-}
-
-/**
- * Broadcast a question answered event to all subscribed clients.
- */
-export function broadcastQuestionAnswered(question: Question): void {
-  const registry = getConnectionRegistry();
-  const subscribers = registry.getSubscribersForWorker(question.workerId);
-
-  if (subscribers.length === 0) return;
-
-  const message: QuestionAnsweredMessage = {
-    type: 'question_answered',
-    payload: {
-      questionId: question.id,
-      workerId: question.workerId,
-      answer: question.answer ?? '',
-      answeredAt: question.answeredAt?.toISOString() ?? new Date().toISOString(),
-      timestamp: Date.now(),
-    },
-  };
-
-  const messageStr = JSON.stringify(message);
-
-  for (const subscriber of subscribers) {
-    if (subscriber.socket.readyState === subscriber.socket.OPEN) {
-      subscriber.socket.send(messageStr);
-    }
-  }
-}
-
-/**
- * Broadcast a new chat message to all subscribed clients.
- */
-export function broadcastChatMessage(chatMessage: ChatMessage): void {
-  const registry = getConnectionRegistry();
-  const subscribers = registry.getSubscribersForWorker(chatMessage.workerId);
-
-  if (subscribers.length === 0) return;
-
-  const message: ChatMessageNotification = {
-    type: 'chat_message',
-    payload: {
-      messageId: chatMessage.id,
-      workerId: chatMessage.workerId,
-      role: chatMessage.role,
-      content: chatMessage.content,
-      timestamp: chatMessage.timestamp.toISOString(),
-      metadata: chatMessage.metadata,
-    },
-  };
-
-  const messageStr = JSON.stringify(message);
-
-  for (const subscriber of subscribers) {
-    if (subscriber.socket.readyState === subscriber.socket.OPEN) {
-      subscriber.socket.send(messageStr);
-    }
-  }
-}
-
 export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
   fastify: FastifyInstance,
   opts,
@@ -209,7 +122,6 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
 
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let unsubscribeWorkerChange: (() => void) | null = null;
-  let unsubscribeQuestionAnswered: (() => void) | null = null;
 
   // Register the underlying websocket plugin
   void fastify.register(websocket);
@@ -219,45 +131,56 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
     broadcastWorkerStatus(worker, changeType);
   });
 
-  // Register callback for question answered events
-  // This routes the answer back to worker containers via WebSocket
-  unsubscribeQuestionAnswered = onQuestionAnswered((question) => {
-    broadcastQuestionAnswered(question);
-    fastify.log.info(
-      { questionId: question.id, workerId: question.workerId },
-      'Question answered, broadcasted to subscribers'
-    );
-  });
-
   // Wait for websocket plugin to be ready
   fastify.after(() => {
     // WebSocket route at /ws
-    fastify.get('/ws', { websocket: true }, (connection: SocketStream, request) => {
+    fastify.get('/ws', { websocket: true }, async (connection: SocketStream, request) => {
       const socket = connection.socket;
-      const deviceId = getDeviceId(request.url);
+      const { deviceId, token } = getQueryParams(request.url);
 
-      if (!deviceId) {
+      // Verify JWT token on connect
+      if (!token) {
         const errorMsg: ErrorMessage = {
           type: 'error',
           payload: {
-            code: 'MISSING_DEVICE_ID',
-            message: 'deviceId query parameter is required',
+            code: 'AUTH_REQUIRED',
+            message: 'token query parameter is required',
           },
         };
         sendMessage(socket, errorMsg);
-        socket.close(4000, 'Missing deviceId');
+        socket.close(4001, 'Authentication required');
         return;
       }
 
+      let userId: string;
+      try {
+        const payload = await verifyClerkToken(token);
+        userId = payload.userId;
+      } catch {
+        const errorMsg: ErrorMessage = {
+          type: 'error',
+          payload: {
+            code: 'AUTH_FAILED',
+            message: 'Invalid or expired token',
+          },
+        };
+        sendMessage(socket, errorMsg);
+        socket.close(4001, 'Authentication failed');
+        return;
+      }
+
+      // Use deviceId if provided, otherwise use userId as connection key
+      const connectionId = deviceId ?? userId;
+
       // Add to registry
-      registry.add(deviceId, socket);
-      fastify.log.info({ deviceId }, 'WebSocket client connected');
+      registry.add(connectionId, socket);
+      fastify.log.debug({ connectionId, userId }, 'WebSocket client connected');
 
       // Send connected confirmation
       const connectedMsg: ConnectedMessage = {
         type: 'connected',
         payload: {
-          deviceId,
+          deviceId: connectionId,
           timestamp: Date.now(),
         },
       };
@@ -267,7 +190,7 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
       socket.on('message', (data: RawData) => {
         const message = parseMessage(data);
         if (!message) {
-          fastify.log.warn({ deviceId }, 'Received invalid message format');
+          fastify.log.warn({ connectionId }, 'Received invalid message format');
           return;
         }
 
@@ -279,21 +202,21 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
               timestamp: Date.now(),
             };
             sendMessage(socket, pongMsg);
-            registry.updatePing(deviceId);
+            registry.updatePing(connectionId);
             break;
           }
           case 'pong': {
             // Response to server ping
-            registry.updatePing(deviceId);
+            registry.updatePing(connectionId);
             break;
           }
           case 'subscribe': {
             // Subscribe to worker status updates
             const subscribeMsg = message as SubscribeMessage;
             const workerIds = subscribeMsg.payload?.workerIds ?? [];
-            registry.subscribe(deviceId, workerIds);
+            registry.subscribe(connectionId, workerIds);
 
-            const subscription = registry.getSubscription(deviceId);
+            const subscription = registry.getSubscription(connectionId);
             const subscribedMsg: SubscribedMessage = {
               type: 'subscribed',
               payload: {
@@ -302,8 +225,8 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
               },
             };
             sendMessage(socket, subscribedMsg);
-            fastify.log.info(
-              { deviceId, workerIds, all: subscription?.all },
+            fastify.log.debug(
+              { connectionId, workerIds, all: subscription?.all },
               'Client subscribed to worker updates'
             );
             break;
@@ -312,9 +235,9 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
             // Unsubscribe from worker status updates
             const unsubscribeMsg = message as SubscribeMessage;
             const workerIds = unsubscribeMsg.payload?.workerIds ?? [];
-            registry.unsubscribe(deviceId, workerIds);
+            registry.unsubscribe(connectionId, workerIds);
 
-            const subscription = registry.getSubscription(deviceId);
+            const subscription = registry.getSubscription(connectionId);
             const subscribedMsg: SubscribedMessage = {
               type: 'subscribed',
               payload: {
@@ -323,37 +246,111 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
               },
             };
             sendMessage(socket, subscribedMsg);
-            fastify.log.info(
-              { deviceId, workerIds },
+            fastify.log.debug(
+              { connectionId, workerIds },
               'Client unsubscribed from worker updates'
             );
             break;
           }
+          case 'session_subscribe': {
+            // Browser subscribing to a session's real-time updates
+            const payload = (message as { payload?: { sessionId?: string; lastMessageId?: string } }).payload;
+            const sessionId = payload?.sessionId;
+            const lastMessageId = payload?.lastMessageId;
+            if (sessionId) {
+              setRelayLogger(fastify.log);
+              const added = addBrowserToSession(sessionId, socket, lastMessageId);
+              if (!added) {
+                sendMessage(socket, {
+                  type: 'error',
+                  payload: { code: 'SESSION_NOT_FOUND', message: `Session ${sessionId} not found` },
+                } as ErrorMessage);
+              }
+            }
+            break;
+          }
+          case 'session_user_message':
+          case 'session_permission_response':
+          case 'session_interrupt':
+          case 'session_set_permission_mode':
+          case 'session_set_model':
+          case 'session_update_env': {
+            // Forward session-related messages to the relay
+            // Pass userId for session ownership validation
+            const sessionId = (message as { sessionId?: string }).sessionId;
+            if (sessionId) {
+              setRelayLogger(fastify.log);
+              void handleBrowserMessage(sessionId, socket, data, userId);
+            }
+            break;
+          }
           default:
-            fastify.log.debug({ deviceId, type: message.type }, 'Received message');
+            fastify.log.debug({ connectionId, type: message.type }, 'Received message');
         }
       });
 
       // Handle WebSocket native pong (response to ws.ping())
       socket.on('pong', () => {
-        registry.updatePing(deviceId);
+        registry.updatePing(connectionId);
       });
 
       // Handle close
       socket.on('close', (code: number, reason: Buffer) => {
-        fastify.log.info(
-          { deviceId, code, reason: reason.toString() },
+        fastify.log.debug(
+          { connectionId, code, reason: reason.toString() },
           'WebSocket client disconnected'
         );
-        registry.remove(deviceId);
+        registry.remove(connectionId);
       });
 
       // Handle errors
       socket.on('error', (error: Error) => {
-        fastify.log.error({ deviceId, error: error.message }, 'WebSocket error');
-        registry.remove(deviceId);
+        fastify.log.error({ connectionId, error: error.message }, 'WebSocket error');
+        registry.remove(connectionId);
       });
     });
+
+    // --- Session Relay: Claude Code container connects here ---
+    // Container starts with: claude --sdk-url ws://api-host/ws/relay/{sessionId}
+    // Container authenticates via Authorization: Bearer <session-access-token>
+    fastify.get('/ws/relay/:sessionId', { websocket: true }, async (connection: SocketStream, request) => {
+      const socket = connection.socket;
+      const sessionId = (request.params as { sessionId: string }).sessionId;
+
+      if (!sessionId) {
+        socket.close(4000, 'sessionId required');
+        return;
+      }
+
+      // Validate session access token from Authorization header
+      const authHeader = request.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : null;
+
+      if (!token) {
+        fastify.log.warn({ sessionId }, 'Container connection rejected: missing access token');
+        socket.close(4001, 'Authorization required');
+        return;
+      }
+
+      // Verify token against stored session record
+      const session = await validateSessionAccessToken(sessionId, token);
+      if (!session) {
+        fastify.log.warn({ sessionId }, 'Container connection rejected: invalid access token');
+        socket.close(4003, 'Invalid access token');
+        return;
+      }
+
+      setRelayLogger(fastify.log);
+      handleClaudeCodeConnection(sessionId, socket);
+    });
+
+    // --- Session Relay: Browser subscribes to session via existing /ws ---
+    // Browser messages of type 'session_subscribe' and 'session_*' are handled
+    // in the main /ws message handler above. We add session-specific message
+    // types to the switch statement by extending the message handler.
+    // (Already handled via the existing socket.on('message') handler's default case)
 
     // Start heartbeat interval
     heartbeatTimer = setInterval(() => {
@@ -396,12 +393,6 @@ export const websocketPlugin: FastifyPluginCallback<WebSocketPluginOptions> = (
     if (unsubscribeWorkerChange) {
       unsubscribeWorkerChange();
       unsubscribeWorkerChange = null;
-    }
-
-    // Unsubscribe from question answered events
-    if (unsubscribeQuestionAnswered) {
-      unsubscribeQuestionAnswered();
-      unsubscribeQuestionAnswered = null;
     }
 
     // Close all connections gracefully

@@ -1,0 +1,42 @@
+# Docker build context is packages/hq-cloud/, so paths are relative to that
+
+# Dependencies (reinstalled inside container)
+node_modules
+api/node_modules
+file-sync/node_modules
+web/node_modules
+mobile/node_modules
+worker-runtime/node_modules
+
+# Build output (rebuilt inside container)
+api/dist
+file-sync/dist
+web/.next
+
+# Development files
+**/.env
+**/.env.*
+**/*.test.ts
+**/__tests__
+**/vitest.config.*
+
+# Git
+.git
+.gitignore
+
+# Docs and config
+*.md
+scripts/
+mobile/
+web/
+worker-runtime/
+src/
+plan.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CDK output
+cdk.out/
+cdk.context.json

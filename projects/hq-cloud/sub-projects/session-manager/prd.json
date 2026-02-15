@@ -1,0 +1,348 @@
+{
+  "name": "hq-cloud-session-manager",
+  "description": "Cloud-native Claude Code session management — run multiple Claude Code instances in containers, relay their WebSocket streams to a HITL web/mobile UX, and provide beautiful agent cards with real-time chat, permission prompts, and progress tracking",
+  "branchName": "feature/hq-cloud-sessions",
+  "parentProject": "hq-cloud",
+  "architecture": {
+    "overview": "Each 'agent session' is a Claude Code process running in an ECS Fargate container with the user's HQ files cloned from S3. Claude Code connects back to the HQ Cloud API via its --sdk-url WebSocket flag. The API acts as a relay between the browser/mobile client and the Claude Code process. The web UX renders real-time chat, tool execution, and permission prompts matching the Figma design system.",
+    "dataFlow": "Browser WS <-> HQ API (relay) <-> Claude Code WS (container)",
+    "keyProtocol": "Claude Code WebSocket protocol (NDJSON over WS): system/init, user, assistant, result, stream_event, control_request (can_use_tool), control_response",
+    "reusedInfrastructure": [
+      "S3 DataSource + file sync (user's HQ files in S3)",
+      "ECS Fargate CDK stacks (task definition, VPC, security groups)",
+      "Clerk authentication (JWT for API + WS)",
+      "WebSocket plugin (connection registry, heartbeat)",
+      "Dark theme design system (colors, typography, components)"
+    ],
+    "protocolReference": "https://github.com/The-Vibe-Company/companion/blob/main/WEBSOCKET_PROTOCOL_REVERSED.md",
+    "figmaDesignSystem": "https://www.figma.com/design/Oc9UoitPAeewhVuDjcBRt9/AI-OS-Design-System?node-id=15624-2726",
+    "uxScreenshots": "C:/repos/hq/ux_designs/"
+  },
+  "userStories": [
+    {
+      "id": "SES-001",
+      "title": "Claude Code container image",
+      "description": "As the system, I want a Docker image with Claude Code installed and configured for WebSocket mode so that sessions can run in the cloud",
+      "acceptanceCriteria": [
+        "Dockerfile based on Node 20 (not Alpine — Claude Code needs glibc)",
+        "Claude Code CLI installed via npm (latest @anthropic-ai/claude-code)",
+        "Entrypoint script that: clones user HQ files from S3 to /hq, starts Claude Code with --sdk-url pointing to API relay endpoint",
+        "Environment variables: ANTHROPIC_API_KEY, HQ_API_URL, SESSION_ID, USER_ID, S3_BUCKET, S3_PREFIX",
+        "S3 sync at startup: aws s3 sync s3://{bucket}/{prefix} /hq/ (using IAM task role)",
+        "CLAUDE.md present in /hq for HQ context",
+        "Health check script that verifies Claude Code process is alive",
+        "Image builds successfully and pushes to ECR",
+        "Image size < 1GB"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["infrastructure", "docker", "phase-1"],
+      "dependsOn": [],
+      "notes": "Foundation for all session execution. Claude Code uses --sdk-url ws://api-host/ws/relay/{sessionId} to connect back to the API. The --print --output-format stream-json --input-format stream-json flags enable the NDJSON protocol."
+    },
+    {
+      "id": "SES-002",
+      "title": "Session lifecycle API",
+      "description": "As a user, I want to create, list, and stop Claude Code sessions so that I can manage my work from any device",
+      "acceptanceCriteria": [
+        "POST /api/sessions — create new session: provisions ECS task, returns sessionId",
+        "GET /api/sessions — list all sessions for current user (active, stopped, errored)",
+        "GET /api/sessions/:id — get session detail (status, created, lastActivity, messageCount)",
+        "DELETE /api/sessions/:id — stop session: sends ECS StopTask, marks as stopped",
+        "Session state stored in MongoDB collection hq_sessions",
+        "Session document: { sessionId, userId, ecsTaskArn, status (starting|active|stopping|stopped|errored), createdAt, lastActivityAt, initialPrompt, workerContext }",
+        "Status transitions: starting -> active (on first system/init from Claude Code), active -> stopping -> stopped (on user DELETE), active -> errored (on container crash/timeout)",
+        "ECS task launched with buildRunTaskParams() from existing worker-runtime infra",
+        "Rate limit: max 5 concurrent active sessions per user",
+        "Cleanup: sessions with no activity for 30 minutes auto-stop"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["api", "lifecycle", "phase-1"],
+      "dependsOn": ["SES-001"],
+      "notes": "Optional workerContext field lets the user pre-load a worker profile (e.g. 'dev-team/fullstack') which gets injected as system prompt context via the initialize control message. If omitted, session starts as a generic HQ Claude Code session."
+    },
+    {
+      "id": "SES-003",
+      "title": "WebSocket relay between browser and Claude Code",
+      "description": "As the system, I want to relay WebSocket messages between the browser client and Claude Code containers so that users get real-time interaction",
+      "acceptanceCriteria": [
+        "New WS endpoint: /ws/relay/{sessionId} — Claude Code containers connect here (server-side, from --sdk-url)",
+        "Browser clients connect to existing /ws endpoint and subscribe to sessions",
+        "Relay logic: when Claude Code sends a message (assistant, result, control_request, stream_event), forward to all subscribed browser clients",
+        "Relay logic: when browser sends a user message or control_response, forward to the Claude Code WS connection",
+        "Message persistence: store assistant and user messages in MongoDB hq_session_messages for history",
+        "Handle system/init from Claude Code: mark session as active, store capabilities",
+        "Handle result from Claude Code: update session lastActivityAt, track turn count",
+        "Handle can_use_tool control_request: forward to browser as permission prompt, wait for browser control_response, relay back to Claude Code",
+        "Handle disconnect: if Claude Code disconnects, mark session as stopped/errored; if browser disconnects, Claude Code continues (user can reconnect)",
+        "Keepalive: relay keep_alive messages, maintain heartbeat on both sides",
+        "Multiple browsers can watch same session (fan-out on relay)",
+        "Message ordering preserved via sequence numbers"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["api", "websocket", "realtime", "phase-1"],
+      "dependsOn": ["SES-002"],
+      "notes": "This is the core of the architecture. The API is a bidirectional proxy. Claude Code thinks it's talking to a custom SDK client. The browser thinks it's getting real-time agent updates. The relay translates between the two. Critical: permission prompts (can_use_tool) must be held until a human responds — the Claude Code process blocks waiting for the control_response."
+    },
+    {
+      "id": "SES-004",
+      "title": "Agent cards list view (web)",
+      "description": "As a user, I want to see all my active sessions as cards so that I can monitor and interact with them at a glance",
+      "acceptanceCriteria": [
+        "Replace current /agents page with session-based agent cards",
+        "Each card shows: session name/context, status dot (green=active, yellow=waiting input, red=errored, gray=stopped), time since last activity",
+        "Active sessions show the most recent assistant message (truncated) or current tool being executed",
+        "Sessions waiting for permission show inline Allow/Deny prompt on the card (matching UX screenshot 1)",
+        "Sessions waiting for user input show the question with option chips on the card",
+        "Cards ordered by: waiting-input first, then active, then stopped",
+        "Card tap navigates to full chat view (/agents/{sessionId})",
+        "Progress indicator when Claude Code is processing (animated pulse or spinner)",
+        "Real-time updates via WebSocket subscription (card content updates without refresh)",
+        "Pull-to-refresh on mobile, auto-refresh on web",
+        "Empty state: 'No active sessions. Start one below.'",
+        "Dark theme matching design screenshots (bg-bg-primary, bg-bg-card, accent colors)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["web", "ux", "phase-1"],
+      "dependsOn": ["SES-003"],
+      "notes": "Reference UX screenshot 1 (agents list) in C:/repos/hq/ux_designs/Screenshot 2026-02-07 054829.png. Cards should feel alive — permission prompts and questions are actionable directly from the card without opening the chat view. Status dots use the existing StatusDot component. Allow/Deny buttons use existing ActionButton with prominent/muted variants."
+    },
+    {
+      "id": "SES-005",
+      "title": "Chat view for agent session (web)",
+      "description": "As a user, I want to see the full conversation with a Claude Code session so that I can follow its reasoning and interact",
+      "acceptanceCriteria": [
+        "Route: /agents/{sessionId} — full-screen chat view",
+        "Back button returns to agent cards list",
+        "Header shows session name + status dot + stop button",
+        "Message stream renders: user messages (right-aligned or distinct style), assistant messages (left-aligned, full text with markdown), tool execution blocks (monospace, shows tool name + input summary), system messages (subtle, centered)",
+        "Permission prompts render inline as cards with Allow/Deny buttons (matching UX screenshot 4)",
+        "Tool execution shows: tool name in bold, command/input in monospace, expandable for full details",
+        "Stream_event messages render as typing indicator / token-by-token text append",
+        "Chat input at bottom with send button",
+        "Auto-scroll to latest message, with scroll-up to read history",
+        "Load message history from MongoDB on page load (GET /api/sessions/:id/messages)",
+        "Real-time new messages via WebSocket subscription",
+        "Markdown rendering for assistant messages (headings, bold, code blocks, lists)",
+        "Dark theme matching design screenshot 4"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["web", "ux", "phase-1"],
+      "dependsOn": ["SES-003", "SES-004"],
+      "notes": "Reference UX screenshot 4 (agent detail/chat) in C:/repos/hq/ux_designs/Screenshot 2026-02-07 055056.png. The chat view is the core HITL experience. Key UX detail: when Claude Code is waiting for permission (can_use_tool), the Allow/Deny prompt should be prominent and clearly show what tool + what input. The user's decision is critical — this is where trust is built."
+    },
+    {
+      "id": "SES-006",
+      "title": "Start new session flow (web)",
+      "description": "As a user, I want to start a new Claude Code session so that I can begin working on something",
+      "acceptanceCriteria": [
+        "New Session button on agents list page (prominent, always visible)",
+        "Clicking opens a simple dialog or inline form: text input for initial prompt/instruction",
+        "Optional: dropdown to select a worker profile (from HQ workers registry) for pre-loaded context",
+        "Submit creates session via POST /api/sessions and navigates to chat view",
+        "Session shows 'Starting...' state while container provisions (typically 30-60s for Fargate)",
+        "Once Claude Code connects (system/init received), initial prompt is sent automatically",
+        "If no initial prompt provided, session starts idle — user can type in chat",
+        "Error state if container fails to start within 120s timeout",
+        "Global 'Ask anything...' input bar at bottom of agents list also creates new sessions"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["web", "ux", "phase-1"],
+      "dependsOn": ["SES-004"],
+      "notes": "Keep this simple. The spawn wizard (select worker -> select skill -> configure -> confirm) is replaced by a much simpler 'just start a session' flow. Worker context is optional enhancement, not required. The key insight: users manage multiple terminals on their local machine with zero ceremony — replicate that simplicity."
+    },
+    {
+      "id": "SES-007",
+      "title": "Permission prompt UX (Allow/Deny)",
+      "description": "As a user, I want to approve or deny tool execution requests so that I maintain control over what Claude Code does",
+      "acceptanceCriteria": [
+        "When Claude Code sends can_use_tool control_request, render as permission prompt",
+        "On agent card: compact inline prompt showing tool name + abbreviated input with Allow/Deny buttons",
+        "In chat view: full prompt showing tool name, complete input (command, file path, etc.), Allow (prominent white/green) and Deny (muted gray) buttons",
+        "Allow sends control_response with behavior:'allow' and the original updatedInput",
+        "Deny sends control_response with behavior:'deny'",
+        "Prompt disappears after decision and is replaced by result (tool output or denial message)",
+        "Haptic feedback on mobile tap",
+        "Permission prompts are time-sensitive — visual indicator (yellow pulse) to draw attention",
+        "If multiple sessions have pending permissions, badge count shown on Agents tab",
+        "Timeout handling: if no human response within 5 minutes, auto-deny and notify",
+        "Push notification for permission prompts when app is backgrounded (future mobile)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["web", "ux", "hitl", "phase-1"],
+      "dependsOn": ["SES-003", "SES-005"],
+      "notes": "This is THE differentiator from running Claude Code in a terminal. The terminal shows a text prompt and waits. Our UX shows a beautiful card with clear context about what's being requested, actionable from any device. Reference UX screenshots 1 and 4 for the Allow/Deny styling. The yellow status dot on the agent card indicates 'waiting for input'."
+    },
+    {
+      "id": "SES-008",
+      "title": "S3 filesystem sync for containers",
+      "description": "As a container, I want the user's HQ files available locally so that Claude Code can read and edit them",
+      "acceptanceCriteria": [
+        "On container start: aws s3 sync from user's S3 prefix to /hq/",
+        "CLAUDE.md and worker definitions available at expected paths",
+        "File edits by Claude Code are synced back to S3 (on file change, debounced)",
+        "Sync uses existing @hq-cloud/file-sync package (createUploadHandler)",
+        "File watcher (chokidar or similar) detects changes and triggers upload",
+        "Sync status reported to API via heartbeat (files synced, last sync time)",
+        "Conflicts: container writes win (last-write-wins for MVP)",
+        "Excluded from sync: node_modules, .git, dist, .DS_Store (same as initial-sync SKIP_DIRS)",
+        "Container shutdown triggers final sync flush before exit"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["infrastructure", "s3", "phase-1"],
+      "dependsOn": ["SES-001"],
+      "notes": "The initial S3 sync (download) is blocking — container waits until files are available before starting Claude Code. Ongoing sync (upload changes) runs in background. Reuses the file-sync package we already built. The S3 DataSource work from the API side means the Navigator and other API routes can also read the updated files."
+    },
+    {
+      "id": "SES-009",
+      "title": "Session message persistence and history",
+      "description": "As a user, I want to see the full history of a session so that I can resume context when reconnecting",
+      "acceptanceCriteria": [
+        "MongoDB collection hq_session_messages stores all relayed messages",
+        "Document: { sessionId, sequence, timestamp, type (user|assistant|tool_use|tool_result|permission_request|permission_response|system), content, metadata }",
+        "GET /api/sessions/:id/messages — paginated message history (newest first, limit/offset)",
+        "Messages stored by relay as they pass through (not just on session end)",
+        "Browser loads history on page load, then switches to real-time WS for new messages",
+        "Deduplication: sequence numbers prevent duplicate messages on reconnect",
+        "TTL index: messages older than 30 days auto-deleted (configurable)",
+        "Index on sessionId + sequence for fast pagination"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["api", "persistence", "phase-1"],
+      "dependsOn": ["SES-003"],
+      "notes": "Critical for the multi-device story. User starts session from desktop, checks progress from phone — needs to see full history. Also enables session resumption if browser disconnects and reconnects."
+    },
+    {
+      "id": "SES-010",
+      "title": "Navigator with live session status",
+      "description": "As a user, I want to browse my HQ files and see which ones are being worked on by active sessions",
+      "acceptanceCriteria": [
+        "Navigator tree view reads from S3 DataSource (already implemented)",
+        "Files currently open/edited by an active session show a status indicator",
+        "Clicking a file shows its content (already implemented via readFileContent)",
+        "Status dots on tree nodes: green=synced, yellow=being edited, red=conflict",
+        "Tree structure matches UX screenshot 2: Companies > Projects > Workers/Knowledge hierarchy",
+        "Real-time updates when sessions modify files (via WebSocket)",
+        "Deep linking: can navigate to specific file from chat view (when Claude Code reads/edits a file)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["web", "ux", "phase-2"],
+      "dependsOn": ["SES-008"],
+      "notes": "Reference UX screenshot 2 (navigator) in C:/repos/hq/ux_designs/Screenshot 2026-02-07 055003.png. The navigator becomes more valuable when you can see which files sessions are touching. For MVP, just showing the tree with file content is sufficient."
+    },
+    {
+      "id": "SES-011",
+      "title": "ECS task orchestration",
+      "description": "As the system, I want to reliably launch and monitor ECS Fargate tasks so that sessions start quickly and recover from failures",
+      "acceptanceCriteria": [
+        "Session creation calls ECS RunTask with parameters from buildRunTaskParams()",
+        "Task tagged with session-id, user-id for tracking",
+        "Monitor task status via ECS DescribeTasks (polling or EventBridge)",
+        "Detect task failures: STOPPED with non-zero exit, OOM, timeout",
+        "Update session status in MongoDB based on ECS task state",
+        "Container logs available via CloudWatch (existing log group /hq/workers)",
+        "Cold start optimization: keep warm pool of 1-2 pre-provisioned tasks (future)",
+        "Cost tracking: log task duration and estimated cost per session",
+        "Graceful shutdown: on DELETE session, send SIGTERM to container, wait 30s, then force stop"
+      ],
+      "priority": 1,
+      "passes": false,
+      "labels": ["infrastructure", "aws", "phase-1"],
+      "dependsOn": ["SES-001", "SES-002"],
+      "notes": "Reuses existing CDK infrastructure in worker-runtime/infra/. The HqWorkerTaskDefinition, VPC config, security groups, and IAM roles are already defined. Main new work: the orchestration logic that calls RunTask and monitors task lifecycle. buildRunTaskParams() in run-task.ts already handles parameter conversion."
+    },
+    {
+      "id": "SES-012",
+      "title": "Session auto-cleanup and resource management",
+      "description": "As the system, I want to automatically clean up idle sessions so that we don't waste resources",
+      "acceptanceCriteria": [
+        "Background job checks active sessions every 5 minutes",
+        "Sessions with no messages for 30 minutes are auto-stopped",
+        "Sessions with disconnected Claude Code (no heartbeat for 2 minutes) are marked errored",
+        "ECS tasks for stopped/errored sessions are terminated",
+        "User notified of auto-stopped sessions on next visit",
+        "Max session duration: 4 hours (configurable)",
+        "Resource limits enforced: max 5 concurrent sessions per user",
+        "Cleanup job handles orphaned ECS tasks (task running but no session record)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "labels": ["api", "ops", "phase-2"],
+      "dependsOn": ["SES-002", "SES-011"],
+      "notes": "Important for cost control. Fargate charges per-second for running tasks. An idle session with no activity should not run indefinitely. The auto-stop warning could be a WebSocket message to the browser: 'Session idle for 25 minutes, will auto-stop in 5 minutes.'"
+    }
+  ],
+  "phases": {
+    "phase-1": {
+      "name": "Core Session Loop",
+      "description": "User can start a Claude Code session in the cloud, interact with it via chat, approve/deny tool use, and see all active sessions as cards. This is the minimum viable product.",
+      "stories": ["SES-001", "SES-002", "SES-003", "SES-004", "SES-005", "SES-006", "SES-007", "SES-008", "SES-009", "SES-011"],
+      "milestone": "User starts a session from phone, Claude Code runs in cloud container, user approves a Bash command from the chat view, sees the result"
+    },
+    "phase-2": {
+      "name": "Polish and Operations",
+      "description": "Navigator integration, auto-cleanup, resource management, and UX refinements",
+      "stories": ["SES-010", "SES-012"],
+      "milestone": "Navigator shows live file status, idle sessions auto-stop, resource costs tracked"
+    }
+  },
+  "implementationOrder": [
+    "SES-001 — Container image (foundation)",
+    "SES-002 — Session lifecycle API (CRUD)",
+    "SES-011 — ECS task orchestration (launch containers)",
+    "SES-003 — WebSocket relay (core protocol bridge)",
+    "SES-008 — S3 filesystem sync for containers",
+    "SES-009 — Message persistence",
+    "SES-004 — Agent cards list view",
+    "SES-005 — Chat view",
+    "SES-006 — Start new session flow",
+    "SES-007 — Permission prompt UX",
+    "SES-010 — Navigator with live status",
+    "SES-012 — Auto-cleanup"
+  ],
+  "existingCodeToReuse": {
+    "worker-runtime/infra/src/task-definition.ts": "ECS Fargate task definition CDK construct, VPC config, IAM roles",
+    "worker-runtime/infra/src/run-task.ts": "buildRunTaskParams() — converts spawn request to ECS RunTask params",
+    "worker-runtime/infra/src/ecr-stack.ts": "ECR repository for container images",
+    "api/src/ws/websocket-plugin.ts": "WebSocket connection registry, heartbeat, subscription model",
+    "api/src/data/s3-data-source.ts": "S3DataSource for reading HQ files from S3",
+    "api/src/data/initial-sync.ts": "S3 provisioning and file upload (user's HQ -> S3)",
+    "file-sync/src/upload/upload-handler.ts": "createUploadHandler for syncing file changes to S3",
+    "file-sync/src/s3/bucket-manager.ts": "S3BucketManager.provisionUserSpace()",
+    "web/src/components/*": "ActionButton, StatusDot, ProgressBar, ChatBubble, OptionButton, Card, MarkdownView, CodeBlock",
+    "web/src/app/globals.css": "Dark theme design tokens",
+    "web/src/contexts/AuthContext.tsx": "Clerk authentication context",
+    "web/src/lib/api-client.ts": "Authenticated API client with token management"
+  },
+  "risks": [
+    {
+      "risk": "Fargate cold start latency (30-60s) makes session creation feel slow",
+      "mitigation": "Show 'Starting session...' state with progress indicator. Future: warm pool of pre-provisioned tasks."
+    },
+    {
+      "risk": "Claude Code WebSocket protocol is reverse-engineered, not officially documented",
+      "mitigation": "Pin Claude Code CLI version in container image. Test protocol thoroughly. The protocol is stable (used by Companion project in production). Fall back to pty-based approach if protocol breaks."
+    },
+    {
+      "risk": "Cost: each session = running Fargate task ($0.04/hr for 0.5 vCPU + 1GB)",
+      "mitigation": "Auto-cleanup of idle sessions (SES-012). Max session duration. Usage dashboard for cost visibility."
+    },
+    {
+      "risk": "S3 sync conflicts when multiple sessions edit same file",
+      "mitigation": "MVP: last-write-wins. Future: file locking or conflict detection via content hashing."
+    },
+    {
+      "risk": "WebSocket relay adds latency to the permission flow",
+      "mitigation": "Relay is minimal processing (parse JSON, store, forward). Expected latency < 50ms. Monitor and optimize if needed."
+    }
+  ]
+}

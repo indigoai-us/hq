@@ -1,0 +1,1484 @@
+{
+  "version": "48.0.0",
+  "artifacts": {
+    "HqCloudS3-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudS3-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudS3-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudS3-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/178453d407e7a8c800297f1419fb38b47bc2b5b980b25e940c62f50769847adc.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudS3-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudS3-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudS3-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudS3-dev/FilesBucket/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FilesBucket16450113"
+          }
+        ],
+        "/HqCloudS3-dev/FilesBucket/Policy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FilesBucketPolicy8CA19688"
+          }
+        ],
+        "/HqCloudS3-dev/FilesBucket/AutoDeleteObjectsCustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FilesBucketAutoDeleteObjectsCustomResource1910D462"
+          }
+        ],
+        "/HqCloudS3-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+          {
+            "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+            "data": true
+          }
+        ],
+        "/HqCloudS3-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+          }
+        ],
+        "/HqCloudS3-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+          }
+        ],
+        "/HqCloudS3-dev/BucketArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BucketArn"
+          }
+        ],
+        "/HqCloudS3-dev/BucketName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BucketName"
+          }
+        ],
+        "/HqCloudS3-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudS3-dev/Exports/Output{\"Fn::GetAtt\":[\"FilesBucket16450113\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttFilesBucket16450113Arn55CDC1C6"
+          }
+        ],
+        "/HqCloudS3-dev/Exports/Output{\"Ref\":\"FilesBucket16450113\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefFilesBucket164501139A977DFC"
+          }
+        ],
+        "/HqCloudS3-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudS3-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudS3-dev"
+    },
+    "HqCloudEcr-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudEcr-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudEcr-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudEcr-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/6e353f9a6454b3e61f5505c450ab9900c8b218f6bd8b3da6e1bba45a31014c0c.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudEcr-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudEcr-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudEcr-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudEcr-dev/WorkerRuntimeRepo/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerRuntimeRepoA579C86C"
+          }
+        ],
+        "/HqCloudEcr-dev/RepositoryUri": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RepositoryUri"
+          }
+        ],
+        "/HqCloudEcr-dev/RepositoryArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RepositoryArn"
+          }
+        ],
+        "/HqCloudEcr-dev/ApiRepo/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiRepoEFA7BA97"
+          }
+        ],
+        "/HqCloudEcr-dev/ApiRepositoryUri": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiRepositoryUri"
+          }
+        ],
+        "/HqCloudEcr-dev/ApiRepositoryArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiRepositoryArn"
+          }
+        ],
+        "/HqCloudEcr-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudEcr-dev/Exports/Output{\"Fn::GetAtt\":[\"ApiRepoEFA7BA97\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttApiRepoEFA7BA97ArnACFF43BA"
+          }
+        ],
+        "/HqCloudEcr-dev/Exports/Output{\"Fn::GetAtt\":[\"WorkerRuntimeRepoA579C86C\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttWorkerRuntimeRepoA579C86CArn7A5C14AF"
+          }
+        ],
+        "/HqCloudEcr-dev/Exports/Output{\"Ref\":\"ApiRepoEFA7BA97\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefApiRepoEFA7BA97FC7F6607"
+          }
+        ],
+        "/HqCloudEcr-dev/Exports/Output{\"Ref\":\"WorkerRuntimeRepoA579C86C\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefWorkerRuntimeRepoA579C86C1DA24399"
+          }
+        ],
+        "/HqCloudEcr-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudEcr-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudEcr-dev"
+    },
+    "HqCloudBudget-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudBudget-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudBudget-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudBudget-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/13d75db292238083b08658eaaa1adfe320ad687e380492ae95fef1a8f47acaa6.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudBudget-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudBudget-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudBudget-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudBudget-dev/MonthlyBudget": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "MonthlyBudget"
+          }
+        ],
+        "/HqCloudBudget-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudBudget-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudBudget-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudBudget-dev"
+    },
+    "HqCloudSecrets-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudSecrets-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudSecrets-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudSecrets-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/99af40ca0fc6d56d910f50350aec1e94b4a88a0a7fe9f6974f3a06af70dbe210.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudSecrets-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudSecrets-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudSecrets-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudSecrets-dev/ApiConfigSecret/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiConfigSecretA3B52016"
+          }
+        ],
+        "/HqCloudSecrets-dev/SecretArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretArn"
+          }
+        ],
+        "/HqCloudSecrets-dev/SecretName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretName"
+          }
+        ],
+        "/HqCloudSecrets-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudSecrets-dev/Exports/Output{\"Ref\":\"ApiConfigSecretA3B52016\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefApiConfigSecretA3B520164E2A9807"
+          }
+        ],
+        "/HqCloudSecrets-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudSecrets-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudSecrets-dev"
+    },
+    "HqCloudCodeBuild-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudCodeBuild-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudCodeBuild-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudCodeBuild-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/f87c1adb448869dd30efb903d8b71ff49188a9fc893fc4fd49f82b8d15b47767.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudCodeBuild-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudEcr-dev",
+        "HqCloudCodeBuild-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudCodeBuild-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudCodeBuild-dev/BuildProject/Role/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BuildProjectRoleAA92C755"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/BuildProject/Role/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BuildProjectRoleDefaultPolicy3E9F248C"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/BuildProject/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BuildProject097C5DB7"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/ProjectName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ProjectName"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/ProjectArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ProjectArn"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudCodeBuild-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudCodeBuild-dev"
+    },
+    "HqWorkerRuntime-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqWorkerRuntime-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqWorkerRuntime-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqWorkerRuntime-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/596df1b0da47346cb398666941faf66d40f47cb2bff9a35ab04998d23e2180fa.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqWorkerRuntime-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqCloudS3-dev",
+        "HqCloudEcr-dev",
+        "HqCloudSecrets-dev",
+        "HqWorkerRuntime-dev.assets"
+      ],
+      "metadata": {
+        "/HqWorkerRuntime-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcA12AC6F9"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet1Subnet90B7DDA1"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet1RouteTableCDC403C9"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet1RouteTableAssociationB20A99FC"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet1/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet1DefaultRouteD774E335"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet2Subnet56E2D843"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet2RouteTable00A8970E"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet2RouteTableAssociationD996D932"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/publicSubnet2/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcpublicSubnet2DefaultRoute96126EA5"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/IGW": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcIGWC2B94A1A"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerVpc/VPCGW": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerVpcVPCGWDDC7E69B"
+          }
+        ],
+        "/HqWorkerRuntime-dev/S3Endpoint/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "S3EndpointD570F362"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerSecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerSecurityGroup5529CF0B"
+          }
+        ],
+        "/HqWorkerRuntime-dev/WorkerCluster/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerClusterB2BB5BD9"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/LogGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefLogGroup37AE0CF6"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/ExecutionRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefExecutionRoleB4775C97"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/ExecutionRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefExecutionRoleDefaultPolicy0DBB737A"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/TaskRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefTaskRole1EDB4A67"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/TaskRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefTaskRoleDefaultPolicyA592CB18"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/TaskDef/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDef5B6DBE40"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/TaskDefinitionArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefTaskDefinitionArn437BDD40"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/TaskRoleArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefTaskRoleArn1BCB3899"
+          }
+        ],
+        "/HqWorkerRuntime-dev/TaskDef/ExecutionRoleArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefExecutionRoleArn73455AD9"
+          }
+        ],
+        "/HqWorkerRuntime-dev/ClusterArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClusterArn"
+          }
+        ],
+        "/HqWorkerRuntime-dev/ClusterName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClusterName"
+          }
+        ],
+        "/HqWorkerRuntime-dev/SecurityGroupId": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecurityGroupId"
+          }
+        ],
+        "/HqWorkerRuntime-dev/VpcId": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcId"
+          }
+        ],
+        "/HqWorkerRuntime-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Ref\":\"WorkerVpcA12AC6F9\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefWorkerVpcA12AC6F9C16EE317"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Ref\":\"WorkerVpcpublicSubnet1Subnet90B7DDA1\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefWorkerVpcpublicSubnet1Subnet90B7DDA1D6FFE186"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Ref\":\"WorkerVpcpublicSubnet2Subnet56E2D843\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefWorkerVpcpublicSubnet2Subnet56E2D84329E0CB93"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Fn::GetAtt\":[\"WorkerClusterB2BB5BD9\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttWorkerClusterB2BB5BD9Arn11A9DB92"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Ref\":\"TaskDef5B6DBE40\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefTaskDef5B6DBE4013858CCC"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Fn::GetAtt\":[\"WorkerSecurityGroup5529CF0B\",\"GroupId\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttWorkerSecurityGroup5529CF0BGroupId178F84DF"
+          }
+        ],
+        "/HqWorkerRuntime-dev/Exports/Output{\"Ref\":\"WorkerClusterB2BB5BD9\"}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputRefWorkerClusterB2BB5BD9F1FBB7D9"
+          }
+        ],
+        "/HqWorkerRuntime-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqWorkerRuntime-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqWorkerRuntime-dev"
+    },
+    "HqCloudApiService-dev.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "HqCloudApiService-dev.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "HqCloudApiService-dev": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://804849608251/us-east-1",
+      "properties": {
+        "templateFile": "HqCloudApiService-dev.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "environment": "dev",
+          "managed-by": "cdk",
+          "project": "hq-cloud"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-deploy-role-804849608251-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-cfn-exec-role-804849608251-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-804849608251-us-east-1/65ea734cca55e03a3429bb481af049ec2dcd67a3f75c783969a8ef586945a09e.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "HqCloudApiService-dev.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-lookup-role-804849608251-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "HqWorkerRuntime-dev",
+        "HqCloudEcr-dev",
+        "HqCloudSecrets-dev",
+        "HqCloudS3-dev",
+        "HqCloudApiService-dev.assets"
+      ],
+      "metadata": {
+        "/HqCloudApiService-dev": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "environment",
+                "Value": "dev"
+              },
+              {
+                "Key": "managed-by",
+                "Value": "cdk"
+              },
+              {
+                "Key": "project",
+                "Value": "hq-cloud"
+              }
+            ]
+          }
+        ],
+        "/HqCloudApiService-dev/AlbSecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AlbSecurityGroup86A59E99"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiAlb/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiAlbDD21E9E1"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiAlb/HttpListener/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiAlbHttpListenerA8172EA3"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiExecutionRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiExecutionRole6C67842D"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiExecutionRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiExecutionRoleDefaultPolicyCA8C38F6"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiTaskRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiTaskRole12FAD4A7"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiTaskRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiTaskRoleDefaultPolicyBEF5D530"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiTaskDef/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiTaskDef37DBDBD0"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiLogGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiLogGroup1DEDFC07"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiServiceSecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiServiceSecurityGroup671A461D"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiServiceSecurityGroup/from HqCloudApiServicedevAlbSecurityGroupE518E0B2:3001": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiServiceSecurityGroupfromHqCloudApiServicedevAlbSecurityGroupE518E0B23001D40F7F1E"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiService/Service": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiServiceC9037CF0"
+          }
+        ],
+        "/HqCloudApiService-dev/ApiTargetGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiTargetGroup5723F19D"
+          }
+        ],
+        "/HqCloudApiService-dev/AlbDnsName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AlbDnsName"
+          }
+        ],
+        "/HqCloudApiService-dev/AlbUrl": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AlbUrl"
+          }
+        ],
+        "/HqCloudApiService-dev/ServiceArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ServiceArn"
+          }
+        ],
+        "/HqCloudApiService-dev/TaskDefinitionArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "TaskDefinitionArn"
+          }
+        ],
+        "/HqCloudApiService-dev/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/HqCloudApiService-dev/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/HqCloudApiService-dev/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "HqCloudApiService-dev"
+    },
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    },
+    "aws-cdk-lib/feature-flag-report": {
+      "type": "cdk:feature-flag-report",
+      "properties": {
+        "module": "aws-cdk-lib",
+        "flags": {
+          "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": {
+            "recommendedValue": true,
+            "explanation": "Pass signingProfileName to CfnSigningProfile"
+          },
+          "@aws-cdk/core:newStyleStackSynthesis": {
+            "recommendedValue": true,
+            "explanation": "Switch to new stack synthesis method which enables CI/CD",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/core:stackRelativeExports": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Name exports based on the construct paths relative to the stack, rather than the global construct path",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-ecs-patterns:secGroupsDisablesImplicitOpenListener": {
+            "recommendedValue": true,
+            "explanation": "Disable implicit openListener when custom security groups are provided"
+          },
+          "@aws-cdk/aws-rds:lowercaseDbIdentifier": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Force lowercasing of RDS Cluster names in CDK",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Allow adding/removing multiple UsagePlanKeys independently",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-lambda:recognizeVersionProps": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Enable this feature flag to opt in to the updated logical id calculation for Lambda Version created using the  `fn.currentVersion`.",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-lambda:recognizeLayerVersion": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Enable this feature flag to opt in to the updated logical id calculation for Lambda Version created using the `fn.currentVersion`."
+          },
+          "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Enable this feature flag to have cloudfront distributions use the security policy TLSv1.2_2021 by default.",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/core:checkSecretUsage": {
+            "recommendedValue": true,
+            "explanation": "Enable this flag to make it impossible to accidentally use SecretValues in unsafe locations"
+          },
+          "@aws-cdk/core:target-partitions": {
+            "userValue": [
+              "aws",
+              "aws-cn"
+            ],
+            "recommendedValue": [
+              "aws",
+              "aws-cn"
+            ],
+            "explanation": "What regions to include in lookup tables of environment agnostic stacks"
+          },
+          "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "ECS extensions will automatically add an `awslogs` driver if no logging is specified"
+          },
+          "@aws-cdk/aws-ec2:uniqueImdsv2TemplateName": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "Enable this feature flag to have Launch Templates generated by the `InstanceRequireImdsv2Aspect` use unique names."
+          },
+          "@aws-cdk/aws-ecs:arnFormatIncludesClusterName": {
+            "userValue": true,
+            "recommendedValue": true,
+            "explanation": "ARN format used by ECS. In the new ARN format, the cluster name is part of the resource ID."
+          },
+          "@aws-cdk/aws-iam:minimizePolicies": {
+            "recommendedValue": true,
+            "explanation": "Minimize IAM policies by combining Statements"
+          },
+          "@aws-cdk/core:validateSnapshotRemovalPolicy": {
+            "recommendedValue": true,
+            "explanation": "Error on snapshot removal policies on resources that do not support it."
+          },
+          "@aws-cdk/aws-codepipeline:crossAccountKeyAliasStackSafeResourceName": {
+            "recommendedValue": true,
+            "explanation": "Generate key aliases that include the stack name"
+          },
+          "@aws-cdk/aws-s3:createDefaultLoggingPolicy": {
+            "recommendedValue": true,
+            "explanation": "Enable this feature flag to create an S3 bucket policy by default in cases where an AWS service would automatically create the Policy if one does not exist."
+          },
+          "@aws-cdk/aws-sns-subscriptions:restrictSqsDescryption": {
+            "recommendedValue": true,
+            "explanation": "Restrict KMS key policy for encrypted Queues a bit more"
+          },
+          "@aws-cdk/aws-apigateway:disableCloudWatchRole": {
+            "recommendedValue": true,
+            "explanation": "Make default CloudWatch Role behavior safe for multiple API Gateways in one environment"
+          },
+          "@aws-cdk/core:enablePartitionLiterals": {
+            "recommendedValue": true,
+            "explanation": "Make ARNs concrete if AWS partition is known"
+          },
+          "@aws-cdk/aws-events:eventsTargetQueueSameAccount": {
+            "recommendedValue": true,
+            "explanation": "Event Rules may only push to encrypted SQS queues in the same account"
+          },
+          "@aws-cdk/aws-ecs:disableExplicitDeploymentControllerForCircuitBreaker": {
+            "recommendedValue": true,
+            "explanation": "Avoid setting the \"ECS\" deployment controller when adding a circuit breaker"
+          },
+          "@aws-cdk/aws-iam:importedRoleStackSafeDefaultPolicyName": {
+            "recommendedValue": true,
+            "explanation": "Enable this feature to create default policy names for imported roles that depend on the stack the role is in."
+          },
+          "@aws-cdk/aws-s3:serverAccessLogsUseBucketPolicy": {
+            "recommendedValue": true,
+            "explanation": "Use S3 Bucket Policy instead of ACLs for Server Access Logging"
+          },
+          "@aws-cdk/aws-route53-patters:useCertificate": {
+            "recommendedValue": true,
+            "explanation": "Use the official `Certificate` resource instead of `DnsValidatedCertificate`"
+          },
+          "@aws-cdk/customresources:installLatestAwsSdkDefault": {
+            "recommendedValue": false,
+            "explanation": "Whether to install the latest SDK by default in AwsCustomResource"
+          },
+          "@aws-cdk/aws-rds:databaseProxyUniqueResourceName": {
+            "recommendedValue": true,
+            "explanation": "Use unique resource name for Database Proxy"
+          },
+          "@aws-cdk/aws-codedeploy:removeAlarmsFromDeploymentGroup": {
+            "recommendedValue": true,
+            "explanation": "Remove CloudWatch alarms from deployment group"
+          },
+          "@aws-cdk/aws-apigateway:authorizerChangeDeploymentLogicalId": {
+            "recommendedValue": true,
+            "explanation": "Include authorizer configuration in the calculation of the API deployment logical ID."
+          },
+          "@aws-cdk/aws-ec2:launchTemplateDefaultUserData": {
+            "recommendedValue": true,
+            "explanation": "Define user data for a launch template by default when a machine image is provided."
+          },
+          "@aws-cdk/aws-secretsmanager:useAttachedSecretResourcePolicyForSecretTargetAttachments": {
+            "recommendedValue": true,
+            "explanation": "SecretTargetAttachments uses the ResourcePolicy of the attached Secret."
+          },
+          "@aws-cdk/aws-redshift:columnId": {
+            "recommendedValue": true,
+            "explanation": "Whether to use an ID to track Redshift column changes"
+          },
+          "@aws-cdk/aws-stepfunctions-tasks:enableEmrServicePolicyV2": {
+            "recommendedValue": true,
+            "explanation": "Enable AmazonEMRServicePolicy_v2 managed policies"
+          },
+          "@aws-cdk/aws-ec2:restrictDefaultSecurityGroup": {
+            "recommendedValue": true,
+            "explanation": "Restrict access to the VPC default security group"
+          },
+          "@aws-cdk/aws-apigateway:requestValidatorUniqueId": {
+            "recommendedValue": true,
+            "explanation": "Generate a unique id for each RequestValidator added to a method"
+          },
+          "@aws-cdk/aws-kms:aliasNameRef": {
+            "recommendedValue": true,
+            "explanation": "KMS Alias name and keyArn will have implicit reference to KMS Key"
+          },
+          "@aws-cdk/aws-kms:applyImportedAliasPermissionsToPrincipal": {
+            "recommendedValue": true,
+            "explanation": "Enable grant methods on Aliases imported by name to use kms:ResourceAliases condition"
+          },
+          "@aws-cdk/aws-autoscaling:generateLaunchTemplateInsteadOfLaunchConfig": {
+            "recommendedValue": true,
+            "explanation": "Generate a launch template when creating an AutoScalingGroup"
+          },
+          "@aws-cdk/core:includePrefixInUniqueNameGeneration": {
+            "recommendedValue": true,
+            "explanation": "Include the stack prefix in the stack name generation process"
+          },
+          "@aws-cdk/aws-efs:denyAnonymousAccess": {
+            "recommendedValue": true,
+            "explanation": "EFS denies anonymous clients accesses"
+          },
+          "@aws-cdk/aws-opensearchservice:enableOpensearchMultiAzWithStandby": {
+            "recommendedValue": true,
+            "explanation": "Enables support for Multi-AZ with Standby deployment for opensearch domains"
+          },
+          "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": {
+            "recommendedValue": true,
+            "explanation": "Enables aws-lambda-nodejs.Function to use the latest available NodeJs runtime as the default"
+          },
+          "@aws-cdk/aws-efs:mountTargetOrderInsensitiveLogicalId": {
+            "recommendedValue": true,
+            "explanation": "When enabled, mount targets will have a stable logicalId that is linked to the associated subnet."
+          },
+          "@aws-cdk/aws-rds:auroraClusterChangeScopeOfInstanceParameterGroupWithEachParameters": {
+            "recommendedValue": true,
+            "explanation": "When enabled, a scope of InstanceParameterGroup for AuroraClusterInstance with each parameters will change."
+          },
+          "@aws-cdk/aws-appsync:useArnForSourceApiAssociationIdentifier": {
+            "recommendedValue": true,
+            "explanation": "When enabled, will always use the arn for identifiers for CfnSourceApiAssociation in the GraphqlApi construct rather than id."
+          },
+          "@aws-cdk/aws-rds:preventRenderingDeprecatedCredentials": {
+            "recommendedValue": true,
+            "explanation": "When enabled, creating an RDS database cluster from a snapshot will only render credentials for snapshot credentials."
+          },
+          "@aws-cdk/aws-codepipeline-actions:useNewDefaultBranchForCodeCommitSource": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the CodeCommit source action is using the default branch name 'main'."
+          },
+          "@aws-cdk/aws-cloudwatch-actions:changeLambdaPermissionLogicalIdForLambdaAction": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the logical ID of a Lambda permission for a Lambda action includes an alarm ID."
+          },
+          "@aws-cdk/aws-codepipeline:crossAccountKeysDefaultValueToFalse": {
+            "recommendedValue": true,
+            "explanation": "Enables Pipeline to set the default value for crossAccountKeys to false."
+          },
+          "@aws-cdk/aws-codepipeline:defaultPipelineTypeToV2": {
+            "recommendedValue": true,
+            "explanation": "Enables Pipeline to set the default pipeline type to V2."
+          },
+          "@aws-cdk/aws-kms:reduceCrossAccountRegionPolicyScope": {
+            "recommendedValue": true,
+            "explanation": "When enabled, IAM Policy created from KMS key grant will reduce the resource scope to this key only."
+          },
+          "@aws-cdk/pipelines:reduceAssetRoleTrustScope": {
+            "recommendedValue": true,
+            "explanation": "Remove the root account principal from PipelineAssetsFileRole trust policy",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-eks:nodegroupNameAttribute": {
+            "recommendedValue": true,
+            "explanation": "When enabled, nodegroupName attribute of the provisioned EKS NodeGroup will not have the cluster name prefix."
+          },
+          "@aws-cdk/aws-eks:useNativeOidcProvider": {
+            "recommendedValue": true,
+            "explanation": "When enabled, EKS V2 clusters will use the native OIDC provider resource AWS::IAM::OIDCProvider instead of creating the OIDCProvider with a custom resource (iam.OpenIDConnectProvider)."
+          },
+          "@aws-cdk/aws-ec2:ebsDefaultGp3Volume": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the default volume type of the EBS volume will be GP3"
+          },
+          "@aws-cdk/aws-ecs:removeDefaultDeploymentAlarm": {
+            "recommendedValue": true,
+            "explanation": "When enabled, remove default deployment alarm settings"
+          },
+          "@aws-cdk/custom-resources:logApiResponseDataPropertyTrueDefault": {
+            "recommendedValue": false,
+            "explanation": "When enabled, the custom resource used for `AwsCustomResource` will configure the `logApiResponseData` property as true by default"
+          },
+          "@aws-cdk/aws-s3:keepNotificationInImportedBucket": {
+            "recommendedValue": false,
+            "explanation": "When enabled, Adding notifications to a bucket in the current stack will not remove notification from imported stack."
+          },
+          "@aws-cdk/aws-stepfunctions-tasks:useNewS3UriParametersForBedrockInvokeModelTask": {
+            "recommendedValue": true,
+            "explanation": "When enabled, use new props for S3 URI field in task definition of state machine for bedrock invoke model.",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/core:explicitStackTags": {
+            "recommendedValue": true,
+            "explanation": "When enabled, stack tags need to be assigned explicitly on a Stack."
+          },
+          "@aws-cdk/aws-ecs:reduceEc2FargateCloudWatchPermissions": {
+            "recommendedValue": true,
+            "explanation": "When enabled, we will only grant the necessary permissions when users specify cloudwatch log group through logConfiguration"
+          },
+          "@aws-cdk/aws-dynamodb:resourcePolicyPerReplica": {
+            "recommendedValue": true,
+            "explanation": "When enabled will allow you to specify a resource policy per replica, and not copy the source table policy to all replicas"
+          },
+          "@aws-cdk/aws-ec2:ec2SumTImeoutEnabled": {
+            "recommendedValue": true,
+            "explanation": "When enabled, initOptions.timeout and resourceSignalTimeout values will be summed together."
+          },
+          "@aws-cdk/aws-appsync:appSyncGraphQLAPIScopeLambdaPermission": {
+            "recommendedValue": true,
+            "explanation": "When enabled, a Lambda authorizer Permission created when using GraphqlApi will be properly scoped with a SourceArn."
+          },
+          "@aws-cdk/aws-rds:setCorrectValueForDatabaseInstanceReadReplicaInstanceResourceId": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the value of property `instanceResourceId` in construct `DatabaseInstanceReadReplica` will be set to the correct value which is `DbiResourceId` instead of currently `DbInstanceArn`"
+          },
+          "@aws-cdk/core:cfnIncludeRejectComplexResourceUpdateCreatePolicyIntrinsics": {
+            "recommendedValue": true,
+            "explanation": "When enabled, CFN templates added with `cfn-include` will error if the template contains Resource Update or Create policies with CFN Intrinsics that include non-primitive values."
+          },
+          "@aws-cdk/aws-lambda-nodejs:sdkV3ExcludeSmithyPackages": {
+            "recommendedValue": true,
+            "explanation": "When enabled, both `@aws-sdk` and `@smithy` packages will be excluded from the Lambda Node.js 18.x runtime to prevent version mismatches in bundled applications."
+          },
+          "@aws-cdk/aws-stepfunctions-tasks:fixRunEcsTaskPolicy": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the resource of IAM Run Ecs policy generated by SFN EcsRunTask will reference the definition, instead of constructing ARN."
+          },
+          "@aws-cdk/aws-ec2:bastionHostUseAmazonLinux2023ByDefault": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the BastionHost construct will use the latest Amazon Linux 2023 AMI, instead of Amazon Linux 2."
+          },
+          "@aws-cdk/core:aspectStabilization": {
+            "recommendedValue": true,
+            "explanation": "When enabled, a stabilization loop will be run when invoking Aspects during synthesis.",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-route53-targets:userPoolDomainNameMethodWithoutCustomResource": {
+            "recommendedValue": true,
+            "explanation": "When enabled, use a new method for DNS Name of user pool domain target without creating a custom resource."
+          },
+          "@aws-cdk/aws-elasticloadbalancingV2:albDualstackWithoutPublicIpv4SecurityGroupRulesDefault": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the default security group ingress rules will allow IPv6 ingress from anywhere"
+          },
+          "@aws-cdk/aws-iam:oidcRejectUnauthorizedConnections": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the default behaviour of OIDC provider will reject unauthorized connections"
+          },
+          "@aws-cdk/core:enableAdditionalMetadataCollection": {
+            "recommendedValue": true,
+            "explanation": "When enabled, CDK will expand the scope of usage data collected to better inform CDK development and improve communication for security concerns and emerging issues."
+          },
+          "@aws-cdk/aws-lambda:createNewPoliciesWithAddToRolePolicy": {
+            "recommendedValue": false,
+            "explanation": "[Deprecated] When enabled, Lambda will create new inline policies with AddToRolePolicy instead of adding to the Default Policy Statement"
+          },
+          "@aws-cdk/aws-s3:setUniqueReplicationRoleName": {
+            "recommendedValue": true,
+            "explanation": "When enabled, CDK will automatically generate a unique role name that is used for s3 object replication."
+          },
+          "@aws-cdk/pipelines:reduceStageRoleTrustScope": {
+            "recommendedValue": true,
+            "explanation": "Remove the root account principal from Stage addActions trust policy",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-events:requireEventBusPolicySid": {
+            "recommendedValue": true,
+            "explanation": "When enabled, grantPutEventsTo() will use resource policies with Statement IDs for service principals."
+          },
+          "@aws-cdk/core:aspectPrioritiesMutating": {
+            "recommendedValue": true,
+            "explanation": "When set to true, Aspects added by the construct library on your behalf will be given a priority of MUTATING."
+          },
+          "@aws-cdk/aws-dynamodb:retainTableReplica": {
+            "recommendedValue": true,
+            "explanation": "When enabled, table replica will be default to the removal policy of source table unless specified otherwise."
+          },
+          "@aws-cdk/cognito:logUserPoolClientSecretValue": {
+            "recommendedValue": false,
+            "explanation": "When disabled, the value of the user pool client secret will not be logged in the custom resource lambda function logs."
+          },
+          "@aws-cdk/pipelines:reduceCrossAccountActionRoleTrustScope": {
+            "recommendedValue": true,
+            "explanation": "When enabled, scopes down the trust policy for the cross-account action role",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-stepfunctions:useDistributedMapResultWriterV2": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the resultWriterV2 property of DistributedMap will be used insted of resultWriter"
+          },
+          "@aws-cdk/s3-notifications:addS3TrustKeyPolicyForSnsSubscriptions": {
+            "recommendedValue": true,
+            "explanation": "Add an S3 trust policy to a KMS key resource policy for SNS subscriptions."
+          },
+          "@aws-cdk/aws-ec2:requirePrivateSubnetsForEgressOnlyInternetGateway": {
+            "recommendedValue": true,
+            "explanation": "When enabled, the EgressOnlyGateway resource is only created if private subnets are defined in the dual-stack VPC."
+          },
+          "@aws-cdk/aws-ec2-alpha:useResourceIdForVpcV2Migration": {
+            "recommendedValue": false,
+            "explanation": "When enabled, use resource IDs for VPC V2 migration"
+          },
+          "@aws-cdk/aws-s3:publicAccessBlockedByDefault": {
+            "recommendedValue": true,
+            "explanation": "When enabled, setting any combination of options for BlockPublicAccess will automatically set true for any options not defined."
+          },
+          "@aws-cdk/aws-lambda:useCdkManagedLogGroup": {
+            "recommendedValue": true,
+            "explanation": "When enabled, CDK creates and manages loggroup for the lambda function"
+          },
+          "@aws-cdk/aws-elasticloadbalancingv2:networkLoadBalancerWithSecurityGroupByDefault": {
+            "recommendedValue": true,
+            "explanation": "When enabled, Network Load Balancer will be created with a security group by default."
+          },
+          "@aws-cdk/aws-stepfunctions-tasks:httpInvokeDynamicJsonPathEndpoint": {
+            "recommendedValue": true,
+            "explanation": "When enabled, allows using a dynamic apiEndpoint with JSONPath format in HttpInvoke tasks.",
+            "unconfiguredBehavesLike": {
+              "v2": true
+            }
+          },
+          "@aws-cdk/aws-ecs-patterns:uniqueTargetGroupId": {
+            "recommendedValue": true,
+            "explanation": "When enabled, ECS patterns will generate unique target group IDs to prevent conflicts during load balancer replacement"
+          },
+          "@aws-cdk/aws-route53-patterns:useDistribution": {
+            "recommendedValue": true,
+            "explanation": "Use the `Distribution` resource instead of `CloudFrontWebDistribution`"
+          }
+        }
+      }
+    }
+  },
+  "minimumCliVersion": "2.1033.0"
+}

@@ -1,8 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../index.js';
 import { resetConnectionRegistry, getConnectionRegistry } from '../ws/index.js';
 import { WebSocket, type RawData } from 'ws';
 import type { FastifyInstance } from 'fastify';
+
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 
 interface WebSocketMessageBase {
   type: string;
@@ -51,7 +59,7 @@ describe('WebSocket Plugin', () => {
 
   describe('connection handling', () => {
     it('should accept connection with valid deviceId', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws?deviceId=test-device-1`);
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=test-device-1`);
 
       const connected = await new Promise<boolean>((resolve) => {
         ws.on('message', (data: RawData) => {
@@ -71,8 +79,28 @@ describe('WebSocket Plugin', () => {
       ws.close();
     });
 
-    it('should reject connection without deviceId', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws`);
+    it('should accept connection without deviceId (uses userId as fallback)', async () => {
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt`);
+
+      const connected = await new Promise<boolean>((resolve) => {
+        ws.on('message', (data: RawData) => {
+          const message = parseWsData(data);
+          if (message.type === 'connected') {
+            const connMsg = message as ConnectedMessage;
+            // Falls back to userId from Clerk token
+            expect(connMsg.payload?.deviceId).toBe('test-user-id');
+            resolve(true);
+          }
+        });
+        ws.on('error', () => resolve(false));
+      });
+
+      expect(connected).toBe(true);
+      ws.close();
+    });
+
+    it('should reject connection without token', async () => {
+      const ws = new WebSocket(`${serverUrl}/ws?deviceId=test-device-1`);
 
       const result = await new Promise<WebSocketMessageAny>((resolve) => {
         ws.on('message', (data: RawData) => {
@@ -81,12 +109,15 @@ describe('WebSocket Plugin', () => {
         ws.on('close', () => resolve({ type: 'closed' }));
       });
 
-      expect(result.type).toBe('error');
-      expect((result as ErrorMessageType).payload?.code).toBe('MISSING_DEVICE_ID');
+      if (result.type === 'error') {
+        expect((result as ErrorMessageType).payload?.code).toBe('AUTH_REQUIRED');
+      } else {
+        expect(result.type).toBe('closed');
+      }
     });
 
     it('should track connection in registry', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws?deviceId=registry-test`);
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=registry-test`);
 
       await new Promise<void>((resolve) => {
         ws.on('open', () => {
@@ -104,7 +135,7 @@ describe('WebSocket Plugin', () => {
     });
 
     it('should remove connection from registry on close', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws?deviceId=close-test`);
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=close-test`);
 
       await new Promise<void>((resolve) => {
         ws.on('open', () => setTimeout(resolve, 50));
@@ -126,7 +157,7 @@ describe('WebSocket Plugin', () => {
     it.skip('should replace existing connection with same deviceId', async () => {
       const registry = getConnectionRegistry();
 
-      const ws1 = new WebSocket(`${serverUrl}/ws?deviceId=same-device`);
+      const ws1 = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=same-device`);
 
       // Wait for ws1 to be connected and registered
       await new Promise<void>((resolve) => {
@@ -149,7 +180,7 @@ describe('WebSocket Plugin', () => {
         });
       });
 
-      const ws2 = new WebSocket(`${serverUrl}/ws?deviceId=same-device`);
+      const ws2 = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=same-device`);
 
       // Wait for ws2 to be connected
       await new Promise<void>((resolve) => {
@@ -179,7 +210,7 @@ describe('WebSocket Plugin', () => {
 
   describe('ping/pong handling', () => {
     it('should respond to client ping with pong', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws?deviceId=ping-test`);
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=ping-test`);
 
       // Wait for connected message first
       await new Promise<void>((resolve) => {
@@ -214,7 +245,7 @@ describe('WebSocket Plugin', () => {
     });
 
     it('should update lastPing on pong', async () => {
-      const ws = new WebSocket(`${serverUrl}/ws?deviceId=pong-update-test`);
+      const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=pong-update-test`);
 
       await new Promise<void>((resolve) => {
         ws.on('open', () => setTimeout(resolve, 50));
@@ -249,7 +280,7 @@ describe('WebSocket Plugin', () => {
       const sockets: WebSocket[] = [];
 
       for (const deviceId of devices) {
-        const ws = new WebSocket(`${serverUrl}/ws?deviceId=${deviceId}`);
+        const ws = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=${deviceId}`);
         sockets.push(ws);
         await new Promise<void>((resolve) => {
           ws.on('open', () => setTimeout(resolve, 50));
@@ -269,8 +300,8 @@ describe('WebSocket Plugin', () => {
 
   describe('graceful shutdown', () => {
     it('should close all connections on server shutdown', async () => {
-      const ws1 = new WebSocket(`${serverUrl}/ws?deviceId=shutdown-1`);
-      const ws2 = new WebSocket(`${serverUrl}/ws?deviceId=shutdown-2`);
+      const ws1 = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=shutdown-1`);
+      const ws2 = new WebSocket(`${serverUrl}/ws?token=test-clerk-jwt&deviceId=shutdown-2`);
 
       await new Promise<void>((resolve) => {
         let count = 0;

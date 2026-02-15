@@ -9,11 +9,13 @@ const STATE_FILE = '.hq-sync-state.json';
 
 export function findHqRoot(): string {
   let dir = process.cwd();
-  while (dir !== '/') {
+  while (true) {
     if (fs.existsSync(path.join(dir, '.claude')) || fs.existsSync(path.join(dir, 'workers'))) {
       return dir;
     }
-    dir = path.dirname(dir);
+    const parent = path.dirname(dir);
+    if (parent === dir) break; // Reached filesystem root (works on Windows and Unix)
+    dir = parent;
   }
   return process.cwd();
 }

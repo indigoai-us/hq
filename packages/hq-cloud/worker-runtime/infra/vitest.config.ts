@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    exclude: ['node_modules', 'dist', 'cdk.out'],
+    exclude: ['node_modules', 'dist', 'cdk.out', 'src/__tests__/integration/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

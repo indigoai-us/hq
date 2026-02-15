@@ -4,14 +4,20 @@ import helmet from '@fastify/helmet';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { workerRoutes } from './routes/workers.js';
-import { questionRoutes } from './routes/questions.js';
-import { chatRoutes } from './routes/chat.js';
-import { pushRoutes } from './routes/push.js';
 import { shareRoutes } from './routes/shares.js';
 import { syncRoutes } from './routes/sync.js';
+import { agentRoutes } from './routes/agents.js';
+import { navigatorRoutes } from './routes/navigator.js';
+import { settingsRoutes } from './routes/settings.js';
+import { sessionRoutes } from './routes/sessions.js';
+import { fileRoutes } from './routes/files.js';
 import { websocketPlugin } from './ws/index.js';
 import { registerAuthMiddleware } from './auth/index.js';
 import { config } from './config.js';
+import { connectMongo, disconnectMongo } from './db/mongo.js';
+import { ensureUserSettingsIndexes } from './data/user-settings.js';
+import { ensureSessionIndexes } from './data/sessions.js';
+import { ensureSessionMessageIndexes } from './data/session-messages.js';
 import {
   registerTracing,
   registerRequestMetrics,
@@ -35,7 +41,20 @@ async function buildApp(): Promise<FastifyInstance> {
               },
             }
           : undefined,
+      serializers: {
+        req(request) {
+          const url = request.url?.replace(/token=[^&]+/, 'token=***') ?? request.url;
+          return {
+            method: request.method,
+            url,
+            hostname: request.hostname,
+            remoteAddress: request.ip,
+          };
+        },
+      },
     },
+    // Disable default request/response logging — too noisy for WebSocket upgrade requests
+    disableRequestLogging: true,
     // Generate request IDs
     genReqId: () => crypto.randomUUID(),
   });
@@ -58,20 +77,23 @@ async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register auth middleware (excludes health and WS routes)
+  // WS handles its own JWT verification on connect
   registerAuthMiddleware(app, {
     excludePaths: ['/api/health', '/api/health/ready', '/api/health/live'],
-    excludePrefixes: ['/ws', '/api/auth/keys/generate'],
+    excludePrefixes: ['/ws'],
   });
 
   // Register routes
   await app.register(healthRoutes, { prefix: '/api' });
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(workerRoutes, { prefix: '/api' });
-  await app.register(questionRoutes, { prefix: '/api' });
-  await app.register(chatRoutes, { prefix: '/api' });
-  await app.register(pushRoutes, { prefix: '/api' });
   await app.register(shareRoutes, { prefix: '/api' });
   await app.register(syncRoutes, { prefix: '/api' });
+  await app.register(agentRoutes, { prefix: '/api' });
+  await app.register(navigatorRoutes, { prefix: '/api' });
+  await app.register(settingsRoutes, { prefix: '/api' });
+  await app.register(sessionRoutes, { prefix: '/api' });
+  await app.register(fileRoutes, { prefix: '/api' });
 
   // Register WebSocket plugin
   await app.register(websocketPlugin, {
@@ -85,6 +107,22 @@ async function buildApp(): Promise<FastifyInstance> {
 async function start(): Promise<void> {
   const app = await buildApp();
   const metrics = getMetrics();
+
+  // Connect to MongoDB if URI is configured
+  if (config.mongodbUri) {
+    try {
+      await connectMongo();
+      await ensureUserSettingsIndexes();
+      await ensureSessionIndexes();
+      await ensureSessionMessageIndexes();
+      app.log.info('Connected to MongoDB');
+    } catch (err) {
+      app.log.error({ err }, 'Failed to connect to MongoDB');
+      process.exit(1);
+    }
+  } else {
+    app.log.warn('MONGODB_URI not set — user settings will not persist');
+  }
 
   try {
     await app.listen({ port: config.port, host: config.host });
@@ -113,6 +151,7 @@ async function start(): Promise<void> {
     }
 
     try {
+      await disconnectMongo();
       await app.close();
       app.log.info('Server closed');
       process.exit(0);

@@ -1,0 +1,36 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "HqCloudS3-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "804849608251-us-east-1-5aebeb79": {
+          "bucketName": "cdk-hnb659fds-assets-804849608251-us-east-1",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-file-publishing-role-804849608251-us-east-1"
+        }
+      }
+    },
+    "178453d407e7a8c800297f1419fb38b47bc2b5b980b25e940c62f50769847adc": {
+      "displayName": "HqCloudS3-dev Template",
+      "source": {
+        "path": "HqCloudS3-dev.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "804849608251-us-east-1-c8fc9990": {
+          "bucketName": "cdk-hnb659fds-assets-804849608251-us-east-1",
+          "objectKey": "178453d407e7a8c800297f1419fb38b47bc2b5b980b25e940c62f50769847adc.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-file-publishing-role-804849608251-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

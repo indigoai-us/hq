@@ -34,7 +34,7 @@ function copyRecursive(
     if (entry.isDirectory()) {
       copyRecursive(srcPath, destPath, state, moduleName, hqRoot, filesChanged);
     } else {
-      const relativeDest = path.relative(hqRoot, destPath);
+      const relativeDest = path.relative(hqRoot, destPath).replace(/\\/g, '/');
       const newHash = hashFile(srcPath);
 
       // Check if file exists and has been modified by user
@@ -103,7 +103,7 @@ export async function mergeSync(
         fs.mkdirSync(destDir, { recursive: true });
       }
 
-      const relativeDest = path.relative(hqRoot, destPath);
+      const relativeDest = path.relative(hqRoot, destPath).replace(/\\/g, '/');
       const newHash = hashFile(srcPath);
 
       if (fs.existsSync(destPath)) {

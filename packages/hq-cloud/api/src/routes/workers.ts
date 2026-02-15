@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
 import { getWorkerStore, WORKER_STATUSES, getSpawnQueue, validateWorkerExists } from '../workers/index.js';
+import { readWorkerRegistry } from '../data/hq-reader.js';
+import { getDataSource, SetupRequiredError } from '../data/resolve-hq-dir.js';
 import type {
   Worker,
   WorkerStatus,
@@ -132,11 +134,12 @@ export const workerRoutes: FastifyPluginCallback = (
 ): void => {
   const store = getWorkerStore();
 
-  // List all workers (optionally filter by status)
-  fastify.get<{ Querystring: ListWorkersQuery }>('/workers', (request, reply) => {
+  // List worker definitions from HQ registry
+  // The frontend's services/workers.ts calls GET /api/workers expecting WorkerDefinition[]
+  fastify.get<{ Querystring: ListWorkersQuery }>('/workers', async (request, reply) => {
     const { status } = request.query;
 
-    let workers: Worker[];
+    // If ?status is provided, fall back to runtime instances (for internal/container use)
     if (status) {
       if (!isValidWorkerStatus(status)) {
         return reply.status(400).send({
@@ -144,15 +147,29 @@ export const workerRoutes: FastifyPluginCallback = (
           message: `Invalid status. Must be one of: ${WORKER_STATUSES.join(', ')}`,
         });
       }
-      workers = store.getByStatus(status);
-    } else {
-      workers = store.getAll();
+      const workers = store.getByStatus(status);
+      return reply.send({
+        count: workers.length,
+        workers: workers.map(workerToResponse),
+      });
     }
 
-    return reply.send({
-      count: workers.length,
-      workers: workers.map(workerToResponse),
-    });
+    // Default: return worker definitions from HQ registry
+    try {
+      const ds = await getDataSource(request);
+      const definitions = await readWorkerRegistry(ds);
+      return reply.send(definitions);
+    } catch (err) {
+      if (err instanceof SetupRequiredError) {
+        return reply.status(403).send({
+          error: 'Setup Required',
+          message: (err as Error).message,
+          code: 'SETUP_REQUIRED',
+        });
+      }
+      fastify.log.error({ err }, 'Failed to read worker registry');
+      return reply.send([]);
+    }
   });
 
   // Get a specific worker
@@ -316,7 +333,7 @@ export const workerRoutes: FastifyPluginCallback = (
   });
 
   // Request a new worker spawn
-  fastify.post<{ Body: SpawnWorkerBody }>('/workers/spawn', (request, reply) => {
+  fastify.post<{ Body: SpawnWorkerBody }>('/workers/spawn', async (request, reply) => {
     const { workerId, skill, parameters, metadata } = request.body;
 
     // Validate required fields
@@ -350,8 +367,18 @@ export const workerRoutes: FastifyPluginCallback = (
       });
     }
 
-    // Validate worker exists in HQ registry (stub for now)
-    if (!validateWorkerExists(workerId)) {
+    // Resolve per-user data source
+    let ds;
+    try {
+      ds = await getDataSource(request);
+    } catch {
+      const { LocalDataSource } = await import('../data/local-data-source.js');
+      const { config } = await import('../config.js');
+      ds = new LocalDataSource(config.hqDir);
+    }
+
+    // Validate worker exists in HQ registry
+    if (!(await validateWorkerExists(workerId, ds))) {
       return reply.status(404).send({
         error: 'Not Found',
         message: `Worker '${workerId}' not found in registry`,
@@ -375,7 +402,36 @@ export const workerRoutes: FastifyPluginCallback = (
       metadata,
     });
 
-    return reply.status(202).send(spawnRequestToResponse(spawnRequest));
+    // Create a runtime worker entry so the agent appears in GET /api/agents
+    const agentId = `${workerId}-${Date.now().toString(36)}`;
+    const definitions = await readWorkerRegistry(ds);
+    const definition = definitions.find((d) => d.id === workerId);
+    const agentName = definition?.name ?? workerId;
+    const workerType = definition?.category ?? 'code';
+
+    if (!store.exists(agentId)) {
+      store.create({
+        id: agentId,
+        name: agentName,
+        status: 'pending',
+        currentTask: skill,
+        metadata: {
+          type: workerType,
+          workerId,
+          skill,
+          trackingId: spawnRequest.trackingId,
+          ...metadata,
+        },
+      });
+    }
+
+    // Return the shape the frontend expects (SpawnWorkerResponse)
+    return reply.status(202).send({
+      agentId,
+      agentName,
+      status: 'pending',
+      trackingId: spawnRequest.trackingId,
+    });
   });
 
   // Get spawn request status by tracking ID

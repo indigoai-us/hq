@@ -13,6 +13,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import { DEFAULT_TASK_CONFIG } from '../../types/infra/index.js';
 import type { HealthCheckConfig, S3AccessConfig } from '../../types/infra/index.js';
@@ -85,6 +86,22 @@ export interface HqWorkerTaskDefinitionProps {
    * Health check configuration override
    */
   readonly healthCheck?: Partial<HealthCheckConfig>;
+
+  /**
+   * ARN of the Secrets Manager secret containing sensitive config.
+   * When provided, the execution role gets secretsmanager:GetSecretValue
+   * permission and secrets are injected into the container via valueFrom.
+   *
+   * Expected secret keys: CLERK_SECRET_KEY, CLERK_JWT_KEY, MONGODB_URI, CLAUDE_CREDENTIALS_JSON
+   */
+  readonly secretsArn?: string;
+
+  /**
+   * Map of container env var name -> secret JSON key for secrets injection.
+   * Only used when secretsArn is provided.
+   * @default All four keys: CLERK_SECRET_KEY, CLERK_JWT_KEY, MONGODB_URI, CLAUDE_CREDENTIALS_JSON
+   */
+  readonly secretKeys?: Record<string, string>;
 }
 
 /**
@@ -190,17 +207,27 @@ export class HqWorkerTaskDefinition extends Construct {
       ? `${props.imageUri}:${props.imageTag}`
       : `${props.imageUri}:latest`;
 
+    // Build secrets map if secretsArn is provided
+    const containerSecrets: Record<string, ecs.Secret> | undefined =
+      props.secretsArn ? this.buildSecrets(props.secretsArn, props.secretKeys) : undefined;
+
     // Create the container definition
-    this.container = this.taskDefinition.addContainer('worker', {
+    this.container = this.taskDefinition.addContainer('session', {
       image: ecs.ContainerImage.fromRegistry(imageUri),
       essential: true,
       logging: ecs.LogDriver.awsLogs({
         logGroup: this.logGroup,
-        streamPrefix: 'worker',
+        streamPrefix: 'session',
       }),
       healthCheck: this.buildHealthCheck(props.healthCheck),
       environment: props.defaultEnvironment ?? {},
+      secrets: containerSecrets,
     });
+
+    // Grant execution role permission to read the secret
+    if (props.secretsArn) {
+      this.grantSecretRead(props.secretsArn, 'api-config');
+    }
 
     // Add outputs
     new cdk.CfnOutput(this, 'TaskDefinitionArn', {
@@ -220,6 +247,33 @@ export class HqWorkerTaskDefinition extends Construct {
       description: 'HQ Worker Execution Role ARN',
       exportName: 'HqWorkerExecutionRoleArn',
     });
+  }
+
+  /**
+   * Build ECS secrets map from a Secrets Manager secret ARN.
+   * Each entry maps an env var name to a specific JSON key in the secret.
+   */
+  private buildSecrets(
+    secretArn: string,
+    keyMap?: Record<string, string>
+  ): Record<string, ecs.Secret> {
+    // Default: inject all four standard secret keys
+    const defaultKeys: Record<string, string> = {
+      CLERK_SECRET_KEY: 'CLERK_SECRET_KEY',
+      CLERK_JWT_KEY: 'CLERK_JWT_KEY',
+      MONGODB_URI: 'MONGODB_URI',
+      CLAUDE_CREDENTIALS_JSON: 'CLAUDE_CREDENTIALS_JSON',
+    };
+
+    const keys = keyMap ?? defaultKeys;
+    const secret = secretsmanager.Secret.fromSecretCompleteArn(this, 'ImportedSecret', secretArn);
+
+    const result: Record<string, ecs.Secret> = {};
+    for (const [envVarName, jsonField] of Object.entries(keys)) {
+      result[envVarName] = ecs.Secret.fromSecretsManager(secret, jsonField);
+    }
+
+    return result;
   }
 
   /**
@@ -368,6 +422,12 @@ export interface HqWorkerRuntimeStackProps extends cdk.StackProps {
    * Task memory (MiB)
    */
   readonly memory?: number;
+
+  /**
+   * ARN of the Secrets Manager secret for injecting sensitive config
+   * into the session container task definition via valueFrom.
+   */
+  readonly secretsArn?: string;
 }
 
 /**
@@ -404,24 +464,29 @@ export class HqWorkerRuntimeStack extends cdk.Stack {
     super(scope, id, props);
 
     // Use provided VPC or create a new one
+    // No NAT gateway — Fargate tasks use public subnets with assignPublicIp: ENABLED
+    // for outbound internet via the free Internet Gateway. Saves ~$32/month.
     this.vpc =
       props.vpc ??
       new ec2.Vpc(this, 'WorkerVpc', {
         maxAzs: 2,
-        natGateways: 1,
+        natGateways: 0,
         subnetConfiguration: [
           {
             name: 'public',
             subnetType: ec2.SubnetType.PUBLIC,
             cidrMask: 24,
           },
-          {
-            name: 'private',
-            subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-            cidrMask: 24,
-          },
         ],
       });
+
+    // Free S3 VPC Gateway Endpoint — keeps S3 traffic off the internet
+    if (!props.vpc) {
+      new ec2.GatewayVpcEndpoint(this, 'S3Endpoint', {
+        vpc: this.vpc,
+        service: ec2.GatewayVpcEndpointAwsService.S3,
+      });
+    }
 
     // Create security group for worker tasks
     this.securityGroup = new ec2.SecurityGroup(this, 'WorkerSecurityGroup', {
@@ -433,7 +498,7 @@ export class HqWorkerRuntimeStack extends cdk.Stack {
     // Create ECS cluster
     this.cluster = new ecs.Cluster(this, 'WorkerCluster', {
       vpc: this.vpc,
-      clusterName: 'hq-workers',
+      clusterName: 'hq-cloud-dev',
       containerInsights: true,
     });
 
@@ -444,6 +509,7 @@ export class HqWorkerRuntimeStack extends cdk.Stack {
       cpu: props.cpu,
       memory: props.memory,
       s3BucketArn: props.s3BucketArn,
+      secretsArn: props.secretsArn,
       defaultEnvironment: {
         NODE_ENV: 'production',
         HQ_ROOT: '/hq',
@@ -477,16 +543,9 @@ export class HqWorkerRuntimeStack extends cdk.Stack {
   }
 
   /**
-   * Get subnet IDs for running tasks
+   * Get subnet IDs for running tasks (public subnets — use assignPublicIp: ENABLED)
    */
-  public getPrivateSubnetIds(): string[] {
-    return this.vpc.privateSubnets.map((s) => s.subnetId);
-  }
-
-  /**
-   * Get public subnet IDs (for tasks that need public IP)
-   */
-  public getPublicSubnetIds(): string[] {
+  public getSubnetIds(): string[] {
     return this.vpc.publicSubnets.map((s) => s.subnetId);
   }
 }

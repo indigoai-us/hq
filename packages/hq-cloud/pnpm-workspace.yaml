@@ -1,6 +1,8 @@
 packages:
   - "api"
   - "file-sync"
+  - "mobile"
   - "shared"
+  - "web"
   - "worker-runtime/infra"
   - "worker-runtime/types"

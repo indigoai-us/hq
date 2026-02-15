@@ -240,7 +240,7 @@ export interface WorkerLogsServiceConfig {
   logGroupName: string;
   /** AWS region */
   region: string;
-  /** Log stream prefix (usually 'worker') */
+  /** Log stream prefix (usually 'session') */
   logStreamPrefix?: string;
   /** Default log retention in days */
   defaultRetentionDays?: number;
@@ -279,7 +279,7 @@ export class WorkerLogsService {
   ) {
     this.config = {
       ...config,
-      logStreamPrefix: config.logStreamPrefix ?? 'worker',
+      logStreamPrefix: config.logStreamPrefix ?? 'session',
       defaultRetentionDays: config.defaultRetentionDays ?? DEFAULT_RETENTION_DAYS,
       defaultLimit: config.defaultLimit ?? DEFAULT_LOG_LIMIT,
       liveTailPollIntervalMs: config.liveTailPollIntervalMs ?? 2000,
@@ -630,7 +630,7 @@ export class WorkerLogsService {
       // Extract task ID from ARN: arn:aws:ecs:region:account:task/cluster/taskId
       const taskId = extractTaskIdFromArn(taskArn);
       if (taskId) {
-        return `${this.config.logStreamPrefix}/worker/${taskId}`;
+        return `${this.config.logStreamPrefix}/session/${taskId}`;
       }
     }
 
@@ -912,7 +912,7 @@ export function createMockCloudWatchLogsClient(options?: {
  * - AWS_REGION: AWS region
  *
  * Optional env vars:
- * - LOG_STREAM_PREFIX: Stream prefix (default: 'worker')
+ * - LOG_STREAM_PREFIX: Stream prefix (default: 'session')
  * - LOG_RETENTION_DAYS: Retention in days (default: 30)
  * - LOG_DEFAULT_LIMIT: Default entries per request (default: 500)
  * - LOG_LIVE_TAIL_INTERVAL_MS: Live tail poll interval (default: 2000)
@@ -925,7 +925,7 @@ export function createWorkerLogsServiceFromEnv(
 ): WorkerLogsService {
   const logGroupName = process.env['CLOUDWATCH_LOG_GROUP'] ?? '/hq/workers';
   const region = process.env['AWS_REGION'] ?? 'us-east-1';
-  const logStreamPrefix = process.env['LOG_STREAM_PREFIX'] ?? 'worker';
+  const logStreamPrefix = process.env['LOG_STREAM_PREFIX'] ?? 'session';
   const defaultRetentionDays = parseInt(
     process.env['LOG_RETENTION_DAYS'] ?? String(DEFAULT_RETENTION_DAYS),
     10

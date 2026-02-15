@@ -1,0 +1,21 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "13d75db292238083b08658eaaa1adfe320ad687e380492ae95fef1a8f47acaa6": {
+      "displayName": "HqCloudBudget-dev Template",
+      "source": {
+        "path": "HqCloudBudget-dev.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "804849608251-us-east-1-8d874169": {
+          "bucketName": "cdk-hnb659fds-assets-804849608251-us-east-1",
+          "objectKey": "13d75db292238083b08658eaaa1adfe320ad687e380492ae95fef1a8f47acaa6.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::804849608251:role/cdk-hnb659fds-file-publishing-role-804849608251-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

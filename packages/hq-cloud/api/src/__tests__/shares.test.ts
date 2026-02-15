@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../index.js';
 import { resetShareService } from '../routes/shares.js';
-import { resetApiKeyStore } from '../auth/index.js';
-import { resetRateLimiter } from '../auth/rate-limiter.js';
 import type { FastifyInstance } from 'fastify';
+
+// Mock Clerk token verification
+vi.mock('../auth/clerk.js', () => ({
+  verifyClerkToken: vi.fn().mockResolvedValue({
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+  }),
+}));
 
 interface ShareResponse {
   id: string;
@@ -55,56 +61,32 @@ interface PolicyResponse {
   }>;
 }
 
-interface ApiKeyResponse {
-  key: string;
-  prefix: string;
-  name: string;
-  rateLimit: number;
-  createdAt: string;
-  message: string;
-}
-
 describe('Share Routes', () => {
   let app: FastifyInstance;
   let baseUrl: string;
-  let apiKey: string;
 
   beforeEach(async () => {
     resetShareService();
-    resetApiKeyStore();
-    resetRateLimiter();
     app = await buildApp();
     await app.listen({ port: 0, host: '127.0.0.1' });
     const address = app.server.address();
     if (address && typeof address === 'object') {
       baseUrl = `http://127.0.0.1:${address.port}`;
     }
-
-    // Generate an API key for authenticated requests
-    const response = await fetch(`${baseUrl}/api/auth/keys/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Test Key' }),
-    });
-    const data = (await response.json()) as ApiKeyResponse;
-    apiKey = data.key;
   });
 
   afterEach(async () => {
     await app.close();
-    resetShareService();
-    resetApiKeyStore();
-    resetRateLimiter();
-  });
+    resetShareService();  });
 
   const authHeaders = (): Record<string, string> => ({
     'Content-Type': 'application/json',
-    'x-api-key': apiKey,
+    Authorization: 'Bearer test-clerk-jwt',
   });
 
   /** Auth headers without Content-Type (for requests with no body) */
   const authHeadersNoBody = (): Record<string, string> => ({
-    'x-api-key': apiKey,
+    Authorization: 'Bearer test-clerk-jwt',
   });
 
   // ─── POST /api/shares ─────────────────────────────────────────────
