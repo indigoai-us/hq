@@ -59,6 +59,25 @@ Classification, worker selection, worker pipelines, PRD updates, and learning ca
 - Check if state.json exists (offer resume or restart)
 - Initialize fresh state if new
 
+### 1.5 Pre-flight: Sync Pull
+
+Pull latest files from cloud before loading the project. Non-blocking — failures do not prevent the command from continuing.
+
+```bash
+# Check for hq-cloud credentials
+if [ -f ~/.hq/credentials.json ]; then
+  hq sync pull
+else
+  # Not authenticated with hq-cloud — skip silently
+  true
+fi
+```
+
+- If `~/.hq/credentials.json` does not exist, skip silently (user is not connected to hq-cloud)
+- If `hq sync pull` fails (network error, server down), log a warning and continue:
+  `Cloud sync pull failed (continuing without sync)`
+- On success, report concisely: `Pulled 3 files from cloud` or `Already up to date`
+
 ### 2. Load Project
 
 Read and validate `projects/{project}/prd.json`:

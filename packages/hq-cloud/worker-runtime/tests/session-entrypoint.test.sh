@@ -250,8 +250,8 @@ test_entrypoint_has_signal_handlers() {
 test_entrypoint_graceful_shutdown_syncs_s3() {
     local content
     content=$(cat "$ENTRYPOINT_SCRIPT")
-    # cleanup/shutdown function should sync back to S3
-    assert_contains "$content" "sync_back_to_s3" "Should sync files back to S3 on shutdown"
+    # cleanup/shutdown function should use diff sync to S3
+    assert_contains "$content" "diff_sync_to_s3" "Should diff-sync files back to S3 on shutdown"
 }
 
 test_entrypoint_graceful_shutdown_kills_claude() {
@@ -459,6 +459,174 @@ test_dockerfile_installs_git() {
 }
 
 # =========================================================================
+# Workspace snapshot tests (US-004)
+# =========================================================================
+
+test_entrypoint_has_snapshot_workspace() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "snapshot_workspace" "Should have snapshot_workspace function"
+}
+
+test_entrypoint_snapshot_uses_md5() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "md5sum" "Should use md5sum for file hashing"
+}
+
+test_entrypoint_snapshot_creates_manifest() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "SNAPSHOT_FILE" "Should use SNAPSHOT_FILE for manifest path" && \
+    assert_contains "$content" "workspace-snapshot.manifest" "Should write to workspace-snapshot.manifest"
+}
+
+test_entrypoint_snapshot_excludes_git() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    # snapshot_workspace should exclude .git like S3 sync does
+    assert_contains "$content" ".git" "Snapshot should reference .git exclusion"
+}
+
+test_entrypoint_snapshot_excludes_node_modules() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "node_modules" "Snapshot should reference node_modules exclusion"
+}
+
+test_entrypoint_snapshot_called_after_s3_sync() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    # In main(), snapshot_workspace should come after sync_from_s3
+    # Check that sync_from_s3 appears before snapshot_workspace in main()
+    local sync_line snapshot_line
+    sync_line=$(grep -n "sync_from_s3" "$ENTRYPOINT_SCRIPT" | tail -1 | cut -d: -f1)
+    snapshot_line=$(grep -n "snapshot_workspace" "$ENTRYPOINT_SCRIPT" | tail -1 | cut -d: -f1)
+    [ "$sync_line" -lt "$snapshot_line" ]
+}
+
+# =========================================================================
+# Diff-sync tests (US-004)
+# =========================================================================
+
+test_entrypoint_has_diff_sync() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "diff_sync_to_s3" "Should have diff_sync_to_s3 function"
+}
+
+test_entrypoint_diff_sync_uploads_changed() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "aws s3 cp" "Should use aws s3 cp for individual file uploads"
+}
+
+test_entrypoint_diff_sync_deletes_removed() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "aws s3 rm" "Should use aws s3 rm for deleted files"
+}
+
+test_entrypoint_diff_sync_tracks_counts() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "SYNC_UPLOADED" "Should track uploaded file count" && \
+    assert_contains "$content" "SYNC_DELETED" "Should track deleted file count" && \
+    assert_contains "$content" "SYNC_ERRORS" "Should track error count"
+}
+
+test_entrypoint_diff_sync_has_deadline() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "SYNC_DEADLINE" "Should have SYNC_DEADLINE for timeout enforcement"
+}
+
+test_entrypoint_diff_sync_deadline_default_30() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" 'SYNC_DEADLINE="${SYNC_DEADLINE:-30}"' "Should default SYNC_DEADLINE to 30 seconds"
+}
+
+test_entrypoint_diff_sync_falls_back_to_full() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "No startup snapshot found" "Should fall back to full sync when no snapshot"
+}
+
+# =========================================================================
+# Sync status WebSocket notification tests (US-004)
+# =========================================================================
+
+test_entrypoint_has_send_sync_status() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "send_sync_status" "Should have send_sync_status function"
+}
+
+test_entrypoint_sync_status_posts_to_api() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "sync-status" "Should POST to sync-status endpoint"
+}
+
+test_entrypoint_sync_status_includes_direction() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" '"direction": "upload"' "Should include upload direction in sync status"
+}
+
+test_entrypoint_sync_status_includes_file_counts() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "filesUploaded" "Should include filesUploaded in payload" && \
+    assert_contains "$content" "filesDeleted" "Should include filesDeleted in payload"
+}
+
+test_entrypoint_sync_status_includes_errors() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" '"errors"' "Should include errors count in payload"
+}
+
+test_entrypoint_sync_status_includes_duration() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "durationMs" "Should include durationMs in payload"
+}
+
+test_entrypoint_sync_status_uses_auth_token() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "CLAUDE_CODE_SESSION_ACCESS_TOKEN" "Should use session access token for auth"
+}
+
+test_entrypoint_sync_status_has_timeout() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" "--max-time" "Should have a timeout on the sync status HTTP call"
+}
+
+test_entrypoint_cleanup_sends_sync_status() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    # The cleanup function should call send_sync_status after diff_sync_to_s3
+    assert_contains "$content" "send_sync_status" "cleanup should send sync status"
+}
+
+test_entrypoint_cleanup_handles_partial_sync() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" '"partial"' "Should report partial status when some files synced but errors occurred"
+}
+
+test_entrypoint_cleanup_cleans_temp_files() {
+    local content
+    content=$(cat "$ENTRYPOINT_SCRIPT")
+    assert_contains "$content" 'rm -f "$SNAPSHOT_FILE"' "Should clean up snapshot file on shutdown" && \
+    assert_contains "$content" "workspace-current.manifest" "Should clean up current manifest on shutdown"
+}
+
+# =========================================================================
 # Main test runner
 # =========================================================================
 
@@ -495,6 +663,39 @@ main() {
     run_test "Graceful shutdown kills Claude" test_entrypoint_graceful_shutdown_kills_claude
     run_test "Force kill on timeout" test_entrypoint_graceful_shutdown_force_kill
     run_test "Shutdown timeout configurable" test_entrypoint_shutdown_timeout_configurable
+    echo ""
+
+    echo "--- Workspace snapshot (US-004) ---"
+    run_test "Has snapshot_workspace function" test_entrypoint_has_snapshot_workspace
+    run_test "Snapshot uses md5sum" test_entrypoint_snapshot_uses_md5
+    run_test "Snapshot creates manifest file" test_entrypoint_snapshot_creates_manifest
+    run_test "Snapshot excludes .git" test_entrypoint_snapshot_excludes_git
+    run_test "Snapshot excludes node_modules" test_entrypoint_snapshot_excludes_node_modules
+    run_test "Snapshot called after S3 sync" test_entrypoint_snapshot_called_after_s3_sync
+    echo ""
+
+    echo "--- Diff sync to S3 (US-004) ---"
+    run_test "Has diff_sync_to_s3 function" test_entrypoint_has_diff_sync
+    run_test "Uploads changed files individually" test_entrypoint_diff_sync_uploads_changed
+    run_test "Deletes removed files from S3" test_entrypoint_diff_sync_deletes_removed
+    run_test "Tracks upload/delete/error counts" test_entrypoint_diff_sync_tracks_counts
+    run_test "Has SYNC_DEADLINE for timeout" test_entrypoint_diff_sync_has_deadline
+    run_test "SYNC_DEADLINE defaults to 30s" test_entrypoint_diff_sync_deadline_default_30
+    run_test "Falls back to full sync without snapshot" test_entrypoint_diff_sync_falls_back_to_full
+    echo ""
+
+    echo "--- Sync status notification (US-004) ---"
+    run_test "Has send_sync_status function" test_entrypoint_has_send_sync_status
+    run_test "Posts to sync-status API endpoint" test_entrypoint_sync_status_posts_to_api
+    run_test "Includes upload direction" test_entrypoint_sync_status_includes_direction
+    run_test "Includes file counts" test_entrypoint_sync_status_includes_file_counts
+    run_test "Includes error count" test_entrypoint_sync_status_includes_errors
+    run_test "Includes duration" test_entrypoint_sync_status_includes_duration
+    run_test "Uses session access token" test_entrypoint_sync_status_uses_auth_token
+    run_test "Has HTTP call timeout" test_entrypoint_sync_status_has_timeout
+    run_test "Cleanup sends sync status" test_entrypoint_cleanup_sends_sync_status
+    run_test "Reports partial sync status" test_entrypoint_cleanup_handles_partial_sync
+    run_test "Cleans up temp files" test_entrypoint_cleanup_cleans_temp_files
     echo ""
 
     echo "--- Healthcheck script ---"

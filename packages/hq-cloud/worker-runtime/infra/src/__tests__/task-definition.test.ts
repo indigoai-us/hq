@@ -146,6 +146,25 @@ describe('HqWorkerTaskDefinition', () => {
     });
   });
 
+  it('sets container stopTimeout to 45 seconds for graceful sync', () => {
+    new HqWorkerTaskDefinition(stack, 'TaskDef', {
+      imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',
+      s3BucketArn: 'arn:aws:s3:::hq-worker-files',
+    });
+
+    const template = Template.fromStack(stack);
+
+    // Verify container has StopTimeout set to 45 seconds
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'session',
+          StopTimeout: 45,
+        }),
+      ]),
+    });
+  });
+
   it('uses specified image tag', () => {
     new HqWorkerTaskDefinition(stack, 'TaskDef', {
       imageUri: '123456789.dkr.ecr.us-east-1.amazonaws.com/hq-worker',

@@ -20,7 +20,8 @@ import {
 import { hasClaudeToken } from '../data/user-settings.js';
 import { config } from '../config.js';
 import { launchSession, stopSession, isEcsConfigured } from '../sessions/orchestrator.js';
-import { getRelay, getOrCreateRelay, broadcastStartupPhase } from '../ws/session-relay.js';
+import { getRelay, getOrCreateRelay, broadcastStartupPhase, sendToClaudeCode } from '../ws/session-relay.js';
+import { createSyncGate, acknowledgeSyncComplete } from '../sessions/sync-gate.js';
 
 interface CreateSessionBody {
   prompt?: string;
@@ -182,6 +183,50 @@ export const sessionRoutes: FastifyPluginCallback = (
     return reply.send(messages);
   });
 
+  // POST /api/sessions/:id/sync-status — container reports sync completion
+  fastify.post<{
+    Params: { id: string };
+    Body: { status: string; filesChanged?: number; error?: string };
+  }>('/sessions/:id/sync-status', async (request, reply) => {
+    // This endpoint is called by the container (not browser) using the session access token.
+    // Accept both Clerk auth (browser) and session access token (container).
+    const sessionId = request.params.id;
+
+    const session = await getSession(sessionId);
+    if (!session) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    // Validate caller: either authenticated user who owns session, or container with access token
+    const userId = request.user?.userId;
+    const authHeader = request.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const isOwner = userId && session.userId === userId;
+    const isContainer = bearerToken && session.accessToken && bearerToken === session.accessToken;
+
+    if (!isOwner && !isContainer) {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+
+    const { status, filesChanged, error } = request.body ?? {};
+
+    fastify.log.info(
+      { sessionId, syncStatus: status, filesChanged, error },
+      'Received sync-status from container'
+    );
+
+    // Resolve the sync gate so the DELETE handler can proceed
+    const wasWaiting = acknowledgeSyncComplete(sessionId);
+
+    return reply.send({
+      ok: true,
+      acknowledged: wasWaiting,
+      message: wasWaiting
+        ? 'Sync acknowledged — stop will proceed'
+        : 'No pending stop request — sync-status recorded',
+    });
+  });
+
   // DELETE /api/sessions/:id — stop a session
   fastify.delete<{ Params: { id: string } }>('/sessions/:id', async (request, reply) => {
     if (!config.mongodbUri) {
@@ -202,12 +247,59 @@ export const sessionRoutes: FastifyPluginCallback = (
       return reply.send({ ok: true, status: session.status, message: 'Session already stopped' });
     }
 
-    // Mark as stopping
+    const relay = getRelay(session.sessionId);
+    let syncAcknowledged = false;
+
+    // If the container is connected via WebSocket, request a graceful sync before stopping
+    if (relay?.claudeSocket && relay.claudeSocket.readyState === relay.claudeSocket.OPEN) {
+      // Transition: active → syncing
+      await updateSessionStatus(session.sessionId, 'syncing');
+
+      // Notify browsers of the syncing phase
+      const syncingBroadcast = {
+        type: 'session_status',
+        sessionId: session.sessionId,
+        status: 'syncing',
+      };
+      relay.messageBuffer.push(syncingBroadcast);
+      for (const browser of relay.browserSockets) {
+        if (browser.readyState === browser.OPEN) {
+          browser.send(JSON.stringify({
+            type: 'session_status',
+            payload: syncingBroadcast,
+            timestamp: new Date().toISOString(),
+          }));
+        }
+      }
+
+      // Send sync_and_shutdown message to the container
+      const sent = sendToClaudeCode(relay, {
+        type: 'sync_and_shutdown',
+        sessionId: session.sessionId,
+        reason: 'Session stopped by user',
+      });
+
+      if (sent) {
+        fastify.log.info({ sessionId: session.sessionId }, 'Sent sync_and_shutdown to container, waiting for acknowledgment');
+
+        // Wait up to 15 seconds for the container to POST /api/sessions/:id/sync-status
+        syncAcknowledged = await createSyncGate(session.sessionId);
+
+        fastify.log.info(
+          { sessionId: session.sessionId, syncAcknowledged },
+          syncAcknowledged
+            ? 'Container sync acknowledged — proceeding to stop'
+            : 'Sync grace period expired — proceeding to stop (SIGTERM handler is backstop)'
+        );
+      } else {
+        fastify.log.warn({ sessionId: session.sessionId }, 'Failed to send sync_and_shutdown — container socket not writable');
+      }
+    }
+
+    // Transition: syncing → stopping
     await updateSessionStatus(session.sessionId, 'stopping');
 
-    // Close WebSocket relay to container (Claude Code only accepts 'user'/'control' messages;
-    // sending 'interrupt' crashes the process). Closing the socket causes a clean exit.
-    const relay = getRelay(session.sessionId);
+    // Close WebSocket relay to container
     if (relay?.claudeSocket) {
       relay.claudeSocket.close(1000, 'Session stopped by user');
       fastify.log.info({ sessionId: session.sessionId }, 'Container WebSocket closed for stop');
@@ -224,9 +316,16 @@ export const sessionRoutes: FastifyPluginCallback = (
 
     const updated = await updateSessionStatus(session.sessionId, 'stopped');
 
-    fastify.log.info({ sessionId: session.sessionId }, 'Session stopped');
+    fastify.log.info(
+      { sessionId: session.sessionId, syncAcknowledged },
+      'Session stopped'
+    );
 
-    return reply.send({ ok: true, status: updated?.status ?? 'stopped' });
+    return reply.send({
+      ok: true,
+      status: updated?.status ?? 'stopped',
+      syncAcknowledged,
+    });
   });
 
   done();

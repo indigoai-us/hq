@@ -212,6 +212,7 @@ export class HqWorkerTaskDefinition extends Construct {
       props.secretsArn ? this.buildSecrets(props.secretsArn, props.secretKeys) : undefined;
 
     // Create the container definition
+    // stopTimeout: 45s gives the container time for graceful sync (15s API grace + 30s SIGTERM handler)
     this.container = this.taskDefinition.addContainer('session', {
       image: ecs.ContainerImage.fromRegistry(imageUri),
       essential: true,
@@ -222,6 +223,7 @@ export class HqWorkerTaskDefinition extends Construct {
       healthCheck: this.buildHealthCheck(props.healthCheck),
       environment: props.defaultEnvironment ?? {},
       secrets: containerSecrets,
+      stopTimeout: cdk.Duration.seconds(45),
     });
 
     // Grant execution role permission to read the secret

@@ -3,6 +3,11 @@
 # Syncs user's HQ files from S3, then starts Claude Code in SDK/WebSocket mode
 # connected to the HQ Cloud API relay.
 #
+# On startup: snapshots the workspace (paths + hashes) after S3 pull.
+# On SIGTERM: computes diff against snapshot, uploads changed/new files,
+#             removes deleted files from S3, sends sync status via HTTP,
+#             then exits cleanly.
+#
 # Required env vars:
 #   HQ_API_URL                     — HQ Cloud API base URL (http(s)://...)
 #   SESSION_ID                     — Unique session identifier
@@ -16,6 +21,7 @@
 #   S3_REGION       — AWS region for S3 (default: us-east-1)
 #   USER_ID         — User identifier (informational)
 #   SHUTDOWN_TIMEOUT — Seconds to wait for graceful shutdown (default: 25)
+#   SYNC_DEADLINE   — Max seconds for diff-sync on shutdown (default: 30)
 
 set -euo pipefail
 
@@ -27,6 +33,10 @@ NC='\033[0m'
 log_info()  { echo -e "${GREEN}[SESSION]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[SESSION]${NC} $1"; }
 log_error() { echo -e "${RED}[SESSION]${NC} $1"; }
+
+# Workspace snapshot manifest file (path\thash per line)
+SNAPSHOT_FILE="/tmp/workspace-snapshot.manifest"
+SYNC_DEADLINE="${SYNC_DEADLINE:-30}"
 
 # --- Validate required environment ---
 
@@ -97,6 +107,219 @@ sync_from_s3() {
     fi
 }
 
+# --- Workspace snapshot ---
+# Creates a manifest of all workspace files with their md5 hashes.
+# Used to compute a diff at shutdown so only changed files are synced.
+
+snapshot_workspace() {
+    log_info "Snapshotting workspace for diff-sync..."
+    rm -f "$SNAPSHOT_FILE"
+
+    # Generate manifest: relative_path\tmd5hash
+    # Exclude .git, node_modules, .claude (same as S3 sync excludes)
+    find /hq -type f \
+        ! -path '/hq/.git/*' \
+        ! -path '/hq/node_modules/*' \
+        ! -path '/hq/.claude/*' \
+        -print0 2>/dev/null | \
+    while IFS= read -r -d '' file; do
+        local rel_path="${file#/hq/}"
+        local hash
+        hash=$(md5sum "$file" 2>/dev/null | cut -d' ' -f1) || continue
+        printf '%s\t%s\n' "$rel_path" "$hash"
+    done > "$SNAPSHOT_FILE"
+
+    local count
+    count=$(wc -l < "$SNAPSHOT_FILE" 2>/dev/null || echo 0)
+    log_info "Snapshot captured — ${count} files"
+}
+
+# --- Diff-based sync to S3 ---
+# Compares current workspace against the startup snapshot.
+# Uploads changed/new files, deletes removed files from S3.
+# Returns: 0 on success, 1 on failure
+# Sets global: SYNC_UPLOADED, SYNC_DELETED, SYNC_ERRORS
+
+SYNC_UPLOADED=0
+SYNC_DELETED=0
+SYNC_ERRORS=0
+
+diff_sync_to_s3() {
+    if [ -z "${S3_BUCKET:-}" ] || [ -z "${S3_PREFIX:-}" ]; then
+        log_warn "S3 not configured, skipping diff sync"
+        return 1
+    fi
+
+    local s3_region="${S3_REGION:-us-east-1}"
+    local start_time
+    start_time=$(date +%s)
+
+    SYNC_UPLOADED=0
+    SYNC_DELETED=0
+    SYNC_ERRORS=0
+
+    # Build current manifest
+    local current_manifest="/tmp/workspace-current.manifest"
+    rm -f "$current_manifest"
+
+    find /hq -type f \
+        ! -path '/hq/.git/*' \
+        ! -path '/hq/node_modules/*' \
+        ! -path '/hq/.claude/*' \
+        -print0 2>/dev/null | \
+    while IFS= read -r -d '' file; do
+        local rel_path="${file#/hq/}"
+        local hash
+        hash=$(md5sum "$file" 2>/dev/null | cut -d' ' -f1) || continue
+        printf '%s\t%s\n' "$rel_path" "$hash"
+    done > "$current_manifest"
+
+    # If no snapshot exists, fall back to full sync
+    if [ ! -f "$SNAPSHOT_FILE" ]; then
+        log_warn "No startup snapshot found, falling back to full sync"
+        aws s3 sync /hq "s3://${S3_BUCKET}/${S3_PREFIX}" \
+            --region "$s3_region" \
+            --no-progress \
+            --exclude ".git/*" \
+            --exclude "node_modules/*" \
+            --exclude ".claude/*" 2>/dev/null || {
+            log_error "Full sync fallback failed"
+            SYNC_ERRORS=1
+            return 1
+        }
+        SYNC_UPLOADED=$(wc -l < "$current_manifest" 2>/dev/null || echo 0)
+        return 0
+    fi
+
+    # --- Compute changed and new files ---
+    # Files in current but not in snapshot, or with different hashes
+    local changed_files="/tmp/sync-changed.list"
+    rm -f "$changed_files"
+
+    while IFS=$'\t' read -r rel_path current_hash; do
+        local elapsed=$(( $(date +%s) - start_time ))
+        if [ "$elapsed" -ge "$SYNC_DEADLINE" ]; then
+            log_warn "Sync deadline reached (${SYNC_DEADLINE}s), aborting remaining uploads"
+            break
+        fi
+
+        local old_hash=""
+        if [ -f "$SNAPSHOT_FILE" ]; then
+            old_hash=$(grep -P "^${rel_path}\t" "$SNAPSHOT_FILE" 2>/dev/null | cut -f2 || true)
+        fi
+
+        if [ "$current_hash" != "$old_hash" ]; then
+            echo "$rel_path" >> "$changed_files"
+        fi
+    done < "$current_manifest"
+
+    # Upload changed/new files
+    if [ -f "$changed_files" ] && [ -s "$changed_files" ]; then
+        while IFS= read -r rel_path; do
+            local elapsed=$(( $(date +%s) - start_time ))
+            if [ "$elapsed" -ge "$SYNC_DEADLINE" ]; then
+                log_warn "Sync deadline reached during upload, aborting remaining"
+                break
+            fi
+
+            local local_file="/hq/${rel_path}"
+            local s3_key="${S3_PREFIX}/${rel_path}"
+
+            if aws s3 cp "$local_file" "s3://${S3_BUCKET}/${s3_key}" \
+                --region "$s3_region" \
+                --no-progress 2>/dev/null; then
+                SYNC_UPLOADED=$((SYNC_UPLOADED + 1))
+            else
+                log_warn "Failed to upload: ${rel_path}"
+                SYNC_ERRORS=$((SYNC_ERRORS + 1))
+            fi
+        done < "$changed_files"
+    fi
+
+    # --- Compute deleted files ---
+    # Files in snapshot but not in current
+    while IFS=$'\t' read -r rel_path _hash; do
+        local elapsed=$(( $(date +%s) - start_time ))
+        if [ "$elapsed" -ge "$SYNC_DEADLINE" ]; then
+            log_warn "Sync deadline reached during delete, aborting remaining"
+            break
+        fi
+
+        if ! grep -qP "^${rel_path}\t" "$current_manifest" 2>/dev/null; then
+            local s3_key="${S3_PREFIX}/${rel_path}"
+            if aws s3 rm "s3://${S3_BUCKET}/${s3_key}" \
+                --region "$s3_region" 2>/dev/null; then
+                SYNC_DELETED=$((SYNC_DELETED + 1))
+            else
+                log_warn "Failed to delete from S3: ${rel_path}"
+                SYNC_ERRORS=$((SYNC_ERRORS + 1))
+            fi
+        fi
+    done < "$SNAPSHOT_FILE"
+
+    # Cleanup temp files
+    rm -f "$current_manifest" "$changed_files"
+
+    local total=$((SYNC_UPLOADED + SYNC_DELETED))
+    local elapsed=$(( $(date +%s) - start_time ))
+    log_info "Diff sync complete — ${SYNC_UPLOADED} uploaded, ${SYNC_DELETED} deleted, ${SYNC_ERRORS} errors (${elapsed}s)"
+
+    if [ "$SYNC_ERRORS" -gt 0 ]; then
+        return 1
+    fi
+    return 0
+}
+
+# --- Send sync status via HTTP ---
+# Posts sync status to the HQ API so it can be relayed to browser clients.
+# Uses the session status endpoint since the container doesn't maintain its own WS.
+
+send_sync_status() {
+    local status="${1:-unknown}"     # success | failure | partial
+    local uploaded="${2:-0}"
+    local deleted="${3:-0}"
+    local errors="${4:-0}"
+    local duration_ms="${5:-0}"
+
+    if [ -z "${HQ_API_URL:-}" ] || [ -z "${SESSION_ID:-}" ]; then
+        log_warn "Cannot send sync status — HQ_API_URL or SESSION_ID not set"
+        return 1
+    fi
+
+    local api_url="${HQ_API_URL%/}"
+    local payload
+    payload=$(cat <<SYNC_JSON
+{
+  "type": "sync_complete",
+  "sessionId": "${SESSION_ID}",
+  "payload": {
+    "direction": "upload",
+    "status": "${status}",
+    "filesUploaded": ${uploaded},
+    "filesDeleted": ${deleted},
+    "errors": ${errors},
+    "durationMs": ${duration_ms},
+    "timestamp": $(date +%s000)
+  }
+}
+SYNC_JSON
+)
+
+    # POST to the session sync-status endpoint
+    # Falls back silently — sync status is informational, not critical
+    if curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${CLAUDE_CODE_SESSION_ACCESS_TOKEN}" \
+        -d "$payload" \
+        "${api_url}/api/sessions/${SESSION_ID}/sync-status" \
+        --max-time 5 \
+        > /dev/null 2>&1; then
+        log_info "Sync status sent to API: ${status}"
+    else
+        log_warn "Failed to send sync status to API"
+    fi
+}
+
 # --- Build Claude Code SDK URL ---
 
 get_sdk_url() {
@@ -152,13 +375,25 @@ start_claude() {
     # If we get here without a signal, Claude exited on its own
     if [ "$SHUTDOWN_IN_PROGRESS" != true ]; then
         log_info "Claude Code exited with code ${exit_code}"
-        sync_back_to_s3
+        local sync_start
+        sync_start=$(date +%s%3N 2>/dev/null || date +%s000)
+        if diff_sync_to_s3; then
+            local sync_end
+            sync_end=$(date +%s%3N 2>/dev/null || date +%s000)
+            local duration_ms=$(( sync_end - sync_start ))
+            send_sync_status "success" "$SYNC_UPLOADED" "$SYNC_DELETED" "$SYNC_ERRORS" "$duration_ms"
+        else
+            local sync_end
+            sync_end=$(date +%s%3N 2>/dev/null || date +%s000)
+            local duration_ms=$(( sync_end - sync_start ))
+            send_sync_status "failure" "$SYNC_UPLOADED" "$SYNC_DELETED" "$SYNC_ERRORS" "$duration_ms"
+        fi
     fi
 
     exit "$exit_code"
 }
 
-# --- Sync files back to S3 ---
+# --- Sync files back to S3 (legacy full sync, kept as fallback) ---
 
 sync_back_to_s3() {
     if [ -n "${S3_BUCKET:-}" ] && [ -n "${S3_PREFIX:-}" ]; then
@@ -188,10 +423,29 @@ cleanup() {
 
     log_info "Received ${signal}, initiating graceful shutdown..."
 
-    # Sync any changed files back to S3 before killing Claude
-    sync_back_to_s3
+    # Phase 1: Diff-sync changed files to S3 (within SYNC_DEADLINE)
+    local sync_start
+    sync_start=$(date +%s%3N 2>/dev/null || date +%s000)
+    local sync_status="success"
 
-    # Send SIGTERM to Claude Code if running
+    if diff_sync_to_s3; then
+        log_info "Diff sync completed successfully"
+    else
+        log_error "Diff sync failed or partially completed"
+        sync_status="failure"
+        if [ "$SYNC_UPLOADED" -gt 0 ] || [ "$SYNC_DELETED" -gt 0 ]; then
+            sync_status="partial"
+        fi
+    fi
+
+    local sync_end
+    sync_end=$(date +%s%3N 2>/dev/null || date +%s000)
+    local duration_ms=$(( sync_end - sync_start ))
+
+    # Phase 2: Send sync status to API before disconnecting
+    send_sync_status "$sync_status" "$SYNC_UPLOADED" "$SYNC_DELETED" "$SYNC_ERRORS" "$duration_ms"
+
+    # Phase 3: Send SIGTERM to Claude Code if running
     if [ -n "$CLAUDE_PID" ] && kill -0 "$CLAUDE_PID" 2>/dev/null; then
         log_info "Sending SIGTERM to Claude Code (PID: ${CLAUDE_PID})..."
         kill -TERM "$CLAUDE_PID" 2>/dev/null || true
@@ -212,8 +466,9 @@ cleanup() {
         fi
     fi
 
-    # Clean up PID file
+    # Phase 4: Clean up
     rm -f /tmp/session.pid
+    rm -f "$SNAPSHOT_FILE" /tmp/workspace-current.manifest /tmp/sync-changed.list
 
     log_info "Session shutdown complete"
     exit 0
@@ -229,6 +484,7 @@ main() {
     validate_env
     setup_claude_credentials
     sync_from_s3
+    snapshot_workspace
     start_claude
 }
 

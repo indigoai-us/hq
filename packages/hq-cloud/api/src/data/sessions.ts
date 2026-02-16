@@ -8,7 +8,7 @@
 import type { Collection, Db } from 'mongodb';
 import { getDb } from '../db/mongo.js';
 
-export type SessionStatus = 'starting' | 'active' | 'stopping' | 'stopped' | 'errored';
+export type SessionStatus = 'starting' | 'active' | 'syncing' | 'stopping' | 'stopped' | 'errored';
 
 export interface SessionCapabilities {
   cwd: string;
@@ -137,7 +137,7 @@ export async function countActiveSessions(userId: string): Promise<number> {
   const col = getCollection();
   return col.countDocuments({
     userId,
-    status: { $in: ['starting', 'active'] },
+    status: { $in: ['starting', 'active', 'syncing'] },
   });
 }
 
@@ -218,7 +218,7 @@ export async function findIdleSessions(maxIdleMs: number): Promise<Session[]> {
 
   return col
     .find({
-      status: { $in: ['starting', 'active'] },
+      status: { $in: ['starting', 'active', 'syncing'] },
       lastActivityAt: { $lt: cutoff },
     })
     .toArray();

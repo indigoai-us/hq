@@ -34,7 +34,19 @@ Prepare for a new session to continue this work.
    done
    ```
 
-4. **Update INDEX.md files**
+4. **Sync to cloud (non-blocking)**
+   Push local changes (including freshly committed knowledge repos) to hq-cloud so cloud sessions have the latest files.
+   ```bash
+   # Only attempt sync if user is authenticated with hq-cloud
+   if [ -f ~/.hq/credentials.json ]; then
+     hq sync push 2>&1 || echo "Cloud sync failed (non-fatal)"
+   fi
+   ```
+   - If `~/.hq/credentials.json` does not exist, skip silently (user is not connected to hq-cloud)
+   - If `hq sync push` fails (network error, auth expired, etc.), log the warning but do **not** fail the handoff
+   - On success, include the sync result in the report (e.g., "Synced 12 files to cloud")
+
+5. **Update INDEX.md files**
    - Regenerate `INDEX.md` at HQ root with:
      - Workers from `workers/registry.yaml`
      - Recent threads from `workspace/threads/`
@@ -43,13 +55,13 @@ Prepare for a new session to continue this work.
    - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
    - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
-5. **Update search index**
+6. **Update search index**
    ```bash
    qmd update && qmd embed
    ```
    Ensures any content created this session is searchable in the next.
 
-6. **Write handoff note** to `workspace/threads/handoff.json`:
+7. **Write handoff note** to `workspace/threads/handoff.json`:
    ```json
    {
      "created_at": "ISO8601 timestamp",
@@ -60,13 +72,14 @@ Prepare for a new session to continue this work.
    }
    ```
 
-7. **Report**
+8. **Report**
    ```
    Handoff ready.
 
    Latest thread: {thread_id}
    Summary: {conversation_summary}
    Git: {branch} @ {commit}
+   Cloud: {sync result, e.g. "Synced 12 files to cloud" | "Cloud sync skipped (not authenticated)" | "Cloud sync failed (warning)"}
 
    To continue in a fresh session:
    1. Start new Claude Code session

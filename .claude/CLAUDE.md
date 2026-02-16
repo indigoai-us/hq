@@ -183,6 +183,20 @@ After completing any of these actions, automatically save thread state to `works
 
 **Knowledge repos:** When edits touch knowledge files (symlinked to `repos/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above for commit instructions.
 
+## File Sync
+
+HQ files sync between local and cloud using an event-driven model. Sync is automatic at session boundaries -- you do not need to sync on every file edit.
+
+**Automatic sync (no action needed):**
+- `/checkpoint` and `/handoff` push local changes to cloud after completing their work
+- `/run-project`, `/execute-task`, and `/prd` pull the latest cloud changes before starting
+
+**Ad-hoc sync:** If you are doing significant work outside of project commands (e.g., editing knowledge files, updating worker definitions), run `hq sync push` when you reach a natural stopping point.
+
+**Legacy fallback:** `hq sync start` runs continuous polling-based sync. This is not the primary approach -- prefer the event-driven model above.
+
+**Do not** run sync after every file edit. Sync at session boundaries, not per-file.
+
 ## Auto-Handoff (Context Limit)
 
 When context usage reaches 70% (remaining drops to 30%), automatically run `/handoff`.
