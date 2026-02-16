@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as os from "os";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { createInterface } from "readline";
 import { banner, success, warn, step, nextSteps, info } from "./ui.js";
 import { checkDeps } from "./deps.js";
