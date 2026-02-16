@@ -8,7 +8,7 @@ const program = new Command();
 program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
-  .version("5.2.1")
+  .version("5.2.2")
   .argument("[directory]", "where to create HQ")
   .option("--skip-deps", "skip dependency checks")
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")

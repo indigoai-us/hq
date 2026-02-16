@@ -10,7 +10,7 @@ export function banner(): void {
   console.log(chalk.dim("              ▀▀   "));
   console.log();
   console.log(
-    chalk.dim("  Personal OS for AI Workers") + chalk.dim("  v5.2.1")
+    chalk.dim("  Personal OS for AI Workers") + chalk.dim("  v5.2.2")
   );
   console.log();
 }
