@@ -56,3 +56,6 @@ data/journal/*.jsonl
 
 # Synced modules (cloned repos)
 modules/.synced/
+
+# Migration backups (local safety net — never commit)
+.hq-backup/

@@ -1,5 +1,20 @@
 # Changelog
 
+## v5.5.0 (2026-02-14)
+
+### Added
+- **`/migrate`** — Automated HQ migration command. Detects current version, fetches latest template from GitHub, diffs filesystem, generates migration plan, creates full backup, and executes lossless upgrade. Supports interactive review, `--yolo` (skip review), `--status` (check version), and `--restore` (roll back) modes.
+- **`migration-agent` worker** — OpsWorker powering `/migrate` with three skills:
+  - `analyze` — Version detection (`.hq-version` file or filesystem inference from 12+ structural clues), template fetching (3 fallback strategies: `gh api`, `git sparse-checkout`, `git clone`), filesystem diffing, and migration plan generation
+  - `execute` — Cross-platform backup creation (`rsync`, `tar`, or `robocopy`), atomic migration execution with strict data integrity rules, `.hq-version` file tracking
+  - `restore` — List available backups and restore HQ from a selected snapshot
+- **`.hq-version` file** — Single-source version marker written after each successful migration. Enables instant version detection without filesystem inference.
+- **`.hq-backup/` directory** — Full snapshot backups created before each migration, with `backup-manifest.json` for verification. Old backups preserved until manually cleaned up.
+- **MIGRATION.md** — Added prominent "Automated Migration" section at the top, directing users to `/migrate` before manual steps
+
+### Changed
+- **MIGRATION.md** — Restructured: automated migration instructions first, manual guides preserved below for reference
+
 ## v5.4.0 (2026-02-12)
 
 ### Added

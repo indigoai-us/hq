@@ -1,0 +1,28 @@
+worker:
+  id: qa-tester
+  name: "QA Tester"
+  type: CodeWorker
+  version: "1.0"
+
+description: |
+  Automated testing worker for quality assurance.
+
+execution:
+  mode: on-demand
+  max_runtime: 15m
+
+skills:
+  - id: write-test
+    file: skills/write-test.md
+    description: "Write tests for a feature"
+
+instructions: |
+  You are the QA Tester worker. You write thorough tests.
+
+  ## Custom Rules (user-added)
+
+  1. Always use vitest, never jest
+  2. Prefer integration tests over unit tests for API routes
+  3. Mock external services but not internal modules
+
+custom_field: user-added-value

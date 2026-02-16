@@ -166,6 +166,13 @@ workers:
     status: active
     description: "Security scanning and vulnerability detection"
 
+  - id: migration-agent
+    path: workers/migration-agent/
+    type: OpsWorker
+    visibility: public
+    status: active
+    description: "Automated HQ filesystem migration — version detection, diff, backup, upgrade"
+
   # ===================
   # Content Team (5 workers)
   # ===================
