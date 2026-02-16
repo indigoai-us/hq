@@ -1,7 +1,8 @@
 import * as path from "path";
+import * as os from "os";
 import fs from "fs-extra";
 import { createInterface } from "readline";
-import { banner, success, warn, step, nextSteps } from "./ui.js";
+import { banner, success, warn, step, nextSteps, info } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { fileURLToPath } from "url";
 import { execSync, spawnSync } from "child_process";
@@ -33,9 +34,46 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   return answer.toLowerCase().startsWith("y");
 }
 
-function getTemplateDir(): string {
-  // In the npm package, template is at ../../template relative to dist/
-  // In dev, it's at ../../../template relative to src/
+const HQ_REPO_URL = "https://github.com/indigoai-us/hq.git";
+
+/**
+ * Try to fetch the latest HQ template from GitHub.
+ * Returns the path to the template/ dir inside a temp clone, or null on failure.
+ * The caller is responsible for cleaning up the temp dir after copying.
+ */
+function fetchRemoteTemplate(): { templateDir: string; cleanupDir: string } | null {
+  const tmpDir = path.join(os.tmpdir(), `hq-template-${Date.now()}`);
+  try {
+    execSync(`git clone --depth 1 "${HQ_REPO_URL}" "${tmpDir}"`, {
+      stdio: "pipe",
+      timeout: 60000,
+    });
+    const templatePath = path.join(tmpDir, "template");
+    if (fs.existsSync(templatePath) && fs.existsSync(path.join(templatePath, ".claude"))) {
+      return { templateDir: templatePath, cleanupDir: tmpDir };
+    }
+    // Template dir not found in repo — clean up
+    fs.removeSync(tmpDir);
+    return null;
+  } catch {
+    // Git clone failed (no access, no git, offline) — fall back to bundled
+    try { fs.removeSync(tmpDir); } catch { /* best effort */ }
+    return null;
+  }
+}
+
+/**
+ * Get the template directory. Tries GitHub first for the latest version,
+ * falls back to the bundled template in the npm package.
+ */
+function getTemplateDir(): { templateDir: string; cleanupDir?: string; source: "github" | "bundled" } {
+  // Try fetching latest from GitHub
+  const remote = fetchRemoteTemplate();
+  if (remote) {
+    return { templateDir: remote.templateDir, cleanupDir: remote.cleanupDir, source: "github" };
+  }
+
+  // Fall back to bundled template
   const candidates = [
     path.resolve(__dirname, "..", "..", "template"),
     path.resolve(__dirname, "..", "template"),
@@ -44,7 +82,7 @@ function getTemplateDir(): string {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, ".claude"))) {
-      return candidate;
+      return { templateDir: candidate, source: "bundled" };
     }
   }
 
@@ -81,8 +119,14 @@ export async function scaffold(
   }
 
   // 2. Copy template
-  step("Creating HQ...");
-  const templateDir = getTemplateDir();
+  step("Fetching latest HQ template...");
+  const { templateDir, cleanupDir, source } = getTemplateDir();
+
+  if (source === "github") {
+    info("Using latest template from GitHub");
+  } else {
+    info("Using bundled template (offline or no git access)");
+  }
 
   await fs.copy(templateDir, targetDir, {
     filter: (src) => {
@@ -92,6 +136,11 @@ export async function scaffold(
       return true;
     },
   });
+
+  // Clean up temp clone if we fetched from GitHub
+  if (cleanupDir) {
+    try { fs.removeSync(cleanupDir); } catch { /* best effort */ }
+  }
 
   // Count what we copied
   const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
