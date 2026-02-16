@@ -9,7 +9,7 @@ program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
   .version("5.2.1")
-  .argument("[directory]", "where to create HQ", "hq")
+  .argument("[directory]", "where to create HQ")
   .option("--skip-deps", "skip dependency checks")
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-cloud", "don't prompt for cloud setup")

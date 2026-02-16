@@ -89,16 +89,16 @@ function getTemplateDir(): { templateDir: string; cleanupDir?: string; source: "
 }
 
 export async function scaffold(
-  directory: string,
+  directory: string | undefined,
   options: ScaffoldOptions
 ): Promise<void> {
   banner();
 
-  // 1. Resolve target directory
-  const targetDir = path.resolve(directory);
-  const displayDir = directory.startsWith("/")
-    ? directory
-    : path.relative(process.cwd(), targetDir) || ".";
+  // 1. Ask where to install
+  const defaultDir = os.platform() === "win32" ? "C:\\hq" : path.join(os.homedir(), "hq");
+  const chosenDir = directory || await prompt("Where do you want to install HQ?", defaultDir);
+  const targetDir = path.resolve(chosenDir);
+  const displayDir = targetDir;
 
   // Check if directory already exists
   if (fs.existsSync(targetDir)) {
