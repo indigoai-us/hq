@@ -44,7 +44,8 @@ describe('Token Encryption', () => {
     const encrypted = encryptToken(token);
     const buf = Buffer.from(encrypted, 'base64');
     // Flip a byte in the ciphertext area
-    buf[buf.length - 1] ^= 0xff;
+    const lastIdx = buf.length - 1;
+    buf[lastIdx] = (buf[lastIdx] ?? 0) ^ 0xff;
     const tampered = buf.toString('base64');
     expect(() => decryptToken(tampered)).toThrow();
   });

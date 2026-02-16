@@ -11,7 +11,6 @@ import {
   updateUserSettings,
   isOnboarded,
   setClaudeToken,
-  hasClaudeToken,
   removeClaudeToken,
 } from '../data/user-settings.js';
 import { config } from '../config.js';

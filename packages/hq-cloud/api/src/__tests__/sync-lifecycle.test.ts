@@ -94,8 +94,8 @@ describe('SyncGate', () => {
   });
 
   it('should reset all gates', async () => {
-    const gate1 = createSyncGate('session-5');
-    const gate2 = createSyncGate('session-6');
+    void createSyncGate('session-5');
+    void createSyncGate('session-6');
 
     expect(hasPendingSyncGate('session-5')).toBe(true);
     expect(hasPendingSyncGate('session-6')).toBe(true);
@@ -117,7 +117,7 @@ describe('SyncGate', () => {
 // ─── Integration tests for sync-status endpoint and DELETE flow ─────
 
 import { buildApp } from '../index.js';
-import { resetRelays, getOrCreateRelay, getRelay } from '../ws/session-relay.js';
+import { resetRelays, getOrCreateRelay } from '../ws/session-relay.js';
 import { resetConnectionTimeouts } from '../sessions/connection-timeout.js';
 import { WebSocket } from 'ws';
 import type { FastifyInstance } from 'fastify';
