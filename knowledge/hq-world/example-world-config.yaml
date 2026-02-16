@@ -1,0 +1,173 @@
+# =============================================================================
+# HQ World Protocol Configuration — Example
+# =============================================================================
+#
+# This is a complete example of config/world.yaml for an HQ instance with
+# two active peer connections, one suspended connection, and one disconnected
+# (historical) connection.
+#
+# Operator: Stefan
+# Instance: stefan-hq-primary
+# Peers: Alex (active/trusted), Maria (active/verified), Jordan (suspended),
+#        Chris (disconnected/historical)
+#
+# See: knowledge/hq-world/configuration.md for the full specification.
+# Schema: https://hq.dev/schemas/world-config-v1.json
+# =============================================================================
+
+# --- Identity ---
+# Who this HQ instance is in the World.
+# These fields MUST match config/hiamp.yaml identity (if HIAMP is configured).
+identity:
+  owner: stefan                          # Operator's unique name
+  instance-id: stefan-hq-primary         # Globally unique instance ID
+  display-name: "Stefan's HQ"           # Human-readable label
+  world-version: v1                      # World Protocol version
+
+# --- Connections ---
+# Peer connections — active, suspended, and historical.
+# Each entry tracks the full lifecycle of a peer relationship.
+connections:
+
+  # ── Active Connection: Alex (Trusted) ────────────────────────────────────
+  # Long-standing collaboration. Trust upgraded after consistent successful
+  # transfers. Auto-approval configured for testing knowledge and hq-cloud
+  # project context.
+  - peer: alex
+    instance-id: alex-hq-primary
+    display-name: "Alex's HQ"
+    status: active
+    trust-level: trusted
+    transport: file
+    transport-config:
+      export-path: ~/hq-exports/alex/
+      import-path: ~/hq-imports/alex/
+    proposal-id: prop-7f3e2d1c
+    connected-at: "2026-02-16T11:00:00Z"
+    approved-at: "2026-02-16T11:00:00Z"
+    approved-by: stefan
+    manifest-last-refreshed: "2026-02-14T09:00:00Z"
+    manifest-refresh-interval: 7d
+    auto-approve:
+      - type: knowledge
+        domains: [testing, infrastructure]
+      - type: context
+        projects: [hq-cloud]
+    notes: "Co-founder. Full trust. Backend team lead for hq-cloud."
+
+  # ── Active Connection: Maria (Verified) ──────────────────────────────────
+  # Freelance designer. Connected for design system collaboration.
+  # Using git transport for transfer exchange via shared repo.
+  - peer: maria
+    instance-id: maria-hq-studio
+    display-name: "Maria's Design HQ"
+    status: active
+    trust-level: verified
+    transport: git
+    transport-config:
+      repo: git@github.com:team/hq-transfers-maria.git
+      branch: main
+      remote: origin
+    proposal-id: prop-b2c3d4e5
+    connected-at: "2026-01-20T14:00:00Z"
+    approved-at: "2026-01-20T14:00:00Z"
+    approved-by: stefan
+    manifest-last-refreshed: "2026-02-10T10:00:00Z"
+    manifest-refresh-interval: 14d
+    auto-approve: []
+    notes: "Freelance designer. Design system and UX pattern sharing."
+
+  # ── Suspended Connection: Jordan ─────────────────────────────────────────
+  # Temporarily paused while reviewing a recent large knowledge transfer.
+  - peer: jordan
+    instance-id: jordan-hq-main
+    display-name: "Jordan's HQ"
+    status: suspended
+    trust-level: verified
+    transport: file
+    transport-config:
+      export-path: ~/hq-exports/jordan/
+      import-path: ~/hq-imports/jordan/
+    proposal-id: prop-d4e5f6a7
+    connected-at: "2026-01-05T09:00:00Z"
+    approved-at: "2026-01-05T09:00:00Z"
+    approved-by: stefan
+    suspended-at: "2026-02-15T16:00:00Z"
+    suspended-by: stefan
+    suspension-reason: "Reviewing large analytics knowledge transfer for accuracy"
+    suspension-expires: "2026-02-22T16:00:00Z"
+    manifest-last-refreshed: "2026-02-08T11:00:00Z"
+    manifest-refresh-interval: 7d
+    auto-approve: []
+    notes: "Data analytics team. Suspended pending review."
+
+  # ── Disconnected Connection: Chris (Historical) ──────────────────────────
+  # Collaboration completed. Record retained for audit trail.
+  - peer: chris
+    instance-id: chris-hq-primary
+    display-name: "Chris's HQ"
+    status: disconnected
+    trust-level: verified
+    transport: file
+    transport-config: {}
+    proposal-id: prop-e5f6a7b8
+    connected-at: "2025-11-01T10:00:00Z"
+    approved-at: "2025-11-01T10:00:00Z"
+    approved-by: stefan
+    disconnected-at: "2026-01-31T17:00:00Z"
+    disconnected-by: stefan
+    disconnection-reason: "Project collaboration completed. Clean disconnect."
+    manifest-last-refreshed: "2026-01-25T08:00:00Z"
+    manifest-refresh-interval: 7d
+    auto-approve: []
+    notes: "Former project collaborator. 15 transfers exchanged over 3 months."
+
+# --- Preferences ---
+# Global defaults for World Protocol behavior.
+# Per-connection settings override these where applicable.
+preferences:
+  default-transport: file                # MVP transport — file-based exchange
+  default-trust-level: verified          # Standard trust for new connections
+  manifest-refresh-interval: 7d          # Refresh peer manifests weekly
+  connection-expiry: 90d                 # Flag inactive connections after 90 days
+  suspension-max-duration: 30d           # Max suspension before operator must act
+  transfer-retention:
+    bundles: 90d                         # Retain transfer bundles for 90 days (rollback)
+    logs: 365d                           # Retain transfer logs for 1 year (audit)
+  inbox-auto-cleanup: 30d               # Clean unreviewed inbox items after 30 days
+  accepting-connections: true            # Open to new connection proposals
+
+# =============================================================================
+# Corresponding workspace/world/ directory structure for this config:
+#
+# workspace/world/
+# ├── peers/
+# │   ├── alex/
+# │   │   ├── manifest.yaml              # Alex's latest manifest
+# │   │   └── manifest-history/
+# │   │       ├── manifest-2026-02-07.yaml
+# │   │       └── manifest-2026-02-14.yaml
+# │   ├── maria/
+# │   │   ├── manifest.yaml
+# │   │   └── manifest-history/
+# │   │       └── manifest-2026-01-27.yaml
+# │   └── jordan/                         # Retained during suspension
+# │       ├── manifest.yaml
+# │       └── manifest-history/
+# │           └── manifest-2026-02-01.yaml
+# │   # Note: chris/ was deleted on disconnection
+# ├── transfers/
+# │   ├── 2026-02-14.yaml
+# │   ├── 2026-02-15.yaml
+# │   └── 2026-02-16.yaml
+# ├── inbox/
+# │   └── alex/
+# │       └── knowledge/
+# │           └── txfr-latest-testing/    # Pending review
+# ├── quarantine/                          # (empty — no failed transfers)
+# └── context/
+#     └── alex/
+#         └── hq-cloud/
+#             ├── status.yaml             # Latest project status from Alex
+#             └── coordination.yaml       # Work ownership map
+# =============================================================================
