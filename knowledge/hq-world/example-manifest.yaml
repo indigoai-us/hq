@@ -1,0 +1,277 @@
+# HQ Manifest — Stefan's HQ
+# Generated: 2026-02-16T12:00:00Z
+# World Protocol: v1
+#
+# This is an example manifest generated from Stefan's HQ instance.
+# It demonstrates the full manifest format with real workers and knowledge
+# domains derived from the actual HQ structure.
+#
+# See manifest-schema.md for the full schema specification.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Section 1: Identity
+# Derived from: agents.md, config/hiamp.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+identity:
+  owner: stefan
+  instance-id: stefan-hq-primary
+  display-name: "Stefan's HQ"
+  world-version: v1
+  description: |
+    Personal OS for orchestrating work across companies, workers, and AI.
+    Focused on full-stack web development, AI/ML integration, and
+    infrastructure automation. 18 workers across dev and content teams.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Section 2: Capabilities
+# Derived from: workers/registry.yaml + workers/*/worker.yaml
+# Note: 5 workers are redacted (content-legal, security-scanner, and 3 others)
+# ─────────────────────────────────────────────────────────────────────────────
+
+capabilities:
+  worker-count: 17
+  public-worker-count: 12
+
+  workers:
+    # --- Dev Team ---
+
+    - id: architect
+      type: CodeWorker
+      team: dev-team
+      description: "System design, API design, architecture decisions"
+      skills:
+        - system-design
+        - api-design
+        - architecture
+        - protocol-design
+        - technical-specs
+      visibility: public
+
+    - id: backend-dev
+      type: CodeWorker
+      team: dev-team
+      description: "API endpoints, business logic, backend implementation"
+      skills:
+        - api-dev
+        - database
+        - backend
+        - fastify
+        - mongodb
+      visibility: public
+
+    - id: frontend-dev
+      type: CodeWorker
+      team: dev-team
+      description: "React/Next components, pages, UI implementation"
+      skills:
+        - react
+        - nextjs
+        - css
+        - ui
+        - typescript
+      visibility: public
+
+    - id: dev-qa-tester
+      type: CodeWorker
+      team: dev-team
+      description: "Testing, browser automation, accessibility, demo accounts"
+      skills:
+        - e2e-testing
+        - playwright
+        - vitest
+        - accessibility
+        - test-automation
+      visibility: public
+
+    - id: database-dev
+      type: CodeWorker
+      team: dev-team
+      description: "Schema design, migrations, query optimization"
+      skills:
+        - schema-design
+        - migrations
+        - query-optimization
+        - mongodb
+        - postgresql
+      visibility: public
+
+    - id: infra-dev
+      type: CodeWorker
+      team: dev-team
+      description: "CI/CD pipelines, deployment, monitoring"
+      skills:
+        - aws-cdk
+        - ecs-fargate
+        - ci-cd
+        - docker
+        - cloud-deployment
+      visibility: public
+
+    - id: project-manager
+      type: CodeWorker
+      team: dev-team
+      description: "PRD lifecycle, issue selection, learning aggregation"
+      skills:
+        - project-management
+        - prd-lifecycle
+        - issue-tracking
+      visibility: public
+
+    - id: knowledge-curator
+      type: CodeWorker
+      team: dev-team
+      description: "Process learnings, update knowledge bases, documentation"
+      skills:
+        - knowledge-management
+        - documentation
+        - learning-capture
+      visibility: public
+
+    - id: code-reviewer
+      type: CodeWorker
+      team: dev-team
+      description: "PR review, merge management, code quality gating"
+      skills:
+        - code-review
+        - quality-gating
+        - merge-management
+      visibility: public
+
+    # --- Content Team ---
+
+    - id: content-brand
+      type: ContentWorker
+      team: content-team
+      description: "Brand voice, messaging, tone analysis"
+      skills:
+        - brand-voice
+        - messaging
+        - tone-analysis
+      visibility: public
+
+    - id: content-sales
+      type: ContentWorker
+      team: content-team
+      description: "Conversion copy, CTAs, value props"
+      skills:
+        - conversion-copy
+        - cta-writing
+        - value-propositions
+      visibility: public
+
+    - id: content-product
+      type: ContentWorker
+      team: content-team
+      description: "Feature accuracy, technical claims verification"
+      skills:
+        - feature-copy
+        - technical-accuracy
+        - claims-verification
+      visibility: public
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Section 3: Knowledge Domains
+# Derived from: knowledge/ directory tree + manual curation
+# Note: 2 domains are redacted (loom, Ralph — internal/personal)
+# ─────────────────────────────────────────────────────────────────────────────
+
+knowledge:
+  domain-count: 8
+  public-domain-count: 6
+
+  domains:
+    - id: testing
+      label: "Testing & QA"
+      description: >
+        E2E testing patterns, Playwright automation, Vitest unit testing,
+        test fixture management, Clerk auth testing, CI integration,
+        demo account lifecycle. Battle-tested across multiple projects.
+      depth: deep
+      source: auto-detected
+
+    - id: agent-protocol
+      label: "Agent Communication Protocol"
+      description: >
+        HIAMP v1 specification, inter-agent messaging, worker addressing,
+        Slack transport, capability tokens, peer configuration.
+        Complete protocol spec with configuration schema.
+      depth: deep
+      source: auto-detected
+
+    - id: hq-world
+      label: "HQ World Protocol"
+      description: >
+        Federation protocol for HQ instances. Peering ceremonies,
+        structured transfers (knowledge, worker patterns, context),
+        trust management, transport abstraction. In active development.
+      depth: deep
+      source: auto-detected
+
+    - id: ai-security
+      label: "AI Security Framework"
+      description: >
+        Credential isolation patterns, prompt injection defense,
+        tool permission models, audit logging for AI agents.
+      depth: moderate
+      source: auto-detected
+
+    - id: web-development
+      label: "Web & Full-Stack Development"
+      description: >
+        React, Next.js, TypeScript, Node.js, Fastify, MongoDB,
+        full-stack patterns, component architecture, API design.
+      depth: deep
+      source: manual
+
+    - id: infrastructure
+      label: "Infrastructure & DevOps"
+      description: >
+        AWS CDK, ECS Fargate, Docker containerization, CI/CD pipelines,
+        cloud deployment patterns, CodeBuild, ECR, S3.
+      depth: moderate
+      source: manual
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Section 4: Connection Preferences
+# Derived from: config/manifest.yaml (operator-configured)
+# ─────────────────────────────────────────────────────────────────────────────
+
+connection:
+  preferred-transport: file
+  preferred-trust-level: verified
+  manifest-refresh-interval: 7d
+  accepting-connections: true
+  collaboration-interests:
+    - "Testing patterns and E2E automation sharing"
+    - "Worker pattern pollination — sharing and adapting worker definitions"
+    - "Full-stack web development knowledge exchange"
+    - "AI agent orchestration patterns"
+  hiamp-enabled: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Section 5: Metadata
+# Derived from: agents.md, registry.yaml, generation context
+# ─────────────────────────────────────────────────────────────────────────────
+
+metadata:
+  generated-at: "2026-02-16T12:00:00Z"
+  generator-version: "1.0.0"
+  hq-version: "4.0"
+  operator:
+    role: "Software Engineer"
+    focus:
+      - "Web/Frontend"
+      - "Backend/APIs"
+      - "AI/ML"
+      - "Infrastructure"
+    timezone: null
+  tags:
+    - fullstack
+    - typescript
+    - react
+    - nextjs
+    - ai
+    - devops
+    - testing
+    - aws

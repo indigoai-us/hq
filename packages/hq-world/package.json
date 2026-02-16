@@ -1,0 +1,30 @@
+{
+  "name": "@indigoai/hq-world",
+  "version": "1.0.0",
+  "description": "HQ World Protocol — file-based transfer implementation for knowledge, worker patterns, and context exchange between HQ instances",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/hq-world"
+  },
+  "keywords": ["hq", "world", "federation", "transfer", "knowledge", "worker-pattern"],
+  "license": "MIT",
+  "type": "module"
+}

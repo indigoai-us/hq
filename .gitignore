@@ -18,6 +18,14 @@ Thumbs.db
 .hq-sync.pid
 .hq-sync-journal.json
 
+# Next.js
+.next/
+out/
+
+# Playwright
+test-results/
+playwright-report/
+
 # Astro
 .astro/
 
