@@ -31,7 +31,7 @@ claude
 Sync your HQ to the cloud for mobile access:
 
 ```bash
-npm install -g @indigoai/hq-cli
+npm install -g @indigoai-us/hq-cli
 hq sync init        # Authenticate with IndigoAI
 hq sync start       # Start background sync
 ```
@@ -67,7 +67,7 @@ indigoai/hq/
 | Package | npm | Purpose |
 |---------|-----|---------|
 | `create-hq` | [![npm](https://img.shields.io/npm/v/create-hq)](https://www.npmjs.com/package/create-hq) | One-time installer |
-| `@indigoai/hq-cli` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cli)](https://www.npmjs.com/package/@indigoai/hq-cli) | Ongoing management |
+| `@indigoai-us/hq-cli` | [![npm](https://img.shields.io/npm/v/@indigoai-us/hq-cli)](https://www.npmjs.com/package/@indigoai-us/hq-cli) | Ongoing management |
 | `@indigoai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cloud)](https://www.npmjs.com/package/@indigoai/hq-cloud) | Cloud sync engine |
 
 ## License

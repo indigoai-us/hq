@@ -19,7 +19,7 @@ The CLI is built with Commander. The entry point at `src/index.ts` exposes a sin
 program.name("create-hq").version("5.0.0")
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
-  .option("--skip-cli", "don't install @indigoai/hq-cli globally")
+  .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
   .action(async (directory, options) => {
     await scaffold(directory, options);
@@ -29,7 +29,7 @@ program.name("create-hq").version("5.0.0")
 | Flag | Effect |
 |------|--------|
 | `--skip-deps` | Skip Node.js, Claude Code, qmd, and optional dependency checks |
-| `--skip-cli` | Don't install `@indigoai/hq-cli` globally |
+| `--skip-cli` | Don't install `@indigoai-us/hq-cli` globally |
 | `--skip-sync` | Don't prompt for cloud sync initialization |
 
 ## Scaffold Flow
@@ -50,7 +50,7 @@ The core logic lives in `src/scaffold.ts`. When `scaffold()` is called, it runs 
    | gh CLI | No | Command existence |
    | Vercel CLI | No | Command existence |
 
-6. **Install HQ CLI** — Optionally runs `npm install -g @indigoai/hq-cli` for module management.
+6. **Install HQ CLI** — Optionally runs `npm install -g @indigoai-us/hq-cli` for module management.
 7. **Set up cloud sync** — Optionally runs `hq sync init` to configure S3-backed sync.
 8. **Index with qmd** — Runs `qmd index .` to build the search index.
 9. **Display success** — Prints a banner with next steps (open Claude Code, run `/setup`).

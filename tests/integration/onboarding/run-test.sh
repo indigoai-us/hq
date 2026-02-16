@@ -41,7 +41,7 @@ echo ""
 
 # ─── Step 1: Build hq-cli ───────────────────────────────────────────────────
 
-echo "=== Building @indigoai/hq-cli ==="
+echo "=== Building @indigoai-us/hq-cli ==="
 cd "$HQ_CLI_DIR"
 npm run build
 echo "  Built successfully."

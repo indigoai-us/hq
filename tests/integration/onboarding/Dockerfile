@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y jq curl && rm -rf /var/lib/apt/lists/*
 
 # Install packages from local tarballs (collected by run-test.sh)
 COPY .staging/tarballs/ /tarballs/
-RUN npm install -g /tarballs/indigoai-hq-cli-*.tgz && \
+RUN npm install -g /tarballs/indigoai-us-hq-cli-*.tgz && \
     npm install -g /tarballs/create-hq-*.tgz
 
 # Copy test files

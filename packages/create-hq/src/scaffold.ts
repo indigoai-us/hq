@@ -162,15 +162,15 @@ export async function scaffold(
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
-      "Install @indigoai/hq-cli globally for module management?"
+      "Install @indigoai-us/hq-cli globally for module management?"
     );
     if (installCli) {
       try {
-        step("Installing @indigoai/hq-cli...");
-        execSync("npm install -g @indigoai/hq-cli", { stdio: "pipe" });
-        success("Installed @indigoai/hq-cli");
+        step("Installing @indigoai-us/hq-cli...");
+        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+        success("Installed @indigoai-us/hq-cli");
       } catch {
-        warn("Failed to install @indigoai/hq-cli — you can install it later with: npm install -g @indigoai/hq-cli");
+        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
       }
     }
   }

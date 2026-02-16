@@ -1,7 +1,7 @@
 /**
  * Mock API server for clean-room integration testing.
  *
- * Implements the hq-cloud API endpoints used by @indigoai/hq-cli.
+ * Implements the hq-cloud API endpoints used by @indigoai-us/hq-cli.
  * Stores files in-memory — no database, no S3 needed.
  * Accepts any Bearer token (no real JWT validation).
  */

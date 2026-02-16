@@ -11,7 +11,7 @@ program
   .version("5.1.0")
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
-  .option("--skip-cli", "don't install @indigoai/hq-cli globally")
+  .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-cloud", "don't prompt for cloud setup")
   .action(async (directory: string, options) => {
     try {
