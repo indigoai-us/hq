@@ -4,7 +4,6 @@ import fs from "fs-extra";
 import { createInterface } from "readline";
 import { banner, success, warn, step, nextSteps, info } from "./ui.js";
 import { checkDeps } from "./deps.js";
-import { initGit, hasGit } from "./git.js";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
@@ -149,15 +148,7 @@ export async function scaffold(
 
   success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
 
-  // 3. Git init
-  if (hasGit()) {
-    initGit(targetDir);
-    success("Initialized git repository");
-  } else {
-    warn("git not found — skipping git init");
-  }
-
-  // 4. Check dependencies and install missing ones
+  // 3. Check dependencies and install missing ones
   if (!options.skipDeps) {
     await checkDeps();
   }
