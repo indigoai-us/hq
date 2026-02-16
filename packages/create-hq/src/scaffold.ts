@@ -1,11 +1,12 @@
 import * as path from "path";
+import * as os from "os";
 import * as fs from "fs-extra";
 import { createInterface } from "readline";
-import { banner, success, warn, step, nextSteps } from "./ui.js";
+import { banner, success, warn, step, nextSteps, info } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
 import { fileURLToPath } from "url";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +14,7 @@ const __dirname = path.dirname(__filename);
 interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
-  skipSync?: boolean;
+  skipCloud?: boolean;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -34,9 +35,42 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   return answer.toLowerCase().startsWith("y");
 }
 
-function getTemplateDir(): string {
-  // In the npm package, template is at ../../template relative to dist/
-  // In dev, it's at ../../../template relative to src/
+const HQ_REPO_URL = "https://github.com/indigoai-us/hq.git";
+
+/**
+ * Try to fetch the latest HQ template from GitHub.
+ * Returns the path to the template/ dir inside a temp clone, or null on failure.
+ */
+function fetchRemoteTemplate(): { templateDir: string; cleanupDir: string } | null {
+  const tmpDir = path.join(os.tmpdir(), `hq-template-${Date.now()}`);
+  try {
+    execSync(`git clone --depth 1 "${HQ_REPO_URL}" "${tmpDir}"`, {
+      stdio: "pipe",
+      timeout: 60000,
+    });
+    const templatePath = path.join(tmpDir, "template");
+    if (fs.existsSync(templatePath) && fs.existsSync(path.join(templatePath, ".claude"))) {
+      return { templateDir: templatePath, cleanupDir: tmpDir };
+    }
+    fs.removeSync(tmpDir);
+    return null;
+  } catch {
+    try { fs.removeSync(tmpDir); } catch { /* best effort */ }
+    return null;
+  }
+}
+
+/**
+ * Get the template directory. Tries GitHub first for the latest version,
+ * falls back to the bundled template in the npm package.
+ */
+function getTemplateDir(): { templateDir: string; cleanupDir?: string; source: "github" | "bundled" } {
+  const remote = fetchRemoteTemplate();
+  if (remote) {
+    return { templateDir: remote.templateDir, cleanupDir: remote.cleanupDir, source: "github" };
+  }
+
+  // Fall back to bundled template
   const candidates = [
     path.resolve(__dirname, "..", "..", "template"),
     path.resolve(__dirname, "..", "template"),
@@ -45,7 +79,7 @@ function getTemplateDir(): string {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, ".claude"))) {
-      return candidate;
+      return { templateDir: candidate, source: "bundled" };
     }
   }
 
@@ -82,17 +116,27 @@ export async function scaffold(
   }
 
   // 2. Copy template
-  step("Creating HQ...");
-  const templateDir = getTemplateDir();
+  step("Fetching latest HQ template...");
+  const { templateDir, cleanupDir, source } = getTemplateDir();
+
+  if (source === "github") {
+    info("Using latest template from GitHub");
+  } else {
+    info("Using bundled template (offline or no git access)");
+  }
 
   await fs.copy(templateDir, targetDir, {
     filter: (src) => {
       const rel = path.relative(templateDir, src);
-      // Skip git internals and node_modules
       if (rel.includes(".git/") || rel.includes("node_modules/")) return false;
       return true;
     },
   });
+
+  // Clean up temp clone if we fetched from GitHub
+  if (cleanupDir) {
+    try { fs.removeSync(cleanupDir); } catch { /* best effort */ }
+  }
 
   // Count what we copied
   const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
@@ -113,37 +157,90 @@ export async function scaffold(
     warn("git not found — skipping git init");
   }
 
-  // 4. Check dependencies
+  // 4. Check dependencies and install missing ones
   if (!options.skipDeps) {
-    checkDeps();
+    await checkDeps();
   }
 
   // 5. Install hq-cli
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
-      "Install @indigoai/hq-cli globally for module management?"
+      "Install @indigoai-us/hq-cli globally for module management?"
     );
     if (installCli) {
       try {
-        step("Installing @indigoai/hq-cli...");
-        execSync("npm install -g @indigoai/hq-cli", { stdio: "pipe" });
-        success("Installed @indigoai/hq-cli");
+        step("Installing @indigoai-us/hq-cli...");
+        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+        success("Installed @indigoai-us/hq-cli");
       } catch {
-        warn("Failed to install @indigoai/hq-cli — you can install it later with: npm install -g @indigoai/hq-cli");
+        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
       }
     }
   }
 
-  // 6. Cloud sync setup
-  if (!options.skipSync) {
+  // 6. Cloud setup
+  if (!options.skipCloud) {
     console.log();
-    const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
+    const setupCloud = await confirm(
+      "Set up HQ Cloud? (syncs your HQ files and enables remote AI sessions)"
     );
-    if (setupSync) {
-      step("Cloud sync setup will be available after running /setup in Claude Code");
-      step("Run: hq sync init");
+    if (setupCloud) {
+      // 6a: Authenticate with Clerk
+      let authOk = false;
+      try {
+        step("Authenticating with HQ Cloud...");
+        const authResult = spawnSync("hq", ["auth", "login"], {
+          stdio: "inherit",
+          shell: true,
+        });
+        if (authResult.status === 0) {
+          success("Authenticated with HQ Cloud");
+          authOk = true;
+        } else {
+          warn("Authentication did not complete — you can retry later with: hq auth login");
+        }
+      } catch {
+        warn("Could not run hq auth login — you can retry later with: hq auth login");
+      }
+
+      // 6b: Upload HQ files to cloud
+      if (authOk) {
+        try {
+          step("Uploading HQ files to cloud...");
+          const uploadResult = spawnSync(
+            "hq",
+            ["cloud", "upload", "--hq-root", targetDir, "--on-conflict", "merge"],
+            { stdio: "inherit", shell: true },
+          );
+          if (uploadResult.status === 0) {
+            success("HQ files uploaded to cloud");
+          } else {
+            warn("Upload did not complete — you can run later with: hq cloud upload");
+          }
+        } catch {
+          warn("Could not upload files — you can run later with: hq cloud upload");
+        }
+      }
+
+      // 6c: Set up Claude token for cloud sessions
+      if (authOk) {
+        console.log();
+        try {
+          step("Setting up Claude token for cloud sessions...");
+          const tokenResult = spawnSync("hq", ["cloud", "setup-token"], {
+            stdio: "inherit",
+            shell: true,
+          });
+          if (tokenResult.status === 0) {
+            success("Claude token configured for cloud sessions");
+          } else {
+            warn("Token setup did not complete — you can retry later with: hq cloud setup-token");
+          }
+        } catch {
+          warn("Could not run hq cloud setup-token — you can retry later with: hq cloud setup-token");
+        }
+      }
     }
   }
 

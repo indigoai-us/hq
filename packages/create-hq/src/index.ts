@@ -8,11 +8,11 @@ const program = new Command();
 program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
-  .version("5.0.0")
+  .version("5.1.0")
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
-  .option("--skip-cli", "don't install @indigoai/hq-cli globally")
-  .option("--skip-sync", "don't prompt for cloud sync setup")
+  .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
+  .option("--skip-cloud", "don't prompt for cloud setup")
   .action(async (directory: string, options) => {
     try {
       await scaffold(directory, options);

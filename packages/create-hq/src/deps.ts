@@ -1,72 +1,189 @@
+import * as os from "os";
 import { execSync } from "child_process";
-import { success, warn, info } from "./ui.js";
+import { createInterface } from "readline";
+import { success, warn, info, step } from "./ui.js";
+
+type Platform = "macos" | "windows" | "linux";
+
+function getPlatform(): Platform {
+  const p = os.platform();
+  if (p === "darwin") return "macos";
+  if (p === "win32") return "windows";
+  return "linux";
+}
+
+function hasBrew(): boolean {
+  try {
+    execSync("brew --version", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasWinget(): boolean {
+  try {
+    execSync("winget --version", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasChoco(): boolean {
+  try {
+    execSync("choco --version", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface InstallOption {
+  cmd: string;
+  label: string;
+}
 
 interface Dep {
   name: string;
-  command: string;
+  check: string;
   required: boolean;
-  installHint: string;
+  getInstallOptions: (platform: Platform) => InstallOption[];
+  manualHint: (platform: Platform) => string;
 }
 
 const deps: Dep[] = [
   {
-    name: "Node.js",
-    command: "node --version",
-    required: true,
-    installHint: "https://nodejs.org",
-  },
-  {
     name: "Claude Code CLI",
-    command: "claude --version",
+    check: "claude --version",
     required: true,
-    installHint: "npm install -g @anthropic-ai/claude-code",
+    getInstallOptions: () => [
+      { cmd: "npm install -g @anthropic-ai/claude-code", label: "npm" },
+    ],
+    manualHint: () => "npm install -g @anthropic-ai/claude-code",
   },
   {
     name: "qmd (search)",
-    command: "qmd --version",
-    required: true,
-    installHint: "brew install tobi/tap/qmd",
+    check: "qmd --version",
+    required: false,
+    getInstallOptions: (platform) => {
+      const options: InstallOption[] = [];
+      if (platform === "macos" && hasBrew()) {
+        options.push({ cmd: "brew install tobi/tap/qmd", label: "Homebrew" });
+      }
+      if (platform === "linux" && hasBrew()) {
+        options.push({ cmd: "brew install tobi/tap/qmd", label: "Linuxbrew" });
+      }
+      // qmd can also be installed via go install or binary download
+      return options;
+    },
+    manualHint: () => "See https://github.com/tobi/qmd for install instructions",
   },
   {
     name: "gh CLI",
-    command: "gh --version",
+    check: "gh --version",
     required: false,
-    installHint: "brew install gh",
-  },
-  {
-    name: "Vercel CLI",
-    command: "vercel --version",
-    required: false,
-    installHint: "npm install -g vercel",
+    getInstallOptions: (platform) => {
+      const options: InstallOption[] = [];
+      if (platform === "macos" && hasBrew()) {
+        options.push({ cmd: "brew install gh", label: "Homebrew" });
+      }
+      if (platform === "windows") {
+        if (hasWinget()) {
+          options.push({ cmd: "winget install --id GitHub.cli", label: "winget" });
+        }
+        if (hasChoco()) {
+          options.push({ cmd: "choco install gh", label: "Chocolatey" });
+        }
+      }
+      if (platform === "linux" && hasBrew()) {
+        options.push({ cmd: "brew install gh", label: "Linuxbrew" });
+      }
+      return options;
+    },
+    manualHint: () => "See https://cli.github.com for install instructions",
   },
 ];
 
 function checkCommand(command: string): string | null {
   try {
     const output = execSync(command, { stdio: "pipe", encoding: "utf-8" });
-    const version = output.trim().split("\n")[0];
-    return version;
+    return output.trim().split("\n")[0];
   } catch {
     return null;
   }
 }
 
-export function checkDeps(): { allRequired: boolean } {
+async function confirm(question: string, defaultYes = true): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const hint = defaultYes ? "Y/n" : "y/N";
+  return new Promise((resolve) => {
+    rl.question(`  ? ${question} (${hint}) `, (answer) => {
+      rl.close();
+      if (!answer.trim()) return resolve(defaultYes);
+      resolve(answer.trim().toLowerCase().startsWith("y"));
+    });
+  });
+}
+
+function tryInstall(cmd: string, name: string): boolean {
+  try {
+    step(`Installing ${name}...`);
+    execSync(cmd, { stdio: "inherit", timeout: 120000 });
+    success(`Installed ${name}`);
+    return true;
+  } catch {
+    warn(`Failed to install ${name}`);
+    return false;
+  }
+}
+
+export async function checkDeps(): Promise<{ allRequired: boolean }> {
+  const platform = getPlatform();
   console.log();
   console.log("  Checking dependencies...");
 
   let allRequired = true;
 
   for (const dep of deps) {
-    const version = checkCommand(dep.command);
+    const version = checkCommand(dep.check);
     if (version) {
       success(`${dep.name} ${version}`);
-    } else if (dep.required) {
-      warn(`${dep.name} not found`);
-      info(`Install: ${dep.installHint}`);
-      allRequired = false;
+      continue;
+    }
+
+    const installOptions = dep.getInstallOptions(platform);
+
+    if (installOptions.length > 0) {
+      // We have at least one auto-install option
+      const option = installOptions[0]; // use the first (preferred) option
+      const install = await confirm(
+        `${dep.name} not found. Install via ${option.label}?`
+      );
+      if (install) {
+        const ok = tryInstall(option.cmd, dep.name);
+        if (!ok) {
+          info(`Manual install: ${dep.manualHint(platform)}`);
+          if (dep.required) allRequired = false;
+        }
+      } else {
+        if (dep.required) {
+          warn(`${dep.name} is required`);
+          info(`Install later: ${dep.manualHint(platform)}`);
+          allRequired = false;
+        } else {
+          info(`Skipped ${dep.name} (optional)`);
+        }
+      }
     } else {
-      info(`${dep.name} (optional) — ${dep.installHint}`);
+      // No auto-install available for this platform
+      if (dep.required) {
+        warn(`${dep.name} not found`);
+        info(`Install: ${dep.manualHint(platform)}`);
+        allRequired = false;
+      } else {
+        info(`${dep.name} (optional) — ${dep.manualHint(platform)}`);
+      }
     }
   }
 
