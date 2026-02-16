@@ -4,6 +4,62 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Automated Migration (Recommended)
+
+Starting with v5.5.0, HQ includes a built-in migration tool that automates the entire upgrade process. **Run `/migrate` instead of following the manual steps below.**
+
+### Quick Start
+
+```
+/migrate            # Interactive: detect version, diff, review plan, approve, execute
+/migrate --yolo     # Skip review: detect, diff, backup, execute immediately
+/migrate --status   # Check current version and available updates (no changes)
+/migrate --restore  # Roll back to a previous backup
+```
+
+### What It Does
+
+The `/migrate` command (powered by the `migration-agent` worker) handles the full upgrade lifecycle:
+
+1. **Detects** your current HQ version (via `.hq-version` file or filesystem inference)
+2. **Fetches** the latest template from GitHub (three fallback strategies)
+3. **Diffs** every file — categorizes as NEW, MODIFIED, DELETED, UNCHANGED, or LOCAL_ONLY
+4. **Generates** a human-readable migration plan with impact highlights
+5. **Creates a full backup** of your HQ before making any changes
+6. **Executes** the migration with strict data integrity rules
+7. **Reports** everything that changed, with a saved report for reference
+
+### Data Safety
+
+The migration tool follows strict data integrity rules:
+
+- **Full backup** created before any changes (stored in `.hq-backup/`)
+- **Never overwrites** `agents.md`, `companies/`, learned rules, or workspace data
+- **Merges** mixed files (like `CLAUDE.md`) — updates template sections while preserving your customizations
+- **Preserves symlinks** — knowledge repo symlinks are never followed or replaced
+- **One-command restore** — run `/migrate --restore` to roll back any migration
+
+### When to Use Manual Migration Instead
+
+The manual guides below remain useful if:
+- You are upgrading from a version older than v2.0 (before the current structure existed)
+- You want fine-grained control over exactly which files change
+- The `/migrate` command is not yet available in your HQ version (pre-v5.5.0)
+
+To get `/migrate` on an older HQ, copy these files from the [starter kit](https://github.com/indigoai-us/hq):
+- `.claude/commands/migrate.md`
+- `workers/migration-agent/` (entire directory — `worker.yaml` + 3 skills)
+
+Then run `/migrate` to upgrade everything else automatically.
+
+---
+
+## Manual Migration Guides
+
+The sections below document manual migration steps for each version. They are preserved for reference and for users who prefer manual control.
+
+---
+
 ## Migrating to v5.4.0 (from v5.3.0)
 
 ### New Commands

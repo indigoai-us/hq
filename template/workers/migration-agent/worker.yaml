@@ -1,0 +1,149 @@
+# Migration Agent
+# Automated HQ filesystem migration — version detection, diff, backup, upgrade.
+# Run via: /migrate
+
+worker:
+  id: migration-agent
+  name: "Migration Agent"
+  type: OpsWorker
+  version: "1.0"
+
+description: |
+  Automated filesystem migration tool for HQ installations.
+  Detects the current HQ version, fetches the latest template from GitHub,
+  diffs against the local filesystem, creates a migration plan, and executes
+  lossless upgrades with full backup and restore capabilities.
+
+execution:
+  mode: on-demand
+  max_runtime: 15m
+  retry_attempts: 0
+  spawn_method: task_tool
+
+context:
+  base:
+    - workers/migration-agent/skills/
+    - MIGRATION.md
+    - CHANGELOG.md
+    - .hq-version
+  dynamic:
+    - pattern: ".hq-backup/*/backup-manifest.json"
+      when: "skill.id == 'restore'"
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+    - "*.lock"
+    - repos/
+    - .git/
+
+skills:
+  - id: analyze
+    file: skills/analyze.md
+    description: "Detect version, fetch template, diff filesystem, generate migration plan"
+  - id: execute
+    file: skills/execute.md
+    description: "Create backup and execute migration plan with data integrity guarantees"
+  - id: restore
+    file: skills/restore.md
+    description: "List available backups and restore HQ from a selected snapshot"
+
+verification:
+  post_execute:
+    - check: backup_exists
+      description: "Verify backup was created before any modifications"
+    - check: backup_manifest_valid
+      description: "Verify backup-manifest.json exists with fileCount, totalSizeBytes, hqVersion"
+    - check: backup_file_count_matches
+      description: "Verify file count in backup matches manifest fileCount (within tolerance of 2)"
+    - check: no_data_loss
+      description: "Verify user data (agents.md, learned rules, companies/) preserved"
+  approval_required: true
+  human_checkpoints:
+    - before_migration_execute
+    - on_restore
+
+output:
+  format: report
+  destination: workspace/reports/
+  naming: "migration-{date}.md"
+
+reporting:
+  on_complete:
+    - log_updates
+  metrics:
+    - files_added
+    - files_updated
+    - files_removed
+    - backup_size
+
+state_machine:
+  enabled: true
+  max_retries: 0
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  You are the Migration Agent. You upgrade HQ installations to the latest
+  filesystem structure by fetching the canonical template from GitHub,
+  diffing it against the local HQ, and applying changes losslessly.
+
+  ## Data Integrity Rules (MANDATORY)
+
+  These rules are non-negotiable. Violating any of them is a critical failure.
+
+  1. **NEVER overwrite agents.md** — This file is purely user data. Only update
+     its structural format if the template schema changed, preserving all content
+     verbatim.
+
+  2. **NEVER modify user content** — Do not interpret, summarize, rewrite,
+     paraphrase, or "improve" any user-authored text. This includes:
+     - Learned Rules in CLAUDE.md
+     - Worker instructions blocks (user-added rules)
+     - Company knowledge files
+     - Project PRDs and notes
+     - Workspace threads, learnings, and reports
+
+  3. **ALWAYS backup before modifying** — Every file that will be changed must
+     be copied to .hq-backup/{timestamp}/ BEFORE the change is applied.
+     No exceptions.
+
+  4. **NEVER delete without archiving** — Files removed from the template are
+     moved to .hq-backup/{timestamp}/removed/, never hard-deleted.
+
+  5. **NEVER touch user-only directories** — These are off-limits for modification:
+     - companies/          (user company data)
+     - workspace/threads/  (session history)
+     - workspace/learnings/ (captured insights)
+     - workspace/orchestrator/ (project state)
+     - repos/              (code repositories)
+     - projects/           (user project PRDs — structure only, never content)
+
+  6. **Merge, don't replace, for mixed files** — Files like CLAUDE.md contain
+     both template structure and user data. The merge strategy is:
+     - Template sections (structure, commands table, workers table): update from template
+     - User sections (Learned Rules, custom additions): preserve verbatim
+     - When in doubt, preserve the user's version and flag for manual review
+
+  7. **Atomic-ish execution** — If a critical step fails, stop immediately.
+     Do not continue with partial state. Instruct the user to restore from backup.
+
+  8. **Symlinks are sacred** — Knowledge repo symlinks must be preserved as-is.
+     Never follow, replace, or modify symlink targets.
+
+  ## Protocol
+
+  1. Detect current HQ version (.hq-version or inference)
+  2. Fetch latest template from GitHub
+  3. Diff local HQ against template
+  4. Generate categorized migration plan
+  5. Present plan to user (review or YOLO mode)
+  6. Create full snapshot backup
+  7. Execute plan with data integrity rules
+  8. Update .hq-version
+  9. Generate migration report

@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-02-14T10:30:00Z",
+  "hqVersion": "5.4.0",
+  "hqPath": "/home/user/hq",
+  "fileCount": 325,
+  "symlinkCount": 12,
+  "totalSizeBytes": 4404019,
+  "totalSizeHuman": "4.2 MB",
+  "excludedDirs": ["node_modules", ".git", ".hq-backup", "repos"],
+  "platform": "linux",
+  "backupMethod": "rsync",
+  "symlinkHandling": "preserved-as-symlinks"
+}

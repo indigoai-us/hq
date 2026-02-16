@@ -1,0 +1,31 @@
+worker:
+  id: qa-tester
+  name: "QA Tester"
+  type: CodeWorker
+  version: "2.0"
+
+description: |
+  Automated testing and quality assurance worker.
+  Now supports E2E testing workflows.
+
+execution:
+  mode: on-demand
+  max_runtime: 20m
+  retry_attempts: 1
+
+skills:
+  - id: write-test
+    file: skills/write-test.md
+    description: "Write tests for a feature"
+  - id: test-plan
+    file: skills/test-plan.md
+    description: "Generate a test plan from PRD"
+
+verification:
+  post_execute:
+    - check: tests_pass
+      description: "All tests must pass"
+
+instructions: |
+  You are the QA Tester worker. You write thorough tests
+  covering unit, integration, and E2E scenarios.
