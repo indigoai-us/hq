@@ -6,7 +6,7 @@ import { banner, success, warn, step, nextSteps, info } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
 import { fileURLToPath } from "url";
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -179,69 +179,13 @@ export async function scaffold(
     }
   }
 
-  // 6. Cloud setup
+  // 6. Cloud setup — not yet available (API not deployed)
+  // When HQ Cloud is live, this will offer: auth → upload → Claude token setup
+  // For now, just inform the user it's coming
   if (!options.skipCloud) {
     console.log();
-    const setupCloud = await confirm(
-      "Set up HQ Cloud? (syncs your HQ files and enables remote AI sessions)"
-    );
-    if (setupCloud) {
-      // 6a: Authenticate with Clerk
-      let authOk = false;
-      try {
-        step("Authenticating with HQ Cloud...");
-        const authResult = spawnSync("hq", ["auth", "login"], {
-          stdio: "inherit",
-          shell: true,
-        });
-        if (authResult.status === 0) {
-          success("Authenticated with HQ Cloud");
-          authOk = true;
-        } else {
-          warn("Authentication did not complete — you can retry later with: hq auth login");
-        }
-      } catch {
-        warn("Could not run hq auth login — you can retry later with: hq auth login");
-      }
-
-      // 6b: Upload HQ files to cloud
-      if (authOk) {
-        try {
-          step("Uploading HQ files to cloud...");
-          const uploadResult = spawnSync(
-            "hq",
-            ["cloud", "upload", "--hq-root", targetDir, "--on-conflict", "merge"],
-            { stdio: "inherit", shell: true },
-          );
-          if (uploadResult.status === 0) {
-            success("HQ files uploaded to cloud");
-          } else {
-            warn("Upload did not complete — you can run later with: hq cloud upload");
-          }
-        } catch {
-          warn("Could not upload files — you can run later with: hq cloud upload");
-        }
-      }
-
-      // 6c: Set up Claude token for cloud sessions
-      if (authOk) {
-        console.log();
-        try {
-          step("Setting up Claude token for cloud sessions...");
-          const tokenResult = spawnSync("hq", ["cloud", "setup-token"], {
-            stdio: "inherit",
-            shell: true,
-          });
-          if (tokenResult.status === 0) {
-            success("Claude token configured for cloud sessions");
-          } else {
-            warn("Token setup did not complete — you can retry later with: hq cloud setup-token");
-          }
-        } catch {
-          warn("Could not run hq cloud setup-token — you can retry later with: hq cloud setup-token");
-        }
-      }
-    }
+    info("HQ Cloud (file sync, mobile access, remote sessions) — coming soon");
+    info("Follow progress at https://github.com/indigoai-us/hq");
   }
 
   // 7. Index with qmd
