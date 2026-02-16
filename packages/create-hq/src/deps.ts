@@ -64,20 +64,12 @@ const deps: Dep[] = [
   },
   {
     name: "qmd (search)",
-    check: "qmd --version",
-    required: false,
-    getInstallOptions: (platform) => {
-      const options: InstallOption[] = [];
-      if (platform === "macos" && hasBrew()) {
-        options.push({ cmd: "brew install tobi/tap/qmd", label: "Homebrew" });
-      }
-      if (platform === "linux" && hasBrew()) {
-        options.push({ cmd: "brew install tobi/tap/qmd", label: "Linuxbrew" });
-      }
-      // qmd can also be installed via go install or binary download
-      return options;
-    },
-    manualHint: () => "See https://github.com/tobi/qmd for install instructions",
+    check: os.platform() === "win32" ? "where qmd" : "which qmd",
+    required: true,
+    getInstallOptions: () => [
+      { cmd: "npm install -g @tobilu/qmd", label: "npm" },
+    ],
+    manualHint: () => "npm install -g @tobilu/qmd",
   },
   {
     name: "gh CLI",
@@ -148,7 +140,11 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
   for (const dep of deps) {
     const version = checkCommand(dep.check);
     if (version) {
-      success(`${dep.name} ${version}`);
+      // If the check was which/where, just show "installed" instead of the path
+      const display = dep.check.startsWith("which ") || dep.check.startsWith("where ")
+        ? "installed"
+        : version;
+      success(`${dep.name} ${display}`);
       continue;
     }
 
