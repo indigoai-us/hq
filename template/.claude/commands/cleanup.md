@@ -110,11 +110,14 @@ done
 
 ### 5. Stale Threads & Checkpoints
 
-**Policy**: Archive threads/checkpoints older than 30 days
+**Policy**: Archive manual threads/checkpoints older than 30 days. Purge auto-checkpoints older than 14 days.
 
 ```bash
-# Stale threads (new format)
-find workspace/threads -name "*.json" -mtime +30 2>/dev/null
+# Auto-checkpoints older than 14 days (purge, not archive)
+find workspace/threads -name "T-*-auto-*.json" -mtime +14 2>/dev/null
+
+# Stale manual threads (new format, 30 days)
+find workspace/threads -name "*.json" -not -name "*-auto-*" -mtime +30 2>/dev/null
 
 # Stale checkpoints (legacy format)
 find workspace/checkpoints -name "*.json" -mtime +30 2>/dev/null
@@ -218,10 +221,17 @@ git add -u
 git commit -m "chore: cleanup orphaned files"
 ```
 
+### Purge Stale Auto-Checkpoints
+```bash
+# Delete auto-checkpoints older than 14 days (no archive — they're lightweight)
+find workspace/threads -name "T-*-auto-*.json" -mtime +14 -delete 2>/dev/null
+echo "Purged $(find workspace/threads -name "T-*-auto-*.json" -mtime +14 2>/dev/null | wc -l) auto-checkpoints"
+```
+
 ### Archive Stale Threads & Checkpoints
 ```bash
 mkdir -p archives/threads archives/checkpoints
-find workspace/threads -name "*.json" -mtime +30 -exec mv {} archives/threads/ \;
+find workspace/threads -name "*.json" -not -name "*-auto-*" -mtime +30 -exec mv {} archives/threads/ \;
 find workspace/checkpoints -name "*.json" -mtime +30 -exec mv {} archives/checkpoints/ \;
 ```
 
@@ -302,6 +312,7 @@ Reference for what we're enforcing:
 | Apps | Deprecated - migrate to projects/ or workers/ |
 | Skills | `.claude/commands/*.md` format |
 | Threads | Primary session persistence (`workspace/threads/`) |
+| Auto-checkpoints | Lightweight, purge after 14 days (`T-*-auto-*.json`) |
 | Checkpoints | Legacy format, archive after 30 days |
 | Metrics | Append to `workspace/metrics/metrics.jsonl` |
 | Git | Clean working tree |

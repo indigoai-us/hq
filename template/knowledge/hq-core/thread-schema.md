@@ -12,12 +12,13 @@ Threads persist complete session state including conversation summary, git conte
 
 Example: `T-20260123-143052-mrr-report`
 
-## Schema
+## Schema (Full Checkpoint)
 
 ```json
 {
   "thread_id": "T-20260123-143052-mrr-report",
   "version": 1,
+  "type": "checkpoint",
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:35:00.000Z",
 
@@ -32,7 +33,10 @@ Example: `T-20260123-143052-mrr-report`
     "commits_made": [
       "def5678: feat: add MRR calculation"
     ],
-    "dirty": false
+    "dirty": false,
+    "knowledge_repos": {
+      "knowledge-ralph": { "commit": "abc1234", "dirty": false }
+    }
   },
 
   "worker": {
@@ -56,6 +60,40 @@ Example: `T-20260123-143052-mrr-report`
 }
 ```
 
+## Schema (Auto-Checkpoint — Lightweight)
+
+Auto-checkpoints are created automatically by PostToolUse hooks after git commits, file generation, and worker skill completions. They use a lighter format — no INDEX rebuilds, no `recent.md` updates, no legacy checkpoint files.
+
+```json
+{
+  "thread_id": "T-20260123-143052-auto-mrr-commit",
+  "version": 1,
+  "type": "auto-checkpoint",
+  "created_at": "2026-01-23T14:30:52.000Z",
+  "updated_at": "2026-01-23T14:30:52.000Z",
+
+  "workspace_root": "~/Documents/HQ",
+  "cwd": "repos/private/acme",
+
+  "git": {
+    "branch": "main",
+    "current_commit": "def5678",
+    "dirty": false
+  },
+
+  "conversation_summary": "Committed MRR calculation feature",
+  "files_touched": ["apps/function/src/mrr.ts"],
+
+  "metadata": {
+    "title": "Auto: MRR commit",
+    "tags": ["auto-checkpoint"],
+    "trigger": "git-commit"
+  }
+}
+```
+
+**Differences from full checkpoint:** No `initial_commit`, `commits_made`, `remote_url`, `knowledge_repos`, `worker`, or `next_steps` fields. Thread ID contains `-auto-` after timestamp. Auto-checkpoints are purged after 14 days by `/cleanup`.
+
 ## Fields
 
 ### Core
@@ -64,6 +102,7 @@ Example: `T-20260123-143052-mrr-report`
 |-------|------|-------------|
 | `thread_id` | string | Unique identifier |
 | `version` | number | Schema version (currently 1) |
+| `type` | enum | `"checkpoint"` (manual), `"auto-checkpoint"` (hook-triggered), `"handoff"` |
 | `created_at` | ISO8601 | Thread creation time |
 | `updated_at` | ISO8601 | Last update time |
 
