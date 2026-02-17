@@ -56,3 +56,4 @@ data/journal/*.jsonl
 
 # Synced modules (cloned repos)
 modules/.synced/
+.claude/settings.json

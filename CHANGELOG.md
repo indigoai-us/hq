@@ -4,12 +4,16 @@
 
 ### Added
 - `/recover-session` — Recover dead Claude Code sessions that hit context limits without running `/handoff`. Reconstructs thread JSON from JSONL session data.
+- `/update-hq` — Renamed from `/migrate`. Upgrade HQ from latest starter-kit release (friendlier command name).
 
 ### Changed
 - `.claude/CLAUDE.md` — Updated command count (19→23), added Communication section with `/email`, `/checkemail`, `/decide`, added `/recover-session` to Session Management
 
 ### Fixed
 - Scrubbed remaining company-specific reference from v5.4.0 changelog
+
+### Renamed
+- `/migrate` → `/update-hq` — Same functionality, more intuitive name
 
 ---
 
