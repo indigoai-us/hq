@@ -51,9 +51,9 @@ Empire Root → [click Knowledge card] → Knowledge Browser (Level 1)
 │ │ 4 files  │ │ 3 files  │ │ 5 files  │          │
 │ └──────────┘ └──────────┘ └──────────┘          │
 │                                                  │
-│ COMPANY: LIVERECOVER                             │
+│ COMPANY: {COMPANY}                               │
 │ ┌──────────┐ ┌──────────┐                        │
-│ │ LR Know  │ │ {repo}      │                        │
+│ │ Co. Know │ │ {repo}      │                        │
 │ │ 40 files │ │ (codebase│                        │
 │ └──────────┘ └──────────┘                        │
 │                                                  │
