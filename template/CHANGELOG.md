@@ -1,5 +1,18 @@
 # Changelog
 
+## v5.5.0 (2026-02-16)
+
+### Added
+- `/recover-session` — Recover dead Claude Code sessions that hit context limits without running `/handoff`. Reconstructs thread JSON from JSONL session data.
+
+### Changed
+- `.claude/CLAUDE.md` — Updated command count (19→23), added Communication section with `/email`, `/checkemail`, `/decide`, added `/recover-session` to Session Management
+
+### Fixed
+- Scrubbed remaining company-specific reference from v5.4.0 changelog
+
+---
+
 ## v5.4.0 (2026-02-12)
 
 ### Added
@@ -22,7 +35,7 @@
 
 ### Fixed
 - Scrubbed remaining PII from prior releases (company names in examples, absolute paths)
-- Removed `mj-abacus` command reference from changelog and migration guide
+- Removed company-specific command references from changelog and migration guide
 
 ## v5.3.0 (2026-02-11)
 
