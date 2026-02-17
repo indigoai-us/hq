@@ -107,8 +107,8 @@ export async function mockSessionsApi(
     return route.fulfill(json({ error: "Not found" }, 404));
   });
 
-  // GET /api/sessions/:id/messages — messages
-  await page.route(`${API_BASE}/sessions/*/messages`, (route) => {
+  // GET /api/sessions/:id/messages — messages (with optional query string)
+  await page.route(`${API_BASE}/sessions/*/messages*`, (route) => {
     if (route.request().method() === "GET") {
       return route.fulfill(json(messages));
     }

@@ -200,8 +200,8 @@ test.describe("Session lifecycle (mocked API)", () => {
     const sendButton = page.getByRole("button", { name: "Send" });
     await sendButton.click();
 
-    // The optimistic message should appear in the UI
-    await expect(page.getByText("What is 2+2?")).toBeVisible({ timeout: 5000 });
+    // The optimistic message should appear in the UI (use .first() to avoid matching session title)
+    await expect(page.getByText("What is 2+2?").first()).toBeVisible({ timeout: 5000 });
 
     // --- Step 6: Simulate assistant response ---
     // Add the assistant response to mocked messages
@@ -285,10 +285,10 @@ test.describe("Session lifecycle (mocked API)", () => {
     await page.goto("/agents");
     await page.waitForLoadState("networkidle");
 
-    // Verify session cards are shown
-    await expect(page.getByText("Active task")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Starting task")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Stopped task")).toBeVisible({ timeout: 5000 });
+    // Verify session cards are shown (use .first() since title + description may duplicate text)
+    await expect(page.getByText("Active task").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Starting task").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Stopped task").first()).toBeVisible({ timeout: 5000 });
 
     // Verify status labels
     await expect(page.getByText("Active").first()).toBeVisible();
@@ -357,8 +357,8 @@ test.describe("Session lifecycle (mocked API)", () => {
     await page.goto("/agents");
     await page.waitForLoadState("networkidle");
 
-    // Click the session card
-    await page.getByText("Navigation test session").click();
+    // Click the session card (use .first() since title + description may duplicate text)
+    await page.getByText("Navigation test session").first().click();
 
     // Verify navigation to detail page
     await expect(page).toHaveURL(/\/agents\/sess-nav-test/);
@@ -409,8 +409,8 @@ test.describe("Session lifecycle (mocked API)", () => {
     await page.goto("/agents/sess-stopped-detail");
     await page.waitForLoadState("networkidle");
 
-    // Verify session ended state
-    await expect(page.getByText("Stopped")).toBeVisible({ timeout: 5000 });
+    // Verify session ended state (use exact match to avoid matching "Stopped session" title)
+    await expect(page.getByText("Stopped", { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("This session has ended.")).toBeVisible({ timeout: 5000 });
 
     // Chat input should not be visible

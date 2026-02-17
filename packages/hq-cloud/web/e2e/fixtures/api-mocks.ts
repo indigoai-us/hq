@@ -24,6 +24,16 @@ export async function mockAuthApi(
   );
 }
 
+/** Intercept onboarding status endpoint (returns onboarded by default) */
+export async function mockOnboardingApi(
+  page: Page,
+  onboarded = true,
+): Promise<void> {
+  await page.route(`${API_BASE}/settings/onboarding-status`, (route) =>
+    route.fulfill(json({ onboarded })),
+  );
+}
+
 /** Intercept agents list, detail, and messages endpoints */
 export async function mockAgentsApi(
   page: Page,

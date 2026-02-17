@@ -12,6 +12,10 @@ build/
 playwright-report/
 test-results/
 
+# environment (secrets)
+.env.e2e
+.env.local
+
 # misc
 .DS_Store
 *.tsbuildinfo

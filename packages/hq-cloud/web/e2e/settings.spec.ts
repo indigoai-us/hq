@@ -45,11 +45,12 @@ test.describe("Notification settings", () => {
     authenticatedPage: page,
   }) => {
     await page.goto("/agents");
-    await expect(page.getByText("No agents running")).toBeVisible();
+    // Wait for the agents/sessions page to load (use heading to avoid multiple "Sessions" matches)
+    await expect(page.getByText("SESSIONS")).toBeVisible();
 
     // Navigate to settings via sidebar link
-    await page.locator("aside a[href='/settings/notifications']").click();
-    await expect(page).toHaveURL(/\/settings\/notifications/);
+    await page.locator("aside a[href='/settings/account']").click();
+    await expect(page).toHaveURL(/\/settings\/account/);
 
     // Go back via browser
     await page.goBack();

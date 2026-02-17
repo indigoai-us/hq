@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --ignore-snapshots",
+    "test:e2e:ci": "cross-env E2E_MOCK_ONLY=true CI=true playwright test",
+    "test:e2e:ci:full": "cross-env CI=true playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts"
   },

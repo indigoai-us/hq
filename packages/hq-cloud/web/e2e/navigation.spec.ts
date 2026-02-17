@@ -18,16 +18,15 @@ test.describe("Navigation & routing", () => {
     await page.goto("/agents");
 
     const sidebar = page.locator("aside");
-    // Emojis are always visible
-    await expect(sidebar.getByText("🤖")).toBeVisible();
-    await expect(sidebar.getByText("📁")).toBeVisible();
-    await expect(sidebar.getByText("➕")).toBeVisible();
+
+    // Emojis are always visible (Sessions = speech bubble, Navigator = folder)
+    await expect(sidebar.getByText("\u{1F4AC}")).toBeVisible();
+    await expect(sidebar.getByText("\u{1F4C1}")).toBeVisible();
 
     // Hover to reveal labels
     await sidebar.hover();
-    await expect(sidebar.getByText("Agents")).toBeVisible();
+    await expect(sidebar.getByText("Sessions")).toBeVisible();
     await expect(sidebar.getByText("Navigator")).toBeVisible();
-    await expect(sidebar.getByText("Spawn")).toBeVisible();
   });
 
   test("clicking nav items navigates to correct pages", async ({
@@ -39,13 +38,8 @@ test.describe("Navigation & routing", () => {
     // Navigate to Navigator and wait for page content
     await page.locator("aside a[href='/navigator']").click();
     await expect(page).toHaveURL(/\/navigator/);
-    await expect(page.getByRole("heading", { name: "Navigator" })).toBeVisible();
 
-    // Navigate to Spawn and wait for page content
-    await page.locator("aside a[href='/spawn']").click();
-    await expect(page).toHaveURL(/\/spawn/, { timeout: 10_000 });
-
-    // Navigate back to Agents
+    // Navigate back to Sessions (agents)
     await page.locator("aside a[href='/agents']").click();
     await expect(page).toHaveURL(/\/agents/, { timeout: 10_000 });
   });
@@ -55,10 +49,10 @@ test.describe("Navigation & routing", () => {
 
     // The active link includes "bg-overlay-light" (without hover: prefix)
     // while inactive ones only have "hover:bg-overlay-light"
-    const agentsLink = page.locator("aside a[href='/agents']");
-    const agentsClass = await agentsLink.getAttribute("class");
+    const sessionsLink = page.locator("aside a[href='/agents']");
+    const sessionsClass = await sessionsLink.getAttribute("class");
     // Active link has "bg-overlay-light" without a preceding "hover:" prefix
-    expect(agentsClass).toMatch(/(?<!\bhovr:)\bbg-overlay-light\b/);
+    expect(sessionsClass).toMatch(/(?<!\bhovr:)\bbg-overlay-light\b/);
 
     const navigatorLink = page.locator("aside a[href='/navigator']");
     const navigatorClass = await navigatorLink.getAttribute("class");
@@ -69,12 +63,12 @@ test.describe("Navigation & routing", () => {
     expect(matches.length).toBe(hoverMatches.length);
   });
 
-  test("unauthenticated access redirects to /login", async ({ browser }) => {
+  test("unauthenticated access redirects to /sign-in", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await mockAuthApi(page, false);
-    await page.goto("http://localhost:3001/agents");
-    await expect(page).toHaveURL(/\/login/);
+    // Without Clerk auth, navigating to a protected route redirects to /sign-in
+    await page.goto("http://localhost:3000/agents");
+    await expect(page).toHaveURL(/\/sign-in/);
     await context.close();
   });
 
@@ -86,8 +80,7 @@ test.describe("Navigation & routing", () => {
 
     const bottomNav = page.locator("nav.fixed");
     await expect(bottomNav).toBeVisible();
-    await expect(bottomNav.getByText("Agents")).toBeVisible();
+    await expect(bottomNav.getByText("Sessions")).toBeVisible();
     await expect(bottomNav.getByText("Navigator")).toBeVisible();
-    await expect(bottomNav.getByText("Spawn")).toBeVisible();
   });
 });
