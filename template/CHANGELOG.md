@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.5.1 (2026-02-17)
+
+### Changed
+- `/setup` — `repos/public/` and `repos/private/` creation promoted to strict, first step in Phase 2. Removed duplicate `mkdir` calls.
+- `/update-hq` — Added repos directory validation to Phase 4 pre-flight. Creates missing `repos/public/` and `repos/private/` during migration.
+
+---
+
 ## v5.5.0 (2026-02-16)
 
 ### Added

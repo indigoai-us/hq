@@ -160,6 +160,20 @@ Proceed with migration? [Y/n]
 
 **Skip entirely if `DRY_RUN=true`.**
 
+### Repos directory validation
+
+Check that `repos/public/` and `repos/private/` exist. These are required since v5.0.0 — all repos (code, knowledge, company projects) live here.
+
+```bash
+ls -d repos/public repos/private 2>/dev/null
+```
+
+If either is missing:
+- If `DRY_RUN`: report `"Would create: repos/public/ and repos/private/"`.
+- Otherwise: `mkdir -p repos/public repos/private`, increment `created`, report `"✓ Created repos/public/ and repos/private/ (required structure)"`.
+
+### Git status check
+
 Check git status:
 ```bash
 git status --porcelain

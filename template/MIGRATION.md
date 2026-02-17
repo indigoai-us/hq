@@ -4,6 +4,25 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.5.1 (from v5.5.0)
+
+### Updated Commands
+Review and merge changes to:
+- `.claude/commands/setup.md` — repos directory now created as first step in Phase 2
+- `.claude/commands/update-hq.md` — repos validation added to pre-flight checks
+
+### New Directories
+If missing, create:
+```bash
+mkdir -p repos/public repos/private
+```
+These are required for all code, knowledge, and project repos.
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v5.5.0 (from v5.4.0)
 
 ### New Command
