@@ -10,16 +10,20 @@ Instructions for updating existing HQ installations to new versions.
 Copy to `.claude/commands/`:
 - `recover-session.md` — Recover dead sessions that hit context limits
 
+### Renamed Command
+- `.claude/commands/migrate.md` → `.claude/commands/update-hq.md` — Same functionality, friendlier name
+
 ### Updated Files
-- `.claude/CLAUDE.md` — Merge the new "Communication" commands section and add `/recover-session` to Session Management
+- `.claude/CLAUDE.md` — Merge the new "Communication" commands section, add `/recover-session` to Session Management, replace `/migrate` with `/update-hq` in System table
 
 ### Migration Steps
 1. Copy `.claude/commands/recover-session.md`
-2. Update your `.claude/CLAUDE.md` command count and tables
-3. Run `/search-reindex`
+2. Rename `.claude/commands/migrate.md` to `.claude/commands/update-hq.md` (or copy fresh from starter-kit)
+3. Update your `.claude/CLAUDE.md` command count and tables
+4. Run `/search-reindex`
 
 ### Breaking Changes
-- (none)
+- `/migrate` renamed to `/update-hq` — if you have scripts or docs referencing `/migrate`, update them
 
 ---
 
