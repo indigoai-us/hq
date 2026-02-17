@@ -8,14 +8,17 @@ const program = new Command();
 program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
-  .version("5.1.0")
-  .argument("[directory]", "where to create HQ", "hq")
+  .version("6.0.0")
+  .argument("[directory]", "target directory (default: 'hq' for new install, '.' for --upgrade)")
   .option("--skip-deps", "skip dependency checks")
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-cloud", "don't prompt for cloud setup")
-  .action(async (directory: string, options) => {
+  .option("--upgrade", "upgrade an existing HQ directory (non-destructive)")
+  .action(async (directory: string | undefined, options) => {
     try {
-      await scaffold(directory, options);
+      // Default to current directory for --upgrade, 'hq' for fresh install
+      const dir = directory ?? (options.upgrade ? "." : "hq");
+      await scaffold(dir, options);
     } catch (err) {
       console.error(
         err instanceof Error ? err.message : "An unexpected error occurred"

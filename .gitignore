@@ -36,3 +36,4 @@ template/workspace/checkpoints/*.json
 !template/workspace/checkpoints/.gitkeep
 template/workspace/learnings/*.json
 !template/workspace/learnings/.gitkeep
+.vercel

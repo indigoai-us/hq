@@ -55,6 +55,8 @@ const envName = getConfig(app, 'env', 'HQ_ENV', 'dev') ?? 'dev';
 const cpu = getNumberConfig(app, 'cpu', 'HQ_WORKER_CPU', 512);
 const memory = getNumberConfig(app, 'memory', 'HQ_WORKER_MEMORY', 1024);
 const alertEmail = getConfig(app, 'alertEmail', 'HQ_ALERT_EMAIL');
+const apiDomainName = getConfig(app, 'apiDomainName', 'HQ_API_DOMAIN_NAME');
+const hostedZoneDomain = getConfig(app, 'hostedZoneDomain', 'HQ_HOSTED_ZONE_DOMAIN');
 
 const awsEnv = {
   account: process.env['CDK_DEFAULT_ACCOUNT'],
@@ -142,6 +144,8 @@ const apiServiceStack = new HqApiServiceStack(app, `HqCloudApiService-${envName}
   sessionTaskDefinitionArn: runtimeStack.taskDefinition.taskDefinition.taskDefinitionArn,
   ecsSubnets: runtimeStack.getSubnetIds().join(','),
   ecsSecurityGroups: runtimeStack.securityGroup.securityGroupId,
+  domainName: apiDomainName,
+  hostedZoneDomain,
   env: awsEnv,
   tags: commonTags,
 });

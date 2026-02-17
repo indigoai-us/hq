@@ -2,7 +2,7 @@ import * as path from "path";
 import * as os from "os";
 import fs from "fs-extra";
 import { createInterface } from "readline";
-import { banner, success, warn, step, nextSteps, info } from "./ui.js";
+import { banner, success, warn, step, nextSteps, info, upgradeSummary, upgradeNextSteps } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { fileURLToPath } from "url";
 import { execSync, spawnSync } from "child_process";
@@ -14,6 +14,7 @@ interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
   skipCloud?: boolean;
+  upgrade?: boolean;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -91,24 +92,81 @@ function getTemplateDir(): { templateDir: string; cleanupDir?: string; source: "
   );
 }
 
+/**
+ * Recursively collect all file paths in a directory, relative to the root.
+ * Skips .git/ and node_modules/ directories.
+ */
+function collectFiles(dir: string, root?: string): string[] {
+  const base = root ?? dir;
+  const results: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    const relPath = path.relative(base, fullPath);
+    if (entry.name === ".git" || entry.name === "node_modules") continue;
+    if (entry.isDirectory()) {
+      results.push(...collectFiles(fullPath, base));
+    } else {
+      results.push(relPath);
+    }
+  }
+  return results;
+}
+
+/**
+ * Non-destructive merge: copies files from templateDir to targetDir,
+ * skipping any file that already exists in targetDir.
+ * Returns lists of added and skipped relative paths.
+ */
+function mergeTemplate(
+  templateDir: string,
+  targetDir: string
+): { added: string[]; skipped: string[] } {
+  const templateFiles = collectFiles(templateDir);
+  const added: string[] = [];
+  const skipped: string[] = [];
+
+  for (const relPath of templateFiles) {
+    const targetPath = path.join(targetDir, relPath);
+    if (fs.existsSync(targetPath)) {
+      skipped.push(relPath);
+    } else {
+      // Ensure parent directory exists
+      fs.ensureDirSync(path.dirname(targetPath));
+      fs.copyFileSync(path.join(templateDir, relPath), targetPath);
+      added.push(relPath);
+    }
+  }
+
+  return { added, skipped };
+}
+
 export async function scaffold(
   directory: string,
   options: ScaffoldOptions
 ): Promise<void> {
   banner();
 
+  const isUpgrade = options.upgrade === true;
+
   // 1. Resolve target directory
   const targetDir = path.resolve(directory);
-  const displayDir = directory.startsWith("/")
+  const displayDir = directory.startsWith("/") || directory.startsWith("\\")
     ? directory
     : path.relative(process.cwd(), targetDir) || ".";
 
-  // Check if directory already exists
-  if (fs.existsSync(targetDir)) {
-    const contents = fs.readdirSync(targetDir);
-    if (contents.length > 0) {
+  // Validate upgrade target
+  if (isUpgrade) {
+    if (!fs.existsSync(targetDir)) {
+      throw new Error(
+        `Cannot upgrade: directory ${displayDir} does not exist. Use create-hq without --upgrade to create a new HQ.`
+      );
+    }
+    // Check for a minimal HQ marker (CLAUDE.md or .claude/ directory)
+    const hasClaudeDir = fs.existsSync(path.join(targetDir, ".claude"));
+    const hasClaudeMd = fs.existsSync(path.join(targetDir, ".claude", "CLAUDE.md"));
+    if (!hasClaudeDir && !hasClaudeMd) {
       const proceed = await confirm(
-        `Directory ${displayDir} already exists and is not empty. Continue anyway?`,
+        `Directory ${displayDir} does not appear to be an HQ directory (no .claude/ found). Upgrade anyway?`,
         false
       );
       if (!proceed) {
@@ -116,9 +174,26 @@ export async function scaffold(
         process.exit(0);
       }
     }
+    info(`Upgrading existing HQ at ${displayDir}`);
+    info("Existing files will NOT be overwritten");
+  } else {
+    // Fresh install — check if directory already exists
+    if (fs.existsSync(targetDir)) {
+      const contents = fs.readdirSync(targetDir);
+      if (contents.length > 0) {
+        const proceed = await confirm(
+          `Directory ${displayDir} already exists and is not empty. Continue anyway?`,
+          false
+        );
+        if (!proceed) {
+          console.log("  Aborted.");
+          process.exit(0);
+        }
+      }
+    }
   }
 
-  // 2. Copy template
+  // 2. Fetch template
   step("Fetching latest HQ template...");
   const { templateDir, cleanupDir, source } = getTemplateDir();
 
@@ -128,49 +203,85 @@ export async function scaffold(
     info("Using bundled template (offline or no git access)");
   }
 
-  await fs.copy(templateDir, targetDir, {
-    filter: (src) => {
-      const rel = path.relative(templateDir, src);
-      // Skip git internals and node_modules
-      if (rel.includes(".git/") || rel.includes("node_modules/")) return false;
-      return true;
-    },
-  });
+  if (isUpgrade) {
+    // Non-destructive merge: only add files that don't already exist
+    step("Merging template (non-destructive)...");
+    const { added, skipped } = mergeTemplate(templateDir, targetDir);
 
-  // Clean up temp clone if we fetched from GitHub
-  if (cleanupDir) {
-    try { fs.removeSync(cleanupDir); } catch { /* best effort */ }
+    // Clean up temp clone if we fetched from GitHub
+    if (cleanupDir) {
+      try { fs.removeSync(cleanupDir); } catch { /* best effort */ }
+    }
+
+    if (added.length === 0) {
+      success("HQ is already up to date — no new files to add");
+    } else {
+      success(`Merged template: ${added.length} new files added`);
+    }
+
+    upgradeSummary(added, skipped);
+  } else {
+    // Fresh install: copy everything
+    await fs.copy(templateDir, targetDir, {
+      filter: (src) => {
+        const rel = path.relative(templateDir, src);
+        // Skip git internals and node_modules
+        if (rel.includes(".git/") || rel.includes("node_modules/")) return false;
+        return true;
+      },
+    });
+
+    // Clean up temp clone if we fetched from GitHub
+    if (cleanupDir) {
+      try { fs.removeSync(cleanupDir); } catch { /* best effort */ }
+    }
+
+    // Count what we copied
+    const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
+      ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
+      : 0;
+    const workerCount = fs.existsSync(path.join(targetDir, "workers"))
+      ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
+          .filter((f) => String(f).endsWith("worker.yaml")).length
+      : 0;
+
+    success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
   }
-
-  // Count what we copied
-  const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
-    ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
-    : 0;
-  const workerCount = fs.existsSync(path.join(targetDir, "workers"))
-    ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
-        .filter((f) => String(f).endsWith("worker.yaml")).length
-    : 0;
-
-  success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
 
   // 3. Check dependencies
   if (!options.skipDeps) {
     checkDeps();
   }
 
-  // 5. Install hq-cli
+  // 4. Install / update hq-cli
   if (!options.skipCli) {
     console.log();
-    const installCli = await confirm(
-      "Install @indigoai-us/hq-cli globally for module management?"
-    );
-    if (installCli) {
-      try {
-        step("Installing @indigoai-us/hq-cli...");
-        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
-        success("Installed @indigoai-us/hq-cli");
-      } catch {
-        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
+    if (isUpgrade) {
+      // During upgrade, always update to latest
+      const updateCli = await confirm(
+        "Update @indigoai-us/hq-cli to latest version?"
+      );
+      if (updateCli) {
+        try {
+          step("Updating @indigoai-us/hq-cli to latest...");
+          execSync("npm install -g @indigoai-us/hq-cli@latest", { stdio: "pipe" });
+          success("Updated @indigoai-us/hq-cli to latest");
+        } catch {
+          warn("Failed to update @indigoai-us/hq-cli — you can update manually with: npm install -g @indigoai-us/hq-cli@latest");
+        }
+      }
+    } else {
+      const installCli = await confirm(
+        "Install @indigoai-us/hq-cli globally for module management?"
+      );
+      if (installCli) {
+        try {
+          step("Installing @indigoai-us/hq-cli...");
+          execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+          success("Installed @indigoai-us/hq-cli");
+        } catch {
+          warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
+        }
       }
     }
   }
@@ -178,9 +289,10 @@ export async function scaffold(
   // 5. Cloud sync + session setup
   if (!options.skipCloud) {
     console.log();
-    const setupCloud = await confirm(
-      "Set up HQ Cloud? (syncs your HQ files and enables remote AI sessions)"
-    );
+    const cloudPrompt = isUpgrade
+      ? "Set up HQ Cloud? (add cloud capabilities to your existing HQ)"
+      : "Set up HQ Cloud? (syncs your HQ files and enables remote AI sessions)";
+    const setupCloud = await confirm(cloudPrompt);
     if (setupCloud) {
       // Step 5a: Authenticate with Clerk
       let authOk = false;
@@ -258,7 +370,7 @@ export async function scaffold(
     }
   }
 
-  // 7. Index with qmd
+  // 6. Index with qmd
   try {
     execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
     success("Indexed HQ for search");
@@ -266,6 +378,10 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 8. Next steps
-  nextSteps(displayDir);
+  // 7. Next steps
+  if (isUpgrade) {
+    upgradeNextSteps(displayDir);
+  } else {
+    nextSteps(displayDir);
+  }
 }

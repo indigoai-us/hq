@@ -225,6 +225,7 @@ export function useSessionDetail(sessionId: string) {
     }, STARTUP_TIMEOUT_MS);
 
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.status, session?.sessionId]);
 
   // Subscribe to session via WebSocket
@@ -401,6 +402,7 @@ export function useSessionDetail(sessionId: string) {
     return () => {
       for (const unsub of unsubs) unsub();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, isConnected]);
 
   const addOptimisticMessage = useCallback((type: SessionMessage["type"], content: string) => {

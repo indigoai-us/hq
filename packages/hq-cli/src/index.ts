@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name("hq")
   .description("HQ management CLI — modules and cloud sync")
-  .version("5.1.0");
+  .version("5.2.0");
 
 // Module management subcommand group
 const modulesCmd = program

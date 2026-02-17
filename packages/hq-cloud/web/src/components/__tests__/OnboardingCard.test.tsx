@@ -16,10 +16,12 @@ const mockFetchClaudeTokenStatus = vi.fn();
 const mockFetchFileCount = vi.fn();
 
 vi.mock("@/services/settings", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   fetchClaudeTokenStatus: (...args: unknown[]) => mockFetchClaudeTokenStatus(...args),
 }));
 
 vi.mock("@/services/files", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   fetchFileCount: (...args: unknown[]) => mockFetchFileCount(...args),
 }));
 
@@ -195,6 +197,7 @@ describe("OnboardingCard", () => {
     expect(onDismiss).not.toHaveBeenCalled();
 
     // Advance timer past the 2s auto-dismiss
+    // eslint-disable-next-line @typescript-eslint/await-thenable
     await act(() => {
       vi.advanceTimersByTime(2100);
     });

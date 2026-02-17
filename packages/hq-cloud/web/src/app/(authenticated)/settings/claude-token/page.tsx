@@ -180,7 +180,7 @@ export default function ClaudeTokenPage() {
           {hasToken && (
             <ActionButton
               label={removing ? "Removing..." : "Remove Token"}
-              variant="secondary"
+              variant="muted"
               disabled={removing}
               onClick={() => void handleRemove()}
             />

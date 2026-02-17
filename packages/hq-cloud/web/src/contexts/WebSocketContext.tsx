@@ -119,7 +119,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   const send = useCallback(
     <T = unknown,>(event: { type: string; payload?: T; [key: string]: unknown }): void => {
-      wsRef.current?.send(event);
+      wsRef.current?.send(event as import("@/types/websocket").ClientEvent<T>);
     },
     [],
   );

@@ -15,3 +15,4 @@ test-results/
 # misc
 .DS_Store
 *.tsbuildinfo
+.vercel

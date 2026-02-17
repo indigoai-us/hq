@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { verifyClerkToken } from './clerk.js';
+import { isCliToken, verifyCliToken } from './cli-token.js';
 import { config } from '../config.js';
 import type { AuthUser } from './types.js';
 
@@ -40,8 +41,9 @@ export interface AuthPluginOptions {
 }
 
 /**
- * Register Clerk JWT authentication middleware as Fastify hooks.
- * Extracts Bearer token, verifies via Clerk, and attaches request.user.
+ * Register authentication middleware as Fastify hooks.
+ * Accepts both Clerk JWTs and HQ CLI tokens (hqcli_xxx).
+ * Extracts Bearer token, verifies, and attaches request.user.
  */
 export function registerAuthMiddleware(
   fastify: FastifyInstance,
@@ -83,12 +85,17 @@ export function registerAuthMiddleware(
       });
     }
 
-    // Verify Clerk JWT
+    // Route to the correct verifier based on token prefix
     try {
-      const user = await verifyClerkToken(token);
-      request.user = user;
+      if (isCliToken(token)) {
+        // HQ CLI token (hqcli_xxx) — verified locally with HMAC
+        request.user = verifyCliToken(token);
+      } else {
+        // Clerk JWT — verified via Clerk SDK
+        request.user = await verifyClerkToken(token);
+      }
     } catch (err) {
-      fastify.log.warn({ err, path: urlPath }, 'Clerk token verification failed');
+      fastify.log.warn({ err, path: urlPath }, 'Token verification failed');
       return reply.status(401).send({
         error: 'Unauthorized',
         message: 'Invalid or expired token',

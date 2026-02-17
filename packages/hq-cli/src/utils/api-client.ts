@@ -14,7 +14,7 @@ import * as os from 'os';
 import { readCredentials } from './credentials.js';
 
 /** Default API base URL (production) */
-const DEFAULT_API_URL = 'https://api.hq.indigoai.com';
+const DEFAULT_API_URL = 'https://api.hq.getindigo.ai';
 
 /** Path to optional config file */
 const CONFIG_PATH = path.join(os.homedir(), '.hq', 'config.json');

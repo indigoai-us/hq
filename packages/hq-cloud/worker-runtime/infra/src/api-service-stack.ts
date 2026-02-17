@@ -2,7 +2,10 @@
  * API ECS Service Stack for HQ Cloud
  *
  * Creates an ECS Fargate service for the API behind an Application Load Balancer:
- * - ALB with HTTP listener forwarding to API target group on port 3001
+ * - ACM certificate for custom domain with DNS validation via Route53
+ * - Route53 A record aliasing the custom domain to the ALB
+ * - ALB with HTTPS listener (port 443) forwarding to API target group on port 3001
+ * - HTTP listener (port 80) redirecting to HTTPS
  * - ALB security group allowing inbound HTTP (80) and HTTPS (443)
  * - ECS Fargate service with desired count of 1
  * - API task definition using hq-cloud/api ECR image
@@ -14,12 +17,15 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
@@ -110,6 +116,20 @@ export interface HqApiServiceStackProps extends cdk.StackProps {
   readonly containerPort?: number;
 
   /**
+   * Custom domain name for the API (e.g. 'api.hq.getindigo.ai').
+   * When provided, creates an ACM certificate, Route53 A record,
+   * HTTPS listener on port 443, and HTTP->HTTPS redirect on port 80.
+   * When omitted, falls back to HTTP-only with ALB DNS name.
+   */
+  readonly domainName?: string;
+
+  /**
+   * Route53 hosted zone domain name (e.g. 'getindigo.ai').
+   * Required when domainName is provided.
+   */
+  readonly hostedZoneDomain?: string;
+
+  /**
    * ALB idle timeout in seconds (long for WebSocket support)
    * @default 3600 (1 hour)
    */
@@ -169,6 +189,11 @@ export class HqApiServiceStack extends cdk.Stack {
    */
   public readonly albDnsName: string;
 
+  /**
+   * The public API URL (custom domain with HTTPS if configured, else ALB DNS with HTTP)
+   */
+  public readonly apiUrl: string;
+
   constructor(scope: Construct, id: string, props: HqApiServiceStackProps) {
     super(scope, id, props);
 
@@ -181,6 +206,15 @@ export class HqApiServiceStack extends cdk.Stack {
     const healthCheckPath = props.healthCheckPath ?? '/api/health';
     const healthCheckInterval = props.healthCheckInterval ?? 30;
     const s3Region = props.s3Region ?? 'us-east-1';
+    const domainName = props.domainName;
+    const hostedZoneDomain = props.hostedZoneDomain;
+
+    // Validate: if domainName is provided, hostedZoneDomain must also be provided
+    if (domainName && !hostedZoneDomain) {
+      throw new Error(
+        'hostedZoneDomain is required when domainName is provided'
+      );
+    }
 
     // --- ALB Security Group ---
     this.albSecurityGroup = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
@@ -196,7 +230,7 @@ export class HqApiServiceStack extends cdk.Stack {
       'Allow inbound HTTP'
     );
 
-    // Allow inbound HTTPS (port 443) for future use
+    // Allow inbound HTTPS (port 443)
     this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
@@ -213,6 +247,24 @@ export class HqApiServiceStack extends cdk.Stack {
     });
 
     this.albDnsName = this.alb.loadBalancerDnsName;
+
+    // --- DNS + HTTPS (when custom domain is configured) ---
+    let certificate: acm.ICertificate | undefined;
+    let hostedZone: route53.IHostedZone | undefined;
+
+    if (domainName && hostedZoneDomain) {
+      // Look up the existing Route53 hosted zone
+      hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+        domainName: hostedZoneDomain,
+      });
+
+      // Create ACM certificate with DNS validation
+      certificate = new acm.Certificate(this, 'ApiCertificate', {
+        domainName,
+        validation: acm.CertificateValidation.fromDns(hostedZone),
+        certificateName: `hq-cloud-api-${envName}`,
+      });
+    }
 
     // --- API Task Definition ---
     // Execution role (for pulling images, writing logs, reading secrets)
@@ -305,8 +357,7 @@ export class HqApiServiceStack extends cdk.Stack {
       );
     }
 
-    // Build environment variables — ECS_API_URL uses the ALB DNS
-    // We use Fn.join to reference the ALB DNS at deploy time
+    // Build environment variables
     const environment: Record<string, string> = {
       NODE_ENV: 'production',
       PORT: String(containerPort),
@@ -370,7 +421,7 @@ export class HqApiServiceStack extends cdk.Stack {
       maxHealthyPercent: 200,
     });
 
-    // --- ALB Target Group & Listener ---
+    // --- ALB Target Group & Listeners ---
     const targetGroup = new elbv2.ApplicationTargetGroup(this, 'ApiTargetGroup', {
       vpc: props.vpc,
       port: containerPort,
@@ -390,22 +441,61 @@ export class HqApiServiceStack extends cdk.Stack {
     // Register the ECS service as the target
     this.service.attachToApplicationTargetGroup(targetGroup);
 
-    // HTTP listener on port 80 forwarding to API target group
-    this.alb.addListener('HttpListener', {
-      port: 80,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      defaultTargetGroups: [targetGroup],
-    });
+    if (certificate) {
+      // HTTPS listener on port 443 with ACM certificate — primary traffic path
+      this.alb.addListener('HttpsListener', {
+        port: 443,
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        certificates: [certificate],
+        sslPolicy: elbv2.SslPolicy.TLS13_RES,
+        defaultTargetGroups: [targetGroup],
+      });
+
+      // HTTP listener on port 80 — permanent redirect to HTTPS (301)
+      this.alb.addListener('HttpListener', {
+        port: 80,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        defaultAction: elbv2.ListenerAction.redirect({
+          protocol: 'HTTPS',
+          port: '443',
+          permanent: true,
+        }),
+      });
+    } else {
+      // No custom domain — HTTP-only listener forwarding to target group
+      this.alb.addListener('HttpListener', {
+        port: 80,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        defaultTargetGroups: [targetGroup],
+      });
+    }
+
+    // --- Route53 A record (when custom domain is configured) ---
+    if (domainName && hostedZone) {
+      new route53.ARecord(this, 'ApiAliasRecord', {
+        zone: hostedZone,
+        recordName: domainName,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.LoadBalancerTarget(this.alb)
+        ),
+        comment: `HQ Cloud API (${envName})`,
+      });
+    }
 
     // --- ECS_API_URL environment variable ---
     // This is a self-referencing URL — session containers use it to connect back.
-    // We add it as a container environment override using the ALB DNS.
-    // Note: We cannot use the ALB DNS directly in the environment map above
-    // because it's a token that resolves at deploy time, which works fine with CDK strings.
-    container.addEnvironment(
-      'ECS_API_URL',
-      `http://${this.alb.loadBalancerDnsName}`
-    );
+    // When a custom domain is configured, use HTTPS with the domain name.
+    // Otherwise, fall back to HTTP with the ALB DNS name.
+    if (domainName) {
+      this.apiUrl = `https://${domainName}`;
+      container.addEnvironment('ECS_API_URL', `https://${domainName}`);
+    } else {
+      this.apiUrl = `http://${this.alb.loadBalancerDnsName}`;
+      container.addEnvironment(
+        'ECS_API_URL',
+        `http://${this.alb.loadBalancerDnsName}`
+      );
+    }
 
     // --- Outputs ---
     new cdk.CfnOutput(this, 'AlbDnsName', {
@@ -414,9 +504,9 @@ export class HqApiServiceStack extends cdk.Stack {
       exportName: `HqCloudApiAlbDns-${envName}`,
     });
 
-    new cdk.CfnOutput(this, 'AlbUrl', {
-      value: `http://${this.alb.loadBalancerDnsName}`,
-      description: 'HQ Cloud API URL',
+    new cdk.CfnOutput(this, 'ApiUrl', {
+      value: this.apiUrl,
+      description: 'HQ Cloud API URL (custom domain if configured)',
       exportName: `HqCloudApiUrl-${envName}`,
     });
 
@@ -431,5 +521,21 @@ export class HqApiServiceStack extends cdk.Stack {
       description: 'HQ Cloud API Task Definition ARN',
       exportName: `HqCloudApiTaskDefArn-${envName}`,
     });
+
+    if (domainName) {
+      new cdk.CfnOutput(this, 'CustomDomain', {
+        value: domainName,
+        description: 'HQ Cloud API Custom Domain',
+        exportName: `HqCloudApiDomain-${envName}`,
+      });
+
+      if (certificate) {
+        new cdk.CfnOutput(this, 'CertificateArn', {
+          value: (certificate as acm.Certificate).certificateArn,
+          description: 'ACM Certificate ARN for the API domain',
+          exportName: `HqCloudApiCertArn-${envName}`,
+        });
+      }
+    }
   }
 }

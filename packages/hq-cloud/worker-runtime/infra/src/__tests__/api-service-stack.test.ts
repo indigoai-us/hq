@@ -1,5 +1,5 @@
 /**
- * Tests for HQ Cloud API Service Stack (ALB + ECS Fargate)
+ * Tests for HQ Cloud API Service Stack (ALB + ECS Fargate + DNS/HTTPS)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -62,6 +62,21 @@ function createTestStack(
   });
 
   return { app, stack, depStack, vpc, cluster, apiRepository, secret };
+}
+
+/**
+ * Helper to create a test stack with custom domain + HTTPS.
+ * HostedZone.fromLookup uses CDK context, which resolves to dummy values in tests
+ * when env.account and env.region are provided.
+ */
+function createTestStackWithDomain(
+  overrides?: Partial<ConstructorParameters<typeof HqApiServiceStack>[2]>
+) {
+  return createTestStack({
+    domainName: 'api.hq.getindigo.ai',
+    hostedZoneDomain: 'getindigo.ai',
+    ...overrides,
+  });
 }
 
 describe('HqApiServiceStack', () => {
@@ -139,8 +154,8 @@ describe('HqApiServiceStack', () => {
     });
   });
 
-  describe('ALB Listener and Target Group', () => {
-    it('creates HTTP listener on port 80', () => {
+  describe('ALB Listener and Target Group (HTTP-only, no domain)', () => {
+    it('creates HTTP listener on port 80 forwarding to target group', () => {
       const { stack } = createTestStack();
       const template = Template.fromStack(stack);
 
@@ -149,8 +164,24 @@ describe('HqApiServiceStack', () => {
         {
           Port: 80,
           Protocol: 'HTTP',
+          DefaultActions: Match.arrayWith([
+            Match.objectLike({
+              Type: 'forward',
+            }),
+          ]),
         }
       );
+    });
+
+    it('does not create HTTPS listener when no domain is configured', () => {
+      const { stack } = createTestStack();
+      const template = Template.fromStack(stack);
+
+      // Should only have one listener (HTTP on port 80)
+      const listeners = template.findResources(
+        'AWS::ElasticLoadBalancingV2::Listener'
+      );
+      expect(Object.keys(listeners)).toHaveLength(1);
     });
 
     it('creates target group with health check on /api/health', () => {
@@ -185,6 +216,119 @@ describe('HqApiServiceStack', () => {
           HealthCheckIntervalSeconds: 60,
         }
       );
+    });
+  });
+
+  describe('DNS + HTTPS (with custom domain)', () => {
+    it('creates ACM certificate for the custom domain', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasResourceProperties(
+        'AWS::CertificateManager::Certificate',
+        {
+          DomainName: 'api.hq.getindigo.ai',
+          ValidationMethod: 'DNS',
+        }
+      );
+    });
+
+    it('creates HTTPS listener on port 443 with TLS 1.3 policy', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasResourceProperties(
+        'AWS::ElasticLoadBalancingV2::Listener',
+        {
+          Port: 443,
+          Protocol: 'HTTPS',
+          SslPolicy: 'ELBSecurityPolicy-TLS13-1-2-Res-2021-06',
+        }
+      );
+    });
+
+    it('creates HTTP listener that permanently redirects to HTTPS (301)', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasResourceProperties(
+        'AWS::ElasticLoadBalancingV2::Listener',
+        {
+          Port: 80,
+          Protocol: 'HTTP',
+          DefaultActions: Match.arrayWith([
+            Match.objectLike({
+              Type: 'redirect',
+              RedirectConfig: Match.objectLike({
+                Protocol: 'HTTPS',
+                Port: '443',
+                StatusCode: 'HTTP_301',
+              }),
+            }),
+          ]),
+        }
+      );
+    });
+
+    it('creates Route53 A record aliasing to the ALB', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasResourceProperties('AWS::Route53::RecordSet', {
+        Name: 'api.hq.getindigo.ai.',
+        Type: 'A',
+      });
+    });
+
+    it('has two listeners (HTTP redirect + HTTPS) when domain is configured', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      const listeners = template.findResources(
+        'AWS::ElasticLoadBalancingV2::Listener'
+      );
+      expect(Object.keys(listeners)).toHaveLength(2);
+    });
+
+    it('sets ECS_API_URL to https://api.hq.getindigo.ai', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+        ContainerDefinitions: Match.arrayWith([
+          Match.objectLike({
+            Name: 'api',
+            Environment: Match.arrayWith([
+              { Name: 'ECS_API_URL', Value: 'https://api.hq.getindigo.ai' },
+            ]),
+          }),
+        ]),
+      });
+    });
+
+    it('outputs custom domain name', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasOutput('CustomDomain', {
+        Value: 'api.hq.getindigo.ai',
+      });
+    });
+
+    it('outputs certificate ARN', () => {
+      const { stack } = createTestStackWithDomain();
+      const template = Template.fromStack(stack);
+
+      template.hasOutput('CertificateArn', {});
+    });
+
+    it('throws when domainName is provided without hostedZoneDomain', () => {
+      expect(() => {
+        createTestStack({
+          domainName: 'api.hq.getindigo.ai',
+          // hostedZoneDomain intentionally omitted
+        });
+      }).toThrow('hostedZoneDomain is required when domainName is provided');
     });
   });
 
@@ -289,7 +433,7 @@ describe('HqApiServiceStack', () => {
       expect(secretNames).not.toContain('CLAUDE_CREDENTIALS_JSON');
     });
 
-    it('sets ECS_API_URL environment variable referencing ALB DNS', () => {
+    it('sets ECS_API_URL environment variable referencing ALB DNS (no domain)', () => {
       const { stack } = createTestStack();
       const template = Template.fromStack(stack);
 
@@ -466,11 +610,11 @@ describe('HqApiServiceStack', () => {
       template.hasOutput('AlbDnsName', {});
     });
 
-    it('outputs ALB URL', () => {
+    it('outputs API URL', () => {
       const { stack } = createTestStack();
       const template = Template.fromStack(stack);
 
-      template.hasOutput('AlbUrl', {});
+      template.hasOutput('ApiUrl', {});
     });
 
     it('outputs service ARN', () => {

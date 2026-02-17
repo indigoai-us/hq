@@ -79,7 +79,7 @@ async function buildApp(): Promise<FastifyInstance> {
   // Register auth middleware (excludes health and WS routes)
   // WS handles its own JWT verification on connect
   registerAuthMiddleware(app, {
-    excludePaths: ['/api/health', '/api/health/ready', '/api/health/live'],
+    excludePaths: ['/api/health', '/api/health/ready', '/api/health/live', '/api/auth/cli-login'],
     excludePrefixes: ['/ws'],
   });
 
