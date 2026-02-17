@@ -33,7 +33,7 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 ```
 HQ/
-├── .claude/commands/   # Slash commands (19, visibility: public|private in frontmatter)
+├── .claude/commands/   # Slash commands (23, visibility: public|private in frontmatter)
 ├── agents.md           # Your profile
 ├── companies/          # Company-scoped resources (optional)
 │   └── {company}/      # settings/, data/, knowledge/
@@ -91,8 +91,16 @@ Workers can connect to external AI tools via [Model Context Protocol](https://mo
 | `/handoff` | Prepare for fresh session |
 | `/reanchor` | Pause and realign |
 | `/nexttask` | Find next thing to work on |
+| `/recover-session` | Recover dead sessions that hit context limits |
 | `/remember` | Capture learnings as rules in relevant files |
 | `/learn` | Auto-capture and classify learnings from task execution |
+
+### Communication
+| Command | Purpose |
+|---------|---------|
+| `/email` | Multi-account Gmail management via MCP |
+| `/checkemail` | Quick inbox cleanup + triage |
+| `/decide` | Human-in-the-loop batch decision UI |
 
 ### Projects
 | Command | Purpose |

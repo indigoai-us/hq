@@ -4,6 +4,25 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v5.5.0 (from v5.4.0)
+
+### New Command
+Copy to `.claude/commands/`:
+- `recover-session.md` — Recover dead sessions that hit context limits
+
+### Updated Files
+- `.claude/CLAUDE.md` — Merge the new "Communication" commands section and add `/recover-session` to Session Management
+
+### Migration Steps
+1. Copy `.claude/commands/recover-session.md`
+2. Update your `.claude/CLAUDE.md` command count and tables
+3. Run `/search-reindex`
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v5.4.0 (from v5.3.0)
 
 ### New Commands
