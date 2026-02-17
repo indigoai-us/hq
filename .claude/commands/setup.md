@@ -89,6 +89,14 @@ Use "personal" as the company/context name.
 
 ## Phase 2: Generate Files
 
+### Repos directory (required)
+
+All repos — code, knowledge, company projects — live under `repos/`. This is the single canonical location for every cloned or created repository in HQ.
+
+```bash
+mkdir -p repos/public repos/private
+```
+
 ### Company structure
 ```bash
 mkdir -p companies/personal/settings companies/personal/data companies/personal/knowledge
@@ -117,8 +125,6 @@ ln -s ../../repos/public/knowledge-{name} knowledge/{name}
 
 **At minimum, create one knowledge repo for the user's personal/company context:**
 ```bash
-mkdir -p repos/public repos/private
-
 # Personal knowledge repo
 mkdir -p repos/private/knowledge-personal
 cd repos/private/knowledge-personal
@@ -178,12 +184,6 @@ Run `/personal-interview` to populate this file with your authentic voice and co
 {Answer from Q3}
 ```
 
-### Repos directory
-Ensure `repos/` structure exists:
-```bash
-mkdir -p repos/public repos/private
-```
-
 Add to `.gitignore` if not already present:
 ```
 # Knowledge repo contents (tracked by their own git)
@@ -209,11 +209,11 @@ qmd update 2>/dev/null || qmd index . 2>/dev/null || true
 HQ Setup Complete!
 
 Created:
+- repos/public/, repos/private/ (ALL repos — code, knowledge, projects)
 - companies/personal/ (settings, data, knowledge)
 - companies/personal/knowledge/profile.md
 - companies/personal/knowledge/voice-style.md
 - agents.md
-- repos/public/, repos/private/ (for code and knowledge repos)
 - Knowledge repo: repos/private/knowledge-personal/ → companies/personal/knowledge/personal
 
 Dependencies:
