@@ -5,7 +5,7 @@ argument-hint: [--check | --from v{X.Y.Z} | v{target}]
 visibility: public
 ---
 
-# /migrate - HQ Upgrade
+# /update-hq - HQ Upgrade
 
 Upgrade your HQ installation from the latest hq-starter-kit release on GitHub.
 

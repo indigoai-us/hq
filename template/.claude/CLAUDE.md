@@ -122,7 +122,7 @@ Workers can connect to external AI tools via [Model Context Protocol](https://mo
 | `/search` | Semantic + full-text search across HQ (qmd-powered) |
 | `/search-reindex` | Reindex and re-embed HQ for qmd search |
 | `/cleanup` | Audit and clean HQ |
-| `/migrate` | Upgrade HQ from latest starter-kit release |
+| `/update-hq` | Upgrade HQ from latest starter-kit release |
 | `/setup` | Interactive setup wizard |
 | `/personal-interview` | Deep interview to build your profile + voice |
 | `/exit-plan` | Force exit from plan mode |
