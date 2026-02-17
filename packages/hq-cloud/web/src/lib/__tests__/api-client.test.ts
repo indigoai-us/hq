@@ -114,8 +114,26 @@ describe("apiRequest", () => {
       text: () => Promise.resolve("Not Found"),
     });
 
-    await expect(apiRequest("/api/missing")).rejects.toThrow(
-      "API error 404: Not Found",
+    // Plain text errors are shown directly (not wrapped in "API error NNN:")
+    await expect(apiRequest("/api/missing")).rejects.toThrow("Not Found");
+  });
+
+  it("throws with parsed message from JSON error response", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            error: "Unauthorized",
+            message: "Bearer token is required.",
+          }),
+        ),
+    });
+
+    // Should extract the 'message' field from the JSON error body
+    await expect(apiRequest("/api/protected")).rejects.toThrow(
+      "Bearer token is required.",
     );
   });
 

@@ -23,9 +23,22 @@ export function useOnboarding(): UseOnboardingResult {
     try {
       const result = await checkOnboardingStatus();
       setIsOnboarded(result.onboarded);
-    } catch {
-      // If the check fails (e.g., no MongoDB), assume onboarded
-      setIsOnboarded(true);
+    } catch (err) {
+      // Auth errors should NOT default to onboarded — the user needs to
+      // re-authenticate. Only assume onboarded for non-auth failures
+      // (e.g., MongoDB down, network error).
+      const message = err instanceof Error ? err.message : "";
+      const isAuthError =
+        message.includes("Not authenticated") ||
+        message.includes("401") ||
+        message.includes("Bearer token");
+      if (isAuthError) {
+        setIsOnboarded(false);
+      } else {
+        // Non-auth failure (MongoDB, etc.) — assume onboarded to avoid
+        // blocking users when backend infra has issues
+        setIsOnboarded(true);
+      }
     } finally {
       setIsChecking(false);
     }

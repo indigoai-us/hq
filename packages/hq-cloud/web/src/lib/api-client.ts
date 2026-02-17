@@ -46,21 +46,36 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const errorText = await response.text();
 
-    // Redirect to setup when API says setup is required
-    if (response.status === 403) {
-      try {
-        const errorBody = JSON.parse(errorText);
-        if (errorBody.code === "SETUP_REQUIRED" && typeof window !== "undefined") {
-          window.location.href = "/setup";
-          throw new Error("Setup required — redirecting...");
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes("redirecting")) throw e;
-        // JSON parse failed — fall through to generic error
+    // Try to parse structured error from API
+    let errorMessage = `API error ${response.status}`;
+    try {
+      const errorBody = JSON.parse(errorText) as {
+        code?: string;
+        message?: string;
+        error?: string;
+      };
+
+      // Redirect to setup when API says setup is required
+      if (
+        response.status === 403 &&
+        errorBody.code === "SETUP_REQUIRED" &&
+        typeof window !== "undefined"
+      ) {
+        window.location.href = "/setup";
+        throw new Error("Setup required — redirecting...");
+      }
+
+      // Use the API's message field for cleaner display
+      errorMessage = errorBody.message || errorBody.error || errorMessage;
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("redirecting")) throw e;
+      // JSON parse failed — use raw text if short enough
+      if (errorText.length < 200) {
+        errorMessage = errorText || errorMessage;
       }
     }
 
-    throw new Error(`API error ${response.status}: ${errorText}`);
+    throw new Error(errorMessage);
   }
 
   return response.json() as Promise<T>;

@@ -34,17 +34,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded, getToken, signOut } = useClerkAuth();
   const { user: clerkUser } = useClerkUser();
 
-  // Set the token getter for api-client on mount / when auth state changes
+  // Set the token getter synchronously during render (not in useEffect).
+  // React fires child effects before parent effects, so if this were in
+  // useEffect, hooks like useOnboarding and useSessions would call the API
+  // before tokenGetter is set — causing "Bearer token required" errors.
+  if (isSignedIn) {
+    setTokenGetter(() => getToken());
+  } else {
+    setTokenGetter(null);
+  }
+
+  // Clean up on unmount
   useEffect(() => {
-    if (isSignedIn) {
-      setTokenGetter(() => getToken());
-    } else {
-      setTokenGetter(null);
-    }
     return () => {
       setTokenGetter(null);
     };
-  }, [isSignedIn, getToken]);
+  }, []);
 
   const user = useMemo<AuthUser | null>(() => {
     if (!clerkUser) return null;
