@@ -206,34 +206,55 @@ When building HQ infrastructure (new workers, knowledge bases, commands, project
 
 **Also:** After any structural change, run `qmd update 2>/dev/null || true` to keep search current.
 
-## Auto-Checkpoint (PostToolsHook)
+## Auto-Checkpoint (PostToolUse Hook)
 
-After completing any of these actions, automatically save thread state to `workspace/threads/`:
+PostToolUse hooks on Bash and Write tool calls detect checkpoint-worthy events and inject an `AUTO-CHECKPOINT REQUIRED` nudge. When you see this nudge, **immediately write a lightweight thread file** and continue working.
 
-**Triggers:**
-- Worker skill completion (via `/run`)
-- Git commit
-- File generation (reports, social drafts)
-- Significant file edits in project repos
+**Triggers (hook-detected):**
+- Git commit (Bash tool with `git commit`)
+- File generation to `workspace/reports/`, `workspace/social-drafts/`, `companies/*/data/`
 
-**Thread Format:** See `knowledge/hq-core/thread-schema.md`
+**Also checkpoint after (instruction-based, no hook):**
+- Worker skill completion (via `/run`) — write auto-checkpoint before reporting results
 
-**Why:** Prevents lost work, enables session resumption, provides audit trail.
+**Lightweight auto-checkpoint format:**
+```json
+{
+  "thread_id": "T-{YYYYMMDD}-{HHMMSS}-auto-{slug}",
+  "version": 1,
+  "type": "auto-checkpoint",
+  "created_at": "ISO8601",
+  "updated_at": "ISO8601",
+  "workspace_root": "~/Documents/HQ",
+  "cwd": "current/working/dir",
+  "git": {
+    "branch": "main",
+    "current_commit": "abc1234",
+    "dirty": false
+  },
+  "conversation_summary": "1 sentence of what just happened",
+  "files_touched": ["relative/paths"],
+  "metadata": {
+    "title": "Auto: brief description",
+    "tags": ["auto-checkpoint"],
+    "trigger": "git-commit | file-generation | worker-completion"
+  }
+}
+```
 
-**How:** After a triggering action, capture git state + summary and write to `workspace/threads/T-{timestamp}-{slug}.json`
+**Do NOT** on auto-checkpoints: rebuild INDEX files, update `recent.md`, run `qmd update`, write legacy checkpoint files. Just write the JSON and move on.
 
 **Knowledge repos:** When edits touch knowledge files (symlinked to `repos/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above for commit instructions.
 
-## Auto-Handoff (Context Limit)
+## Auto-Handoff (PreCompact Hook)
 
-When context usage reaches 70% (remaining drops to 30%), automatically run `/handoff`.
+A PreCompact hook fires when auto-compaction triggers (context window full). When you see the handoff nudge:
 
-**Rules:**
-- Check context status line — when `remaining_percentage` ≤ 30, trigger handoff
-- Before handoff, finish current atomic task (don't interrupt mid-edit)
-- Notify user: "Context at {X}% remaining. Running /handoff to preserve continuity."
-- Run `/handoff` with summary of remaining work
-- This overrides manual handoff — don't wait for user to request it
+1. Finish current atomic action (don't leave files half-edited)
+2. Run `/handoff` to preserve session state
+3. Do NOT start new tasks — hand off first
+
+**Fallback (instruction-based):** If you notice context is running low (many long turns, compaction has occurred), proactively run `/handoff` without waiting for the hook.
 
 ## Core Principles
 

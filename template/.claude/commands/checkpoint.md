@@ -13,11 +13,18 @@ Save current work state as a thread to survive context loss.
 
 ## Process
 
-1. **Generate thread ID** if not provided
+1. **Check for recent auto-checkpoint** (upgrade instead of duplicate)
+   ```bash
+   # Find auto-checkpoints from last 5 minutes
+   find workspace/threads -name "T-*-auto-*.json" -mmin -5 2>/dev/null | sort -r | head -1
+   ```
+   If found: upgrade that file in-place (add full fields: `initial_commit`, `commits_made`, `remote_url`, `knowledge_repos`, `worker`, `next_steps`; change `type` to `"checkpoint"`; rename file to remove `-auto-`). Then continue from step 8 (INDEX updates).
+
+2. **Generate thread ID** if not provided
    - Format: `T-{YYYYMMDD}-{HHMMSS}-{slug}`
    - Derive slug from recent work (e.g., `mrr-report`, `email-fix`)
 
-2. **Capture git state**
+3. **Capture git state**
    ```bash
    git rev-parse --abbrev-ref HEAD          # branch
    git remote get-url origin 2>/dev/null    # remote
@@ -27,7 +34,7 @@ Save current work state as a thread to survive context loss.
    git status --porcelain                   # dirty check
    ```
 
-3. **Capture knowledge repo git states**
+4. **Capture knowledge repo git states**
    Knowledge folders are separate git repos (symlinked). For any knowledge path in files_touched, capture its repo state:
    ```bash
    # For each knowledge repo with changes:
@@ -41,12 +48,12 @@ Save current work state as a thread to survive context loss.
    ```
    Include dirty knowledge repos in the thread JSON under `git.knowledge_repos`.
 
-4. **Gather session state**
+5. **Gather session state**
    - Summarize what was accomplished
    - List files touched
    - Identify next steps
 
-5. **Write thread** to `workspace/threads/{thread_id}.json` (include knowledge_repos from step 3):
+6. **Write thread** to `workspace/threads/{thread_id}.json` (include knowledge_repos from step 3):
    ```json
    {
      "thread_id": "T-20260123-143052-mrr-report",
@@ -87,16 +94,16 @@ Save current work state as a thread to survive context loss.
    }
    ```
 
-6. **Also write legacy checkpoint** to `workspace/checkpoints/{task-id}.json` for backward compat
+7. **Also write legacy checkpoint** to `workspace/checkpoints/{task-id}.json` for backward compat
 
-7. **Update INDEX files and recent threads**
+8. **Update INDEX files and recent threads**
    - Update `workspace/threads/recent.md` with last 15 threads (table format)
    - Update `INDEX.md` timestamp only (do NOT regenerate full content — it's now slim)
    - Regenerate `workspace/threads/INDEX.md` (all threads, full table)
    - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
    - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
-8. **Report**
+9. **Report**
    ```
    Thread saved: workspace/threads/{thread_id}.json
 

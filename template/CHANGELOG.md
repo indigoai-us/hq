@@ -1,5 +1,22 @@
 # Changelog
 
+## v5.5.2 (2026-02-17)
+
+### Added
+- **Auto-checkpoint hooks** — PostToolUse hooks detect git commits and report/draft generation, nudge Claude to write lightweight thread files automatically. No more manual `/checkpoint` after every commit.
+- **Auto-handoff hook** — PreCompact hook fires when context window fills, nudges Claude to run `/handoff` before state is lost.
+- `.claude/hooks/auto-checkpoint-trigger.sh` — PostToolUse detection script
+- `.claude/hooks/auto-handoff-trigger.sh` — PreCompact detection script
+- `.claude/settings.json` — Hook registration (PostToolUse + PreCompact)
+
+### Changed
+- `/checkpoint` — New step 1: checks for recent auto-checkpoint (<5 min) and upgrades it to full checkpoint instead of duplicating
+- `/cleanup` — Added 14-day auto-checkpoint purge (separate from 30-day manual thread archival)
+- `CLAUDE.md` — Replaced aspirational Auto-Checkpoint/Auto-Handoff sections with concrete hook-backed procedures
+- `knowledge/hq-core/thread-schema.md` — Added `type` field (`checkpoint` | `auto-checkpoint` | `handoff`) and lightweight auto-checkpoint schema variant
+
+---
+
 ## v5.5.1 (2026-02-17)
 
 ### Changed
