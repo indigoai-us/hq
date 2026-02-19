@@ -212,7 +212,7 @@ export function registerAuthCommand(program: Command): void {
 
         // Build the login URL
         const apiUrl = getApiUrl();
-        const loginUrl = `${apiUrl}/auth/cli-login?device_code=${deviceCode}&callback_url=${encodeURIComponent(callbackUrl)}`;
+        const loginUrl = `${apiUrl}/api/auth/cli-login?device_code=${deviceCode}&callback_url=${encodeURIComponent(callbackUrl)}`;
 
         console.log(chalk.blue('Opening browser for authentication...'));
         console.log();
@@ -290,7 +290,7 @@ export function registerAuthCommand(program: Command): void {
 
       // Optionally verify with the API
       try {
-        const resp = await apiRequest<{ userId: string; sessionId: string }>('GET', '/auth/me');
+        const resp = await apiRequest<{ userId: string; sessionId: string }>('GET', '/api/auth/me');
         if (resp.ok && resp.data) {
           console.log(chalk.dim(`  Verified:   API confirms session is valid`));
         } else {
