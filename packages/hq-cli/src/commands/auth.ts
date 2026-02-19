@@ -210,9 +210,9 @@ export function registerAuthCommand(program: Command): void {
         const port = await findAvailablePort();
         const callbackUrl = `http://127.0.0.1:${port}/callback`;
 
-        // Build the login URL
-        const apiUrl = getApiUrl();
-        const loginUrl = `${apiUrl}/api/auth/cli-login?device_code=${deviceCode}&callback_url=${encodeURIComponent(callbackUrl)}`;
+        // Build the login URL — go directly to the web app's CLI callback page
+        const webAppUrl = 'https://app.hq.getindigo.ai';
+        const loginUrl = `${webAppUrl}/cli-callback?device_code=${deviceCode}&callback_url=${encodeURIComponent(callbackUrl)}`;
 
         console.log(chalk.blue('Opening browser for authentication...'));
         console.log();
