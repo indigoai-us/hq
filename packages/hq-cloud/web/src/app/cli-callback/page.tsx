@@ -77,6 +77,7 @@ function CliCallbackContent() {
             Authorization: `Bearer ${clerkToken}`,
             "Content-Type": "application/json",
           },
+          body: "{}",
         });
 
         if (!response.ok) {
