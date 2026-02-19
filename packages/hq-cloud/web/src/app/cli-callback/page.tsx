@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth, useSignIn } from "@clerk/nextjs";
+import { useAuth, useSignIn, useUser } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -27,6 +27,7 @@ import { getApiUrl } from "@/lib/storage";
  */
 function CliCallbackContent() {
   const { isSignedIn, isLoaded, getToken, userId } = useAuth();
+  const { user } = useUser();
   const { signIn } = useSignIn();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -122,15 +123,17 @@ function CliCallbackContent() {
         // Calculate expiry
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        // Redirect to CLI callback with token
+        // Redirect to CLI callback with token + user info
         const params = new URLSearchParams({
           token: data.token,
           user_id: data.userId,
           expires_at: expiresAt,
         });
 
-        // Add email if available from Clerk
-        // (userId is available from the hook, email requires user object)
+        // Include user identity from Clerk
+        if (user?.fullName) params.set("full_name", user.fullName);
+        if (user?.primaryEmailAddress?.emailAddress) params.set("email", user.primaryEmailAddress.emailAddress);
+        if (user?.imageUrl) params.set("avatar_url", user.imageUrl);
 
         window.location.href = `${callbackUrl}?${params.toString()}`;
       } catch (err) {
