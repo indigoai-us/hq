@@ -42,9 +42,9 @@ Never auto-trigger on session start — most tasks don't need full HQ orientatio
 
 5. **Load company context if needed**
    If user picks a company-specific focus, read that company's `knowledge/INDEX.md`:
-   - Widgets Inc → `companies/widgets/knowledge/INDEX.md`
-   - Acme Corp → `companies/acme/knowledge/INDEX.md`
-   - Design Co → `companies/designco/knowledge/INDEX.md`
+   - {Company-2} → `companies/{company-2}/knowledge/INDEX.md`
+   - {Company-1} → `companies/{company-1}/knowledge/INDEX.md`
+   - {Company-3} → `companies/{company-3}/knowledge/INDEX.md`
 
 6. **Wait for response** before proceeding
 

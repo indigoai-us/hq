@@ -5,7 +5,7 @@ version: "1.0"
 
 modules:
   - name: hq-core
-    repo: https://github.com/coreyepstein/hq-starter-kit.git
+    repo: https://github.com/{your-username}/hq-starter-kit.git
     branch: main
     strategy: merge
     access: public

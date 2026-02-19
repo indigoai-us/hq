@@ -1,0 +1,154 @@
+worker:
+  id: qa-tester
+  name: "QA Tester"
+  type: OpsWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 30m
+  retry_attempts: 1
+  model: sonnet
+
+context:
+  base:
+    - workers/public/qa-tester/
+    - repos/private/{company-2}-site/tests/e2e/
+  exclude:
+    - node_modules/
+    - dist/
+    - test-results/
+    - "*.log"
+
+verification:
+  post_execute:
+    - check: typescript
+      command: bun run typecheck
+  approval_required: false
+
+output:
+  destination: workspace/reports/qa/
+  format: both
+  naming: "{date}-{target}-report.{ext}"
+
+mcp:
+  server:
+    command: node
+    args:
+      - dist/mcp-server.js
+    cwd: workers/qa-tester
+  tools:
+    - full_scan
+    - smoke_test
+    - page_test
+
+# State Machine (Loom pattern)
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  # QA Tester Worker
+
+  Automated website testing using Playwright.
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | full-scan | Test all pages (load, nav, console, responsive, a11y) |
+  | smoke-test | Quick health check (homepage + critical paths) |
+  | page-test | Test single page deeply |
+
+  ## CLI Usage
+
+  ```bash
+  cd workers/qa-tester
+  node dist/index.js full-scan --url "http://localhost:3000"
+  node dist/index.js full-scan --url "http://localhost:3000" --pages "/pricing,/demo"
+  node dist/index.js smoke-test --url "https://example.com"
+  ```
+
+  ## Arguments
+
+  | Arg | Description | Default |
+  |-----|-------------|---------|
+  | --url | Base URL to test | required |
+  | --pages | Comma-separated paths (or "auto" for crawl) | auto |
+  | --viewports | mobile,tablet,desktop | all |
+  | --output | Report output path | workspace/reports/qa/ |
+
+  ## Test Categories
+
+  1. **Page Load** - HTTP 200, no crash, loads < 5s
+  2. **Navigation** - All links resolve, no 404s
+  3. **Console Errors** - No JS errors in console
+  4. **Responsive** - 375px, 768px, 1440px breakpoints
+  5. **Accessibility** - axe-core WCAG 2.1 AA violations
+
+  All operations are READ-ONLY (no form submissions).
+
+  ## Integration with {Company-2} CMS Test Log
+
+  Test results sync to the {Company-2} CMS test dashboard via Supabase.
+
+  ### Pre-Test Checks
+  Before running tests, always verify:
+  ```bash
+  cd repos/private/{company-2}-site
+  npm run check-coverage     # All routes have tests
+  npm run generate-manifest  # Manifest matches specs
+  ```
+  If either fails, fix first — stale manifest or uncovered routes mean incomplete results.
+
+  ### Sync Steps
+  1. Run tests: `npm test` in `repos/private/{company-2}-site`
+  2. Process results: `npx tsx scripts/process-test-results.ts <run-id>`
+     - Uploads failure screenshots to Supabase Storage `test-screenshots`
+     - Inserts rows into `test_results` table
+     - Updates `test_runs` row with summary
+  3. Verify in CMS: check `/tests` pages in `repos/private/{company-2}-cmohq`
+
+  ### Running Against Vercel Previews
+  For PR testing, provide the preview URL:
+  ```bash
+  PLAYWRIGHT_BASE_URL=https://your-preview.vercel.app npm test
+  ```
+  Or trigger via GHA workflow dispatch with `preview_url` input.
+
+  ### Manifest
+  Canonical test manifest: `{company-2}-site/tests/e2e/manifest.json`
+  Keep `projects/{company-2}-site/pages.json` aligned with this manifest.
+
+  ### Results Destinations
+  - Local: `workspace/reports/qa/` (JSON + Markdown)
+  - Supabase: `test_runs` + `test_results` tables
+  - GitHub: PR comments with test summary (via GHA workflow)
+  - CMS: `/tests/*` dashboard routes
+
+  ## Quick Smoke Test (agent-browser)
+
+  For rapid page checks without the full Playwright suite:
+
+  ```bash
+  agent-browser open "<url>"
+  agent-browser wait --load networkidle
+  agent-browser get title                           # Verify title exists
+  agent-browser errors                              # Check for JS errors
+  agent-browser set viewport 375 812                # Mobile
+  agent-browser screenshot /tmp/smoke-mobile.png --full
+  agent-browser set viewport 1440 900               # Desktop
+  agent-browser screenshot /tmp/smoke-desktop.png --full
+  agent-browser console                             # Check console warnings
+  agent-browser close
+  ```
+
+  Use for: quick pre-deploy checks, verify page loads, catch obvious JS errors.
+  Do NOT use for: accessibility audits, structured regression tests, Supabase reporting.

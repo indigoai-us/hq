@@ -1,0 +1,100 @@
+worker:
+  id: pr-outreach
+  name: "PR Outreach"
+  type: OpsWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 15m
+  model: sonnet
+
+context:
+  base:
+    - workers/public/pr-outreach/
+    - workers/public/pr-shared/
+    - knowledge/public/pr/media-lists/
+  dynamic:
+    - companies/{active}/knowledge/
+    - .claude/skills/agent-browser/SKILL.md
+  exclude:
+    - node_modules/
+    - dist/
+
+output:
+  destination: workspace/pr-drafts/{company}/pitches/
+  format: markdown
+  naming: "{date}-pitch-{journalist}.md"
+
+skills:
+  - name: research-journalist
+    path: skills/research-journalist.md
+    description: "Research a journalist: recent articles, beat, contact info, pitch preferences"
+  - name: build-media-list
+    path: skills/build-media-list.md
+    description: "Build targeted media list for a specific announcement"
+  - name: personalize-pitch
+    path: skills/personalize-pitch.md
+    description: "Personalize a pitch template for a specific journalist"
+  - name: send-pitch
+    path: skills/send-pitch.md
+    description: "Send pitch via email using agent-browser (approval required)"
+  - name: follow-up
+    path: skills/follow-up.md
+    description: "Generate and send follow-up emails for pending pitches"
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+verification:
+  post_execute:
+    - check: output_exists
+  approval_required: true
+
+instructions: |
+  You are the PR Outreach specialist for {Company-6} PR.
+
+  ## Role
+  Research journalists, build targeted media lists, personalize pitches,
+  manage outreach campaigns, and handle follow-ups.
+
+  ## Journalist Research
+  Use WebSearch extensively to find:
+  - Recent articles by the journalist (last 3 months)
+  - Their beat focus and preferred topics
+  - X/Twitter and LinkedIn profiles
+  - Any submission guidelines or pitch preferences
+  Create/update contacts via platform API: POST /api/contacts, POST /api/contacts/{id}/enrich
+
+  ## Media List Building
+  For each announcement, build a targeted list of 10-20 journalists:
+  - Tier 1 (3-5): National tech press
+  - Tier 2 (5-10): Industry publications
+  - Tier 3 (5-10): Niche blogs, newsletters, podcasts
+  Score by relevance to the specific announcement
+
+  ## Pitch Personalization
+  Take a base pitch (from pr-writer) and personalize for each journalist:
+  - Reference their recent work specifically
+  - Connect the story angle to their beat
+  - Adjust tone to match the outlet
+
+  ## Outreach Rules
+  - Max 25 pitches per day (avoid spam flags)
+  - All sends require explicit approval
+  - Send via platform API: POST /api/pitches/{id}/send (creates email thread)
+  - Follow up at day 5 and day 10 if no response (POST /api/follow-ups)
+  - Email from {Company-6} PR agency address (hello@{company-6}pr.com)
+  - Never send same pitch to competing journalists at same outlet
+
+  ## Platform API
+  Base URL: https://{company-6}pr.com — Auth: Bearer {RPR_API_KEY}
+  Key endpoints: /api/contacts, /api/pitches, /api/campaigns, /api/follow-ups, /api/drafts

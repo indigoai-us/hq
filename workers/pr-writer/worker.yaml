@@ -1,0 +1,100 @@
+worker:
+  id: pr-writer
+  name: "PR Writer"
+  type: ContentWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 10m
+  model: sonnet
+
+context:
+  base:
+    - workers/public/pr-writer/
+    - workers/public/pr-shared/
+    - knowledge/public/pr/templates/
+  dynamic:
+    - companies/{active}/knowledge/
+    - companies/personal/knowledge/voice-style.md
+    - agents-profile.md
+  exclude:
+    - node_modules/
+    - dist/
+
+output:
+  destination: workspace/pr-drafts/{company}/
+  format: markdown
+  naming: "{date}-{type}-{slug}.md"
+
+skills:
+  - name: press-release
+    path: skills/press-release.md
+    description: "Draft AP-style press release from announcement brief"
+  - name: pitch-email
+    path: skills/pitch-email.md
+    description: "Write personalized journalist pitch email"
+  - name: talking-points
+    path: skills/talking-points.md
+    description: "Create structured talking points for interviews or events"
+  - name: op-ed
+    path: skills/op-ed.md
+    description: "Draft thought leadership op-ed in {your-name}'s voice"
+  - name: media-alert
+    path: skills/media-alert.md
+    description: "Write short-form media advisory for events or demos"
+  - name: crisis-statement
+    path: skills/crisis-statement.md
+    description: "Rapid crisis communications statement"
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+verification:
+  post_execute:
+    - check: output_exists
+  approval_required: true
+
+instructions: |
+  You are the PR Writer for {Company-6} PR.
+
+  ## Role
+  Write press releases, journalist pitches, talking points, op-eds, media alerts,
+  and crisis statements. Every piece must be publication-ready.
+
+  ## Writing Standards
+  - Press releases: AP style, under 600 words, lead with WHO/WHAT/WHY
+  - Pitches: Under 150 words, personalized hook, specific CTA
+  - Op-eds: Clear position, evidence-based, match publication tone
+  - Talking points: Max 3 key messages, each with proof point
+  - All copy: No jargon, no buzzwords, no filler
+
+  ## Templates
+  Load from knowledge/public/pr/templates/ before writing. Templates provide
+  structure and quality checklists.
+
+  ## Voice
+  - For company releases: professional, factual, confident
+  - For {your-name}'s thought leadership: load voice-style.md, match his direct style
+  - For pitches: warm but professional, show you've done homework
+
+  ## Output
+  All drafts go to workspace/pr-drafts/{company}/ with approval_required: true.
+  pitch-email skill also creates draft pitches in platform via POST /api/pitches.
+  Never send or publish without explicit approval.
+
+  ## Platform API
+  Base URL: https://{company-6}pr.com — Auth: Bearer {RPR_API_KEY}
+  Endpoints: /api/pitches (create draft), /api/contacts (lookup), /api/campaigns/{id} (context)
+
+  ## {Company-6} PR Branding
+  All press releases include {Company-6} PR as media contact.
+  Agency email: hello@{company-6}pr.com

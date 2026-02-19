@@ -88,15 +88,15 @@ Analyze task title, description, and acceptance criteria. Match against patterns
 | `codex_fullstack` | codex, AI-generated, codex-powered full stack |
 | `enhancement` | animation, polish, refactor, optimization, UX |
 
-**Codex worker routing** (applies when `worker_hints` or task indicators match):
+**Codex worker routing:**
 
-| Pattern | Worker |
-|---------|--------|
-| "codex", "AI-generated" | codex-coder |
-| "codex review", "second opinion" | codex-reviewer |
-| "auto-fix", "debug recovery" | codex-debugger |
+- **codex-reviewer** is **mandatory** for all code task types (schema_change, api_development, ui_component, full_stack, codex_fullstack, enhancement). Always included after code-reviewer.
+- **codex-coder** and **codex-debugger** remain optional — included when `worker_hints` or task indicators match:
 
-If task contains codex worker hints, include the matched codex worker(s) in the sequence.
+| Pattern | Worker | Inclusion |
+|---------|--------|-----------|
+| "codex", "AI-generated" | codex-coder | Optional (hints match) |
+| "auto-fix", "debug recovery" | codex-debugger | Optional (hints match) |
 
 Report classification:
 ```
@@ -114,6 +114,7 @@ schema_change:
   - database-dev
   - backend-dev
   - code-reviewer
+  - codex-reviewer
   - dev-qa-tester
 
 api_development:
@@ -121,7 +122,7 @@ api_development:
   - backend-dev
   - codex-coder (optional, if worker_hints include codex)
   - code-reviewer
-  - codex-reviewer (optional, for second opinion)
+  - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
   - dev-qa-tester
 
@@ -131,7 +132,7 @@ ui_component:
   - codex-coder (optional, if worker_hints include codex)
   - motion-designer
   - code-reviewer
-  - codex-reviewer (optional, for second opinion)
+  - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
   - dev-qa-tester
 
@@ -143,7 +144,7 @@ full_stack:
   - frontend-dev
   - codex-coder (optional, if worker_hints include codex)
   - code-reviewer
-  - codex-reviewer (optional, for second opinion)
+  - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
   - dev-qa-tester
 
@@ -164,6 +165,7 @@ content:
 enhancement:
   - (relevant dev based on files)
   - code-reviewer
+  - codex-reviewer
   - codex-debugger (optional, if auto-fix needed)
 ```
 
@@ -183,7 +185,7 @@ enhancement:
 | codex-coder | Generate code via Codex AI |
 | motion-designer | Add animations and motion |
 | code-reviewer | Review changes (Claude-based) |
-| codex-reviewer | Second-opinion review via Codex AI |
+| codex-reviewer | Mandatory second-opinion review via Codex AI |
 | codex-debugger | Auto-fix issues via Codex AI |
 | dev-qa-tester | Verify implementation |
 
@@ -246,6 +248,13 @@ Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/
 - `context.base` - Files worker always needs
 - `skills.installed` - Worker's skills
 - `verification.post_execute` - Back pressure checks
+- `execution.model` - Model tier for this worker (opus/sonnet/haiku)
+
+**Resolve model for this phase:**
+```
+model = task.model_hint || worker.execution.model || "opus"
+```
+Story-level `model_hint` (from prd.json) overrides worker default. Fallback: opus.
 
 #### 6b. Build Worker Prompt
 
@@ -285,7 +294,7 @@ Use /decide for: batch classification, review queues, multi-item triage (5+ item
 ### Back Pressure (Run Before Completing)
 {worker.verification.post_execute commands}
 
-If repo is `repos/private/widgets-site`, also run:
+If repo is `repos/private/{company-2}-site`, also run:
 ```bash
 npm run check-coverage                                                    # all routes covered
 npm run generate-manifest && git diff --quiet tests/e2e/manifest.json     # manifest fresh
@@ -315,6 +324,7 @@ Use Task tool:
 ```
 Task({
   subagent_type: "general-purpose",
+  model: {resolved model from 6a},
   prompt: {built prompt above},
   description: "{worker.id} for {task.id}"
 })
@@ -331,6 +341,7 @@ If back pressure failed:
      ```
      Task({
        subagent_type: "general-purpose",
+       model: "haiku",
        prompt: "You are: codex-debugger\n
          Issue: Back-pressure failure in {worker} phase: {failed_check_name}\n
          Error output: {stdout_stderr_from_failed_check}\n
@@ -359,8 +370,8 @@ After each phase:
 ```json
 {
   "phases": [
-    {"worker": "backend-engineer", "status": "completed", "completed_at": "..."},
-    {"worker": "code-reviewer", "status": "in_progress"},
+    {"worker": "backend-engineer", "model": "opus", "status": "completed", "completed_at": "..."},
+    {"worker": "code-reviewer", "model": "sonnet", "status": "in_progress"},
     ...
   ],
   "handoffs": [
@@ -372,6 +383,15 @@ After each phase:
   ]
 }
 ```
+
+#### 6f. Log Model Usage
+
+Append one line per phase to `workspace/metrics/model-usage.jsonl`:
+```json
+{"ts":"ISO8601","project":"{project}","task":"{task.id}","worker":"{worker.id}","model":"{resolved model}","phase":N}
+```
+
+Create `workspace/metrics/` if it doesn't exist. This is append-only — no reads during execution.
 
 ### 7. Complete Task
 
@@ -403,7 +423,43 @@ curl -s -X POST https://api.linear.app/graphql \
 
 Skip silently if no `linearIssueId` on the story or no credentials configured. Linear sync is best-effort — never block task completion on it.
 
-#### 7b. Capture Learnings via /learn
+#### 7b. Update Documentation
+
+If the task introduced new features, changed behavior, or modified APIs, update the project's user-facing docs.
+
+**Step 1: Resolve docs location**
+
+Check PRD metadata for `docsPath`:
+```javascript
+const docsPath = prd.metadata?.docsPath
+```
+
+If `docsPath` is set, use it. If not, ask the user:
+```
+This task changed functionality. Where do docs live for this project?
+(e.g., src/app/docs/, docs/, README.md, or "none")
+```
+
+Save the answer back to `prd.metadata.docsPath` so future tasks skip this question.
+
+**Step 2: Identify what needs updating**
+
+Based on `files_modified`, `files_created`, and `key_decisions` from worker outputs:
+- New API endpoints → update relevant API docs
+- New UI pages/features → update or create feature docs
+- Changed behavior → update existing docs that describe the old behavior
+- New database tables/fields → update data model docs if they exist
+
+**Step 3: Apply updates**
+
+Read the existing doc files, match the project's doc format/conventions, and edit in place. For new features with no existing doc page, create one following the project's doc conventions.
+
+**Skip this step** if:
+- `docsPath` is "none"
+- The task was purely a bug fix with no behavior change
+- The task was a refactor with no user-facing impact
+
+#### 7b.5 Capture Learnings via /learn
 
 Run `/learn` with structured input from execution:
 
@@ -426,6 +482,12 @@ Run `/learn` with structured input from execution:
 `/learn` handles: injection into source files, global promotion, event logging, dedup.
 
 If task completed cleanly with no failures/retries/notable patterns, `/learn` will log the event only (no rule injection).
+
+#### 7b.6 Reindex
+
+Run: `qmd update 2>/dev/null || true`
+
+Ensures any knowledge, worker instructions, or command rules modified during execution are immediately searchable.
 
 #### 7c. Report Completion
 
@@ -454,6 +516,7 @@ When invoked as a sub-agent by `/run-project`, end with this JSON so the orchest
   "status": "completed",
   "summary": "1-sentence summary of what was accomplished",
   "workers_used": ["{worker1}", "{worker2}"],
+  "models_used": {"worker1": "opus", "worker2": "sonnet"},
   "back_pressure": {
     "tests": "pass|fail|skipped",
     "lint": "pass|fail|skipped",
@@ -540,9 +603,10 @@ Context passed between workers:
 - **Capture learnings** - Every task generates learning entry
 - **Handoffs preserve context** - Next worker knows what happened
 - **Fail fast, fail loud** - Stop on errors, don't hide them
-- **Widgets Inc E2E enforcement** - When repo is widgets-site, back pressure includes manifest freshness + coverage check. Workers must update/add E2E tests for modified pages.
+- **{Company-2} E2E enforcement** - When repo is {company-2}-site, back pressure includes manifest freshness + coverage check. Workers must update/add E2E tests for modified pages.
 - **prd.json is required** - never read or fall back to README.md
 - **Validate prd.json on load** - fail loudly on missing/malformed fields
 - **Orchestrator-compatible output** - always end with structured JSON block (step 7d) so `/run-project` can parse results without absorbing full context
 - **ALWAYS use agent-browser** for all browser interactions (OAuth flows, GTM, Meta, Google Ads, CIO, etc.). NEVER open headed browsers expecting manual user input — agent-browser handles auth states automatically via saved browser-state files
 - **Do NOT use EnterPlanMode or TodoWrite** — /execute-task IS the planning and execution pipeline. The PRD, task classification, and worker sequencing replace ad-hoc planning. Follow the steps in order.
+- **Always reindex after task completion** — `qmd update` after every completed task (step 7b.6)

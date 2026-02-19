@@ -1,5 +1,45 @@
 # Changelog
 
+## v6.0.0 (2026-02-19)
+
+Major release: 5 worker teams (39 workers), gardener audit system, new commands.
+
+### Added — Worker Teams
+
+- **Dev Team (16 workers)** — Full development team now included (was removed in v5.0.0). Project manager, task executor, architect, backend/frontend/database devs, QA, motion designer, infra dev, code reviewer, knowledge curator, product planner, plus codex workers (coder, reviewer, debugger, engine).
+- **Content Team (5 workers)** — Content analysis pipeline: brand voice, sales copy, product accuracy, legal compliance, shared utilities.
+- **Social Team (5 workers)** — Social media pipeline: strategist, reviewer, publisher, verifier, shared utilities.
+- **PR Team (6 workers)** — Public relations pipeline: strategist, writer, outreach, monitor, coordinator, shared utilities.
+- **Gardener Team (3 workers)** — HQ content audit & cleanup: garden-scout (fast scan), garden-auditor (deep validation), garden-curator (execute actions). See `/garden` command.
+
+### Added — Standalone Workers
+
+- **frontend-designer** — Bold UI generation using Anthropic skill
+- **qa-tester** — Automated website testing with Playwright + agent-browser
+- **security-scanner** — Security scanning and vulnerability detection
+- **pretty-mermaid** — Mermaid diagram rendering with 14 themes
+
+### Added — Commands
+
+- **`/garden`** — Multi-worker audit pipeline for detecting stale content, duplicates, orphans, INDEX drift, and conflicts. Three-phase (scout→audit→curate) with human approval gates. Scope by company, directory, or full HQ sweep.
+- **`/startwork`** — Lightweight session entry point: pick company or project, gather minimal context.
+- **`/newcompany`** — Scaffold a new company with full infrastructure (dirs, manifest, knowledge repo, qmd collection).
+- **`/bootcamp-student`** — Onboard new students with full pipeline (DB, PRD, deck).
+
+### Changed
+
+- **`workers/registry.yaml`** — Version 7.0. Now includes all 39 public workers across 5 teams plus 4 standalone workers.
+- **`.claude/CLAUDE.md`** — Updated with gardener-team, company manifest, knowledge repo patterns, learned rules system, auto-checkpoint/handoff hooks.
+- **22 existing commands refreshed** — Various improvements to `/checkemail`, `/checkpoint`, `/cleanup`, `/decide`, `/email`, `/execute-task`, `/handoff`, `/learn`, `/metrics`, `/newworker`, `/nexttask`, `/prd`, `/reanchor`, `/recover-session`, `/remember`, `/run`, `/run-project`, `/search`, `/search-reindex`.
+- **Knowledge bases expanded** — New: agent-browser specs, PR knowledge, curious-minds. Updated: Ralph, hq-core, dev-team, design-styles, loom, workers, projects.
+
+### Breaking
+
+- Registry version 6.0 → 7.0 with restructured worker paths and team groupings. If you have custom workers, merge carefully.
+- Dev team workers re-added (removed in v5.0.0). If you built custom equivalents, review for conflicts.
+
+---
+
 ## v5.5.2 (2026-02-17)
 
 ### Added

@@ -1,0 +1,90 @@
+worker:
+  id: pr-monitor
+  name: "PR Monitor"
+  type: ResearchWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 10m
+  model: sonnet
+
+context:
+  base:
+    - workers/public/pr-monitor/
+    - workers/public/pr-shared/
+    - knowledge/public/pr/coverage/
+  dynamic:
+    - companies/{active}/knowledge/
+  exclude:
+    - node_modules/
+    - dist/
+
+output:
+  destination: workspace/reports/pr/
+  format: markdown
+  naming: "{date}-{company}-{skill}.md"
+
+skills:
+  - name: coverage-check
+    path: skills/coverage-check.md
+    description: "Search web for recent media mentions of a company"
+  - name: coverage-report
+    path: skills/coverage-report.md
+    description: "Generate coverage report for a time period"
+  - name: sentiment-scan
+    path: skills/sentiment-scan.md
+    description: "Analyze sentiment of recent coverage and social mentions"
+  - name: competitive-intel
+    path: skills/competitive-intel.md
+    description: "Monitor competitor PR activity and media presence"
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+instructions: |
+  You are the PR Monitor for {Company-6} PR.
+
+  ## Role
+  Track media coverage, monitor brand mentions, analyze sentiment,
+  and gather competitive PR intelligence.
+
+  ## Coverage Checks
+  Use WebSearch to find mentions of:
+  - Company name and product names
+  - Executive names ({Your Name}, etc.)
+  - Key product terms
+  Log new coverage via platform API: POST /api/placements
+
+  ## Coverage Reports
+  Pull data from platform API (GET /api/placements, GET /api/analytics) and generate reports with:
+  - Total placements by outlet tier
+  - Sentiment breakdown (positive/neutral/negative)
+  - Reach estimates based on outlet tier
+  - Pitch-to-placement conversion rate
+  - Comparison to previous period
+
+  ## Platform API
+  Base URL: https://{company-6}pr.com — Auth: Bearer {RPR_API_KEY}
+  Key endpoints: /api/placements, /api/analytics, /api/clients, /api/pitches
+
+  ## Sentiment Analysis
+  Categorize coverage as:
+  - Positive: favorable mention, endorsement, feature
+  - Neutral: factual mention, market roundup, listing
+  - Negative: criticism, negative review, unfavorable comparison
+
+  ## Competitive Intelligence
+  Monitor competitors per company:
+  - {Company-1}: Attentive, Postscript, Recart, Klaviyo SMS
+  - {Company-2}: Palantir, C3.ai, DataRobot (enterprise AI)
+  - {Company-3}: Otter.ai, Fireflies, Read.ai (meeting intelligence)
+  Track their press releases, media mentions, funding news

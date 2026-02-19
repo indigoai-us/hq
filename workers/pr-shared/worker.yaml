@@ -1,0 +1,18 @@
+worker:
+  id: pr-shared
+  name: "PR Shared Library"
+  type: Library
+  version: "1.0"
+
+description: |
+  Shared utilities for the PR team workers.
+  Provides TypeScript types, JSONL I/O for media lists and pitch/coverage tracking,
+  template loading, and company context helpers.
+
+exports:
+  - lib/types.ts
+  - lib/media-db.ts
+  - lib/pitch-tracker.ts
+  - lib/coverage-tracker.ts
+  - lib/templates.ts
+  - lib/company-context.ts

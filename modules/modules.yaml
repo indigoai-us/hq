@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/coreyepstein/hq-starter-kit.git
+    repo: https://github.com/{your-username}/hq-starter-kit.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
