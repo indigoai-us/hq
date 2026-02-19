@@ -58,9 +58,21 @@ export const authRoutes: FastifyPluginCallback = (
           .join(' ') || null;
         email = clerkUser.emailAddresses?.[0]?.emailAddress ?? null;
         avatarUrl = clerkUser.imageUrl ?? null;
-      } catch {
-        // Clerk lookup failed — return basic info without profile
+        request.log.info(
+          { userId, firstName: clerkUser.firstName, lastName: clerkUser.lastName, fullName },
+          'Clerk profile lookup succeeded'
+        );
+      } catch (err) {
+        request.log.warn(
+          { userId, err: err instanceof Error ? err.message : String(err) },
+          'Clerk profile lookup failed'
+        );
       }
+    } else {
+      request.log.info(
+        { userId, hasClerkKey: !!config.clerkSecretKey, skipAuth: config.skipAuth },
+        'Skipping Clerk profile lookup'
+      );
     }
 
     return reply.send({

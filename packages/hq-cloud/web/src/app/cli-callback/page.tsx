@@ -64,6 +64,9 @@ function CliCallbackContent() {
       return;
     }
 
+    // Wait for user object to load so we can include identity in the redirect
+    if (!user) return;
+
     if (!callbackUrl) {
       setError("Missing callback_url parameter. Please restart the CLI login.");
       return;
@@ -131,7 +134,11 @@ function CliCallbackContent() {
         });
 
         // Include user identity from Clerk
-        if (user?.fullName) params.set("full_name", user.fullName);
+        // fullName may be null if Clerk doesn't have it — fall back to firstName + lastName
+        const displayName = user?.fullName
+          || [user?.firstName, user?.lastName].filter(Boolean).join(" ")
+          || null;
+        if (displayName) params.set("full_name", displayName);
         if (user?.primaryEmailAddress?.emailAddress) params.set("email", user.primaryEmailAddress.emailAddress);
         if (user?.imageUrl) params.set("avatar_url", user.imageUrl);
 
@@ -147,7 +154,7 @@ function CliCallbackContent() {
     }
 
     void exchangeToken();
-  }, [isLoaded, isSignedIn, callbackUrl, getToken, userId]);
+  }, [isLoaded, isSignedIn, callbackUrl, getToken, userId, user]);
 
   if (error) {
     return (
