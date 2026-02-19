@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { submitSetup, streamSync } from "@/services/settings";
 import { ActionButton } from "@/components/ActionButton";
 import type { SyncProgressEvent } from "@/types/settings";
@@ -9,7 +8,6 @@ import type { SyncProgressEvent } from "@/types/settings";
 type SetupPhase = "input" | "syncing" | "success";
 
 export default function SetupPage() {
-  const router = useRouter();
   const [hqDir, setHqDir] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -149,7 +147,7 @@ export default function SetupPage() {
           <ActionButton
             label="Continue to HQ Cloud"
             variant="prominent"
-            onClick={() => router.replace("/agents")}
+            onClick={() => { window.location.href = "/agents"; }}
             className="w-full"
           />
         </div>
