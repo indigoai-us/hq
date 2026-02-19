@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useSignIn } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -10,7 +10,9 @@ import {
   AuthTitle,
   AuthErrorTitle,
   AuthSubtitle,
+  AuthButtonsContainer,
 } from "@/components/auth/AuthLayout";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { getApiUrl } from "@/lib/storage";
 
 /**
@@ -25,17 +27,39 @@ import { getApiUrl } from "@/lib/storage";
  */
 function CliCallbackContent() {
   const { isSignedIn, isLoaded, getToken, userId } = useAuth();
+  const { signIn } = useSignIn();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("Authenticating...");
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const callbackUrl = searchParams.get("callback_url");
+
+  // Build the current URL with query params to return here after sign-in
+  const currentPath = typeof window !== "undefined"
+    ? `${window.location.pathname}${window.location.search}`
+    : "/cli-callback";
+
+  const authenticateWithGoogle = async () => {
+    if (!signIn) return;
+    try {
+      setIsGoogleLoading(true);
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: currentPath,
+      });
+    } catch (err) {
+      console.error("Error during OAuth redirect:", err);
+      setError("Authentication failed. Please try again.");
+      setIsGoogleLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
-      // Clerk middleware should redirect to sign-in automatically
-      setStatus("Redirecting to sign in...");
+      // Show sign-in UI (handled in render below)
       return;
     }
 
@@ -135,6 +159,29 @@ function CliCallbackContent() {
             Return to the terminal and try &quot;hq auth login&quot; again.
           </AuthSubtitle>
         </AuthContent>
+      </AuthLayout>
+    );
+  }
+
+  // Show sign-in UI when not authenticated
+  if (isLoaded && !isSignedIn) {
+    return (
+      <AuthLayout>
+        <AuthContent>
+          <div className="relative shrink-0 w-12 h-12 rounded-xl bg-[rgba(174,96,248,0.8)] flex items-center justify-center text-white font-bold text-lg">
+            HQ
+          </div>
+          <AuthTitle>Sign in to HQ CLI</AuthTitle>
+          <AuthSubtitle>
+            Sign in to connect your CLI to HQ Cloud
+          </AuthSubtitle>
+        </AuthContent>
+        <AuthButtonsContainer>
+          <GoogleButton
+            onClick={() => void authenticateWithGoogle()}
+            isLoading={isGoogleLoading}
+          />
+        </AuthButtonsContainer>
       </AuthLayout>
     );
   }
