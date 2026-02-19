@@ -22,6 +22,7 @@ interface Config {
   anthropicApiKey: string;
   claudeCredentialsJson: string;
   tokenEncryptionKey: string;
+  clerkPublishableKey: string;
 }
 
 function getEnv(key: string, defaultValue: string): string {
@@ -61,4 +62,5 @@ export const config: Config = {
   anthropicApiKey: getEnv('ANTHROPIC_API_KEY', ''),
   claudeCredentialsJson: getEnv('CLAUDE_CREDENTIALS_JSON', ''),
   tokenEncryptionKey: getEnv('TOKEN_ENCRYPTION_KEY', ''),
+  clerkPublishableKey: getEnv('CLERK_PUBLISHABLE_KEY', 'pk_live_Y2xlcmsuZ2V0aW5kaWdvLmFpJA'),
 };
