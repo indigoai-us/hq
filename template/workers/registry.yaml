@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "6.0"
-updated: "2026-02-11"
+version: "7.0"
+updated: "2026-02-19"
 
 workers:
   # ===================
@@ -26,11 +26,127 @@ workers:
     description: "Example worker — copy and customize for your own"
 
   # ===================
-  # Dev Team — Codex Workers (3)
+  # Standalone Workers (4)
   # ===================
-  # AI-powered code generation, review, and debugging via OpenAI Codex SDK.
-  # Shared MCP server: codex-engine (requires CODEX_API_KEY).
-  # See workers/dev-team/ for setup and workflow.
+
+  - id: frontend-designer
+    path: workers/frontend-designer/
+    type: OpsWorker
+    status: active
+    description: "Bold UI generation using Anthropic skill"
+
+  - id: qa-tester
+    path: workers/qa-tester/
+    type: OpsWorker
+    status: active
+    description: "Automated website testing with Playwright + agent-browser smoke tests"
+
+  - id: security-scanner
+    path: workers/security-scanner/
+    type: OpsWorker
+    status: active
+    description: "Security scanning and vulnerability detection"
+
+  - id: pretty-mermaid
+    path: workers/pretty-mermaid/
+    type: OpsWorker
+    status: active
+    description: "Mermaid diagram rendering — SVG/ASCII with 14 themes"
+
+  # ===================
+  # Dev Team (16)
+  # ===================
+
+  - id: project-manager
+    path: workers/dev-team/project-manager/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PRD lifecycle, issue selection, learning aggregation"
+
+  - id: task-executor
+    path: workers/dev-team/task-executor/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Analyze issue, route to workers, validate completion"
+
+  - id: architect
+    path: workers/dev-team/architect/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "System design, API design, architecture decisions"
+
+  - id: backend-dev
+    path: workers/dev-team/backend-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "API endpoints, business logic, backend implementation"
+
+  - id: database-dev
+    path: workers/dev-team/database-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Schema design, migrations, query optimization"
+
+  - id: frontend-dev
+    path: workers/dev-team/frontend-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "React/Next components, pages, UI implementation"
+
+  - id: dev-qa-tester
+    path: workers/dev-team/qa-tester/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Testing, browser automation, accessibility, demo accounts"
+
+  - id: motion-designer
+    path: workers/dev-team/motion-designer/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Animations, transitions, visual polish, image generation"
+
+  - id: infra-dev
+    path: workers/dev-team/infra-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "CI/CD pipelines, deployment, monitoring"
+
+  - id: code-reviewer
+    path: workers/dev-team/code-reviewer/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PR review, merge management, code quality gating"
+
+  - id: knowledge-curator
+    path: workers/dev-team/knowledge-curator/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Process learnings, update knowledge bases, documentation"
+
+  - id: product-planner
+    path: workers/dev-team/product-planner/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PRD creation, technical specs, API contracts"
+
+  - id: codex-engine
+    path: workers/dev-team/codex-engine/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "MCP server wrapping @openai/codex-sdk — shared by codex-coder, codex-reviewer, codex-debugger"
 
   - id: codex-coder
     path: workers/dev-team/codex-coder/
@@ -54,126 +170,12 @@ workers:
     description: "Debugging and root-cause analysis via Codex SDK — auto-escalation on back-pressure failure"
 
   # ===================
-  # Dev Team — Core Workers (12)
-  # ===================
-  # Full development team for autonomous project execution
-  # See workers/dev-team/README.md for workflow
-
-  - id: project-manager
-    path: workers/dev-team/project-manager/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "PRD lifecycle, issue selection, learning aggregation"
-
-  - id: task-executor
-    path: workers/dev-team/task-executor/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "Analyze issue, route to workers, validate completion"
-
-  - id: architect
-    path: workers/dev-team/architect/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "System design, API design, architecture decisions"
-
-  - id: backend-dev
-    path: workers/dev-team/backend-dev/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "API endpoints, business logic, backend implementation"
-
-  - id: database-dev
-    path: workers/dev-team/database-dev/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "Schema design, migrations, query optimization"
-
-  - id: dev-qa-tester
-    path: workers/dev-team/qa-tester/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "Testing, browser automation, accessibility, demo accounts"
-
-  - id: frontend-dev
-    path: workers/dev-team/frontend-dev/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "React/Next components, pages, UI implementation"
-
-  - id: motion-designer
-    path: workers/dev-team/motion-designer/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "Animations, transitions, visual polish, image generation"
-
-  - id: infra-dev
-    path: workers/dev-team/infra-dev/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "CI/CD pipelines, deployment, monitoring"
-
-  - id: code-reviewer
-    path: workers/dev-team/code-reviewer/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "PR review, merge management, code quality gating"
-
-  - id: knowledge-curator
-    path: workers/dev-team/knowledge-curator/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "Process learnings, update knowledge bases, documentation"
-
-  - id: product-planner
-    path: workers/dev-team/product-planner/
-    type: CodeWorker
-    visibility: public
-    team: dev-team
-    status: active
-    description: "PRD creation, technical specs, API contracts"
-
-  # ===================
-  # Standalone Workers
-  # ===================
-
-  - id: security-scanner
-    path: workers/security-scanner/
-    type: OpsWorker
-    visibility: public
-    status: active
-    description: "Security scanning and vulnerability detection"
-
-  # ===================
-  # Content Team (5 workers)
+  # Content Team (5)
   # ===================
 
   - id: content-brand
     path: workers/content-brand/
     type: ContentWorker
-    visibility: public
     team: content-team
     status: active
     description: "Brand voice, messaging, tone analysis"
@@ -181,7 +183,6 @@ workers:
   - id: content-sales
     path: workers/content-sales/
     type: ContentWorker
-    visibility: public
     team: content-team
     status: active
     description: "Conversion copy, CTAs, value props"
@@ -189,7 +190,6 @@ workers:
   - id: content-product
     path: workers/content-product/
     type: ContentWorker
-    visibility: public
     team: content-team
     status: active
     description: "Feature accuracy, technical claims verification"
@@ -197,7 +197,6 @@ workers:
   - id: content-legal
     path: workers/content-legal/
     type: ContentWorker
-    visibility: public
     team: content-team
     status: active
     description: "Regulatory compliance, claim verification"
@@ -205,10 +204,119 @@ workers:
   - id: content-shared
     path: workers/content-shared/
     type: Library
-    visibility: public
     team: content-team
     status: active
     description: "Shared utilities for content analysis workers (types, parser, scorer, reporter)"
+
+  # ===================
+  # Social Team (5)
+  # ===================
+
+  - id: social-shared
+    path: workers/social-shared/
+    type: Library
+    team: social-team
+    status: active
+    description: "Shared utilities for social team (safety checks, queue ops, Post-Bridge client, verification)"
+
+  - id: social-strategist
+    path: workers/social-strategist/
+    type: ContentWorker
+    team: social-team
+    status: active
+    description: "Content planning and draft creation with profile awareness"
+
+  - id: social-reviewer
+    path: workers/social-reviewer/
+    type: ContentWorker
+    team: social-team
+    status: active
+    description: "Quality gate — reviews drafts, validates safety, only worker that can set status to approved"
+
+  - id: social-publisher
+    path: workers/social-publisher/
+    type: OpsWorker
+    team: social-team
+    status: active
+    description: "Posts approved content via Post-Bridge API — only worker authorized to call posting API"
+
+  - id: social-verifier
+    path: workers/social-verifier/
+    type: OpsWorker
+    team: social-team
+    status: active
+    description: "Delivery verification — confirms posts are live via agent-browser and Post-Bridge API"
+
+  # ===================
+  # PR Team (6)
+  # ===================
+
+  - id: pr-shared
+    path: workers/pr-shared/
+    type: Library
+    team: pr-team
+    status: active
+    description: "Shared utilities for PR team (types, media DB, pitch/coverage tracking, templates)"
+
+  - id: pr-strategist
+    path: workers/pr-strategist/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "PR strategy, campaign planning, messaging frameworks, competitive intel"
+
+  - id: pr-writer
+    path: workers/pr-writer/
+    type: ContentWorker
+    team: pr-team
+    status: active
+    description: "Press releases, pitches, talking points, op-eds, media alerts, crisis statements"
+
+  - id: pr-outreach
+    path: workers/pr-outreach/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "Journalist research, media list building, pitch personalization, outreach"
+
+  - id: pr-monitor
+    path: workers/pr-monitor/
+    type: ResearchWorker
+    team: pr-team
+    status: active
+    description: "Media monitoring, coverage tracking, sentiment analysis, competitive PR intel"
+
+  - id: pr-coordinator
+    path: workers/pr-coordinator/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "End-to-end PR campaign orchestration, dashboard, content team coordination"
+
+  # ===================
+  # Gardener Team (3)
+  # ===================
+
+  - id: garden-scout
+    path: workers/gardener-team/garden-scout/
+    type: ResearchWorker
+    team: gardener-team
+    status: active
+    description: "Fast scan — detect stale content, orphans, broken links, duplicates, INDEX drift"
+
+  - id: garden-auditor
+    path: workers/gardener-team/garden-auditor/
+    type: ResearchWorker
+    team: gardener-team
+    status: active
+    description: "Deep validation — cross-reference content accuracy, confirm findings, flag conflicts"
+
+  - id: garden-curator
+    path: workers/gardener-team/garden-curator/
+    type: OpsWorker
+    team: gardener-team
+    status: active
+    description: "Execute approved actions — archive, deduplicate, update INDEX, create escalation PRDs"
 
   # ===================
   # Add your workers below

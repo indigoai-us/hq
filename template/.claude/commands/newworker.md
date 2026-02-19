@@ -26,7 +26,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-poster")
+- **What's its name/id?** (e.g., "competitive-researcher", "x-{your-handle}")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills
@@ -61,7 +61,7 @@ worker:
   version: "1.0"
 
 identity:
-  persona: {your-name}  # or company_context, voice_guide
+  persona: corey-epstein  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}
@@ -133,8 +133,28 @@ Workers can get tasks from:
 - One task at a time (Ralph principle)
 - Always include verification
 - Default to `approval_required: true` for external actions
+- **Registration is mandatory** — never finish without updating registry.yaml + manifest.yaml
+- **Always reindex** — run `qmd update` after creation
 
 ## After Creation
+
+### Register Worker (Mandatory)
+
+1. **registry.yaml**: Append entry to `workers/registry.yaml`:
+   ```yaml
+   - id: {worker-id}
+     path: workers/{public|private}/{worker-id}/
+     type: {WorkerType}
+     visibility: {public|private}
+     company: {company if private, omit if public}
+     status: active
+     description: "{1-sentence}"
+   ```
+   Validate: read back registry, confirm entry exists.
+
+2. **manifest.yaml**: If worker has `company:`, append worker id to that company's `workers:` array in `companies/manifest.yaml`.
+
+3. **modules.yaml**: If worker has a dedicated knowledge repo, add entry to `modules/modules.yaml`.
 
 ### Capture Learning (Auto-Learn)
 
@@ -149,14 +169,16 @@ Run `/learn` to register the new worker in the learning system:
 }
 ```
 
-Also reindex: `qmd update 2>/dev/null || true`
+### Reindex + Update INDEX
 
-**Update INDEX.md:** Regenerate `workers/public/INDEX.md` or `workers/private/INDEX.md` (whichever the worker was created in) per `knowledge/public/hq-core/index-md-spec.md`.
+1. `qmd update 2>/dev/null || true`
+2. Regenerate `workers/public/INDEX.md` or `workers/private/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
 ### Report to User
 
 Provide next steps:
 1. "Worker created at `workers/{worker-id}/`"
-2. "Test with on-demand execution first"
-3. If using queue: "Add tasks to queue.json to get started"
-4. If using PRD: "Run `/prd {project-name}` to create the PRD, then link it in worker.yaml"
+2. "Registered in registry.yaml + manifest.yaml"
+3. "Test with on-demand execution first"
+4. If using queue: "Add tasks to queue.json to get started"
+5. If using PRD: "Run `/prd {project-name}` to create the PRD, then link it in worker.yaml"

@@ -32,19 +32,30 @@ Max 80 chars per description. If no metadata extractable, use filename.
 - `projects/INDEX.md` → add `Status` column (active/completed/archived)
 - `workspace/orchestrator/INDEX.md` → add `Progress` column (e.g. "5/11 45%")
 - `workspace/reports/INDEX.md` → add `Date` column
+- `companies/*/INDEX.md` → add `Projects` table (Project/Status/Description) + `Deployments` table (Service/URL/Repo/Platform)
 
-## Locations (10 directories)
+## Locations
+
+### Core (10 directories)
 
 1. `projects/`
 2. `companies/{company-1}/knowledge/`
 3. `companies/{company-2}/knowledge/`
 4. `companies/{company-3}/knowledge/`
-5. `knowledge/`
+5. `knowledge/public/`
 6. `workers/public/`
 7. `workers/private/`
 8. `workspace/orchestrator/`
 9. `workspace/reports/`
 10. `workspace/social-drafts/`
+
+### Company Root (10 directories)
+
+All `companies/*/INDEX.md` — inventory of settings, data, knowledge + project/deployment relationships.
+
+### Company Knowledge (10 directories)
+
+All `companies/*/knowledge/INDEX.md` — contents of each company's knowledge repo.
 
 Root `INDEX.md` and `workspace/threads/INDEX.md` also exist but follow their own formats.
 

@@ -9,7 +9,7 @@ visibility: public
 
 Manage email across 4 Gmail accounts using the `gmail-local` MCP tools.
 
-**Accounts:** {repo} (user@example.com), designco (user@example.com), personal (user@example.com), widgets (user@example.com)
+**Accounts:** {product} (team@example.com), {company-3} (team@company.com), personal (me@{your-username}.com), {company-2} (team@company2.com)
 
 **User's input:** $ARGUMENTS
 

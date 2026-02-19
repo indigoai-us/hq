@@ -4,6 +4,50 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.0.0 (from v5.5.x)
+
+### New Commands
+Copy to `.claude/commands/`:
+- `garden.md` — Multi-worker HQ content audit & cleanup
+- `startwork.md` — Lightweight session entry
+- `newcompany.md` — Scaffold new company infrastructure
+- `bootcamp-student.md` — Student onboarding pipeline
+
+### Updated Commands
+Review and merge changes to all existing commands — 22 commands were refreshed. Key ones:
+- `execute-task.md` — Worker pipeline updates
+- `run-project.md` — Orchestration improvements
+- `cleanup.md` — New audit checks
+- `prd.md` — Enhanced discovery flow
+
+### New Worker Teams
+Copy these directories to `workers/`:
+- `workers/dev-team/` — Full 16-worker development team (architect, backend-dev, frontend-dev, database-dev, QA, etc.)
+- `workers/content-brand/`, `content-sales/`, `content-product/`, `content-legal/`, `content-shared/` — Content pipeline
+- `workers/social-shared/`, `social-strategist/`, `social-reviewer/`, `social-publisher/`, `social-verifier/` — Social pipeline
+- `workers/pr-shared/`, `pr-strategist/`, `pr-writer/`, `pr-outreach/`, `pr-monitor/`, `pr-coordinator/` — PR pipeline
+- `workers/gardener-team/` — Content audit team (garden-scout, garden-auditor, garden-curator)
+- `workers/frontend-designer/`, `qa-tester/`, `security-scanner/`, `pretty-mermaid/` — Standalone workers
+
+### Registry Update
+Replace `workers/registry.yaml` with the new v7.0 version. If you have custom workers, merge them into the `# Add your workers below` section at the bottom.
+
+### Knowledge Updates
+Copy updated knowledge directories:
+- `knowledge/agent-browser/` (new)
+- `knowledge/pr/` (new)
+- `knowledge/curious-minds/` (new)
+- All existing knowledge dirs refreshed
+
+### CLAUDE.md Update
+Review and merge `.claude/CLAUDE.md` — significant additions including gardener team, learned rules system, company isolation rules.
+
+### Breaking Changes
+- Registry version 6.0 → 7.0. Worker paths restructured. Custom workers need manual merge.
+- Dev team workers re-included (were removed in v5.0.0). If you built custom equivalents, check for conflicts.
+
+---
+
 ## Migrating to v5.5.1 (from v5.5.0)
 
 ### Updated Commands

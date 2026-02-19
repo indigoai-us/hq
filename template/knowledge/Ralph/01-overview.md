@@ -28,6 +28,7 @@ Traditional AI coding approaches suffer from:
 4. **Human Dependencies** - Many workflows require human intervention, breaking the autonomous loop
 
 Ralph solves these by:
+
 - Starting fresh for each task (avoiding context rot)
 - Using specifications to focus the context (avoiding compaction)
 - Using a simple loop instead of complex orchestration
@@ -39,6 +40,7 @@ Ralph solves these by:
 > — Matt Pocock
 
 Ralph makes this dream a reality by mimicking how real engineers work:
+
 1. Pick a task
 2. Complete it
 3. Commit it
@@ -65,7 +67,10 @@ Ralph works in **both directions**:
 > — Geoffrey Huntley
 
 This bidirectional capability enables:
+
 - New product development (forward)
 - Product cloning/clean room design (reverse)
 - Documentation generation (reverse)
 - Specification refinement (iterative)
+
+&nbsp;
