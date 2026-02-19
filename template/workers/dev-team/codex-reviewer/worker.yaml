@@ -11,6 +11,7 @@ execution:
   max_runtime: 15m
   retry_attempts: 1
   spawn_method: task_tool
+  model: haiku
 
 context:
   base:

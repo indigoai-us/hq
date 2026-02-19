@@ -38,7 +38,7 @@ Before asking questions, explore HQ:
 - `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
 
 **Target Repo (if repo specified or discovered):**
-- If target repo has a qmd collection (e.g. `my-app`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 Present:
@@ -49,6 +49,18 @@ Scanned HQ:
 - Relevant knowledge: {if any}
 - Category: [company-specific | cross-company | personal | HQ infrastructure]
 ```
+
+## Step 2.5: Infrastructure Pre-Check
+
+Before generating the PRD, verify infrastructure exists for the target company/repo:
+
+1. **Company**: If project targets a company, read `companies/manifest.yaml`. If company has `knowledge: null`, flag: "Company {co} has no knowledge repo. Create one? [Y/n]" — if yes, create repo at `repos/private/knowledge-{co}`, symlink to `companies/{co}/knowledge`, update manifest + modules.yaml.
+
+2. **Repo**: If `repoPath` specified and doesn't exist locally, flag: "Repo not found at {path}. Clone it or create new?" Add to `manifest.yaml` if missing.
+
+3. **qmd collection**: If company has `qmd_collections: []` in manifest, flag and offer to create collection.
+
+Fix any gaps before proceeding.
 
 ## Step 3: Get + Validate Project Name
 
@@ -105,7 +117,8 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
       "passes": false,
       "labels": [],
       "dependsOn": [],
-      "notes": ""
+      "notes": "",
+      "model_hint": ""
     }
   ],
   "metadata": {
@@ -230,6 +243,7 @@ Recommended execution:
 - Order: schema → backend → UI → integration
 - Keep stories atomic (one deliverable each)
 - Every story starts with `passes: false`
+- `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
 
 ## Rules
 
@@ -240,3 +254,4 @@ Recommended execution:
 - **Do NOT use EnterPlanMode** — this skill IS planning
 - **Do NOT use TodoWrite** — PRD stories track tasks
 - **Do NOT implement** — just create the PRD
+- **Infrastructure before planning** — never create a PRD that references infrastructure (company, repo, knowledge) that doesn't exist. Fix gaps first (Step 2.5)

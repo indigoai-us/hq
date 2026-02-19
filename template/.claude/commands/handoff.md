@@ -13,6 +13,9 @@ Prepare for a new session to continue this work.
 
 ## Process
 
+0. **Capture session learnings**
+   Reflect on this session. If any reusable learnings exist (mistakes, patterns, gotchas, workflow improvements), call `/learn` for each before proceeding. Skip if nothing novel was learned. See CLAUDE.md `## Session Learnings` for guidance.
+
 1. **Ensure thread exists**
    - Check `workspace/threads/` for recent thread
    - If none, run `/checkpoint` first to create one

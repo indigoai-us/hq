@@ -1,15 +1,15 @@
 ---
 description: Quick inbox cleanup — archive junk, then triage what matters one at a time
-allowed-tools: Task, Read, Glob, Grep, Bash, AskUserQuestion, ToolSearch, mcp__gmail-local__*
+allowed-tools: Task, Read, Glob, Grep, Bash, Write, AskUserQuestion, ToolSearch, mcp__gmail-local__*
 argument-hint: [account] (default: all)
 visibility: public
 ---
 
 # /checkemail — Inbox Cleanup + Triage
 
-Two-phase inbox sweep: (1) batch archive junk, (2) walk through real emails one by one.
+Two-phase inbox sweep: (1) fetch + classify, (2) launch triage UI for archive review + email-by-email triage, (3) execute actions from responses.
 
-**Accounts:** {repo} (user@example.com), designco (user@example.com), personal (user@example.com), widgets (user@example.com)
+**Accounts:** {product} (team@example.com), {company-3} (team@company.com), personal (me@{your-username}.com), {company-2} (team@company2.com)
 
 **User's input:** $ARGUMENTS
 
@@ -21,7 +21,7 @@ Determine accounts: if user specified one, use it. Otherwise all 4.
 
 ## Phase 1 — Fetch + Classify
 
-1. `list_emails` for each account (max_results=25, parallel)
+1. `list_emails` for each account (no max_results limit, parallel)
 2. For every email with a threadId, check if user already replied:
    - `get_thread` for each thread (parallel, batch by account)
    - If any message in thread has `from:` matching the account's address, mark as **already handled**
@@ -46,79 +46,174 @@ These are ALWAYS classified as Archive without asking:
 - Tool/service update notices (Wise, Granola, Zoom renewals, Mercury notifications)
 - Threads where user already sent the most recent reply (waiting on other party)
 
-### Present results
+## Phase 2 — Write Queue + Launch App
 
-Show a single summary with two sections:
+Build an `EmailTriageQueue` JSON from classified emails and launch the triage UI app.
 
-**Proposed archives** — grouped table by account:
+### Queue schema
+
+```typescript
+interface EmailTriageQueue {
+  id: string;              // unique slug (e.g. "triage-20260213-1400")
+  createdAt: string;       // ISO 8601
+  accounts: string[];      // accounts checked
+  archiveProposals: ArchiveProposal[];
+  triageItems: TriageItem[];
+}
+
+interface ArchiveProposal {
+  id: string;              // unique (e.g. "arch-{index}")
+  account: string;         // "{product}" | "personal" | "{company-3}" | "{company-2}"
+  messageId: string;       // Gmail message ID
+  threadId: string;
+  from: string;
+  subject: string;
+  date: string;            // ISO 8601
+  reason: string;          // why archive (e.g. "Newsletter/digest")
+  snippet?: string;        // enriched — used if user excludes to triage
+  status?: string;
+  labels?: string[];
+  body?: string;
+}
+
+interface TriageItem {
+  id: string;              // unique (e.g. "tri-{index}")
+  account: string;
+  messageId: string;
+  threadId: string;
+  from: string;
+  subject: string;
+  date: string;
+  snippet: string;
+  status: string;          // "Unread" | "Waiting on them" | "FYI"
+  reason: string;
+  actionLink?: string;     // extracted CTA link for platform invites
+  labels: string[];
+  body?: string;           // full body when available (for reply drafting)
+}
 ```
-## Proposed Archives (N emails)
 
-### {repo} (X)
-| From | Subject | Reason |
-|------|---------|--------|
+### Steps
 
-### Personal (Y)
-...
-```
+1. Build the queue from classified emails:
+   - `archiveProposals[]` from all emails classified as Archive
+   - `triageItems[]` from all emails classified as Triage
+   - Include `body` field on triage items when available
+   - Include enriched fields (`snippet`, `status`, `labels`) on archive proposals too
+   - Extract `actionLink` for EVERY triage item — parse body for URLs, or `read_email` for HTML CTA if no plain-text link found. Every billing, payment, admin, or action-required email has a link — find it
 
-**Triage queue** — numbered list across all accounts:
-```
-## Triage Queue (N emails)
-
-| # | Account | From | Subject | Status |
-|---|---------|------|---------|--------|
-| 1 | {repo} | {Contact Name} | Re: Board Follow up | Unread, needs reply |
-| 2 | widgets | {Contact Name} | Google Tag Manager | Waiting on them |
-```
-
-Then ask: **"Archive all N? Then we'll walk through triage."**
-
-Wait for user confirmation. User may exclude items from archive or add items to archive.
-
-## Phase 2 — Archive
-
-On approval, `batch_modify` per account (archive action). Report count.
-
-If user excluded items, move them to triage queue.
-
-## Phase 3 — Triage (one at a time)
-
-For each email in triage queue, in priority order (unread action-needed first, then FYI):
-
-1. Show the email:
+2. Write queue to email-triage app:
+   ```bash
+   mkdir -p ~/Documents/HQ/repos/private/email-triage/data
    ```
-   ### [#1] {repo} — {Contact Name}
-   **Subject:** Re: Board Follow up
-   **Date:** Wed, Feb 11
-   **Status:** Unread
-   **Snippet:** "It was gross margin for sure. Can you send me link..."
+   Write the JSON to `~/Documents/HQ/repos/private/email-triage/data/queue.json`
+
+3. Launch app — check port 3034:
+   ```bash
+   curl -s http://localhost:3034/api/status 2>/dev/null
    ```
+   If not running, launch via Tauri dev (starts both Next.js + desktop window):
+   ```bash
+   cd ~/Documents/HQ/repos/private/email-triage && npm run tauri:dev &
+   ```
+   Wait ~15s for Tauri + Next.js compilation.
 
-2. If context would help a reply, silently search qmd + HQ for relevant info (don't show search process, just have context ready).
+4. Tell user:
+   > Email triage ready at http://localhost:3034
+   > {N} to archive, {N} to triage. Complete in the app and I'll execute.
 
-3. Ask user what to do via `AskUserQuestion`:
-   - **Archive** — done with it
-   - **Reply** — draft a reply (pull HQ context, show draft for approval before sending)
-   - **Skip** — come back to it later
-   - (user can always type a custom action)
+5. Poll `GET http://localhost:3034/api/status` every 3 seconds until `completedAt` is non-null. Timeout after 30 minutes — warn at 24.
 
-4. Execute the action. If reply: draft it, show it, wait for approval, then send.
+## Phase 3 — Execute Actions
 
-5. Move to next email. Repeat until queue is empty.
+Read responses from `~/Documents/HQ/repos/private/email-triage/data/responses.json`
 
-When done: **"Inbox clear. N archived, N replied, N skipped."**
+### Response schema
+
+```typescript
+interface EmailTriageResponseFile {
+  queueId: string;
+  archivedIds: string[];         // approved archive proposal IDs
+  excludedFromArchive: string[]; // IDs user moved to triage
+  triageResponses: TriageResponse[];
+  completedAt?: string;
+}
+
+interface TriageResponse {
+  itemId: string;
+  action: "archive" | "reply" | "skip" | "trash" | "project";
+  replyText?: string;
+  discussion?: ChatMessage[];     // inline chat history (for context)
+  projectContext?: ProjectStub;   // if action is "project"
+  respondedAt: string;
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface ProjectStub {
+  name: string;
+  description: string;
+  emailContext: {
+    from: string;
+    subject: string;
+    body?: string;
+    account: string;
+    date: string;
+  };
+}
+```
+
+### Execute
+
+1. **Archives from archive review:** Map `archivedIds` back to `messageId` via queue. Group by account. `batch_modify` per account with archive action.
+
+2. **Triage responses:**
+   - `action: "archive"` → `batch_modify` archive (group by account)
+   - `action: "reply"` → `draft_email` with `replyText` (NEVER `reply_email`). Show draft to user for approval before sending. If `discussion` exists, use it for context when reviewing the draft.
+   - `action: "trash"` → `batch_modify` trash (group by account)
+   - `action: "skip"` → no action
+   - `action: "project"` → create project stub (see below)
+
+3. **Project stubs:** For each response with `action: "project"`:
+   - Read `projectContext` from the response
+   - Create directory: `mkdir -p ~/Documents/HQ/projects/{stub.name}/`
+   - Write `prd.json`:
+     ```json
+     {
+       "name": "{stub.name}",
+       "description": "{stub.description}",
+       "branchName": "",
+       "userStories": [],
+       "metadata": {
+         "goal": "{stub.description}",
+         "origin": "email-triage",
+         "emailFrom": "{stub.emailContext.from}",
+         "emailSubject": "{stub.emailContext.subject}"
+       }
+     }
+     ```
+   - Write `README.md` with email context + description
+   - Report: "Created project stub: {name} — run /prd {name} to flesh it out"
+
+4. **Clean up:** Delete `data/queue.json` and `data/responses.json`
+
+5. **Report:** "Inbox clear. N archived, N replied, N skipped, N trashed, N projects created."
 
 ## Rules
 
-- Always specify `account` parameter explicitly
+- Always specify `account` parameter explicitly on all gmail MCP calls
 - ALWAYS `get_thread` before classifying — never assume no reply was sent based on `read_email` alone
 - ALWAYS show reply drafts for approval before sending — never auto-send
-- Pull HQ context (qmd search, company settings) when drafting replies
+- Pull HQ context (qmd search, company settings) when drafting replies from replyText
 - Respect company isolation — don't reference one company's data in another's replies
-- One triage email at a time — wait for user decision before showing next
-- Keep summaries concise — sender, subject, date, one-line snippet. Full body only if user asks or if drafting a reply
 - Threads where user sent the last message = "waiting on them" → archive by default
 - If the triage queue is empty after archives, say so and end
-- **NEVER** auto-archive account activation emails (e.g. "Activate your account", "Set your password") — always classify as Triage. These are action-required with time-sensitive links
-- **ALWAYS** classify marketing emails, GitHub notifications (except billing/admin), and newsletters as Archive. Don't list them individually in the Proposed Archives table — just show count per account (e.g. "{repo}: 3, Personal: 12"). Still wait for user approval before archiving
+- **NEVER** auto-archive account activation emails (e.g. "Activate your account", "Set your password") — always classify as Triage
+- **ALWAYS** classify marketing emails, GitHub notifications (except billing/admin), and newsletters as Archive
+- **NEVER** auto-archive invitations to collaborate on platforms (Figma, Google Docs, Notion, Linear, etc.) — always classify as Triage
+- **ALWAYS** extract `actionLink` for EVERY triage item — not just platform invites. Billing alerts, payment failures, admin actions, subscription notices all have CTA links. Parse `body` for `https://` URLs first. If no URL found in plain text, use `read_email` to get HTML and extract the primary CTA button href. Set as `actionLink` on the TriageItem. Zero triage items should ship without an actionLink unless the email genuinely has none
+- If queue.json already exists in the app data dir, ask user before overwriting

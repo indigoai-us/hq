@@ -1,7 +1,7 @@
 ---
 description: Audit and clean HQ to enforce current policies and migrate outdated structures
 allowed-tools: Task, Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
-argument-hint: [--audit | --migrate | --fix]
+argument-hint: [--audit | --migrate | --fix | --consolidate-learnings]
 visibility: public
 ---
 
@@ -17,6 +17,7 @@ Audit HQ for policy violations, migrate outdated structures, and fix inconsisten
 - **--migrate**: Convert old formats to new (prd.json → README.md)
 - **--fix**: Auto-fix simple issues (git cleanup, archive stale files)
 - **--reindex**: Regenerate ALL INDEX.md files from disk (full rebuild)
+- **--consolidate-learnings**: Deduplicate, merge, and reorganize learned rules across all target files
 
 ## The Job
 
@@ -151,9 +152,9 @@ find . -name "SKILL.md" -not -path "./repos/*"
 
 **Expected locations:**
 - `projects/INDEX.md`
-- `companies/acme/knowledge/INDEX.md`
-- `companies/widgets/knowledge/INDEX.md`
-- `companies/designco/knowledge/INDEX.md`
+- `companies/{company-1}/knowledge/INDEX.md`
+- `companies/{company-2}/knowledge/INDEX.md`
+- `companies/{company-3}/knowledge/INDEX.md`
 - `knowledge/public/INDEX.md`
 - `workers/public/INDEX.md`
 - `workers/private/INDEX.md`
@@ -166,6 +167,50 @@ For each:
 2. Count entries in INDEX table vs actual directory contents → flag STALE if mismatch
 
 **With --reindex or --fix**: Regenerate all INDEX.md files from disk per spec.
+
+### 9. Manifest Completeness
+
+**Policy**: Every company in `manifest.yaml` should have non-null values for all fields.
+
+```bash
+# Check for null values in manifest
+grep -n "null" companies/manifest.yaml
+```
+
+**Violations**: Company with `knowledge: null`, empty settings when settings dir has files, etc.
+
+**With --fix**: For each company with `knowledge: null`:
+1. Create knowledge repo: `repos/private/knowledge-{company}/` → `git init` → initial README
+2. Create symlink: `companies/{company}/knowledge → ../../repos/private/knowledge-{company}`
+3. Update manifest.yaml: replace `null` with `companies/{company}/knowledge/`
+4. Add to `modules/modules.yaml`
+
+### 10. Modules Registry Completeness
+
+**Policy**: Every knowledge symlink should have a corresponding entry in `modules/modules.yaml`.
+
+```bash
+for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+  [ -L "$symlink" ] || continue
+  name=$(basename $(readlink "$symlink"))
+  if ! grep -q "$name" modules/modules.yaml 2>/dev/null; then
+    echo "UNREGISTERED: $symlink not in modules.yaml"
+  fi
+done
+```
+
+**With --fix**: Add missing module entries to `modules/modules.yaml`.
+
+### 11. qmd Collection Completeness
+
+**Policy**: Every company with a knowledge symlink should have a qmd collection.
+
+```bash
+# Check companies with knowledge but empty qmd_collections
+grep -B10 "qmd_collections: \[\]" companies/manifest.yaml | grep "^[a-z]"
+```
+
+**With --fix**: Create qmd collection for each missing company.
 
 ---
 
@@ -275,6 +320,7 @@ Summary: 14 issues found
 Run `/cleanup --migrate` to convert prd.json files
 Run `/cleanup --fix` to clean git and archive stale files
 Run `/cleanup --reindex` to regenerate all INDEX.md files
+Run `/cleanup --consolidate-learnings` to dedup and reorganize learned rules
 ```
 
 ### After Migration
@@ -286,6 +332,89 @@ Migrated 8 projects to README.md format:
 
 Original prd.json files renamed to prd.json.bak
 Run `/cleanup --fix` to commit changes
+```
+
+---
+
+## Consolidate Learnings (--consolidate-learnings)
+
+Dedup, merge, and reorganize learned rules across all target files.
+
+### Step 1: Collect all rules
+
+Scan these locations and extract every rule:
+
+| Location | How to find |
+|----------|-------------|
+| `.claude/CLAUDE.md` `## Learned Rules` | Read section, parse `- **{name}**:` entries |
+| Worker yamls `## Learnings` | `grep -rl "## Learnings" workers/` → read each |
+| Command mds `## Rules` | `grep -rl "## Rules" .claude/commands/` → read each |
+| Learning event log | `ls workspace/learnings/*.json` → read rules[] from each |
+
+Build a master list: `{rule_text, source_file, section, date_added}`.
+
+### Step 2: Cross-file dedup
+
+For each rule in the master list:
+```bash
+qmd vsearch "{rule_text}" --json -n 10
+```
+
+Flag:
+- **Exact duplicates** (similarity > 0.85 across different files): keep the most specific (worker > command > global), remove the other
+- **Near-duplicates** (0.6–0.85): merge into one rule with combined context, remove the weaker copy
+- **Contradictions**: flag for user review (don't auto-resolve)
+
+### Step 3: Deprecate stale rules
+
+For each rule, check if its references still exist:
+- Rule mentions a worker → does that worker exist in `workers/registry.yaml`?
+- Rule mentions a command → does `.claude/commands/{name}.md` exist?
+- Rule mentions a tool/API → is it still in use? (best effort)
+
+Flag stale rules for user review. Don't auto-delete — present as candidates.
+
+### Step 4: Reorganize scope
+
+If a scoped rule (worker/command) has been superseded by a broader global rule covering the same behavior, remove the scoped copy (the global rule covers it).
+
+If a global rule only applies to one worker/command, demote it to the scoped file and remove from CLAUDE.md (frees global cap space).
+
+### Step 5: Apply changes
+
+For each proposed change (remove/merge/demote/promote), apply to target files using Edit tool.
+
+### Step 6: Reindex
+
+```bash
+qmd update && qmd embed
+```
+
+### Step 7: Report
+
+```
+Learning Consolidation
+======================
+Rules scanned: {total}
+  - CLAUDE.md: {n}
+  - Workers: {n} across {m} files
+  - Commands: {n} across {m} files
+
+Actions taken:
+  ✓ Removed {n} duplicates
+  ✓ Merged {n} near-duplicates
+  ✓ Demoted {n} global → scoped
+  ✓ Promoted {n} scoped → global
+  ⚠ {n} stale rules flagged (review below)
+  ⚠ {n} contradictions flagged (review below)
+
+Stale rules:
+  - {rule} in {file} — references deleted worker {id}
+  ...
+
+Contradictions:
+  - {rule_a} vs {rule_b} — {explanation}
+  ...
 ```
 
 ---
@@ -318,3 +447,7 @@ Reference for what we're enforcing:
 | Git | Clean working tree |
 | Knowledge repos | Symlinks in `knowledge/` and `companies/*/knowledge/` point to repos; all repos committed |
 | INDEX.md | Exist at 10 key dirs, match contents (see spec) |
+| Manifest | All companies have non-null knowledge, settings, repos |
+| Modules | All knowledge repos registered in `modules/modules.yaml` |
+| qmd | All companies with knowledge have a qmd collection |
+| Learnings | No cross-file duplicates, stale rules flagged, scoped > global |

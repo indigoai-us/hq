@@ -98,19 +98,6 @@ Remaining:
 Continue? [Y/n]
 ```
 
-### 3.5 Launch Dashboard (silent, non-blocking)
-
-Auto-open the HQ Dashboard so the user can watch progress in real-time:
-
-```bash
-# Only launch if not already running (uses pre-built release binary for instant startup)
-HQ_DASH=~/Documents/HQ/repos/private/hq-dashboard/src-tauri/target/release/hq-dashboard
-pgrep -f "hq-dashboard" > /dev/null 2>&1 || \
-  ([ -x "$HQ_DASH" ] && "$HQ_DASH" > /dev/null 2>&1 &)
-```
-
-Skip silently if dashboard repo doesn't exist or build fails. Never block execution on dashboard launch.
-
 ### 4. Initialize/Load State
 
 ```bash
@@ -179,6 +166,9 @@ while (remaining tasks with passes: false):
 
                    Run /execute-task {project}/{task.id}
 
+                   Model hint for this story: {task.model_hint || 'none — use worker defaults'}
+                   (If set, pass as model_hint override when resolving model in step 6a)
+
                    Note: If the task involves batch human decisions (classifying,
                    reviewing, or triaging 5+ items), use /decide to spawn the
                    decision-ui instead of AskUserQuestion.
@@ -189,6 +179,7 @@ while (remaining tasks with passes: false):
                      \"status\": \"completed|failed|blocked\",
                      \"summary\": \"1-sentence summary\",
                      \"workers_used\": [\"list\"],
+                     \"models_used\": {\"worker\": \"model\"},
                      \"back_pressure\": {
                        \"tests\": \"pass|fail|skipped\",
                        \"lint\": \"pass|fail|skipped\",
@@ -223,7 +214,9 @@ while (remaining tasks with passes: false):
 
         iv. Update `workspace/orchestrator/INDEX.md` with new progress.
 
-        v. DISCARD everything else.
+        v. Reindex: `qmd update 2>/dev/null || true`
+
+        vi. DISCARD everything else.
              The orchestrator MUST NOT store worker outputs,
              handoff blobs, file lists, or error traces.
              Only retain: task_id, status, 1-sentence summary.
@@ -284,6 +277,47 @@ Workers Used: {worker}: {N} tasks, ...
 Learnings: {count}
 ```
 
+**Generate usage report** (`workspace/reports/{project}-usage.md`):
+
+Read `workspace/metrics/model-usage.jsonl`, filter entries where `project == "{project}"`. If no entries found, skip with note: "No model usage data found for {project}. Skipping usage report."
+
+Otherwise, aggregate into this markdown template and write to `workspace/reports/{project}-usage.md`:
+
+````markdown
+# {project} — Model Usage Report
+
+**Generated:** {ISO8601}
+**Total phases:** {count}
+
+## By Model Tier
+
+| Model | Phases | % of Total | Cost Tier |
+|-------|--------|------------|-----------|
+| opus  | {n}    | {pct}%     | $$$       |
+| sonnet| {n}    | {pct}%     | $$        |
+| haiku | {n}    | {pct}%     | $         |
+
+## Per-Task Breakdown
+
+| Task | Workers (model) | Phases |
+|------|-----------------|--------|
+| {task.id} | {worker1} ({model}), {worker2} ({model}), ... | {count} |
+| ... | | |
+
+## Per-Worker Summary
+
+| Worker | Total Runs | opus | sonnet | haiku |
+|--------|-----------|------|--------|-------|
+| {worker} | {total} | {n} | {n} | {n} |
+| ... | | | | |
+
+## Notes
+
+- Token counts unavailable (Task tool does not surface API token usage)
+- Model tier as cost proxy: opus (~$15/MTok) > sonnet (~$3/MTok) > haiku (~$0.25/MTok)
+- Phase count = number of worker sub-agent invocations, not API calls
+````
+
 **Aggregate learnings:**
 1. Scan Tier 3 logs: `workspace/learnings/learn-*.json` matching this project
 2. Identify repeated patterns (same rule triggered 3+ times across tasks)
@@ -293,6 +327,12 @@ Learnings: {count}
 **Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
 
 **Update INDEX.md files:** Regenerate `projects/INDEX.md` and `workspace/orchestrator/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+
+**Post-project cleanup:**
+1. `qmd update 2>/dev/null || true` — reindex all changes from project
+2. Verify `manifest.yaml` — any repos/workers created during project are registered
+3. Verify `workers/registry.yaml` — any new workers are indexed
+4. Commit HQ changes if dirty: `git add -A && git commit -m "project-complete: {project}"`
 
 ### 8. Status Display (--status)
 
@@ -313,17 +353,17 @@ COMPLETED:
 
 | Task Type | Worker Sequence |
 |-----------|----------------|
-| schema_change | database-dev → backend-dev → code-reviewer → dev-qa-tester |
-| api_development | backend-dev → [codex-coder] → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
-| ui_component | frontend-dev → [codex-coder] → motion-designer → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
-| full_stack | architect → database-dev → backend-dev → frontend-dev → [codex-coder] → code-reviewer → [codex-reviewer] → [codex-debugger] → dev-qa-tester |
+| schema_change | database-dev → backend-dev → code-reviewer → codex-reviewer → dev-qa-tester |
+| api_development | backend-dev → [codex-coder] → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
+| ui_component | frontend-dev → [codex-coder] → motion-designer → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
+| full_stack | architect → database-dev → backend-dev → frontend-dev → [codex-coder] → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
 | codex_fullstack | architect → database-dev → codex-coder → codex-reviewer → dev-qa-tester |
 | content | content-brand → content-product → content-sales → content-legal |
-| enhancement | (relevant dev) → code-reviewer → [codex-debugger] |
+| enhancement | (relevant dev) → code-reviewer → codex-reviewer → [codex-debugger] |
 
 Prepend **product-planner** if task spec is unclear or acceptance criteria are vague.
 
-`[brackets]` = optional codex workers, included when `worker_hints` contain codex or task indicators match codex patterns. **codex_fullstack** uses codex-coder instead of backend-dev/frontend-dev for Codex-native generation.
+`[brackets]` = optional codex workers, included when `worker_hints` contain codex or task indicators match codex patterns. **codex-reviewer** is mandatory (no brackets) for all code task types — always runs after code-reviewer. **codex_fullstack** uses codex-coder instead of backend-dev/frontend-dev for Codex-native generation.
 
 ## Handoff Context Format
 

@@ -13,12 +13,15 @@ Save current work state as a thread to survive context loss.
 
 ## Process
 
+0. **Capture session learnings**
+   Reflect on this session. If any reusable learnings exist (mistakes, patterns, gotchas, workflow improvements), call `/learn` for each before proceeding. Skip if nothing novel was learned. See CLAUDE.md `## Session Learnings` for guidance.
+
 1. **Check for recent auto-checkpoint** (upgrade instead of duplicate)
    ```bash
    # Find auto-checkpoints from last 5 minutes
    find workspace/threads -name "T-*-auto-*.json" -mmin -5 2>/dev/null | sort -r | head -1
    ```
-   If found: upgrade that file in-place (add full fields: `initial_commit`, `commits_made`, `remote_url`, `knowledge_repos`, `worker`, `next_steps`; change `type` to `"checkpoint"`; rename file to remove `-auto-`). Then continue from step 8 (INDEX updates).
+   If found: upgrade that file in-place (add full fields: `initial_commit`, `commits_made`, `remote_url`, `knowledge_repos`, `worker`, `next_steps`; change `type` to `"checkpoint"`; rename file to remove `-auto-`). Then continue from step 7 (INDEX updates).
 
 2. **Generate thread ID** if not provided
    - Format: `T-{YYYYMMDD}-{HHMMSS}-{slug}`
@@ -72,7 +75,7 @@ Save current work state as a thread to survive context loss.
        "commits_made": ["hash: message"],
        "dirty": false,
        "knowledge_repos": {
-         "knowledge-widgets": {"commit": "abc1234", "dirty": true},
+         "knowledge-{company-2}": {"commit": "abc1234", "dirty": true},
          "knowledge-ralph": {"commit": "def5678", "dirty": false}
        }
      },

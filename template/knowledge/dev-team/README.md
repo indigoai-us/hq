@@ -14,6 +14,7 @@ dev-team/
 ## Patterns
 
 Patterns are extracted from successful task completions:
+
 - Backend patterns: API design, error handling, auth flows
 - Frontend patterns: Component structure, state management
 - Database patterns: Schema design, query optimization
@@ -22,6 +23,7 @@ Patterns are extracted from successful task completions:
 ## Workflows
 
 Standard worker sequences:
+
 - **new-api-endpoint**: architect → database-dev → backend-dev → qa-tester
 - **new-ui-feature**: architect → frontend-dev → motion-designer → qa-tester
 - **full-stack-feature**: architect → database-dev → backend-dev → frontend-dev → qa-tester
@@ -30,6 +32,9 @@ Standard worker sequences:
 ## Troubleshooting
 
 Common issues encountered during development:
+
 - Build failures and resolutions
 - Test flakiness patterns
 - Integration issues between workers
+
+&nbsp;

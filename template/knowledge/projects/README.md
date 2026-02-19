@@ -63,8 +63,8 @@ If project has code:
 
 Good project folders:
 - `projects/sol-reader/` - iPad app
-- `projects/designco-capital/` - Token launch
-- `projects/acme-site/` - Website migration
+- `projects/{company-3}-capital/` - Token launch
+- `projects/{company-1}-site/` - Website migration
 
 Not projects (too small):
 - Fix a typo in docs

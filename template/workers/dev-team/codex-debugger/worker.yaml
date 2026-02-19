@@ -11,6 +11,7 @@ execution:
   max_runtime: 15m
   retry_attempts: 2
   spawn_method: task_tool
+  model: haiku
 
 context:
   base:
@@ -120,7 +121,7 @@ instructions: |
   ```bash
   /run codex-debugger debug-issue --issue "TS2345 type error in auth middleware" --error-output "$(cat /tmp/typecheck-errors.txt)"
   /run codex-debugger root-cause-analysis --issue "Intermittent test failure in billing service"
-  /run codex-debugger fix-bug --issue "User session not persisting after login" --cwd repos/private/{repo}
+  /run codex-debugger fix-bug --issue "User session not persisting after login" --cwd repos/private/{product}
   ```
 
   ## Patterns
