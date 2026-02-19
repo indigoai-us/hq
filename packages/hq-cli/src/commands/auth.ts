@@ -18,7 +18,6 @@ import {
   readCredentials,
   writeCredentials,
   clearCredentials,
-  getCredentialsPath,
   isExpired,
 } from '../utils/credentials.js';
 import { getApiUrl, apiRequest } from '../utils/api-client.js';
@@ -239,7 +238,7 @@ export function registerAuthCommand(program: Command): void {
         const label = result.email ?? result.userId;
         console.log();
         console.log(chalk.green(`Logged in as ${label}`));
-        console.log(chalk.dim(`Credentials saved to ${getCredentialsPath()}`));
+        console.log(chalk.dim(`Credentials saved.`));
       } catch (error) {
         console.error(chalk.red('Login failed:'), error instanceof Error ? error.message : error);
         process.exit(1);
@@ -286,7 +285,6 @@ export function registerAuthCommand(program: Command): void {
         console.log(`  Expires at: ${creds.expiresAt}`);
       }
       console.log(`  API URL:    ${getApiUrl()}`);
-      console.log(`  Creds file: ${getCredentialsPath()}`);
 
       // Optionally verify with the API
       try {
