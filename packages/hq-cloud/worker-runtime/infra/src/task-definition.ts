@@ -92,7 +92,7 @@ export interface HqWorkerTaskDefinitionProps {
    * When provided, the execution role gets secretsmanager:GetSecretValue
    * permission and secrets are injected into the container via valueFrom.
    *
-   * Expected secret keys: CLERK_SECRET_KEY, CLERK_JWT_KEY, MONGODB_URI, CLAUDE_CREDENTIALS_JSON
+   * Expected secret keys: CLERK_SECRET_KEY, CLERK_JWT_KEY, MONGODB_URI, CLAUDE_CREDENTIALS_JSON, TOKEN_ENCRYPTION_KEY
    */
   readonly secretsArn?: string;
 
@@ -259,12 +259,13 @@ export class HqWorkerTaskDefinition extends Construct {
     secretArn: string,
     keyMap?: Record<string, string>
   ): Record<string, ecs.Secret> {
-    // Default: inject all four standard secret keys
+    // Default: inject all standard secret keys
     const defaultKeys: Record<string, string> = {
       CLERK_SECRET_KEY: 'CLERK_SECRET_KEY',
       CLERK_JWT_KEY: 'CLERK_JWT_KEY',
       MONGODB_URI: 'MONGODB_URI',
       CLAUDE_CREDENTIALS_JSON: 'CLAUDE_CREDENTIALS_JSON',
+      TOKEN_ENCRYPTION_KEY: 'TOKEN_ENCRYPTION_KEY',
     };
 
     const keys = keyMap ?? defaultKeys;
