@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
+import { createClerkClient } from '@clerk/backend';
 import { createCliToken } from '../auth/cli-token.js';
 import { config } from '../config.js';
 
@@ -30,17 +31,44 @@ export const authRoutes: FastifyPluginCallback = (
   done
 ): void => {
   /**
-   * Get current authenticated user info
+   * Get current authenticated user info including Clerk profile.
    * GET /auth/me
+   *
+   * Returns userId, sessionId, and profile info (fullName, email, avatarUrl)
+   * looked up from Clerk. Profile fields may be null if lookup fails.
    */
-  fastify.get('/me', (request, reply) => {
+  fastify.get('/me', async (request, reply) => {
     if (!request.user) {
       return reply.status(401).send({ error: 'Unauthorized' });
     }
 
+    const { userId, sessionId } = request.user;
+
+    // Try to look up full profile from Clerk
+    let fullName: string | null = null;
+    let email: string | null = null;
+    let avatarUrl: string | null = null;
+
+    if (config.clerkSecretKey && !config.skipAuth) {
+      try {
+        const clerk = createClerkClient({ secretKey: config.clerkSecretKey });
+        const clerkUser = await clerk.users.getUser(userId);
+        fullName = [clerkUser.firstName, clerkUser.lastName]
+          .filter(Boolean)
+          .join(' ') || null;
+        email = clerkUser.emailAddresses?.[0]?.emailAddress ?? null;
+        avatarUrl = clerkUser.imageUrl ?? null;
+      } catch {
+        // Clerk lookup failed — return basic info without profile
+      }
+    }
+
     return reply.send({
-      userId: request.user.userId,
-      sessionId: request.user.sessionId,
+      userId,
+      sessionId,
+      fullName,
+      email,
+      avatarUrl,
     });
   });
 
