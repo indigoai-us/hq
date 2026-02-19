@@ -384,12 +384,12 @@ describe('syncDiff (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: ['src/index.ts'], toDownload: [] },
+      data: { needsUpload: ['src/index.ts'], needsDownload: [] },
     });
 
     const diff = await syncDiff(tmpDir);
-    expect(diff.toUpload).toEqual(['src/index.ts']);
-    expect(diff.toDownload).toEqual([]);
+    expect(diff.needsUpload).toEqual(['src/index.ts']);
+    expect(diff.needsDownload).toEqual([]);
 
     // Verify API was called correctly
     expect(mockApiRequest).toHaveBeenCalledWith(
@@ -513,7 +513,7 @@ describe('pushChanges (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: ['a.txt'], toDownload: [] },
+      data: { needsUpload: ['a.txt'], needsDownload: [] },
     });
     // Second call: uploadFile for a.txt
     mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
@@ -532,7 +532,7 @@ describe('pushChanges (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: ['ok.txt', 'missing.txt'], toDownload: [] },
+      data: { needsUpload: ['ok.txt', 'missing.txt'], needsDownload: [] },
     });
     // Upload for ok.txt succeeds
     mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
@@ -553,7 +553,7 @@ describe('pushChanges (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: ['ok.txt', 'rejected.txt'], toDownload: [] },
+      data: { needsUpload: ['ok.txt', 'rejected.txt'], needsDownload: [] },
     });
     // First upload succeeds
     mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
@@ -581,7 +581,7 @@ describe('pullChanges (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: [], toDownload: ['remote.txt'] },
+      data: { needsUpload: [], needsDownload: ['remote.txt'] },
     });
     // downloadFile
     mockApiRequest.mockResolvedValueOnce({
@@ -604,7 +604,7 @@ describe('pullChanges (mocked API)', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { toUpload: [], toDownload: ['ok.txt', 'fail.txt'] },
+      data: { needsUpload: [], needsDownload: ['ok.txt', 'fail.txt'] },
     });
     // First download succeeds
     mockApiRequest.mockResolvedValueOnce({

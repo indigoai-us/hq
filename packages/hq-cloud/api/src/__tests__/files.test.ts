@@ -566,7 +566,8 @@ describe('File Proxy Service - getUserPrefix', () => {
   it('should build correct user prefix', async () => {
     const { getUserPrefix } = await vi.importActual<typeof import('../data/file-proxy.js')>('../data/file-proxy.js');
 
-    expect(getUserPrefix('user123')).toBe('user_user123/hq/');
+    expect(getUserPrefix('user123')).toBe('user123/hq/');
+    expect(getUserPrefix('user_clerk123')).toBe('user_clerk123/hq/');
     expect(getUserPrefix('clerk-abc')).toBe('user_clerk-abc/hq/');
   });
 });
@@ -575,18 +576,18 @@ describe('File Proxy Service - getUserFileKey', () => {
   it('should build correct S3 key', async () => {
     const { getUserFileKey } = await vi.importActual<typeof import('../data/file-proxy.js')>('../data/file-proxy.js');
 
-    expect(getUserFileKey('user123', 'knowledge/test.md')).toBe('user_user123/hq/knowledge/test.md');
+    expect(getUserFileKey('user123', 'knowledge/test.md')).toBe('user123/hq/knowledge/test.md');
   });
 
   it('should normalize Windows-style paths', async () => {
     const { getUserFileKey } = await vi.importActual<typeof import('../data/file-proxy.js')>('../data/file-proxy.js');
 
-    expect(getUserFileKey('user123', 'knowledge\\test.md')).toBe('user_user123/hq/knowledge/test.md');
+    expect(getUserFileKey('user123', 'knowledge\\test.md')).toBe('user123/hq/knowledge/test.md');
   });
 
   it('should strip leading slashes', async () => {
     const { getUserFileKey } = await vi.importActual<typeof import('../data/file-proxy.js')>('../data/file-proxy.js');
 
-    expect(getUserFileKey('user123', '/knowledge/test.md')).toBe('user_user123/hq/knowledge/test.md');
+    expect(getUserFileKey('user123', '/knowledge/test.md')).toBe('user123/hq/knowledge/test.md');
   });
 });

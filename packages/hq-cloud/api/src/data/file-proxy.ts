@@ -81,7 +81,8 @@ export function resetS3Client(): void {
  * Convention: user_{clerkId}/hq/
  */
 export function getUserPrefix(userId: string): string {
-  return `user_${userId}/hq/`;
+  const id = userId.startsWith('user_') ? userId : `user_${userId}`;
+  return `${id}/hq/`;
 }
 
 /**

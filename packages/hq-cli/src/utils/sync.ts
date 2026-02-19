@@ -100,9 +100,9 @@ export interface ManifestEntry {
 /** Response from POST /api/files/sync */
 export interface SyncDiffResult {
   /** Relative paths that the client should upload (local is newer) */
-  toUpload: string[];
+  needsUpload: string[];
   /** Relative paths that the client should download (remote is newer) */
-  toDownload: string[];
+  needsDownload: string[];
 }
 
 /** Response from GET /api/files/quota */
@@ -314,7 +314,7 @@ export async function pushChanges(hqRoot: string): Promise<{ uploaded: number; e
   const errors: string[] = [];
   let uploaded = 0;
 
-  for (const filePath of diff.toUpload) {
+  for (const filePath of diff.needsUpload) {
     try {
       await uploadFile(filePath, hqRoot);
       uploaded++;
@@ -336,7 +336,7 @@ export async function pullChanges(hqRoot: string): Promise<{ downloaded: number;
   const errors: string[] = [];
   let downloaded = 0;
 
-  for (const filePath of diff.toDownload) {
+  for (const filePath of diff.needsDownload) {
     try {
       await downloadFile(filePath, hqRoot);
       downloaded++;
@@ -358,7 +358,7 @@ export async function fullSync(hqRoot: string): Promise<{ uploaded: number; down
   let downloaded = 0;
 
   // Upload first
-  for (const filePath of diff.toUpload) {
+  for (const filePath of diff.needsUpload) {
     try {
       await uploadFile(filePath, hqRoot);
       uploaded++;
@@ -368,7 +368,7 @@ export async function fullSync(hqRoot: string): Promise<{ uploaded: number; down
   }
 
   // Then download
-  for (const filePath of diff.toDownload) {
+  for (const filePath of diff.needsDownload) {
     try {
       await downloadFile(filePath, hqRoot);
       downloaded++;

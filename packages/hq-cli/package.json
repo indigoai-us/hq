@@ -1,6 +1,6 @@
 {
   "name": "@indigoai-us/hq-cli",
-  "version": "5.2.0",
+  "version": "5.3.1",
   "description": "HQ management CLI — modules and cloud sync",
   "main": "dist/index.js",
   "bin": {
@@ -30,8 +30,16 @@
     "url": "https://github.com/indigoai-us/hq.git",
     "directory": "packages/hq-cli"
   },
-  "files": ["dist"],
-  "keywords": ["hq", "ai", "modules", "sync", "cloud"],
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "hq",
+    "ai",
+    "modules",
+    "sync",
+    "cloud"
+  ],
   "license": "MIT",
   "type": "module"
 }

@@ -5,6 +5,7 @@
  */
 
 import { Command } from "commander";
+import { createRequire } from "module";
 import { registerAddCommand } from "./commands/add.js";
 import { registerSyncCommand } from "./commands/sync.js";
 import { registerListCommand } from "./commands/list.js";
@@ -13,12 +14,15 @@ import { registerCloudCommands } from "./commands/cloud.js";
 import { registerAuthCommand } from "./commands/auth.js";
 import { registerCloudSetupCommand } from "./commands/cloud-setup.js";
 
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+
 const program = new Command();
 
 program
   .name("hq")
   .description("HQ management CLI — modules and cloud sync")
-  .version("5.2.0");
+  .version(pkg.version);
 
 // Module management subcommand group
 const modulesCmd = program
