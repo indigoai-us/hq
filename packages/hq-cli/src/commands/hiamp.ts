@@ -13,9 +13,16 @@ import { findHqRoot } from "../utils/manifest.js";
 
 interface HiampConfig {
   transport: "linear" | "slack";
-  identity?: { owner?: string; "display-name"?: string };
+  identity?: {
+    owner?: string;
+    "display-name"?: string;
+    "linear-user-id"?: string;
+    "linear-email"?: string;
+  };
   linear?: {
     "api-key"?: string;
+    org?: string;
+    "org-name"?: string;
     "default-team"?: string;
     teams?: Array<{
       key: string;
@@ -25,8 +32,9 @@ interface HiampConfig {
     heartbeat?: {
       "interval-minutes"?: number;
       "initial-lookback-minutes"?: number;
+      "watch-assigned"?: boolean;
+      "watch-teams"?: boolean;
     };
-    "watched-queries"?: string[];
   };
 }
 
@@ -161,88 +169,150 @@ function saveState(hqRoot: string, state: HeartbeatState): void {
 
 // --- Poll Logic ---
 
+interface PollResult {
+  assigned: Array<{ identifier: string; title: string; state: string; team: string; updatedAt: string }>;
+  recentComments: LinearComment[];
+  notifications: Array<{ type: string; issueIdentifier: string; issueTitle: string; actorName: string; createdAt: string }>;
+}
+
 async function pollOnce(
   apiKey: string,
   config: HiampConfig,
   state: HeartbeatState,
   hqRoot: string
-): Promise<{ mentions: LinearComment[]; assigned: number }> {
-  const watchedQueries = config.linear?.["watched-queries"] || [];
+): Promise<PollResult> {
+  const userId = config.identity?.["linear-user-id"];
   const lookbackMinutes =
     config.linear?.heartbeat?.["initial-lookback-minutes"] || 60;
 
-  // Determine cursor: last poll time or lookback window
   const since = state.lastPollAt
     ? new Date(state.lastPollAt)
     : new Date(Date.now() - lookbackMinutes * 60 * 1000);
 
-  const mentions: LinearComment[] = [];
-  let assignedCount = 0;
+  const result: PollResult = { assigned: [], recentComments: [], notifications: [] };
 
-  // Search for comments mentioning watched queries
-  for (const query of watchedQueries) {
+  // 1. Issues assigned to me (by user ID — no text search)
+  if (userId && config.linear?.heartbeat?.["watch-assigned"] !== false) {
     try {
-      const data = await linearQuery(apiKey, `
-        query SearchComments($term: String!, $after: DateTime!) {
-          searchIssues(term: $term, filter: { updatedAt: { gt: $after } }, first: 20) {
-            nodes {
-              id
-              identifier
-              title
-              assignee { name email }
-              comments(first: 50) {
-                nodes {
-                  id
-                  body
-                  createdAt
-                  updatedAt
-                  user { name email }
-                }
-              }
+      const afterISO = since.toISOString();
+      const data = await linearQuery(apiKey, `{
+        issues(
+          filter: {
+            assignee: { id: { eq: "${userId}" } }
+            updatedAt: { gt: "${afterISO}" }
+            state: { type: { nin: ["completed", "canceled"] } }
+          }
+          first: 25
+          orderBy: updatedAt
+        ) {
+          nodes {
+            identifier title updatedAt
+            state { name }
+            team { key name }
+            comments(first: 5, orderBy: createdAt) {
+              nodes { id body createdAt updatedAt user { name email } }
             }
           }
         }
-      `, { term: query, after: since.toISOString() });
+      }`);
 
-      const searchResult = data.searchIssues as {
-        nodes: Array<{
-          id: string;
-          identifier: string;
-          title: string;
-          assignee?: { name: string; email?: string };
-          comments: { nodes: Array<{ id: string; body: string; createdAt: string; updatedAt: string; user?: { name: string; email?: string } }> };
-        }>;
-      };
+      const issues = (data.issues as { nodes: Array<{
+        identifier: string; title: string; updatedAt: string;
+        state: { name: string }; team: { key: string; name: string };
+        comments: { nodes: Array<{ id: string; body: string; createdAt: string; updatedAt: string; user?: { name: string; email?: string } }> };
+      }> }).nodes;
 
-      for (const issue of searchResult.nodes) {
-        // Check if assigned to us
-        if (issue.assignee?.name?.toLowerCase().includes(query.toLowerCase())) {
-          assignedCount++;
-        }
+      for (const issue of issues) {
+        result.assigned.push({
+          identifier: issue.identifier,
+          title: issue.title,
+          state: issue.state.name,
+          team: issue.team.key,
+          updatedAt: issue.updatedAt,
+        });
 
-        // Find comments that mention the query and are newer than cursor
+        // Collect new comments on assigned issues (from others)
         for (const comment of issue.comments.nodes) {
-          const commentDate = new Date(comment.createdAt);
-          if (commentDate > since && comment.body.toLowerCase().includes(query.toLowerCase())) {
-            mentions.push({
+          if (new Date(comment.createdAt) > since && comment.user?.email !== config.identity?.["linear-email"]) {
+            result.recentComments.push({
               ...comment,
-              issue: { id: issue.id, identifier: issue.identifier, title: issue.title },
+              issue: { id: "", identifier: issue.identifier, title: issue.title },
             });
           }
         }
       }
     } catch (err) {
-      // Individual query failure shouldn't kill the whole poll
-      console.error(`  Warning: search for "${query}" failed: ${err instanceof Error ? err.message : err}`);
+      console.error(`  Warning: assigned issues query failed: ${err instanceof Error ? err.message : err}`);
     }
   }
+
+  // 2. Notifications (mentions, replies, assignments) — Linear's own notification system
+  try {
+    const afterISO = since.toISOString();
+    const data = await linearQuery(apiKey, `{
+      notifications(
+        first: 25
+        orderBy: createdAt
+      ) {
+        nodes {
+          type
+          createdAt
+          ... on IssueNotification {
+            issue { identifier title }
+            actor { name }
+            comment { id body createdAt user { name email } }
+          }
+        }
+      }
+    }`);
+
+    const notifs = (data.notifications as { nodes: Array<{
+      type: string; createdAt: string;
+      issue?: { identifier: string; title: string };
+      actor?: { name: string };
+      comment?: { id: string; body: string; createdAt: string; user?: { name: string; email?: string } };
+    }> }).nodes;
+
+    for (const n of notifs) {
+      // Client-side date filter
+      if (new Date(n.createdAt) < since) continue;
+      if (n.issue) {
+        result.notifications.push({
+          type: n.type,
+          issueIdentifier: n.issue.identifier,
+          issueTitle: n.issue.title,
+          actorName: n.actor?.name || "unknown",
+          createdAt: n.createdAt,
+        });
+
+        // If it has a comment, add to recent comments
+        if (n.comment && new Date(n.comment.createdAt) > since) {
+          result.recentComments.push({
+            ...n.comment,
+            updatedAt: n.comment.createdAt,
+            issue: { id: "", identifier: n.issue.identifier, title: n.issue.title },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`  Warning: notifications query failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Deduplicate comments by ID
+  const seen = new Set<string>();
+  result.recentComments = result.recentComments.filter(c => {
+    if (seen.has(c.id)) return false;
+    seen.add(c.id);
+    return true;
+  });
 
   // Update state
   state.lastPollAt = new Date().toISOString();
   state.pollCount++;
   saveState(hqRoot, state);
 
-  return { mentions, assigned: assignedCount };
+  return result;
 }
 
 // --- Inbox ---
@@ -294,29 +364,42 @@ export function registerHiampCommands(program: Command): void {
 
         const apiKey = resolveApiKey(config);
         const state = loadState(hqRoot);
-        const watchedQueries = config.linear?.["watched-queries"] || [];
+        const userId = config.identity?.["linear-user-id"];
 
-        console.log(`Checking Linear for: ${watchedQueries.join(", ")}`);
-        console.log(`Since: ${state.lastPollAt || `last ${config.linear?.heartbeat?.["initial-lookback-minutes"] || 60} minutes`}`);
+        console.log(`Checking Linear as: ${config.identity?.["display-name"] || config.identity?.owner || "unknown"}${userId ? ` (${userId.slice(0, 8)}...)` : ""}`);
+        console.log(`Since: ${state.lastPollAt || `last ${config.linear?.heartbeat?.["initial-lookback-minutes"] || 60} minutes`}\n`);
 
-        const { mentions, assigned } = await pollOnce(apiKey, config, state, hqRoot);
+        const result = await pollOnce(apiKey, config, state, hqRoot);
 
-        if (mentions.length === 0 && assigned === 0) {
-          console.log("\nNo new mentions or assignments.");
-        } else {
-          if (assigned > 0) {
-            console.log(`\n${assigned} issue(s) assigned to you/your agents.`);
+        const total = result.assigned.length + result.recentComments.length + result.notifications.length;
+        if (total === 0) {
+          console.log("No new activity.");
+          return;
+        }
+
+        if (result.assigned.length > 0) {
+          console.log(`Assigned to you (${result.assigned.length}):`);
+          for (const a of result.assigned) {
+            console.log(`  ${a.identifier} [${a.team}] ${a.title} — ${a.state}`);
           }
-          if (mentions.length > 0) {
-            console.log(`\n${mentions.length} new mention(s):`);
-            for (const m of mentions) {
-              const preview = m.body.length > 80 ? m.body.slice(0, 80) + "..." : m.body;
-              console.log(`  ${m.issue?.identifier || "?"}: ${preview}`);
-              console.log(`    by ${m.user?.name || "unknown"} at ${m.createdAt}`);
-            }
-            writeToInbox(hqRoot, mentions);
-            console.log(`\nWritten to workspace/hiamp/inbox/`);
+        }
+
+        if (result.notifications.length > 0) {
+          console.log(`\nNotifications (${result.notifications.length}):`);
+          for (const n of result.notifications) {
+            console.log(`  ${n.issueIdentifier}: ${n.type} by ${n.actorName}`);
           }
+        }
+
+        if (result.recentComments.length > 0) {
+          console.log(`\nNew comments (${result.recentComments.length}):`);
+          for (const c of result.recentComments) {
+            const preview = c.body.length > 80 ? c.body.slice(0, 80) + "..." : c.body;
+            console.log(`  ${c.issue?.identifier || "?"}: ${preview}`);
+            console.log(`    by ${c.user?.name || "unknown"} at ${c.createdAt}`);
+          }
+          writeToInbox(hqRoot, result.recentComments);
+          console.log(`\nWritten to workspace/hiamp/inbox/`);
         }
       } catch (error) {
         console.error("Error:", error instanceof Error ? error.message : error);
@@ -339,26 +422,27 @@ export function registerHiampCommands(program: Command): void {
 
         const apiKey = resolveApiKey(config);
         const intervalMinutes = config.linear?.heartbeat?.["interval-minutes"] || 5;
-        const watchedQueries = config.linear?.["watched-queries"] || [];
+        const identity = config.identity?.["display-name"] || config.identity?.owner || "unknown";
 
         console.log(`HIAMP heartbeat started (Linear transport)`);
+        console.log(`  Identity: ${identity}`);
         console.log(`  Interval: ${intervalMinutes} min`);
-        console.log(`  Watching: ${watchedQueries.join(", ")}`);
+        console.log(`  Teams:    ${config.linear?.teams?.map(t => t.key).join(", ") || "all"}`);
         console.log(`  Ctrl+C to stop\n`);
 
         // Initial poll
         const state = loadState(hqRoot);
-        const { mentions, assigned } = await pollOnce(apiKey, config, state, hqRoot);
-        console.log(`[${new Date().toISOString()}] Poll #${state.pollCount}: ${mentions.length} mentions, ${assigned} assigned`);
-        writeToInbox(hqRoot, mentions);
+        const result = await pollOnce(apiKey, config, state, hqRoot);
+        console.log(`[${new Date().toISOString()}] Poll #${state.pollCount}: ${result.assigned.length} assigned, ${result.recentComments.length} comments, ${result.notifications.length} notifications`);
+        writeToInbox(hqRoot, result.recentComments);
 
         // Polling loop
         const interval = setInterval(async () => {
           try {
             const currentState = loadState(hqRoot);
-            const result = await pollOnce(apiKey, config, currentState, hqRoot);
-            console.log(`[${new Date().toISOString()}] Poll #${currentState.pollCount}: ${result.mentions.length} mentions, ${result.assigned} assigned`);
-            writeToInbox(hqRoot, result.mentions);
+            const pollResult = await pollOnce(apiKey, config, currentState, hqRoot);
+            console.log(`[${new Date().toISOString()}] Poll #${currentState.pollCount}: ${pollResult.assigned.length} assigned, ${pollResult.recentComments.length} comments, ${pollResult.notifications.length} notifications`);
+            writeToInbox(hqRoot, pollResult.recentComments);
           } catch (err) {
             console.error(`[${new Date().toISOString()}] Poll error: ${err instanceof Error ? err.message : err}`);
           }
@@ -388,13 +472,16 @@ export function registerHiampCommands(program: Command): void {
         console.log("HIAMP Status");
         console.log(`  Transport:  ${config.transport}`);
         console.log(`  Owner:      ${config.identity?.owner || "not set"}`);
+        console.log(`  Name:       ${config.identity?.["display-name"] || "not set"}`);
 
         if (config.transport === "linear") {
-          const teams = config.linear?.teams?.map((t) => t.key).join(", ") || "none";
+          const teams = config.linear?.teams?.map((t) => `${t.key} (${t.name})`).join(", ") || "none";
+          console.log(`  Org:        ${config.linear?.["org-name"] || config.linear?.org || "not set"}`);
+          console.log(`  Linear ID:  ${config.identity?.["linear-user-id"] || "not set — run 'hq hiamp setup' to discover"}`);
           console.log(`  Default:    ${config.linear?.["default-team"] || "not set"}`);
           console.log(`  Teams:      ${teams}`);
           console.log(`  Interval:   ${config.linear?.heartbeat?.["interval-minutes"] || 5} min`);
-          console.log(`  Watching:   ${config.linear?.["watched-queries"]?.join(", ") || "none"}`);
+          console.log(`  Assigned:   ${config.linear?.heartbeat?.["watch-assigned"] !== false ? "watching" : "off"}`);
         }
 
         console.log(`  Last poll:  ${state.lastPollAt || "never"}`);
@@ -498,6 +585,103 @@ export function registerHiampCommands(program: Command): void {
           console.log("No --issue specified. Use --issue IND-123 to target a Linear issue.");
           process.exit(1);
         }
+      } catch (error) {
+        console.error("Error:", error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command("setup")
+    .description("Auto-discover your Linear identity and update hiamp.yaml")
+    .action(async () => {
+      try {
+        const hqRoot = findHqRoot();
+        const configPath = path.join(hqRoot, "config", "hiamp.yaml");
+
+        // Ensure config dir exists
+        const configDir = path.join(hqRoot, "config");
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true });
+        }
+
+        // Load existing config or create minimal one
+        let config: HiampConfig;
+        let rawYaml: string;
+        if (fs.existsSync(configPath)) {
+          rawYaml = fs.readFileSync(configPath, "utf-8");
+          config = loadConfig(hqRoot);
+        } else {
+          console.log("No hiamp.yaml found. Creating one...");
+          rawYaml = "";
+          config = { transport: "linear" };
+        }
+
+        const apiKey = resolveApiKey(config);
+
+        console.log("Discovering your Linear identity...\n");
+
+        // Fetch identity, teams, and org
+        const data = await linearQuery(apiKey, `{
+          viewer { id name email admin }
+          teams { nodes { id key name } }
+          organization { id name urlKey }
+        }`);
+
+        const viewer = data.viewer as { id: string; name: string; email: string; admin: boolean };
+        const teams = (data.teams as { nodes: Array<{ id: string; key: string; name: string }> }).nodes;
+        const org = data.organization as { id: string; name: string; urlKey: string };
+
+        console.log(`Identity:     ${viewer.name} <${viewer.email}>${viewer.admin ? " (admin)" : ""}`);
+        console.log(`Organization: ${org.name} (${org.urlKey})`);
+        console.log(`Teams (${teams.length}):`);
+        for (const t of teams) {
+          console.log(`  ${t.key} — ${t.name} (${t.id})`);
+        }
+
+        // Build updated config
+        const teamsYaml = teams.map(t =>
+          `    - key: ${t.key.toLowerCase()}\n      name: ${t.name}\n      team-id: "${t.id}"`
+        ).join("\n");
+
+        const defaultTeam = teams.find(t => t.key === "DEV")?.key.toLowerCase()
+          || teams[0]?.key.toLowerCase() || "default";
+
+        const newConfig = `# HIAMP Configuration — Linear Transport
+# Auto-generated by: hq hiamp setup
+# Docs: knowledge/agent-protocol/configuration.md
+
+transport: linear
+
+identity:
+  owner: ${viewer.name.split(" ")[0].toLowerCase()}
+  display-name: "${viewer.name}"
+  linear-user-id: "${viewer.id}"
+  linear-email: "${viewer.email}"
+
+linear:
+  api-key: $LINEAR_API_KEY
+  org: "${org.urlKey}"
+  org-name: "${org.name}"
+  default-team: ${defaultTeam}
+  teams:
+${teamsYaml}
+  heartbeat:
+    interval-minutes: 5
+    initial-lookback-minutes: 60
+    watch-assigned: true
+    watch-teams: true
+
+peers: []
+
+settings:
+  kill-switch: false
+  enabled: true
+`;
+
+        fs.writeFileSync(configPath, newConfig);
+        console.log(`\nConfig written to: ${configPath}`);
+        console.log("Run 'hq hiamp status' to verify, 'hq hiamp check' to test.");
       } catch (error) {
         console.error("Error:", error instanceof Error ? error.message : error);
         process.exit(1);
