@@ -20,6 +20,14 @@ Minimize context burn on session start:
 - When unsure what to load: ask user, don't explore
 - Prefer `workspace/threads/handoff.json` (7 lines) over INDEX.md for session state
 
+## Session Handoffs
+
+When preparing a session handoff: always commit all pending changes first, write a handoff.json with current progress state (completed stories, remaining work, blockers), update INDEX files, and create a thread file. Never enter plan mode during handoff — execute steps directly.
+
+## Corrections & Accuracy
+
+When the user corrects factual content (pricing, session descriptions, product details), apply the correction exactly as stated. Do not re-interpret or paraphrase the user's correction. If unsure, quote back what you'll write and confirm before committing.
+
 ## INDEX.md System
 
 Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX before diving into subdirectories.
@@ -81,6 +89,10 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 Public: frontend-designer, qa-tester, security-scanner + dev-team (16) + content-team (5). Private: cfo-{company}, {company}-analyst, cmo-{company}, cmo-{company}, x-{your-handle}, invoices. Full list: `knowledge/public/hq-core/quick-reference.md` or `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
+
+## Sub-Agent Rules
+
+When spawning Task agents for story/task completion: each sub-agent MUST commit its own work before completing. The orchestrator should verify uncommitted changes after each sub-agent returns and commit them if the sub-agent failed to do so.
 
 ## Commands
 
@@ -145,7 +157,7 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 ## Learned Rules
 
-<!-- Max 10. Worker-scoped rules go in worker.yaml, not here. -->
+<!-- Max 25. Worker-scoped rules go in worker.yaml, not here. -->
 <!-- Auto-managed by /learn. Manual: /remember -->
 
 - **qmd collections**: hq, {product}, {company-1}, {company-2}, {company-3}, personal, {company-6}. Use `-c {co}` to scope
@@ -168,6 +180,12 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - **email subject ASCII only**: NEVER use special characters (em dash, curly quotes, Unicode punctuation) in email subject lines — they encode as garbled text. Plain ASCII only: hyphens not dashes, straight quotes. <!-- user-correction | 2026-02-19 -->
 - **{company-3-domain} DNS via Route 53**: {company-3-domain} DNS is in AWS Route 53 (NOT Vercel). To add a subdomain: (1) add CNAME in Route 53 pointing to `cname.vercel-dns.com`, (2) add domain in Vercel dashboard under `{company-3}-f0dc7e1b` project settings. Vercel login for {company-3} team: GitHub auth as `{your-username}` — team@company.com has NO Vercel account. <!-- user-correction | 2026-02-19 -->
 - **{Company-3} AWS creds**: AWS credentials for {Company-3} (Route 53, full infra) are in `companies/{company-3}/settings/.env` (AWS_ACCESS_KEY_ID/SECRET). Backup: 1Password `team-{company-3}ai.1password.com`. NEVER use these creds for non-{Company-3} work. NEVER delete any {Company-3} AWS/Vercel resources without explicit confirmation. Full infra docs: `companies/{company-3}/knowledge/infrastructure.md`. <!-- user-correction | 2026-02-19 -->
+- **vercel custom domain deploy safety**: NEVER deploy to a production custom domain (e.g. token.{company-3-domain}, {company-4}.com) without explicit user confirmation. "Deploy to a temporary Vercel site" means a fresh Vercel project with only a .vercel.app URL — no custom domain aliases. Existing Vercel projects with custom domains are live production sites. <!-- user-correction | 2026-02-19 -->
+- **Task() sub-agents lack MCP**: Sub-agents spawned via Task() don't inherit MCP server connections. Workers needing external tools (Codex, etc.) must use CLI via Bash, not MCP tools declared in worker.yaml. <!-- 2026-02-20 -->
+- **Shopify 2026 auth**: No more permanent Admin API tokens from store admin (Jan 2026). New apps use Dev Dashboard + client_credentials grant: `POST https://{store}.myshopify.com/admin/oauth/access_token` with `client_id` + `client_secret`. Returns ephemeral `shpat_` token (24h expiry). The `shpss_` Storefront token from Dev Dashboard IS the `client_secret`. Store both in env, regenerate admin token on demand. <!-- 2026-02-20 -->
+- **vercel preview SSO**: `vercel deploy --public` makes source public, NOT bypasses deployment protection (SSO). Vercel preview URLs always require login unless project-level protection is disabled. To test a preview without auth: run prod server locally (`npm run build && npm run start`). <!-- 2026-02-21 -->
+- **Vercel domain team move**: When purchasing a domain via Vercel/Name.com, it can land in the wrong team/org. Check ownership with `GET /v6/domains/{domain}?teamId={teamId}` across all teams. Move between teams with `PATCH /v6/domains/{domain}?teamId={source}` body `{"op": "move-out", "destination": "{target_team_id}"}`. Cannot delete Vercel-purchased domains — must move them. <!-- 2026-02-20 -->
+- **Vercel framework detection**: If Vercel project has `framework: null`, production builds deploy but serve 404 on all routes (even though build succeeds). Fix with `PATCH /v9/projects/{id}` setting `{"framework":"nextjs","installCommand":"pnpm install"}` then redeploy. Always verify framework is set after project creation. <!-- 2026-02-20 -->
 
 ## Learning System
 
@@ -181,6 +199,13 @@ Learnings are rules injected directly into the files they govern:
 - `/remember` delegates to `/learn` — user corrections always promote to Tier 1
 
 Event log: `workspace/learnings/*.json` (append-only, for analysis/dedup).
+
+## Git Workflow Rules
+
+- Always verify which branch you're on before committing.
+- Prefer merge over rebase when a branch is significantly behind (50+ commits).
+- If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
+- Never commit to local main when intending to work on a feature branch.
 
 ## Project Repos - Commit Rules
 
@@ -208,6 +233,12 @@ Repo: https://github.com/{github-org}/{product}
 - **Always commit and push** after completing work
 - Provide GitHub link to commit after pushing
 - Repo: https://github.com/{company-2}brand/{company-2}-cmohq
+
+## Vercel Deployments
+
+- Always verify the correct Vercel org/team before deploying (check with `vercel whoami` and `vercel teams ls`).
+- Confirm framework detection is correct before deploying.
+- If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
 
 ## Auto-Learn (Build Activities)
 

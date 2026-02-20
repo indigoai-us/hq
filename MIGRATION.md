@@ -4,6 +4,41 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.2.0 (from v6.1.0)
+
+### Updated Files
+Merge changes to:
+- `.claude/CLAUDE.md` — 5 new behavioral sections + 6 new learned rules
+
+### New CLAUDE.md Sections
+Add these sections to your `.claude/CLAUDE.md`:
+
+1. **Session Handoffs** (after Context Diet) — Handoff workflow rules
+2. **Corrections & Accuracy** (after Session Handoffs) — User correction handling
+3. **Sub-Agent Rules** (after Workers) — Multi-agent commit coordination
+4. **Git Workflow Rules** (before Project Repos - Commit Rules) — Git hygiene
+5. **Vercel Deployments** (after Project Repos - Commit Rules) — Deploy safety
+
+### New Learned Rules
+Add to your `## Learned Rules` section:
+- `vercel custom domain deploy safety` — Never deploy to production custom domains without confirmation
+- `Task() sub-agents lack MCP` — Sub-agents can't use MCP tools, use CLI instead
+- `Shopify 2026 auth` — Ephemeral tokens via client_credentials grant
+- `vercel preview SSO` — `--public` doesn't bypass SSO; use local testing
+- `Vercel domain team move` — API for moving domains between Vercel teams
+- `Vercel framework detection` — `framework: null` causes 404s on all routes
+
+### Migration Steps
+1. Merge 5 new sections from starter-kit `.claude/CLAUDE.md` into yours
+2. Add 6 new learned rules to your `## Learned Rules` section
+3. Update `<!-- Max -->` comment to 25
+4. Run `/search-reindex`
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v6.1.0 (from v6.0.0)
 
 ### Prerequisites
