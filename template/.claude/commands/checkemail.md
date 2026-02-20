@@ -9,7 +9,7 @@ visibility: public
 
 Two-phase inbox sweep: (1) fetch + classify, (2) launch triage UI for archive review + email-by-email triage, (3) execute actions from responses.
 
-**Accounts:** {product} (team@example.com), {company-3} (team@company.com), personal (me@{your-username}.com), {company-2} (team@company2.com)
+**Accounts:** vyg (corey@vyg.ai), indigo (corey@getindigo.ai), personal (me@{your-username}.com), abacus (corey.epstein@goabacus.co)
 
 **User's input:** $ARGUMENTS
 
@@ -63,7 +63,7 @@ interface EmailTriageQueue {
 
 interface ArchiveProposal {
   id: string;              // unique (e.g. "arch-{index}")
-  account: string;         // "{product}" | "personal" | "{company-3}" | "{company-2}"
+  account: string;         // "vyg" | "personal" | "indigo" | "abacus"
   messageId: string;       // Gmail message ID
   threadId: string;
   from: string;

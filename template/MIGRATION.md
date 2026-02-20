@@ -4,6 +4,29 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.1.0 (from v6.0.0)
+
+### Prerequisites
+- Codex CLI installed: `npm install -g @openai/codex` (or `brew install codex`)
+- Codex authenticated: `codex login`
+- If Codex CLI is not available, the pipeline degrades gracefully (warns and skips Codex phases)
+
+### Updated Commands
+Replace in `.claude/commands/`:
+- `execute-task.md` — New inline Codex review step + pre-flight check
+
+### Updated Workers
+Replace these directories in `workers/dev-team/`:
+- `codex-reviewer/` — Skills rewritten from MCP to CLI
+- `codex-coder/` — Skills rewritten from MCP to CLI
+- `codex-debugger/` — Skills rewritten from MCP to CLI
+- `codex-engine/package.json` — Updated description only
+
+### Breaking Changes
+- **MCP server no longer used by pipeline** — If you had custom integrations calling the codex-engine MCP server from within worker phases, those will need to switch to `codex review` / `codex exec` CLI calls. The MCP server still works for standalone use via `/run`.
+
+---
+
 ## Migrating to v6.0.0 (from v5.5.x)
 
 ### New Commands

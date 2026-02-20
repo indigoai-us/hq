@@ -90,7 +90,7 @@ Dead Sessions Found (last {DAYS} days):
 
   # | Died       | Slug                     | Project | Size
   1 | 2026-02-12 | linked-watching-lovelace | HQ      | 3.4MB
-  2 | 2026-02-11 | merry-nibbling-coral     | {company-2}  | 858KB
+  2 | 2026-02-11 | merry-nibbling-coral     | abacus  | 858KB
 ```
 
 Use `AskUserQuestion` to let user pick which to recover (number, or "all").
@@ -222,15 +222,15 @@ Read the output JSON. If `{"skip": true}`, skip this session (subagent).
 
 Decode `project_dir_encoded` and inspect `cwd` + `files_edited`/`files_written`:
 
-- `cwd` contains `repos/private/{product}` → {company-1}
-- `cwd` contains `repos/private/{company-2}-` → {company-2}
-- `cwd` contains `repos/private/{company-3}-` → {company-3}
+- `cwd` contains `repos/private/vyg` → liverecover
+- `cwd` contains `repos/private/abacus-` → abacus
+- `cwd` contains `repos/private/indigo-` → indigo
 - `files_touched` include `companies/{co}/` → that company
 - Fallback: "personal"
 
 Decode project dir for display:
 - `-Users-{your-username}-Documents-HQ` → "HQ"
-- `-Users-{your-username}-Documents-HQ-repos-private-{product}` → "{Product}"
+- `-Users-{your-username}-Documents-HQ-repos-private-vyg` → "VYG"
 - etc. (replace leading path + `-` with readable name)
 
 ### 5. Generate Thread JSON

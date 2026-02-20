@@ -75,6 +75,22 @@ If task not found or already `passes: true`:
 Task {taskId} not found or already complete.
 ```
 
+### 2.5 Check Codex CLI Availability
+
+If task type will be code-related (check after classification, but pre-flight here):
+
+```bash
+which codex >/dev/null 2>&1
+```
+
+- If available: set `codex_available = true`
+- If unavailable: set `codex_available = false`, warn:
+  ```
+  Warning: Codex CLI not found. codex-reviewer will run as Claude-only review (no Codex model).
+  ```
+
+This enables graceful degradation — pipeline continues without Codex but logs a warning.
+
 ### 3. Classify Task Type
 
 Analyze task title, description, and acceptance criteria. Match against patterns:
@@ -294,7 +310,7 @@ Use /decide for: batch classification, review queues, multi-item triage (5+ item
 ### Back Pressure (Run Before Completing)
 {worker.verification.post_execute commands}
 
-If repo is `repos/private/{company-2}-site`, also run:
+If repo is `repos/private/abacus-site`, also run:
 ```bash
 npm run check-coverage                                                    # all routes covered
 npm run generate-manifest && git diff --quiet tests/e2e/manifest.json     # manifest fresh
@@ -330,6 +346,37 @@ Task({
 })
 ```
 
+#### 6c.5 Inline Codex Review (when worker == codex-reviewer)
+
+**Instead of spawning a sub-agent** for codex-reviewer, run the Codex review directly via CLI. This is deterministic — cannot be skipped by sub-agent discretion.
+
+**If `codex_available == true`:**
+
+1. Collect `files_modified` + `context_for_next` from previous worker's handoff (code-reviewer)
+2. Run Codex CLI review:
+   ```bash
+   cd {target_repo} && codex review --uncommitted \
+     "Review changed files for: security, correctness, performance, style. Focus: {context_for_next from code-reviewer}" 2>&1
+   ```
+3. Capture full output (markdown-formatted review)
+4. If output contains "critical" or "high" severity findings:
+   - Present findings to user via AskUserQuestion
+   - Options: "Address findings before continuing" / "Continue to QA (findings noted)" / "Skip"
+5. Build handoff context from Codex output (add review findings to `context_for_next`)
+6. Log to model-usage.jsonl: `{"worker":"codex-reviewer","model":"codex-cli"}`
+7. Continue to next phase (dev-qa-tester)
+
+**If `codex_available == false`:**
+- Log warning: `"codex-reviewer skipped: CLI not available"`
+- Continue to next phase without Codex review
+- Still log to model-usage.jsonl: `{"worker":"codex-reviewer","model":"skipped"}`
+
+**Skip this step entirely** for non-codex-reviewer workers — they spawn normally via 6c.
+
+When iterating through the worker sequence in step 6, check if current worker is `codex-reviewer`:
+- If yes → execute 6c.5 inline, then jump to 6e (skip 6c and 6d for this phase)
+- If no → proceed with normal 6c → 6d flow
+
 #### 6d. Process Worker Output
 
 Parse worker's JSON output.
@@ -337,7 +384,12 @@ Parse worker's JSON output.
 If back pressure failed:
 1. **Auto-recover via codex-debugger** (max 1 attempt per phase):
    - Check `codex_debug_attempts` — skip if this phase already had a codex-debugger intervention
-   - Spawn codex-debugger sub-agent with:
+   - **If `codex_available == true`:** Run Codex debugger inline via CLI:
+     ```bash
+     cd {target_repo_path} && codex exec --full-auto --cd {target_repo_path} \
+       "Diagnose and fix back-pressure failure. Check: {failed_check_name}. Error: {stdout_stderr_from_failed_check}. Then re-run: {verification.post_execute commands}" 2>&1
+     ```
+   - **If `codex_available == false`:** Spawn Claude-based debugger sub-agent:
      ```
      Task({
        subagent_type: "general-purpose",
@@ -603,7 +655,7 @@ Context passed between workers:
 - **Capture learnings** - Every task generates learning entry
 - **Handoffs preserve context** - Next worker knows what happened
 - **Fail fast, fail loud** - Stop on errors, don't hide them
-- **{Company-2} E2E enforcement** - When repo is {company-2}-site, back pressure includes manifest freshness + coverage check. Workers must update/add E2E tests for modified pages.
+- **Abacus E2E enforcement** - When repo is abacus-site, back pressure includes manifest freshness + coverage check. Workers must update/add E2E tests for modified pages.
 - **prd.json is required** - never read or fall back to README.md
 - **Validate prd.json on load** - fail loudly on missing/malformed fields
 - **Orchestrator-compatible output** - always end with structured JSON block (step 7d) so `/run-project` can parse results without absorbing full context

@@ -1,5 +1,21 @@
 # Changelog
 
+## v6.1.0 (2026-02-20)
+
+Codex CLI integration — fixes codex workers not actually calling OpenAI Codex in the pipeline.
+
+### Changed
+
+- **`/execute-task`** — Added inline Codex review step (6c.5) that runs `codex review --uncommitted` directly via Bash instead of spawning a sub-agent. Deterministic — cannot be skipped. Added pre-flight `which codex` check (step 2.5) with graceful degradation. Codex debugger auto-recovery now uses CLI when available.
+- **codex-reviewer** — All 3 skills (review-code, improve-code, apply-best-practices) rewritten from MCP tool calls to Codex CLI (`codex review`, `codex exec --full-auto`). Worker YAML updated: MCP section replaced with CLI config.
+- **codex-coder** — All 3 skills (generate-code, implement-feature, scaffold-component) rewritten from MCP to `codex exec --full-auto` via Bash.
+- **codex-debugger** — All 3 skills (debug-issue, root-cause-analysis, fix-bug) rewritten from MCP to Codex CLI. Root-cause-analysis uses `codex exec --sandbox read-only` for analysis-only mode.
+- **codex-engine** — Description updated. MCP server kept for standalone use but no longer required for pipeline execution.
+
+### Fixed
+
+- **Codex workers actually call Codex now** — Previously, Task() sub-agents didn't inherit MCP server connections, so codex-reviewer/coder/debugger could never access their MCP tools. They either skipped the phase or ran as Claude-only reviews. CLI-based approach works because Bash is always available to sub-agents.
+
 ## v6.0.0 (2026-02-19)
 
 Major release: 5 worker teams (39 workers), gardener audit system, new commands.

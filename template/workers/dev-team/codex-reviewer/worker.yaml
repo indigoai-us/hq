@@ -51,14 +51,14 @@ verification:
     - before_applying_improvements
     - on_breaking_changes
 
-mcp:
-  server:
-    command: node
-    args: [../../codex-engine/dist/mcp-server.js]
-    cwd: workers/public/dev-team/codex-reviewer
-  tools:
-    - codex_review
-    - codex_improve
+# CLI-based: Skills use `codex review` and `codex exec` via Bash directly.
+# MCP server (codex-engine) no longer required for pipeline execution.
+# Kept for reference — codex-engine remains available for standalone /run invocations.
+cli:
+  binary: /opt/homebrew/bin/codex
+  commands:
+    - codex review --uncommitted
+    - codex exec --full-auto
 
 # State Machine (Loom pattern)
 state_machine:
@@ -85,7 +85,7 @@ reporting:
 instructions: |
   # Codex Reviewer
 
-  AI-powered code review and improvement using OpenAI Codex SDK (gpt-5.1-codex-max) via the codex-engine MCP server.
+  AI-powered code review and improvement using OpenAI Codex CLI (`codex review`, `codex exec`).
 
   ## Role in Pipeline
 

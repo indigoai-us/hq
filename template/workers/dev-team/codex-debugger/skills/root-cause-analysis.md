@@ -1,6 +1,6 @@
 # root-cause-analysis
 
-Analyze an issue using codex_debug in analysis-only mode. Returns a diagnosis without making any file changes.
+Analyze an issue using the Codex CLI in read-only mode. Returns a diagnosis without making any file changes.
 
 ## Arguments
 
@@ -27,19 +27,16 @@ Optional:
    - Read `tsconfig.json` for TypeScript configuration
    - Map dependency chain of affected modules
 
-3. **Call codex_debug (Analysis Only)**
-   - Invoke MCP tool with:
-     - `issue`: Issue description + gathered context
-     - `errorOutput`: Error output (if available)
-     - `cwd`: Resolved working directory
-     - `files`: Affected and related file paths
-     - `mode`: "analysis_only"
-   - Wait for Codex to complete analysis in sandbox
-   - **No file changes are made**
+3. **Run Codex in Read-Only Mode**
+   - Run Codex with read-only sandbox (no file modifications):
+     ```bash
+     cd {cwd} && codex exec --sandbox read-only --cd {cwd} \
+       "Root cause analysis only — do NOT modify any files. Issue: {issue_description}. Error output: {error_output}. Analyze: root cause, contributing factors, affected files with line numbers, execution path, and suggest fixes ranked by risk." 2>&1
+     ```
+   - **No file changes are made** — sandbox enforces read-only
 
 4. **Structure Diagnosis**
-   - Parse response: `rootCause`, `affectedFiles`, `callChain`, `suggestions`
-   - Organize findings:
+   - Parse Codex output into structured findings:
      - **Root Cause**: Primary cause of the issue
      - **Contributing Factors**: Secondary issues that amplify the problem
      - **Affected Files**: Files involved in the issue with specific lines
@@ -64,7 +61,6 @@ Response includes:
 - `suggestedFixes`: Ranked list of proposed solutions with risk levels
 - `riskAssessment`: Impact analysis per suggested fix
 - `recommendedSkill`: Which codex-debugger skill to use next (debug-issue or fix-bug)
-- `threadId`: Codex thread ID for follow-up
 
 ## Human Checkpoints
 

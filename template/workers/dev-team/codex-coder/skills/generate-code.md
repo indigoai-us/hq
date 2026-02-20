@@ -1,6 +1,6 @@
 # generate-code
 
-Generate code from a task description using the codex_generate MCP tool.
+Generate code from a task description using the Codex CLI (`codex exec --full-auto`).
 
 ## Arguments
 
@@ -23,16 +23,18 @@ Optional:
    - Read `tsconfig.json` for TypeScript configuration
    - Identify existing patterns (naming conventions, file structure)
 
-3. **Call codex_generate**
-   - Invoke MCP tool with:
-     - `task`: Full task prompt with repo context
-     - `cwd`: Resolved working directory
-     - `contextFiles`: Array of context file paths
-     - `outputSchema`: Structured output schema (if provided)
-   - Wait for Codex to complete generation in sandbox
+3. **Run Codex Exec for Generation**
+   - Build prompt with task description and context:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Generate code for: {task_description}. Follow existing patterns in the repo. Context files: {context_summary}" 2>&1
+     ```
+   - If `--output-schema` provided, add `--output-schema {file}` flag
+   - Codex runs in sandbox with workspace-write access
+   - Captures output showing what was created/modified
 
 4. **Collect Results**
-   - Parse response: `filesCreated`, `filesModified`, `summary`, `suggestions`
+   - Run `git status` and `git diff` to identify generated/modified files
    - Read generated files from disk
    - Present to human for review
 
@@ -57,8 +59,7 @@ Response includes:
 - `summary`: What was generated
 - `filesCreated`: List of new files
 - `filesModified`: List of changed files
-- `threadId`: Codex thread ID for resume/iteration
-- `suggestions`: Follow-up improvements from Codex
+- `suggestions`: Follow-up improvements
 
 ## Human Checkpoints
 

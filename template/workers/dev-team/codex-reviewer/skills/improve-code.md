@@ -1,6 +1,6 @@
 # improve-code
 
-Apply targeted improvements to code files using the codex_improve MCP tool. Shows before/after diffs for human approval.
+Apply targeted improvements to code files using the Codex CLI (`codex exec --full-auto`). Shows before/after diffs for human approval.
 
 ## Arguments
 
@@ -31,21 +31,19 @@ Optional:
      - "test coverage" - Add missing test cases, edge cases
      - "security" - Input validation, sanitization, auth checks
 
-3. **Call codex_improve**
-   - Invoke MCP tool with:
-     - `cwd`: Resolved working directory
-     - `files`: Array of resolved file paths (relative to cwd)
-     - `goals`: Array of improvement goals
-   - Wait for Codex to complete improvements in sandbox
+3. **Run Codex Exec for Improvements**
+   - Build prompt with file list and goals:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Improve these files: {file_list}. Goals: {goals}. Make targeted changes only — do not refactor unrelated code. Show what you changed." 2>&1
+     ```
+   - Codex runs in sandbox with workspace-write access
+   - Captures output showing what was modified
 
 4. **Collect and Diff Results**
-   - Receive structured response: `improvements[]`, `summary`, `filesModified`, `threadId`
-   - For each improvement:
-     - `file`: Path to modified file
-     - `description`: What was changed and why
-     - `before`: Original code snippet
-     - `after`: Improved code snippet
-   - Generate unified diff for each modified file
+   - Run `git diff` to capture actual file changes
+   - For each modified file, generate before/after comparison
+   - Summarize changes per goal
 
 5. **Present Before/After**
    - Show each improvement with context:
@@ -69,13 +67,12 @@ Optional:
      + }
      ```
      ```
-   - Include Codex `summary` as closing paragraph
 
 6. **Run Back-Pressure** (after human approval)
    - `npm run typecheck` - TypeScript compilation
    - `npm run lint` - Linting rules
    - `npm test` - Test suite
-   - If any fail: revert changes, report errors, do NOT iterate automatically
+   - If any fail: revert changes (`git checkout -- {files}`), report errors, do NOT iterate automatically
    - If all pass: confirm improvements applied successfully
 
 ## Output
@@ -86,9 +83,8 @@ Improved files in target repo (after approval):
 
 Response includes:
 - `summary`: What was improved across all files
-- `improvements`: Array of `{ file, description, before, after }`
+- `improvements`: Description of changes per file/goal
 - `filesModified`: List of changed files
-- `threadId`: Codex thread ID for follow-up
 - `goalsAddressed`: Which goals were successfully applied
 
 ## Human Checkpoints

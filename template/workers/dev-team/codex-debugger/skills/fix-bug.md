@@ -1,6 +1,6 @@
 # fix-bug
 
-Full debugging workflow: diagnose via codex_debug, implement fix via codex_generate, and run the complete back-pressure loop.
+Full debugging workflow: diagnose via Codex CLI (read-only), implement fix via Codex CLI (full-auto), and run the complete back-pressure loop.
 
 ## Arguments
 
@@ -11,7 +11,7 @@ Optional:
 - `--error-output <text>` - Error output or reproduction steps
 - `--files <list>` - Comma-separated list of suspect files to focus on
 - `--max-iterations <n>` - Max back-pressure retry iterations (default: 2)
-- `--skip-diagnosis` - Skip codex_debug and go straight to fix (use when root cause is already known)
+- `--skip-diagnosis` - Skip diagnosis and go straight to fix (use when root cause is already known)
 
 ## Process
 
@@ -28,29 +28,27 @@ Optional:
    - Read `tsconfig.json` for TypeScript configuration
    - Identify test files covering the affected code
 
-3. **Diagnose via codex_debug** (skip if `--skip-diagnosis`)
-   - Invoke MCP tool with:
-     - `issue`: Issue description + gathered context
-     - `errorOutput`: Error output (if available)
-     - `cwd`: Resolved working directory
-     - `files`: Affected file paths
-     - `mode`: "analysis_only"
-   - Parse diagnosis: `rootCause`, `affectedFiles`, `suggestedFixes`
+3. **Diagnose via Codex** (skip if `--skip-diagnosis`)
+   - Run Codex in read-only sandbox for diagnosis:
+     ```bash
+     cd {cwd} && codex exec --sandbox read-only --cd {cwd} \
+       "Diagnose this bug (analysis only, no file changes): {issue_description}. Error: {error_output}. Identify root cause and suggest fix." 2>&1
+     ```
+   - Parse diagnosis: root cause, affected files, suggested fixes
    - Present diagnosis to human for approval before proceeding
 
-4. **Generate Fix via codex_generate**
-   - Using the diagnosis (or `--issue` if `--skip-diagnosis`), call `codex_generate` with:
-     - `task`: "Fix the following bug: {rootCause}. Apply the suggested fix: {selectedFix}"
-     - `contextFiles`: Affected source files + related types + existing tests
-     - `cwd`: Resolved working directory
-   - Wait for Codex to generate fix in sandbox
-   - Parse response: `filesCreated`, `filesModified`, `summary`
+4. **Generate Fix via Codex**
+   - Using the diagnosis (or `--issue` if `--skip-diagnosis`), run Codex:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Fix this bug: {root_cause}. Apply the fix: {selected_fix}. Also update or add tests to cover the fix." 2>&1
+     ```
+   - Codex generates fix and applies it in sandbox
 
-5. **Apply Fix**
-   - Review proposed changes against original files
-   - Apply file modifications to disk
-   - If new test cases were generated, include them
+5. **Review Changes**
+   - Run `git diff` to capture what Codex changed
    - Present changes to human for review
+   - If new test cases were generated, highlight them
 
 6. **Run Back-Pressure**
    - `npm run typecheck` - TypeScript compilation
@@ -60,11 +58,13 @@ Optional:
    - If any fail: proceed to step 7
 
 7. **Iterate on Failures** (max `--max-iterations` times)
-   - Parse error output from failed checks
-   - Feed errors back to `codex_generate` as context:
-     - `task`: "The previous fix introduced errors. Fix them while preserving the bug fix"
-     - `contextFiles`: Error output + affected files + original diagnosis
-   - Apply updated fix, re-run back-pressure
+   - Capture error output from failed checks
+   - Feed errors back to Codex:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "The previous fix introduced errors: {error_output}. Fix them while preserving the bug fix for: {root_cause}" 2>&1
+     ```
+   - Re-run back-pressure after each fix attempt
    - If max iterations reached: pause for human intervention
 
 8. **Validate Fix**
@@ -82,13 +82,12 @@ Modified files in target repo:
 - Updated types/interfaces if needed
 
 Response includes:
-- `diagnosis`: Root cause explanation (from codex_debug)
-- `fix`: Summary of changes applied (from codex_generate)
+- `diagnosis`: Root cause explanation (from Codex analysis)
+- `fix`: Summary of changes applied
 - `filesCreated`: New files (e.g., new tests)
 - `filesModified`: Changed files
 - `iterations`: Number of back-pressure iterations needed
 - `backPressure`: Pass/fail per check (typecheck, lint, test)
-- `threadId`: Codex thread ID for follow-up
 
 ## Human Checkpoints
 

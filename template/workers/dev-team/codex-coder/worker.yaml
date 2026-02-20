@@ -51,13 +51,12 @@ verification:
     - before_feature_implementation
     - on_breaking_changes
 
-mcp:
-  server:
-    command: node
-    args: [../../codex-engine/dist/mcp-server.js]
-    cwd: workers/public/dev-team/codex-coder
-  tools:
-    - codex_generate
+# CLI-based: Skills use `codex exec --full-auto` via Bash directly.
+# MCP server (codex-engine) no longer required for pipeline execution.
+cli:
+  binary: /opt/homebrew/bin/codex
+  commands:
+    - codex exec --full-auto
 
 # State Machine (Loom pattern)
 state_machine:
@@ -83,7 +82,7 @@ reporting:
 instructions: |
   # Codex Coder
 
-  AI-powered code generation using OpenAI Codex SDK (gpt-5.1-codex-max) via the codex-engine MCP server.
+  AI-powered code generation using OpenAI Codex CLI (`codex exec --full-auto`).
 
   ## When to Use
 
@@ -113,9 +112,9 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{product}
-  /run codex-coder implement-feature --story US-001 --repo repos/private/{product}
-  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{product}
+  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/vyg
+  /run codex-coder implement-feature --story US-001 --repo repos/private/vyg
+  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/vyg
   ```
 
   ## Patterns

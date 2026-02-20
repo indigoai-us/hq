@@ -152,9 +152,9 @@ find . -name "SKILL.md" -not -path "./repos/*"
 
 **Expected locations:**
 - `projects/INDEX.md`
-- `companies/{company-1}/knowledge/INDEX.md`
-- `companies/{company-2}/knowledge/INDEX.md`
-- `companies/{company-3}/knowledge/INDEX.md`
+- `companies/liverecover/knowledge/INDEX.md`
+- `companies/abacus/knowledge/INDEX.md`
+- `companies/indigo/knowledge/INDEX.md`
 - `knowledge/public/INDEX.md`
 - `workers/public/INDEX.md`
 - `workers/private/INDEX.md`

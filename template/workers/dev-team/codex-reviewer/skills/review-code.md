@@ -1,6 +1,6 @@
 # review-code
 
-Review code files for quality issues using the codex_review MCP tool. Outputs severity-grouped findings with actionable suggestions.
+Review code files for quality issues using the Codex CLI (`codex review`). Outputs severity-grouped findings with actionable suggestions.
 
 ## Arguments
 
@@ -28,16 +28,22 @@ Optional:
      - `correctness`: logic errors, edge cases, null handling, race conditions
      - `all`: balanced review across all categories
 
-3. **Call codex_review**
-   - Invoke MCP tool with:
-     - `cwd`: Resolved working directory
-     - `files`: Array of resolved file paths (relative to cwd)
-     - `focus`: Selected focus area
-   - Wait for Codex to complete review
+3. **Run Codex Review via CLI**
+   - Determine review scope based on context:
+     - If reviewing uncommitted changes: `codex review --uncommitted`
+     - If reviewing a specific commit: `codex review --commit <sha>`
+     - If reviewing against a branch: `codex review --base <branch>`
+     - Default (standalone invocation): `codex review --uncommitted`
+   - Add custom focus as prompt argument:
+     ```bash
+     cd {cwd} && codex review --uncommitted \
+       "Focus on {focus_area}. Review files: {file_list}. Flag issues by severity: critical, high, medium, low, info." 2>&1
+     ```
+   - Capture full output (markdown-formatted review)
 
 4. **Parse and Group Results**
-   - Receive structured response: `overallScore`, `issues[]`, `summary`, `threadId`
-   - Group issues by severity: `critical` > `high` > `medium` > `low` > `info`
+   - Parse Codex CLI output (markdown format with issue descriptions)
+   - Extract issues and group by severity: `critical` > `high` > `medium` > `low` > `info`
    - Within each severity, sort by file path then line number
    - Count totals per severity level
 
@@ -56,21 +62,18 @@ Optional:
      ### High (3)
      ...
      ```
-   - Include Codex `summary` as closing paragraph
-   - Include `threadId` for follow-up via improve-code
 
 6. **Present for Decision**
    - Show grouped findings
-   - Offer options: accept findings, run improve-code on flagged files, dismiss
+   - Offer options: accept findings, address critical/high issues, dismiss
 
 ## Output
 
 Review report with:
-- `overallScore`: Quality score 1-10
-- `issues`: Array of `{ file, line, severity, category, description, suggestedFix }`
-- `summary`: Codex narrative summary
-- `threadId`: Codex thread ID for follow-up
+- `issues`: Findings grouped by severity
+- `summary`: Narrative summary of review
 - `counts`: Issues per severity level
+- `reviewScope`: What was reviewed (uncommitted/commit/branch)
 
 ## Human Checkpoints
 
