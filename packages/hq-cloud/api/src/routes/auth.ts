@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
 import { createClerkClient } from '@clerk/backend';
 import { createCliToken } from '../auth/cli-token.js';
 import { config } from '../config.js';
+import { getUserSettings } from '../data/user-settings.js';
+import { listFiles } from '../data/file-proxy.js';
 
 /**
  * Web app origin for CLI login redirect.
@@ -168,6 +170,77 @@ export const authRoutes: FastifyPluginCallback = (
       valid: true,
       userId: request.user.userId,
       sessionId: request.user.sessionId,
+    });
+  });
+
+  /**
+   * Check whether the authenticated user has completed initial HQ file sync.
+   * GET /auth/setup-status
+   *
+   * Returns:
+   *   setupComplete: true only when s3Prefix is set AND at least 1 file exists in S3
+   *   s3Prefix: the user's S3 prefix (or null if not provisioned)
+   *   fileCount: number of files currently in S3 under the prefix
+   *
+   * Works with both Clerk JWT (web) and CLI token auth.
+   */
+  fastify.get('/setup-status', async (request, reply) => {
+    if (!request.user) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const { userId } = request.user;
+
+    // If MongoDB is not configured, return a sensible default
+    if (!config.mongodbUri) {
+      return reply.send({
+        setupComplete: false,
+        s3Prefix: null,
+        fileCount: 0,
+      });
+    }
+
+    // Look up user settings to get s3Prefix
+    const settings = await getUserSettings(userId);
+    const s3Prefix = settings?.s3Prefix ?? null;
+
+    // If no s3Prefix, setup is not complete
+    if (!s3Prefix) {
+      return reply.send({
+        setupComplete: false,
+        s3Prefix: null,
+        fileCount: 0,
+      });
+    }
+
+    // Count files in S3 under the user's prefix
+    let fileCount = 0;
+    try {
+      const result = await listFiles({ userId, maxKeys: 1 });
+      fileCount = result.files.length;
+
+      // If truncated, there are more files — at least 1 exists
+      if (result.truncated) {
+        fileCount = Math.max(fileCount, 1);
+      }
+    } catch (err) {
+      request.log.warn(
+        { userId, err: err instanceof Error ? err.message : String(err) },
+        'Failed to list S3 files for setup-status check'
+      );
+      // On S3 error, we know s3Prefix is set but can't verify files
+      // Return setupComplete=false to be safe
+      return reply.send({
+        setupComplete: false,
+        s3Prefix,
+        fileCount: 0,
+      });
+    }
+
+    return reply.send({
+      setupComplete: fileCount > 0,
+      s3Prefix,
+      fileCount,
     });
   });
 

@@ -96,6 +96,7 @@ vi.mock('../data/user-settings.js', () => ({
   getUserSettings: vi.fn().mockResolvedValue(null),
   hasClaudeToken: vi.fn().mockResolvedValue(true), // Default: user has token
   ensureUserSettingsIndexes: vi.fn(),
+  provisionS3Prefix: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock ECS orchestrator — no real AWS calls

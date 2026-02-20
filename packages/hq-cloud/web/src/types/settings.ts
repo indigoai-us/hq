@@ -44,3 +44,9 @@ export interface SyncProgressEvent {
   done?: boolean;
   error?: string;
 }
+
+export interface SetupStatusResponse {
+  setupComplete: boolean;
+  s3Prefix: string | null;
+  fileCount: number;
+}

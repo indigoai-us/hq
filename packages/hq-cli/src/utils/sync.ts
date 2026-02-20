@@ -302,28 +302,123 @@ export function writeSyncState(hqRoot: string, state: CloudSyncState): void {
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
 }
 
+// ── Skipped file detection ───────────────────────────────────────────────────
+
+/** Maximum file size (10 MB) before a file is considered "oversized" and skipped. */
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** File names that are always skipped as empty placeholders. */
+const SKIP_FILE_NAMES = new Set(['.gitkeep', '.keep']);
+
+/** A file that was skipped during sync (not counted as a failure). */
+export interface SkippedFile {
+  path: string;
+  reason: string;
+}
+
+/** A file that failed during sync. */
+export interface FailedFile {
+  path: string;
+  error: string;
+}
+
+/** Detailed result from pushChanges. */
+export interface PushResult {
+  /** Total files the diff identified for upload */
+  total: number;
+  /** Number of files successfully uploaded */
+  uploaded: number;
+  /** Files that were skipped (empty placeholders, oversized) */
+  skipped: SkippedFile[];
+  /** Files that genuinely failed to upload */
+  failed: FailedFile[];
+  /** Legacy: flat error strings (for backward compat) */
+  errors: string[];
+}
+
+/** Callback invoked after each file is processed during push. */
+export type PushProgressCallback = (current: number, total: number, filePath: string) => void;
+
+/**
+ * Check whether a file should be skipped (not a failure, just a benign skip).
+ * Returns the skip reason, or null if the file should be uploaded.
+ */
+function getSkipReason(filePath: string, hqRoot: string): string | null {
+  const fileName = filePath.split(/[/\\]/).pop() ?? '';
+
+  // Empty placeholder files (.gitkeep, .keep)
+  if (SKIP_FILE_NAMES.has(fileName)) {
+    const absPath = path.join(hqRoot, filePath);
+    try {
+      const stat = fs.statSync(absPath);
+      if (stat.size === 0) {
+        return 'empty placeholder file';
+      }
+    } catch {
+      // If we can't stat, let the upload attempt and fail normally
+    }
+  }
+
+  // Oversized files
+  try {
+    const absPath = path.join(hqRoot, filePath);
+    const stat = fs.statSync(absPath);
+    if (stat.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (stat.size / (1024 * 1024)).toFixed(1);
+      return `oversized (${sizeMB} MB, limit ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB)`;
+    }
+  } catch {
+    // If stat fails, let upload attempt and fail normally
+  }
+
+  return null;
+}
+
 // ── Full push / pull operations ──────────────────────────────────────────────
 
 /**
  * Push all changed local files to the cloud.
  * Uses the sync diff endpoint to determine what needs uploading, then uploads each file.
- * Returns the number of files uploaded.
+ * Returns detailed results including skipped files, failed files, and progress.
+ *
+ * @param hqRoot - Absolute path to HQ root
+ * @param onProgress - Optional callback invoked after each file is processed
  */
-export async function pushChanges(hqRoot: string): Promise<{ uploaded: number; errors: string[] }> {
+export async function pushChanges(
+  hqRoot: string,
+  onProgress?: PushProgressCallback,
+): Promise<PushResult> {
   const diff = await syncDiff(hqRoot);
+  const skipped: SkippedFile[] = [];
+  const failed: FailedFile[] = [];
   const errors: string[] = [];
   let uploaded = 0;
+  const total = diff.needsUpload.length;
 
-  for (const filePath of diff.needsUpload) {
+  for (let i = 0; i < total; i++) {
+    const filePath = diff.needsUpload[i];
+
+    // Check if file should be skipped
+    const skipReason = getSkipReason(filePath, hqRoot);
+    if (skipReason) {
+      skipped.push({ path: filePath, reason: skipReason });
+      if (onProgress) onProgress(i + 1, total, filePath);
+      continue;
+    }
+
     try {
       await uploadFile(filePath, hqRoot);
       uploaded++;
     } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      failed.push({ path: filePath, error: errorMsg });
+      errors.push(errorMsg);
     }
+
+    if (onProgress) onProgress(i + 1, total, filePath);
   }
 
-  return { uploaded, errors };
+  return { total, uploaded, skipped, failed, errors };
 }
 
 /**

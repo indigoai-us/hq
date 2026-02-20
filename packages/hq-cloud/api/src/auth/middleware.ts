@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { verifyClerkToken } from './clerk.js';
 import { isCliToken, verifyCliToken } from './cli-token.js';
 import { config } from '../config.js';
+import { provisionS3Prefix } from '../data/user-settings.js';
 import type { AuthUser } from './types.js';
 
 /** Header name for Authorization Bearer token */
@@ -99,6 +100,18 @@ export function registerAuthMiddleware(
       return reply.status(401).send({
         error: 'Unauthorized',
         message: 'Invalid or expired token',
+      });
+    }
+
+    // Provision S3 prefix for the authenticated user (fire-and-forget).
+    // Creates settings doc for new users or backfills null s3Prefix.
+    // Idempotent — safe to call on every request.
+    if (request.user && config.mongodbUri) {
+      provisionS3Prefix(request.user.userId).catch((err) => {
+        fastify.log.warn(
+          { err: err instanceof Error ? err.message : String(err), userId: request.user?.userId },
+          'S3 prefix provisioning failed (non-blocking)'
+        );
       });
     }
   });

@@ -192,6 +192,63 @@ export async function getDecryptedClaudeToken(clerkUserId: string): Promise<stri
 }
 
 /**
+ * Provision (or backfill) the S3 prefix for a user.
+ *
+ * Called on every authentication. Behaviour:
+ *   - No settings doc yet → create one with s3Prefix = '{clerkUserId}/hq/'
+ *   - Existing doc with s3Prefix === null → set s3Prefix to '{clerkUserId}/hq/'
+ *   - Existing doc with s3Prefix already set → no-op (idempotent)
+ *
+ * The clerkUserId already starts with 'user_' — we do NOT double-prefix.
+ */
+export async function provisionS3Prefix(clerkUserId: string): Promise<void> {
+  const col = getCollection();
+  const prefix = `${clerkUserId}/hq/`;
+  const now = new Date();
+
+  // Step 1: Try to update an existing doc that has null / missing s3Prefix.
+  const updateResult = await col.updateOne(
+    { clerkUserId, $or: [{ s3Prefix: null }, { s3Prefix: { $exists: false } }] },
+    {
+      $set: { s3Prefix: prefix, updatedAt: now },
+    }
+  );
+
+  if (updateResult.matchedCount > 0) {
+    // Existing user with null s3Prefix → now backfilled.
+    return;
+  }
+
+  // Step 2: Check if doc already exists (with a non-null s3Prefix).
+  const existing = await col.findOne({ clerkUserId });
+  if (existing) {
+    // s3Prefix is already set → idempotent no-op.
+    return;
+  }
+
+  // Step 3: No doc at all → create one with s3Prefix set.
+  try {
+    await col.insertOne({
+      clerkUserId,
+      hqDir: null,
+      s3Prefix: prefix,
+      notifications: { ...DEFAULT_NOTIFICATIONS },
+      claudeTokenEncrypted: null,
+      claudeTokenSetAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (err: unknown) {
+    // Race condition: another request may have created the doc between
+    // our findOne and insertOne. Duplicate key error (code 11000) is fine.
+    if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 11000) {
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * Ensure indexes exist on the collection.
  * Called once at startup.
  */

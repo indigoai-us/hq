@@ -29,13 +29,7 @@ vi.mock('../data/user-settings.js', () => ({
   removeClaudeToken: vi.fn(),
   getDecryptedClaudeToken: vi.fn().mockResolvedValue(null),
   ensureUserSettingsIndexes: vi.fn().mockResolvedValue(undefined),
-}));
-
-// Mock initial-sync (required by settings routes)
-vi.mock('../data/initial-sync.js', () => ({
-  provisionS3Space: vi.fn().mockResolvedValue({ s3Prefix: 'test/hq', totalFiles: 0 }),
-  uploadWithProgress: vi.fn().mockResolvedValue({ s3Prefix: 'test/hq', filesUploaded: 0, errors: 0 }),
-  provisionAndSync: vi.fn().mockResolvedValue({ s3Prefix: 'test/hq', filesUploaded: 0, errors: 0 }),
+  provisionS3Prefix: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock sessions and session-messages (required by buildApp)
@@ -210,17 +204,53 @@ describe('File Proxy Routes', () => {
       expect(data.message).toContain('content');
     });
 
-    it('should reject empty content', async () => {
+    it('should upload empty file (0 bytes) successfully', async () => {
+      mockUploadFile.mockResolvedValue({
+        key: 'user_test-user-id/hq/.gitkeep',
+        size: 0,
+      });
+
       const response = await fetch(`${baseUrl}/api/files/upload`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer test-clerk-jwt',
         },
-        body: JSON.stringify({ path: 'test.md', content: '' }),
+        body: JSON.stringify({ path: '.gitkeep', content: '' }),
+      });
+
+      expect(response.status).toBe(201);
+      const data = (await response.json()) as UploadResponse;
+      expect(data.ok).toBe(true);
+      expect(data.path).toBe('.gitkeep');
+      expect(data.size).toBe(0);
+
+      expect(mockUploadFile).toHaveBeenCalledWith({
+        userId: 'test-user-id',
+        relativePath: '.gitkeep',
+        body: expect.any(Buffer),
+        contentType: undefined,
+      });
+
+      // Verify the buffer is actually zero-length
+      const callArgs = mockUploadFile.mock.calls[0][0] as { body: Buffer };
+      expect(callArgs.body.length).toBe(0);
+    });
+
+    it('should reject content field that is not a string (null/undefined)', async () => {
+      // content: undefined (field absent) should be rejected
+      const response = await fetch(`${baseUrl}/api/files/upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({ path: 'test.md' }),
       });
 
       expect(response.status).toBe(400);
+      const data = (await response.json()) as ErrorResponse;
+      expect(data.message).toContain('content');
     });
 
     it('should return 413 when quota is exceeded', async () => {
@@ -244,6 +274,68 @@ describe('File Proxy Routes', () => {
       expect(response.status).toBe(413);
       const data = (await response.json()) as ErrorResponse;
       expect(data.error).toBe('Quota Exceeded');
+    });
+
+    it('should upload a large file within the 10MB body limit', async () => {
+      // Create a ~5MB raw file (which is ~6.7MB base64)
+      const largeBuffer = Buffer.alloc(5 * 1024 * 1024, 'x');
+      const largeContent = largeBuffer.toString('base64');
+
+      mockUploadFile.mockResolvedValue({
+        key: 'user_test-user-id/hq/assets/large-image.jpeg',
+        size: largeBuffer.length,
+      });
+
+      const response = await fetch(`${baseUrl}/api/files/upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({
+          path: 'assets/large-image.jpeg',
+          content: largeContent,
+          contentType: 'image/jpeg',
+        }),
+      });
+
+      expect(response.status).toBe(201);
+      const data = (await response.json()) as UploadResponse;
+      expect(data.ok).toBe(true);
+      expect(data.size).toBe(largeBuffer.length);
+    });
+
+    it('should reject body exceeding 10MB limit with 413 or connection reset', async () => {
+      // Create a payload that exceeds the 10MB body limit
+      // 10MB base64 = ~7.5MB raw, so 8MB raw = ~10.67MB base64 — over the limit
+      const oversizedBuffer = Buffer.alloc(8 * 1024 * 1024, 'x');
+      const oversizedContent = oversizedBuffer.toString('base64');
+
+      try {
+        const response = await fetch(`${baseUrl}/api/files/upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-clerk-jwt',
+          },
+          body: JSON.stringify({
+            path: 'assets/huge-photo.jpeg',
+            content: oversizedContent,
+          }),
+        });
+
+        // If we get a response (not a connection reset), it should be 413
+        expect(response.status).toBe(413);
+        const data = (await response.json()) as ErrorResponse;
+        expect(data.error).toBe('Payload Too Large');
+        expect(data.message).toContain('10MB');
+      } catch (err) {
+        // Fastify may close the connection before reading the full body
+        // (ECONNRESET), which is the expected behavior for oversized payloads.
+        // This is acceptable — the server correctly rejects the payload.
+        const error = err as Error;
+        expect(error.message).toMatch(/fetch failed|ECONNRESET|socket hang up/);
+      }
     });
 
     it('should require authentication', async () => {

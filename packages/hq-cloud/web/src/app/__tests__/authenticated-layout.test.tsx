@@ -66,6 +66,24 @@ vi.mock("@/hooks/useOnboarding", () => ({
   }),
 }));
 
+let mockSetupStatus: {
+  isLoading: boolean;
+  setupComplete: boolean;
+  s3Prefix: string | null;
+  fileCount: number;
+  recheck: ReturnType<typeof vi.fn>;
+} = {
+  isLoading: false,
+  setupComplete: true,
+  s3Prefix: "user_123/hq/",
+  fileCount: 100,
+  recheck: vi.fn(),
+};
+
+vi.mock("@/hooks/useSetupStatus", () => ({
+  useSetupStatus: () => mockSetupStatus,
+}));
+
 import AuthenticatedLayout from "../(authenticated)/layout";
 
 describe("AuthenticatedLayout", () => {
@@ -73,6 +91,17 @@ describe("AuthenticatedLayout", () => {
     vi.clearAllMocks();
     authState = { isAuthenticated: true, isLoading: false, error: null };
     mockPathname = "/agents";
+    mockSetupStatus = {
+      isLoading: false,
+      setupComplete: true,
+      s3Prefix: "user_123/hq/",
+      fileCount: 100,
+      recheck: vi.fn(),
+    };
+    // Clear sessionStorage for setup banner tests
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.clear();
+    }
   });
 
   it("renders children when authenticated", () => {
@@ -124,5 +153,72 @@ describe("AuthenticatedLayout", () => {
     );
     // The mobile header contains "HQ Cloud" via BrandHeader
     expect(screen.getAllByText(/HQ/).length).toBeGreaterThan(0);
+  });
+
+  it("does not show setup banner when setup is complete", () => {
+    mockSetupStatus = {
+      isLoading: false,
+      setupComplete: true,
+      s3Prefix: "user_123/hq/",
+      fileCount: 100,
+      recheck: vi.fn(),
+    };
+    render(
+      <AuthenticatedLayout>
+        <div data-testid="child">Content</div>
+      </AuthenticatedLayout>
+    );
+    expect(screen.queryByTestId("setup-banner")).toBeNull();
+  });
+
+  it("shows setup banner when setup is not complete", () => {
+    mockSetupStatus = {
+      isLoading: false,
+      setupComplete: false,
+      s3Prefix: null,
+      fileCount: 0,
+      recheck: vi.fn(),
+    };
+    render(
+      <AuthenticatedLayout>
+        <div data-testid="child">Content</div>
+      </AuthenticatedLayout>
+    );
+    expect(screen.getByTestId("setup-banner")).toBeTruthy();
+    expect(screen.getByText("Sync your HQ files")).toBeTruthy();
+  });
+
+  it("does not show setup banner while setup status is loading", () => {
+    mockSetupStatus = {
+      isLoading: true,
+      setupComplete: false,
+      s3Prefix: null,
+      fileCount: 0,
+      recheck: vi.fn(),
+    };
+    render(
+      <AuthenticatedLayout>
+        <div data-testid="child">Content</div>
+      </AuthenticatedLayout>
+    );
+    expect(screen.queryByTestId("setup-banner")).toBeNull();
+  });
+
+  it("does not show setup banner on setup page", () => {
+    mockPathname = "/setup";
+    mockSetupStatus = {
+      isLoading: false,
+      setupComplete: false,
+      s3Prefix: null,
+      fileCount: 0,
+      recheck: vi.fn(),
+    };
+    render(
+      <AuthenticatedLayout>
+        <div data-testid="child">Content</div>
+      </AuthenticatedLayout>
+    );
+    // Setup page renders children directly (no sidebar/banner)
+    expect(screen.queryByTestId("setup-banner")).toBeNull();
   });
 });

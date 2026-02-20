@@ -114,6 +114,7 @@ vi.mock('../data/user-settings.js', () => ({
   getUserSettings: vi.fn().mockResolvedValue(null),
   hasClaudeToken: vi.fn().mockResolvedValue(true),
   ensureUserSettingsIndexes: vi.fn(),
+  provisionS3Prefix: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock config to provide mongodbUri (sessions guard requires it)

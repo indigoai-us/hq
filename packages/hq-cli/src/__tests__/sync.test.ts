@@ -58,10 +58,10 @@ function createFile(relativePath: string, content: string): string {
 // ── hashFile ─────────────────────────────────────────────────────────────────
 
 describe('hashFile', () => {
-  it('returns SHA-256 hex digest of file contents', () => {
+  it('returns MD5 hex digest of file contents', () => {
     const content = 'Hello, HQ Cloud!';
     const filePath = createFile('test.txt', content);
-    const expected = crypto.createHash('sha256').update(content).digest('hex');
+    const expected = crypto.createHash('md5').update(content).digest('hex');
     expect(hashFile(filePath)).toBe(expected);
   });
 
@@ -79,7 +79,7 @@ describe('hashFile', () => {
 
   it('handles empty files', () => {
     const filePath = createFile('empty.txt', '');
-    const expected = crypto.createHash('sha256').update('').digest('hex');
+    const expected = crypto.createHash('md5').update('').digest('hex');
     expect(hashFile(filePath)).toBe(expected);
   });
 
@@ -87,7 +87,7 @@ describe('hashFile', () => {
     const absPath = path.join(tmpDir, 'binary.bin');
     const buffer = Buffer.from([0x00, 0xff, 0x42, 0x13, 0x37]);
     fs.writeFileSync(absPath, buffer);
-    const expected = crypto.createHash('sha256').update(buffer).digest('hex');
+    const expected = crypto.createHash('md5').update(buffer).digest('hex');
     expect(hashFile(absPath)).toBe(expected);
   });
 });
@@ -95,9 +95,9 @@ describe('hashFile', () => {
 // ── hashBuffer ───────────────────────────────────────────────────────────────
 
 describe('hashBuffer', () => {
-  it('returns SHA-256 hex digest of a buffer', () => {
+  it('returns MD5 hex digest of a buffer', () => {
     const buf = Buffer.from('test data');
-    const expected = crypto.createHash('sha256').update(buf).digest('hex');
+    const expected = crypto.createHash('md5').update(buf).digest('hex');
     expect(hashBuffer(buf)).toBe(expected);
   });
 
@@ -243,7 +243,7 @@ describe('computeLocalManifest', () => {
     const entry = manifest[0];
     expect(entry.path).toBe('test.txt');
     expect(entry.hash).toBe(
-      crypto.createHash('sha256').update(content).digest('hex')
+      crypto.createHash('md5').update(content).digest('hex')
     );
     expect(entry.size).toBe(Buffer.byteLength(content));
     expect(entry.lastModified).toBeTruthy();
@@ -520,7 +520,10 @@ describe('pushChanges (mocked API)', () => {
 
     const result = await pushChanges(tmpDir);
     expect(result.uploaded).toBe(1);
+    expect(result.total).toBe(1);
     expect(result.errors).toEqual([]);
+    expect(result.skipped).toEqual([]);
+    expect(result.failed).toEqual([]);
   });
 
   it('collects errors without stopping when file is missing locally', async () => {
@@ -541,8 +544,11 @@ describe('pushChanges (mocked API)', () => {
     const result = await pushChanges(tmpDir);
     // ok.txt succeeded
     expect(result.uploaded).toBe(1);
+    expect(result.total).toBe(2);
     // missing.txt failed (fs.readFileSync throws)
     expect(result.errors.length).toBe(1);
+    expect(result.failed.length).toBe(1);
+    expect(result.failed[0].path).toBe('missing.txt');
   });
 
   it('collects errors when API rejects upload', async () => {
@@ -568,6 +574,57 @@ describe('pushChanges (mocked API)', () => {
     expect(result.uploaded).toBe(1);
     expect(result.errors.length).toBe(1);
     expect(result.errors[0]).toContain('Upload failed');
+    expect(result.failed.length).toBe(1);
+    expect(result.failed[0].path).toBe('rejected.txt');
+  });
+
+  it('invokes progress callback for each file', async () => {
+    createFile('a.txt', 'aaa');
+    createFile('b.txt', 'bbb');
+
+    // syncDiff returns two files
+    mockApiRequest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { needsUpload: ['a.txt', 'b.txt'], needsDownload: [] },
+    });
+    // Both uploads succeed
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const progressCalls: { current: number; total: number; path: string }[] = [];
+    const result = await pushChanges(tmpDir, (current, total, filePath) => {
+      progressCalls.push({ current, total, path: filePath });
+    });
+
+    expect(result.uploaded).toBe(2);
+    expect(progressCalls.length).toBe(2);
+    expect(progressCalls[0]).toEqual({ current: 1, total: 2, path: 'a.txt' });
+    expect(progressCalls[1]).toEqual({ current: 2, total: 2, path: 'b.txt' });
+  });
+
+  it('skips empty .gitkeep files and reports them as skipped', async () => {
+    // Create an empty .gitkeep file
+    const gitkeepPath = path.join(tmpDir, '.gitkeep');
+    fs.writeFileSync(gitkeepPath, '');
+    createFile('real.txt', 'content');
+
+    // syncDiff returns both files
+    mockApiRequest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { needsUpload: ['.gitkeep', 'real.txt'], needsDownload: [] },
+    });
+    // Only real.txt gets uploaded
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const result = await pushChanges(tmpDir);
+    expect(result.uploaded).toBe(1);
+    expect(result.skipped.length).toBe(1);
+    expect(result.skipped[0].path).toBe('.gitkeep');
+    expect(result.skipped[0].reason).toContain('empty placeholder');
+    expect(result.failed).toEqual([]);
+    expect(result.errors).toEqual([]);
   });
 });
 

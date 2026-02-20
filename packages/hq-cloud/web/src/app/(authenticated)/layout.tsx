@@ -1,12 +1,16 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useSetupStatus } from "@/hooks/useSetupStatus";
 import { UserButton } from "@clerk/nextjs";
 import { BrandHeader } from "@/components/BrandHeader";
+import { SetupBanner } from "@/components/SetupBanner";
+
+const SETUP_BANNER_DISMISSED_KEY = "hq-cloud-setup-banner-dismissed";
 
 const navItems = [
   { href: "/agents", label: "Sessions", emoji: "\u{1F4AC}" },
@@ -20,8 +24,24 @@ export default function AuthenticatedLayout({
 }) {
   const { isLoading } = useAuth();
   const { isChecking, isOnboarded } = useOnboarding();
+  const { setupComplete, isLoading: setupLoading } = useSetupStatus();
   const pathname = usePathname();
   const router = useRouter();
+
+  // Banner dismissal: sessionStorage so it reappears on next login
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(SETUP_BANNER_DISMISSED_KEY) === "true";
+  });
+
+  const handleDismissBanner = useCallback(() => {
+    setBannerDismissed(true);
+    sessionStorage.setItem(SETUP_BANNER_DISMISSED_KEY, "true");
+  }, []);
+
+  // Show the banner when setup is not complete, not dismissed, and not loading
+  const showSetupBanner =
+    !setupLoading && !setupComplete && !bannerDismissed && pathname !== "/setup";
 
   // Redirect to setup if not onboarded (skip if already on /setup)
   useEffect(() => {
@@ -107,6 +127,13 @@ export default function AuthenticatedLayout({
         <div className="lg:hidden">
           <BrandHeader />
         </div>
+
+        {/* Setup banner (shown when files not synced) */}
+        {showSetupBanner && (
+          <div className="pt-4">
+            <SetupBanner onDismiss={handleDismissBanner} />
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-auto pb-16 lg:pb-0">

@@ -4,6 +4,7 @@ import type {
   UserSettingsResponse,
   OnboardingStatusResponse,
   SetupResponse,
+  SetupStatusResponse,
   SyncProgressEvent,
   ClaudeTokenStatusResponse,
   ClaudeTokenStoreResponse,
@@ -24,6 +25,10 @@ export async function updateSettings(
 
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResponse> {
   return apiRequest<OnboardingStatusResponse>("/api/settings/onboarding-status");
+}
+
+export async function checkSetupStatus(): Promise<SetupStatusResponse> {
+  return apiRequest<SetupStatusResponse>("/api/auth/setup-status");
 }
 
 export async function submitSetup(hqDir: string): Promise<SetupResponse> {

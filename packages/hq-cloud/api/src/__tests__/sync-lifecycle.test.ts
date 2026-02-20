@@ -193,6 +193,7 @@ vi.mock('../data/user-settings.js', () => ({
   getUserSettings: vi.fn().mockResolvedValue(null),
   hasClaudeToken: vi.fn().mockResolvedValue(true),
   ensureUserSettingsIndexes: vi.fn(),
+  provisionS3Prefix: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../sessions/orchestrator.js', () => ({

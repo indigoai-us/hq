@@ -41,6 +41,11 @@ interface SyncBody {
   manifest: SyncManifestEntry[];
 }
 
+// ─── Constants ──────────────────────────────────────────────────────
+
+/** Max upload body size: 10 MB (base64 encoding adds ~33% overhead, so ~7.5 MB raw file) */
+const UPLOAD_BODY_LIMIT = 10 * 1024 * 1024;
+
 // ─── Route Plugin ───────────────────────────────────────────────────
 
 export const fileRoutes: FastifyPluginCallback = (
@@ -48,14 +53,33 @@ export const fileRoutes: FastifyPluginCallback = (
   _opts,
   done
 ): void => {
+  // Custom error handler for body-too-large errors on file routes
+  fastify.setErrorHandler((error, request, reply) => {
+    if (error.statusCode === 413 || error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+      const body = request.body as Partial<UploadBody> | undefined;
+      const fileName = body?.path || 'unknown';
+      const limitMB = (UPLOAD_BODY_LIMIT / (1024 * 1024)).toFixed(0);
+      return reply.status(413).send({
+        error: 'Payload Too Large',
+        message: `File "${fileName}" exceeds the ${limitMB}MB upload limit. Consider using smaller files or splitting large assets.`,
+      });
+    }
+    // Re-throw for other errors
+    return reply.status(error.statusCode || 500).send({
+      error: error.name || 'Internal Server Error',
+      message: error.message,
+    });
+  });
+
   /**
    * POST /api/files/upload
    *
    * Upload a file to the user's S3 prefix.
    * Accepts JSON with base64-encoded content.
    * Enforces per-user storage quota (default 500MB).
+   * Body limit: 10 MB (supports files up to ~7.5 MB after base64 decoding).
    */
-  fastify.post<{ Body: UploadBody }>('/files/upload', async (request, reply) => {
+  fastify.post<{ Body: UploadBody }>('/files/upload', { bodyLimit: UPLOAD_BODY_LIMIT }, async (request, reply) => {
     const userId = request.user?.userId;
     if (!userId) {
       return reply.status(401).send({ error: 'Unauthorized' });
@@ -70,7 +94,8 @@ export const fileRoutes: FastifyPluginCallback = (
       });
     }
 
-    if (!content || typeof content !== 'string') {
+    // content must be a string (base64-encoded); empty string is valid (zero-byte file)
+    if (content === undefined || content === null || typeof content !== 'string') {
       return reply.status(400).send({
         error: 'Bad Request',
         message: 'content is required and must be a base64-encoded string',
@@ -84,13 +109,6 @@ export const fileRoutes: FastifyPluginCallback = (
       return reply.status(400).send({
         error: 'Bad Request',
         message: 'content must be valid base64',
-      });
-    }
-
-    if (fileBuffer.length === 0) {
-      return reply.status(400).send({
-        error: 'Bad Request',
-        message: 'content must not be empty',
       });
     }
 

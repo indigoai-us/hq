@@ -14,7 +14,6 @@ import {
   removeClaudeToken,
 } from '../data/user-settings.js';
 import { config } from '../config.js';
-import { provisionS3Space, uploadWithProgress } from '../data/initial-sync.js';
 import type { UpdateUserSettingsInput } from '../data/user-settings.js';
 
 interface SetupBody {
@@ -144,7 +143,7 @@ export const settingsRoutes: FastifyPluginCallback = (
   // POST /api/settings/setup — initial onboarding: validate, provision S3, save settings (fast)
   fastify.post<{ Body: SetupBody }>('/settings/setup', async (request, reply) => {
     if (!mongoRequired(fastify)) {
-      return reply.send({ ok: true, onboarded: true, totalFiles: 0 });
+      return reply.send({ ok: true, onboarded: true });
     }
 
     const userId = request.user?.userId;
@@ -168,22 +167,9 @@ export const settingsRoutes: FastifyPluginCallback = (
       });
     }
 
-    // Provision S3 space and count files (fast — no upload yet)
-    let s3Prefix: string | undefined;
-    let totalFiles = 0;
-    try {
-      const result = await provisionS3Space({
-        userId,
-        hqDir,
-        bucketName: config.s3BucketName,
-        region: config.s3Region,
-        logger: fastify.log,
-      });
-      s3Prefix = result.s3Prefix;
-      totalFiles = result.totalFiles;
-    } catch (err) {
-      fastify.log.error({ err }, 'S3 provisioning failed — saving hqDir without s3Prefix');
-    }
+    // Derive S3 prefix from userId (same convention as provisionS3Prefix in user-settings.ts).
+    // The clerkUserId already starts with 'user_' — no double-prefix needed.
+    const s3Prefix = `${userId}/hq/`;
 
     // Check if already set up — update if so, create if not
     const existing = await getUserSettings(userId);
@@ -193,93 +179,26 @@ export const settingsRoutes: FastifyPluginCallback = (
       await createUserSettings(userId, { hqDir, s3Prefix });
     }
 
+    fastify.log.info({ userId, hqDir, s3Prefix }, 'Setup complete — S3 prefix assigned');
+
     return reply.status(201).send({
       ok: true,
       onboarded: true,
       hqDir,
-      s3Prefix: s3Prefix ?? null,
-      totalFiles,
+      s3Prefix,
     });
   });
 
-  // GET /api/settings/setup/sync — SSE stream: upload files with progress
-  fastify.get('/settings/setup/sync', async (request, reply) => {
-    // CORS headers for SSE (reply.raw bypasses Fastify's CORS plugin)
-    const origin = request.headers.origin || '*';
-    const sseHeaders = {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-    };
-
-    if (!mongoRequired(fastify)) {
-      reply.raw.writeHead(200, sseHeaders);
-      reply.raw.write(`data: ${JSON.stringify({ done: true, uploaded: 0, total: 0, errors: 0 })}\n\n`);
-      reply.raw.end();
-      return reply;
-    }
-
-    const userId = request.user?.userId;
-    if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
-    }
-
-    const settings = await getUserSettings(userId);
-    if (!settings?.hqDir || !settings?.s3Prefix) {
-      return reply.status(400).send({
-        error: 'Bad Request',
-        message: 'Run POST /api/settings/setup first',
-      });
-    }
-
-    // Set up SSE headers
-    reply.raw.writeHead(200, sseHeaders);
-
-    // Track the last file that completed for display
-    let lastCompletedFile = '';
-
-    try {
-      const result = await uploadWithProgress({
-        userId,
-        hqDir: settings.hqDir,
-        bucketName: config.s3BucketName,
-        region: config.s3Region,
-        logger: fastify.log,
-        onProgress: (progress) => {
-          // Find the most recently completed file
-          const justCompleted = progress.files.find(
-            (f) => (f.status === 'completed' || f.status === 'skipped') && f.relativePath !== lastCompletedFile
-          );
-          if (justCompleted) {
-            lastCompletedFile = justCompleted.relativePath;
-          }
-
-          const event = {
-            uploaded: progress.completedFiles + progress.skippedFiles,
-            total: progress.totalFiles,
-            failed: progress.failedFiles,
-            file: lastCompletedFile,
-          };
-
-          reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-        },
-      });
-
-      reply.raw.write(`data: ${JSON.stringify({
-        done: true,
-        uploaded: result.filesUploaded,
-        total: result.filesUploaded + result.errors,
-        errors: result.errors,
-      })}\n\n`);
-    } catch (err) {
-      fastify.log.error({ err }, 'Sync SSE upload failed');
-      reply.raw.write(`data: ${JSON.stringify({ error: 'Upload failed' })}\n\n`);
-    }
-
-    reply.raw.end();
-    return reply;
+  // GET /api/settings/setup/sync — DEPRECATED
+  // Server-side filesystem walk + upload has been removed (doesn't work in ECS Fargate).
+  // Clients should use the push model: scan local files and POST to /api/files/upload.
+  fastify.get('/settings/setup/sync', async (_request, reply) => {
+    return reply.status(410).send({
+      error: 'Gone',
+      message:
+        'Server-side sync has been removed. ' +
+        'Use the client-push model: scan local files and upload via POST /api/files/upload.',
+    });
   });
 
   // GET /api/settings/claude-token — check if user has a token stored

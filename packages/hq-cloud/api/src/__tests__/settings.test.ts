@@ -10,24 +10,6 @@ vi.mock('../auth/clerk.js', () => ({
   }),
 }));
 
-// Mock initial-sync — no real S3 in tests
-vi.mock('../data/initial-sync.js', () => ({
-  provisionS3Space: vi.fn().mockResolvedValue({
-    s3Prefix: 'test-user-id/hq',
-    totalFiles: 5,
-  }),
-  uploadWithProgress: vi.fn().mockResolvedValue({
-    s3Prefix: 'test-user-id/hq',
-    filesUploaded: 5,
-    errors: 0,
-  }),
-  provisionAndSync: vi.fn().mockResolvedValue({
-    s3Prefix: 'test-user-id/hq',
-    filesUploaded: 5,
-    errors: 0,
-  }),
-}));
-
 // Mock MongoDB — no real DB needed for these tests
 // When mongodbUri is empty (test default), routes return static fallbacks
 vi.mock('../db/mongo.js', () => ({
@@ -119,6 +101,7 @@ vi.mock('../data/user-settings.js', () => {
       return settings?.claudeTokenEncrypted ? 'decrypted-mock-token' : null;
     }),
     ensureUserSettingsIndexes: vi.fn().mockResolvedValue(undefined),
+    provisionS3Prefix: vi.fn().mockResolvedValue(undefined),
     __resetStore: () => store.clear(),
   };
 });
@@ -137,9 +120,8 @@ interface SettingsResponse {
 interface SetupResponse {
   ok: boolean;
   onboarded: boolean;
-  hqDir: string;
-  s3Prefix: string | null;
-  totalFiles: number;
+  hqDir?: string;
+  s3Prefix?: string | null;
 }
 
 interface OnboardingResponse {
@@ -217,7 +199,6 @@ describe('Settings Routes', () => {
       const data = (await response.json()) as SetupResponse;
       expect(data.ok).toBe(true);
       expect(data.onboarded).toBe(true);
-      expect(data.totalFiles).toBe(0);
     });
 
     it('should reject missing hqDir', async () => {

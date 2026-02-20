@@ -14,6 +14,7 @@ import { Command } from 'commander';
 import * as http from 'http';
 import * as crypto from 'crypto';
 import chalk from 'chalk';
+import * as readline from 'readline';
 import {
   readCredentials,
   writeCredentials,
@@ -21,6 +22,21 @@ import {
   isExpired,
 } from '../utils/credentials.js';
 import { getApiUrl, apiRequest } from '../utils/api-client.js';
+import { findHqRoot } from '../utils/manifest.js';
+import {
+  pushChanges,
+  computeLocalManifest,
+  type PushResult,
+  type FailedFile,
+  type SkippedFile,
+} from '../utils/sync.js';
+
+/** Response from GET /api/auth/setup-status */
+export interface SetupStatusResponse {
+  setupComplete: boolean;
+  s3Prefix: string | null;
+  fileCount: number;
+}
 
 /** Port range for the localhost callback server */
 const MIN_PORT = 19750;
@@ -180,6 +196,257 @@ function waitForCallback(port: number): Promise<{ token: string; userId: string;
 }
 
 /**
+ * Check setup status from the API after login.
+ * Returns the setup status, or null if the check failed (network error, etc.).
+ * This function never throws — errors are caught and logged as warnings.
+ */
+export async function checkSetupStatus(): Promise<SetupStatusResponse | null> {
+  try {
+    const resp = await apiRequest<SetupStatusResponse>('GET', '/api/auth/setup-status');
+    if (resp.ok && resp.data) {
+      return resp.data;
+    }
+    console.log(chalk.yellow('Warning: Could not check setup status — API returned ' + (resp.error ?? `HTTP ${resp.status}`)));
+    return null;
+  } catch {
+    console.log(chalk.yellow('Warning: Could not reach HQ Cloud to check setup status. Login succeeded.'));
+    return null;
+  }
+}
+
+/**
+ * Prompt the user with a yes/no question on stdin.
+ * Returns true for 'y'/'yes'/empty (default yes), false for 'n'/'no'.
+ *
+ * Exported for testing. In non-interactive environments (e.g., piped stdin),
+ * auto-resolves to the default answer (true = retry).
+ */
+export function promptRetry(question: string): Promise<boolean> {
+  // Non-interactive: auto-accept retry
+  if (!process.stdin.isTTY) {
+    return Promise.resolve(true);
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(`${question} `, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === '' || trimmed === 'y' || trimmed === 'yes') {
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  });
+}
+
+/**
+ * Write an in-place progress line to stdout (TTY only).
+ * Non-TTY environments get no output (progress is shown in summary).
+ */
+function writeProgressLine(current: number, total: number): void {
+  if (process.stdout.isTTY) {
+    process.stdout.write(`\rUploading files... (${current}/${total})`);
+  }
+}
+
+/**
+ * Clear the in-place progress line.
+ */
+function clearProgressLine(): void {
+  if (process.stdout.isTTY) {
+    process.stdout.write('\r' + ' '.repeat(60) + '\r');
+  }
+}
+
+/**
+ * Print the sync summary after push completes.
+ * Shows uploaded count, skipped count, and failure info.
+ */
+export function printSyncSummary(result: PushResult, verbose: boolean): void {
+  const { uploaded, skipped, failed, total } = result;
+
+  // Main summary line
+  if (uploaded === 0 && skipped.length === 0 && failed.length === 0) {
+    console.log(chalk.green('No files to upload — cloud is up to date.'));
+    return;
+  }
+
+  // Build summary: "Synced 1113 files. 19 skipped (see details with --verbose)."
+  let summary = chalk.green(`Synced ${uploaded} file${uploaded !== 1 ? 's' : ''}.`);
+  if (skipped.length > 0) {
+    summary += chalk.dim(` ${skipped.length} skipped (see details with --verbose).`);
+  }
+  console.log(summary);
+
+  // Verbose: show skipped files
+  if (verbose && skipped.length > 0) {
+    console.log(chalk.dim('  Skipped files:'));
+    for (const s of skipped) {
+      console.log(chalk.dim(`    - ${s.path}: ${s.reason}`));
+    }
+  }
+
+  // Failures
+  if (failed.length > 0) {
+    const successRate = total > 0 ? uploaded / (total - skipped.length) : 0;
+    if (successRate < 0.5) {
+      console.log(chalk.yellow(`  ${failed.length} file${failed.length !== 1 ? 's' : ''} failed to upload.`));
+    } else {
+      console.log(chalk.yellow(`  ${failed.length} file${failed.length !== 1 ? 's' : ''} had errors (partial sync).`));
+    }
+    if (verbose) {
+      console.log(chalk.dim('  Failed files:'));
+      for (const f of failed) {
+        console.log(chalk.red(`    - ${f.path}: ${f.error}`));
+      }
+    } else if (failed.length > 0) {
+      // Show first 3 errors even without verbose
+      for (const f of failed.slice(0, 3)) {
+        console.log(chalk.red(`    - ${f.path}: ${f.error}`));
+      }
+      if (failed.length > 3) {
+        console.log(chalk.dim(`    ... and ${failed.length - 3} more (use --verbose to see all)`));
+      }
+    }
+  }
+}
+
+/**
+ * Determine if a retry prompt should be shown, and what kind.
+ * Returns 'total-failure' | 'partial-failure' | 'none'.
+ */
+export function classifySyncResult(result: PushResult): 'total-failure' | 'partial-failure' | 'none' {
+  const { uploaded, skipped, failed, total } = result;
+  const attemptedFiles = total - skipped.length;
+
+  // No attempted files (all skipped or nothing to upload) — not a failure
+  if (attemptedFiles === 0) return 'none';
+
+  // Total failure: 0 files successfully uploaded out of attempted
+  if (uploaded === 0 && failed.length > 0) return 'total-failure';
+
+  // Partial failure: <50% of attempted files succeeded
+  const successRate = uploaded / attemptedFiles;
+  if (failed.length > 0 && successRate < 0.5) return 'partial-failure';
+
+  // Success (possibly with some failures, but >50% succeeded)
+  return 'none';
+}
+
+/**
+ * Perform the initial sync (push local HQ files to cloud).
+ * This is called automatically after login when setupComplete is false.
+ *
+ * Features:
+ * - Progress counter: "Uploading files... (342/1132)"
+ * - Summary: "Synced 1113 files. 19 skipped (see details with --verbose)."
+ * - Total failure retry: "Retry initial sync? (Y/n)"
+ * - Partial failure retry: "Some files failed. Retry failed files? (Y/n)"
+ * - Verbose mode: shows individual file errors
+ *
+ * @param verbose - If true, show individual file skip/error details
+ * @param _promptFn - Optional override for retry prompt (for testing)
+ */
+export async function performPostLoginSync(
+  verbose: boolean = false,
+  _promptFn?: (question: string) => Promise<boolean>,
+): Promise<void> {
+  const askRetry = _promptFn ?? promptRetry;
+
+  try {
+    const hqRoot = findHqRoot();
+    console.log(chalk.blue('Computing local manifest...'));
+    const manifest = computeLocalManifest(hqRoot);
+    console.log(chalk.dim(`  ${manifest.length} local files scanned`));
+
+    console.log(chalk.blue('Uploading files...'));
+    let result = await pushChanges(hqRoot, (current, total) => {
+      writeProgressLine(current, total);
+    });
+    clearProgressLine();
+
+    // Print summary
+    printSyncSummary(result, verbose);
+
+    // Classify result and handle retry
+    const classification = classifySyncResult(result);
+
+    if (classification === 'total-failure') {
+      console.log(chalk.red('All file uploads failed.'));
+      const retry = await askRetry('Retry initial sync? (Y/n)');
+      if (retry) {
+        console.log(chalk.blue('Retrying sync...'));
+        result = await pushChanges(hqRoot, (current, total) => {
+          writeProgressLine(current, total);
+        });
+        clearProgressLine();
+        printSyncSummary(result, verbose);
+      } else {
+        console.log(chalk.dim('Skipped. You can retry later with "hq sync push".'));
+      }
+    } else if (classification === 'partial-failure') {
+      const retry = await askRetry('Some files failed. Retry failed files? (Y/n)');
+      if (retry) {
+        console.log(chalk.blue('Retrying failed files...'));
+        // Re-push will re-diff and only upload what's still needed
+        result = await pushChanges(hqRoot, (current, total) => {
+          writeProgressLine(current, total);
+        });
+        clearProgressLine();
+        printSyncSummary(result, verbose);
+      } else {
+        console.log(chalk.dim('Skipped. You can retry later with "hq sync push".'));
+      }
+    }
+  } catch (err) {
+    console.log(chalk.yellow('Warning: Initial sync encountered an error — you can retry with "hq sync push".'));
+    console.log(chalk.dim(err instanceof Error ? err.message : String(err)));
+  }
+}
+
+/**
+ * Handle the post-login setup status check and optional auto-sync.
+ * Called after successful authentication.
+ * If skipSync is true, the setup status check and auto-sync are skipped entirely.
+ *
+ * @param skipSync - If true, skip setup check and sync entirely
+ * @param verbose - If true, show detailed file-level info during sync
+ * @param _promptFn - Optional override for retry prompt (for testing)
+ */
+export async function handlePostLoginSetup(
+  skipSync: boolean,
+  verbose: boolean = false,
+  _promptFn?: (question: string) => Promise<boolean>,
+): Promise<void> {
+  if (skipSync) {
+    return;
+  }
+
+  console.log();
+  console.log(chalk.dim('Checking HQ Cloud setup status...'));
+
+  const status = await checkSetupStatus();
+
+  if (!status) {
+    // Network error or API failure — checkSetupStatus already printed a warning
+    return;
+  }
+
+  if (status.setupComplete) {
+    console.log(chalk.green(`HQ Cloud is set up and synced (${status.fileCount} files).`));
+  } else {
+    console.log(chalk.yellow('Initial sync needed. Starting upload of your HQ files...'));
+    await performPostLoginSync(verbose, _promptFn);
+  }
+}
+
+/**
  * Register the "hq auth" command group with login, logout, and status subcommands.
  */
 export function registerAuthCommand(program: Command): void {
@@ -191,7 +458,9 @@ export function registerAuthCommand(program: Command): void {
   authCmd
     .command('login')
     .description('Log in to HQ Cloud via browser')
-    .action(async () => {
+    .option('--no-sync', 'Skip automatic setup status check and initial sync after login')
+    .option('--verbose', 'Show detailed file-level info during initial sync')
+    .action(async (opts: { sync: boolean; verbose?: boolean }) => {
       try {
         // Check if already logged in
         const existing = readCredentials();
@@ -239,6 +508,12 @@ export function registerAuthCommand(program: Command): void {
         console.log();
         console.log(chalk.green(`Logged in as ${label}`));
         console.log(chalk.dim(`Credentials saved.`));
+
+        // Post-login: check setup status and auto-sync if needed
+        // Commander uses --no-sync to set opts.sync = false
+        const skipSync = !opts.sync;
+        const verbose = opts.verbose ?? false;
+        await handlePostLoginSetup(skipSync, verbose);
       } catch (error) {
         console.error(chalk.red('Login failed:'), error instanceof Error ? error.message : error);
         process.exit(1);
