@@ -1,0 +1,26 @@
+{
+  "running": false,
+  "errors": [
+    "Upload failed for knowledge/design-styles/swipes/american-industrial/G7fVkn3WEAAM-ST.jpeg: Request body is too large",
+    "Upload failed for packages/hq-cloud/mobile/assets/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/data/journal/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/knowledge/design-styles/swipes/american-industrial/G7fVkn3WEAAM-ST.jpeg: Request body is too large",
+    "Upload failed for template/projects/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/settings/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/checkpoints/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/content-ideas/inbox.jsonl: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/drafts/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/orchestrator/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/reports/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for template/workspace/scratch/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/checkpoints/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/content-ideas/inbox.jsonl: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/drafts/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/metrics/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/orchestrator/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/reports/.gitkeep: content is required and must be a base64-encoded string",
+    "Upload failed for workspace/scratch/.gitkeep: content is required and must be a base64-encoded string"
+  ],
+  "lastSync": "2026-02-19T18:00:21.046Z",
+  "fileCount": 1133
+}

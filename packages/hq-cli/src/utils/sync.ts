@@ -73,14 +73,14 @@ export function shouldIgnore(relativePath: string): boolean {
  */
 export function hashFile(filePath: string): string {
   const content = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(content).digest('hex');
+  return crypto.createHash('md5').update(content).digest('hex');
 }
 
 /**
- * Compute the SHA-256 hash of a buffer.
+ * Compute the MD5 hash of a buffer.
  */
 export function hashBuffer(content: Buffer): string {
-  return crypto.createHash('sha256').update(content).digest('hex');
+  return crypto.createHash('md5').update(content).digest('hex');
 }
 
 // ── Manifest types ───────────────────────────────────────────────────────────
