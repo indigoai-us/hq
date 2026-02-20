@@ -100,7 +100,7 @@ Match existing style in target file. Common patterns:
 
 ### Worker-specific
 User: "The CFO worker kept trying to write to Stripe instead of just reading"
-Target: `workers/private/cfo-{company}/worker.yaml`
+Target: `workers/private/cfo-liverecover/worker.yaml`
 Rule: `- NEVER: Write or modify data in Stripe. All operations are read-only.`
 
 ### Command-specific

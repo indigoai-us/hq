@@ -17,7 +17,7 @@ Extract from $ARGUMENTS:
 - `query` — search text (everything except flags)
 - `--mode` — `search` (BM25), `vsearch` (semantic), `query` (hybrid). Default: `search`
 - `-n` — result count (default: 10)
-- `-c` — collection name (e.g. `hq`, `{product}`). Default: all collections
+- `-c` — collection name (e.g. `hq`, `vyg`). Default: all collections
 - `--full` — show full content of top result
 
 ## Company Auto-Detection
@@ -29,8 +29,8 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available company collections: `{company-1}`, `{company-2}`, `{company-3}`, `personal`
-Also: `hq` (all HQ), `{product}` ({Product} codebase)
+Available company collections: `liverecover`, `abacus`, `indigo`, `personal`
+Also: `hq` (all HQ), `vyg` (VYG codebase)
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -64,7 +64,7 @@ Results:
   1. [0.92] hq: knowledge/public/Ralph/02-core-concepts.md
      "Ralph methodology emphasizes small loops with human checkpoints..."
 
-  2. [0.84] {product}: libs/core/src/auth/middleware.ts
+  2. [0.84] vyg: libs/core/src/auth/middleware.ts
      "export function authMiddleware..."
 
   3. [0.71] hq: workers/public/dev-team/architect/skills/design-review.md
@@ -100,15 +100,15 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                                    # BM25 keyword search (default, all collections)
 /search "how do workers execute" --mode vsearch  # Semantic across all
-/search auth middleware -c {product}                    # Search {Product} codebase only
-/search "webhook handler" -c {product} --mode vsearch  # Semantic search in {Product}
-/search {company-2} brand --mode query                # Hybrid with re-ranking
+/search auth middleware -c vyg                    # Search VYG codebase only
+/search "webhook handler" -c vyg --mode vsearch  # Semantic search in VYG
+/search abacus brand --mode query                # Hybrid with re-ranking
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
-/search "brand guidelines" -c {company-2}             # Search {Company-2} knowledge only
-/search "recovery metrics" -c {company-1}        # Search {Company-1} knowledge only
-# If cwd is companies/{company-2}/:
-/search "case study"                             # Auto-detects → -c {company-2}
+/search "brand guidelines" -c abacus             # Search Abacus knowledge only
+/search "recovery metrics" -c liverecover        # Search LiveRecover knowledge only
+# If cwd is companies/abacus/:
+/search "case study"                             # Auto-detects → -c abacus
 ```
 
 ## Notes
@@ -116,7 +116,7 @@ Display: "qmd unavailable, falling back to grep"
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company-1}`, `{company-2}`, `{company-3}`, `personal`
+- Use `-c` to scope to a collection: `hq`, `vyg`, `liverecover`, `abacus`, `indigo`, `personal`
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0-1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content

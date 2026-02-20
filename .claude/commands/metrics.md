@@ -15,9 +15,9 @@ View worker execution metrics and statistics.
 
 ```bash
 /metrics                      # Summary of all workers
-/metrics cfo-{company}      # Metrics for specific worker
+/metrics cfo-liverecover      # Metrics for specific worker
 /metrics --days 7             # Last 7 days only
-/metrics cfo-{company} mrr  # Specific worker + skill
+/metrics cfo-liverecover mrr  # Specific worker + skill
 ```
 
 ## Metrics File
@@ -27,7 +27,7 @@ Location: `workspace/metrics/metrics.jsonl`
 Each line is a JSON object:
 
 ```json
-{"ts":"2026-01-23T14:30:52.000Z","worker":"cfo-{company}","skill":"mrr","duration_ms":5000,"status":"completed","files":1}
+{"ts":"2026-01-23T14:30:52.000Z","worker":"cfo-liverecover","skill":"mrr","duration_ms":5000,"status":"completed","files":1}
 ```
 
 ## Fields
@@ -66,17 +66,17 @@ Each line is a JSON object:
    Worker Metrics (last 30 days)
    ═══════════════════════════════════════════════════
 
-   cfo-{company}
+   cfo-liverecover
      Runs: 45 (98% success)
      Avg duration: 3.2s
      Top skills: mrr (20), pnl (12), cash-position (8)
 
-   x-{your-handle}
+   x-corey
      Runs: 23 (100% success)
      Avg duration: 8.5s
      Top skills: suggestposts (15), scheduleposts (8)
 
-   {company}-analyst
+   liverecover-analyst
      Runs: 12 (92% success)
      Avg duration: 15.3s
      Top skills: anomaly-check (10), forecast (2)
@@ -90,9 +90,9 @@ Each line is a JSON object:
 For specific worker:
 
 ```
-/metrics cfo-{company}
+/metrics cfo-liverecover
 
-cfo-{company} Metrics (last 30 days)
+cfo-liverecover Metrics (last 30 days)
 ═══════════════════════════════════════════════════
 
 Skills:

@@ -17,7 +17,7 @@ Full pipeline: gather info → create client in DB → draft kickoff email → g
 REPO=repos/private/ralph-method-bootcamp-site
 PORTAL_PAGE=$REPO/app/client/[slug]/page.tsx
 DECKS_DIR=$REPO/public/decks
-SITE=bootcamp.example.com
+SITE=bootcamp.{your-username}.com
 ```
 
 ## Step 1: Gather Student Info
@@ -28,19 +28,19 @@ Use AskUserQuestion to collect (batch into 1-2 questions):
 - **Full name** (first + last)
 - **Email address**
 - **Company** (or "Independent")
-- **Role/context** — 1 sentence describing who they are and what they do (e.g. "CX executive at {Company-2}", "VC building AI practice", "artist selling on Saatchi Art")
+- **Role/context** — 1 sentence describing who they are and what they do (e.g. "CX executive at Abacus", "VC building AI practice", "artist selling on Saatchi Art")
 - **Deck format**: 1 condensed deck (~25-30 slides) or 3 separate session decks
 - **Audience type**: technical / non-technical executive / creative / generalist
 
 **Derive automatically:**
-- `slug` = first-last lowercased, hyphenated (e.g. `{student-name}`)
+- `slug` = first-last lowercased, hyphenated (e.g. `nick-harazim`)
 - `password` = slug with hyphens removed (e.g. `nickharazim`)
 - `portalUrl` = `{SITE}/client/{slug}`
 
 ## Step 2: Create Client in Vercel Blob DB
 
 ```bash
-curl -s -X POST "https://bootcamp.example.com/api/clients" \
+curl -s -X POST "https://bootcamp.{your-username}.com/api/clients" \
   -H "Content-Type: application/json" \
   -d '{"name": "{fullName}", "email": "{email}", "company": "{company}"}'
 ```
@@ -92,7 +92,7 @@ Password: {password}
 
 If you have questions, just reply to this email.
 
-— {your-name}
+— Corey
 ```
 
 **{folderName}** varies by audience type:
@@ -234,7 +234,7 @@ Write `projects/{slug}-bootcamp/prd.json`:
       "passes": false,
       "labels": ["content", "deck"],
       "dependsOn": ["US-001"],
-      "notes": "Reference: public/decks/{student-name}/{student-name}-bootcamp.html for HTML pattern. Style from agi.example.com."
+      "notes": "Reference: public/decks/nick-harazim/nick-harazim-bootcamp.html for HTML pattern. Style from agi.{your-username}.com."
     },
     {
       "id": "US-003",
@@ -262,7 +262,7 @@ Write `projects/{slug}-bootcamp/prd.json`:
     "qualityGates": ["npm run build"],
     "repoPath": "repos/private/ralph-method-bootcamp-site",
     "relatedWorkers": [],
-    "knowledge": ["projects/{student-name}-bootcamp/", "projects/kristina-bootcamp/"],
+    "knowledge": ["projects/nick-harazim-bootcamp/", "projects/kristina-bootcamp/"],
     "intakeResponses": "PENDING — populate after student completes intake at {intakeUrl}",
     "clientId": "{clientId}",
     "languageRules": { ... }
@@ -342,8 +342,8 @@ Also write `projects/{slug}-bootcamp/readme.md`:
 
 **Goal:** Personalized AGI bootcamp for {fullName} ({company}) — {audienceType} audience.
 
-**Portal:** bootcamp.example.com/client/{slug}
-**Intake:** bootcamp.example.com/intake/{clientId}
+**Portal:** bootcamp.{your-username}.com/client/{slug}
+**Intake:** bootcamp.{your-username}.com/intake/{clientId}
 **Deck format:** {condensed|3-session}
 
 **Status:** Intake pending
@@ -435,7 +435,7 @@ Write HTML skeleton file(s) with the proven deck pattern:
 **For condensed deck:** 1 file `{slug}-bootcamp.html` with ~25 placeholder slides
 **For 3 sessions:** 4 files: `{slug}-kickoff.html`, `session-1-foundation.html`, `session-2-method.html`, `session-3-golive.html`
 
-Use the actual CSS/JS from an existing deck (e.g. `{student-name}-bootcamp.html`) as the template — copy the exact styles and navigation code. Only placeholder the slide content.
+Use the actual CSS/JS from an existing deck (e.g. `nick-harazim-bootcamp.html`) as the template — copy the exact styles and navigation code. Only placeholder the slide content.
 
 ## Step 7: Verify & Report
 
@@ -447,8 +447,8 @@ Print summary:
 ```
 Student onboarded: {fullName}
 
-Portal:  bootcamp.example.com/client/{slug} (pw: {password})
-Intake:  bootcamp.example.com/intake/{clientId}
+Portal:  bootcamp.{your-username}.com/client/{slug} (pw: {password})
+Intake:  bootcamp.{your-username}.com/intake/{clientId}
 Email:   Draft created — review and send in Gmail
 PRD:     projects/{slug}-bootcamp/prd.json ({N} stories)
 Deck(s): {DECKS_DIR}/{slug}/ (skeleton — content via /run-project)
@@ -456,7 +456,7 @@ Deck(s): {DECKS_DIR}/{slug}/ (skeleton — content via /run-project)
 Next steps:
 1. Review and send the email draft in Gmail
 2. Wait for {firstName} to complete intake survey
-3. Check intake: bootcamp.example.com/admin/clients/{clientId}
+3. Check intake: bootcamp.{your-username}.com/admin/clients/{clientId}
 4. Run: /run-project {slug}-bootcamp
 ```
 

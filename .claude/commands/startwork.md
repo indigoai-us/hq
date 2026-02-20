@@ -1,7 +1,7 @@
 ---
-description: Start a work session — pick company or project, gather context
+description: Start a work session — pick company, project, or repo, gather context
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
-argument-hint: [company-or-project]
+argument-hint: [company-or-project-or-repo]
 visibility: public
 ---
 
@@ -19,12 +19,14 @@ Beginning of every session. Replaces ad-hoc orientation. Much lighter than `/rea
 
 **Argument: `$ARGUMENTS`**
 
-Determine mode from arg:
+Determine mode from arg (first match wins):
 
 - **No arg / empty** → Resume mode
-- **Arg matches company slug** in `companies/manifest.yaml` ({company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}) → Company mode
+- **Arg matches company slug** in `companies/manifest.yaml` (liverecover, abacus, indigo, personal, golden-thread, haven-slay, holler-mgmt, ridgeline, brandstage, estate-manager) → Company mode
 - **Arg matches a directory** in `projects/` (not `_archive/`) → Project mode
-- **Ambiguous** (matches both or neither) → ask user to clarify
+- **Arg matches a directory** in `repos/private/` or `repos/public/` → Repo mode
+- **Partial match** → arg is a substring of any company slug, project dir, or repo name (exclude `knowledge-*` repos). 1 match → use that mode. 2-5 matches → present list via AskUserQuestion, ask user to pick. >5 → ask user to be more specific
+- **No match** → ask user to clarify
 
 ### 2. Gather Context
 
@@ -49,6 +51,13 @@ Determine mode from arg:
 2. Extract `metadata.repoPath` → identify company by matching against manifest repos
 3. If repoPath exists: `git -C {repoPath} branch --show-current` and `git -C {repoPath} status --short`
 
+#### Repo Mode (arg = repo directory name)
+
+1. Resolve full path: check `repos/private/{arg}` then `repos/public/{arg}`
+2. Git state: `git -C {repoPath} branch --show-current`, `git -C {repoPath} log --oneline -5`, `git -C {repoPath} status --short`
+3. Owning company: scan `companies/manifest.yaml` for a company whose `repos:` list contains this path. If not found, infer from repo name prefix or note as untracked
+4. Related projects: Grep all `projects/*/prd.json` (skip `_archive`) for repoPath containing the repo name. For each match (max 5), read `name` and count incomplete stories (where `passes !== true`)
+
 ### 3. Present & Ask
 
 Display a concise orientation block:
@@ -61,6 +70,7 @@ Session Start
 {If resume: "Last session: {summary}" + "Next steps: {next_steps}"}
 {If company: "Repos: {list}" + "Workers: {list}"}
 {If project: "Goal: {description}" + "Branch: {branchName}"}
+{If repo: "Repo: {repoPath}" + "Company: {slug}" + "Branch: {branch}"}
 
 Git: {branch} @ {short-hash} {" (dirty)" if dirty}
 
@@ -74,14 +84,15 @@ Then use **AskUserQuestion** with options built from context:
 - **Resume mode**: next_steps items (up to 3) + "Pick a project" + "Something else"
 - **Company mode**: active projects for that company (up to 3) + "Run a worker" + "Something else"
 - **Project mode**: top 3 incomplete stories by priority + "Something else"
+- **Repo mode**: related projects with incomplete work (up to 3) + "Open repo (no project)" + "Something else"
 
-After user picks, proceed directly into the work. If they picked a project story, treat it like `/execute-task {project}/{story-id}`. If they picked "Run a worker", ask which worker/skill.
+After user picks, proceed directly into the work. If they picked a project story, treat it like `/execute-task {project}/{story-id}`. If they picked "Run a worker", ask which worker/skill. If they picked "Open repo (no project)", cd to the repo and proceed as a free-form coding session.
 
 ## Rules
 
 - NEVER read INDEX.md, agents files, or company knowledge dirs during startup
 - NEVER run qmd searches to orient — this command replaces exploration with targeted reads
-- Max file reads: handoff.json + 1 thread + manifest + up to 5 prd.json (headers only)
+- Max file reads: handoff.json + 1 thread + manifest + up to 5 prd.json (headers only). Repo mode: Grep for matching prd.json files first (single pass), then read up to 5
 - If >5 active projects found, show top 5 by most recent file modification
 - Always verify git branch with `git branch --show-current` before displaying git state
 - Context diet: every read must serve the orientation summary. No speculative loading

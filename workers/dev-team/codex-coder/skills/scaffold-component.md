@@ -1,6 +1,6 @@
 # scaffold-component
 
-Detect component type, scaffold files via Codex, and generate test stubs.
+Detect component type, scaffold files via Codex CLI, and generate test stubs.
 
 ## Arguments
 
@@ -33,29 +33,29 @@ Optional:
      - API routes: `src/app/api/`, `src/routes/`
    - Match naming convention (kebab-case files, PascalCase exports, etc.)
 
-3. **Generate Scaffold via codex_generate**
-   - Call `codex_generate` with:
-     - Task: "Scaffold a {type} named {name}" + props/methods + conventions found
-     - Context files: nearest existing component of same type, shared types, utils
-     - CWD: target repo
-   - Codex generates:
-     - Main component/module file
-     - Type definitions (if separate)
-     - Index/barrel export update
+3. **Generate Scaffold via Codex**
+   - Run Codex to generate component and related files:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Scaffold a {type} named {name}. Props/methods: {props_or_methods}. Follow conventions from existing {type}s in this repo. Create: main file, type definitions, barrel export update." 2>&1
+     ```
 
 4. **Generate Tests**
-   - Call `codex_generate` with:
-     - Task: "Write tests for {name} {type}" + generated source as context
-     - Context: test patterns from existing tests in repo
-   - Codex generates:
-     - Unit test file (`.test.ts` / `.test.tsx`)
-     - Test fixtures/mocks if needed
+   - Run Codex to generate test files:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Write tests for the {name} {type} just created. Follow test patterns from existing tests in this repo." 2>&1
+     ```
 
 5. **Run Back-Pressure**
    - `npm run typecheck` - TypeScript compilation
    - `npm run lint` - Linting rules
    - `npm test` - Test suite (new tests should pass)
-   - If failures: iterate once with error context via codex_generate
+   - If failures: iterate once with error context:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Fix errors in scaffolded {name}: {error_output}" 2>&1
+     ```
 
 6. **Present for Approval**
    - Show all scaffolded files
@@ -74,7 +74,6 @@ Response includes:
 - `filesCreated`: All new files
 - `componentType`: Detected or specified type
 - `testsPassing`: Boolean
-- `threadId`: Codex thread ID
 
 ## Human Checkpoints
 

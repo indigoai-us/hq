@@ -38,7 +38,7 @@ Before asking questions, explore HQ:
 - `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
 
 **Target Repo (if repo specified or discovered):**
-- If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `vyg`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 Present:

@@ -75,7 +75,7 @@ Save current work state as a thread to survive context loss.
        "commits_made": ["hash: message"],
        "dirty": false,
        "knowledge_repos": {
-         "knowledge-{company-2}": {"commit": "abc1234", "dirty": true},
+         "knowledge-abacus": {"commit": "abc1234", "dirty": true},
          "knowledge-ralph": {"commit": "def5678", "dirty": false}
        }
      },

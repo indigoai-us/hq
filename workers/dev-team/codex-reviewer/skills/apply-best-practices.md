@@ -1,6 +1,6 @@
 # apply-best-practices
 
-Run a standard improvement pass with predefined quality goals. Wraps codex_improve with a fixed set of best-practice goals for consistent code quality.
+Run a standard improvement pass with predefined quality goals using the Codex CLI (`codex exec --full-auto`). Consistent code quality improvements.
 
 ## Arguments
 
@@ -29,18 +29,17 @@ Optional:
    - If `--only` provided: use only the listed goals (must be from predefined set)
    - Validate at least one goal remains
 
-3. **Call codex_improve** (per goal)
-   - For each goal, invoke MCP tool with:
-     - `cwd`: Resolved working directory
-     - `files`: Array of resolved file paths (relative to cwd)
-     - `goals`: Single goal as array (sequential application ensures no conflicts)
-   - Collect improvements from each pass
+3. **Run Codex Exec with Goals**
+   - For each goal, run Codex in sequence (sequential ensures no conflicts):
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Apply {goal} best practices to: {file_list}. Make minimal, targeted changes. Do not modify unrelated code." 2>&1
+     ```
    - After each goal pass, verify files are still valid (quick syntax check)
+   - If a goal pass breaks compilation, revert that goal and continue to next
 
 4. **Aggregate Results**
-   - Combine improvements from all goal passes
-   - Deduplicate: if multiple goals modified the same line range, keep the last change
-   - Generate unified diff for each modified file (before first pass vs. after last pass)
+   - Run `git diff` to capture all changes (before first pass vs. after last pass)
    - Summarize per-goal:
      ```
      ## Best Practices Applied
@@ -84,9 +83,8 @@ Improved files in target repo (after approval):
 Response includes:
 - `summary`: Overall improvement summary
 - `goalsApplied`: Array of goals with improvement counts
-- `improvements`: Array of `{ file, goal, description, before, after }`
+- `improvements`: Description per file and goal
 - `filesModified`: List of all changed files
-- `threadId`: Codex thread ID
 - `totalImprovements`: Count of all changes made
 
 ## Human Checkpoints
