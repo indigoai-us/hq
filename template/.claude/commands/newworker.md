@@ -26,7 +26,7 @@ Ask these questions (can batch related ones):
 
 ### 1. Identity
 - **What type of worker?** (CodeWorker, SocialWorker, ResearchWorker, OpsWorker)
-- **What's its name/id?** (e.g., "competitive-researcher", "x-{your-handle}")
+- **What's its name/id?** (e.g., "competitive-researcher", "x-corey")
 - **What does it do?** (1-sentence purpose)
 
 ### 2. Skills

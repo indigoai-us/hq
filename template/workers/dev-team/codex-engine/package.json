@@ -1,7 +1,7 @@
 {
   "name": "@hq/codex-engine",
   "version": "1.0.0",
-  "description": "MCP server wrapping @openai/codex-sdk for Codex-powered code workers",
+  "description": "MCP server wrapping @openai/codex-sdk — available for standalone use. Pipeline workers now use codex CLI directly.",
   "main": "dist/index.js",
   "bin": {
     "codex-engine": "dist/index.js"

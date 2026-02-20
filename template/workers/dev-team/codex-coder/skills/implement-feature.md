@@ -1,6 +1,6 @@
 # implement-feature
 
-Multi-step feature implementation: analyze requirements, generate code via Codex, run back-pressure checks, iterate on failures.
+Multi-step feature implementation: analyze requirements, generate code via Codex CLI, run back-pressure checks, iterate on failures.
 
 ## Arguments
 
@@ -29,12 +29,13 @@ Optional:
    - Order changes by dependency (types -> utils -> services -> routes -> tests)
    - Present plan to human for approval
 
-4. **Generate Code (Iteration Loop)**
-   - For each planned change, call `codex_generate` with:
-     - Task: specific change description + acceptance criteria subset
-     - Context files: related existing code, types, patterns
-     - CWD: target repo root
-   - Collect all generated/modified files
+4. **Generate Code via Codex (Iteration Loop)**
+   - For each planned change, run Codex:
+     ```bash
+     cd {repo} && codex exec --full-auto --cd {repo} \
+       "Implement: {change_description}. Acceptance criteria: {ac_subset}. Follow existing patterns. Context: {context_files_summary}" 2>&1
+     ```
+   - Collect all generated/modified files after each step
 
 5. **Run Back-Pressure**
    - `npm run typecheck` - Must pass
@@ -44,10 +45,12 @@ Optional:
    - If any fail: proceed to step 6
 
 6. **Iterate on Failures** (max `--max-iterations` times)
-   - Parse error output (compiler errors, lint violations, test failures)
-   - Feed errors back to `codex_generate` as context:
-     - Task: "Fix the following errors in the generated code"
-     - Context: error output + affected files
+   - Capture error output from failed checks
+   - Feed errors back to Codex:
+     ```bash
+     cd {repo} && codex exec --full-auto --cd {repo} \
+       "Fix the following errors in the generated code: {error_output}" 2>&1
+     ```
    - Re-run back-pressure after each fix attempt
    - If max iterations reached and still failing: pause for human intervention
 
@@ -75,7 +78,6 @@ Response includes:
 - `filesModified`: All changed files
 - `iterations`: Number of back-pressure iterations needed
 - `acceptanceCriteria`: Pass/fail per criterion
-- `threadId`: Codex thread ID
 
 ## Human Checkpoints
 

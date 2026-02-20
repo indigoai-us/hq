@@ -71,7 +71,7 @@ Each line is a JSON object:
      Avg duration: 3.2s
      Top skills: mrr (20), pnl (12), cash-position (8)
 
-   x-{your-handle}
+   x-corey
      Runs: 23 (100% success)
      Avg duration: 8.5s
      Top skills: suggestposts (15), scheduleposts (8)

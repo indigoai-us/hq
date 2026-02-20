@@ -1,6 +1,6 @@
 # debug-issue
 
-Diagnose an issue from error output using codex_debug, apply the fix, and run back-pressure checks.
+Diagnose an issue from error output using the Codex CLI (`codex exec --full-auto`), apply the fix, and run back-pressure checks.
 
 ## Arguments
 
@@ -25,19 +25,17 @@ Optional:
    - Read `package.json` and `tsconfig.json` for project configuration
    - Identify error class: type error, runtime error, lint violation, test failure
 
-3. **Call codex_debug (Diagnosis + Fix)**
-   - Invoke MCP tool with:
-     - `issue`: Issue description + parsed error context
-     - `errorOutput`: Full error output text
-     - `cwd`: Resolved working directory
-     - `files`: Affected file paths
-     - `mode`: "diagnose_and_fix"
-   - Wait for Codex to analyze and generate fix in sandbox
+3. **Run Codex to Diagnose and Fix**
+   - Run Codex with full error context:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Diagnose and fix this issue: {issue_description}. Error output: {error_output}. Suspect files: {file_list}. Apply the fix directly." 2>&1
+     ```
+   - Codex runs in sandbox, reads code, diagnoses issue, and applies fix
 
-4. **Apply Fix**
-   - Parse response: `diagnosis`, `rootCause`, `filesModified`, `fix`
-   - Review proposed changes against original files
-   - Apply file modifications to disk
+4. **Review Changes**
+   - Run `git diff` to capture what Codex changed
+   - Parse the Codex output for diagnosis and root cause explanation
    - Present diagnosis and changes to human for review
 
 5. **Run Back-Pressure**
@@ -48,12 +46,13 @@ Optional:
    - If any fail: proceed to step 6
 
 6. **Iterate on Failures** (max `--max-iterations` times)
-   - Parse new error output from failed checks
-   - Feed errors back to `codex_debug` with previous diagnosis as context:
-     - `issue`: "Fix attempt introduced new errors"
-     - `errorOutput`: New error output
-     - `previousDiagnosis`: Prior root cause and fix
-   - Apply updated fix, re-run back-pressure
+   - Capture new error output from failed checks
+   - Feed errors back to Codex:
+     ```bash
+     cd {cwd} && codex exec --full-auto --cd {cwd} \
+       "Fix attempt introduced new errors: {new_error_output}. Previous issue: {issue_description}. Fix while preserving the original fix." 2>&1
+     ```
+   - Re-run back-pressure after each fix attempt
    - If max iterations reached: pause for human intervention
 
 7. **Report Results**
@@ -70,11 +69,9 @@ Modified files in target repo:
 
 Response includes:
 - `diagnosis`: Root cause explanation
-- `rootCause`: Identified root cause category
 - `filesModified`: List of changed files
 - `iterations`: Number of back-pressure iterations needed
 - `backPressure`: Pass/fail per check (typecheck, lint, test)
-- `threadId`: Codex thread ID for follow-up
 
 ## Human Checkpoints
 
