@@ -13,6 +13,7 @@ Object.defineProperty(navigator, "clipboard", {
 // Mock the settings service
 const mockUpdateSettings = vi.fn();
 vi.mock("@/services/settings", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
 }));
 
