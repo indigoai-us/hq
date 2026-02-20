@@ -36,7 +36,9 @@ log_error() { echo -e "${RED}[SESSION]${NC} $1"; }
 
 # Workspace snapshot manifest file (path\thash per line)
 SNAPSHOT_FILE="/tmp/workspace-snapshot.manifest"
-SYNC_DEADLINE="${SYNC_DEADLINE:-30}"
+# Timestamp marker — touched after initial snapshot for fast mtime-based diff
+SNAPSHOT_TIMESTAMP="/tmp/workspace-snapshot.timestamp"
+SYNC_DEADLINE="${SYNC_DEADLINE:-90}"
 
 # --- Validate required environment ---
 
@@ -113,7 +115,7 @@ sync_from_s3() {
 
 snapshot_workspace() {
     log_info "Snapshotting workspace for diff-sync..."
-    rm -f "$SNAPSHOT_FILE"
+    rm -f "$SNAPSHOT_FILE" "$SNAPSHOT_TIMESTAMP"
 
     # Generate manifest: relative_path\tmd5hash
     # Exclude .git, node_modules, .claude (same as S3 sync excludes)
@@ -128,6 +130,9 @@ snapshot_workspace() {
         hash=$(md5sum "$file" 2>/dev/null | cut -d' ' -f1) || continue
         printf '%s\t%s\n' "$rel_path" "$hash"
     done > "$SNAPSHOT_FILE"
+
+    # Touch timestamp marker AFTER manifest — used for fast mtime-based diff at shutdown
+    touch "$SNAPSHOT_TIMESTAMP"
 
     local count
     count=$(wc -l < "$SNAPSHOT_FILE" 2>/dev/null || echo 0)
@@ -150,6 +155,8 @@ diff_sync_to_s3() {
         return 1
     fi
 
+    # Strip trailing slash from S3_PREFIX to prevent double-slash in S3 keys
+    local s3_prefix="${S3_PREFIX%/}"
     local s3_region="${S3_REGION:-us-east-1}"
     local start_time
     start_time=$(date +%s)
@@ -158,26 +165,10 @@ diff_sync_to_s3() {
     SYNC_DELETED=0
     SYNC_ERRORS=0
 
-    # Build current manifest
-    local current_manifest="/tmp/workspace-current.manifest"
-    rm -f "$current_manifest"
-
-    find /hq -type f \
-        ! -path '/hq/.git/*' \
-        ! -path '/hq/node_modules/*' \
-        ! -path '/hq/.claude/*' \
-        -print0 2>/dev/null | \
-    while IFS= read -r -d '' file; do
-        local rel_path="${file#/hq/}"
-        local hash
-        hash=$(md5sum "$file" 2>/dev/null | cut -d' ' -f1) || continue
-        printf '%s\t%s\n' "$rel_path" "$hash"
-    done > "$current_manifest"
-
     # If no snapshot exists, fall back to full sync
     if [ ! -f "$SNAPSHOT_FILE" ]; then
         log_warn "No startup snapshot found, falling back to full sync"
-        aws s3 sync /hq "s3://${S3_BUCKET}/${S3_PREFIX}" \
+        aws s3 sync /hq "s3://${S3_BUCKET}/${s3_prefix}" \
             --region "$s3_region" \
             --no-progress \
             --exclude ".git/*" \
@@ -187,31 +178,61 @@ diff_sync_to_s3() {
             SYNC_ERRORS=1
             return 1
         }
-        SYNC_UPLOADED=$(wc -l < "$current_manifest" 2>/dev/null || echo 0)
+        SYNC_UPLOADED=$(find /hq -type f 2>/dev/null | wc -l)
         return 0
     fi
 
-    # --- Compute changed and new files ---
-    # Files in current but not in snapshot, or with different hashes
+    # --- Fast diff: find files modified since snapshot timestamp ---
+    # This is near-instant vs 25+ seconds for md5-hashing all files
     local changed_files="/tmp/sync-changed.list"
     rm -f "$changed_files"
 
-    while IFS=$'\t' read -r rel_path current_hash; do
-        local elapsed=$(( $(date +%s) - start_time ))
-        if [ "$elapsed" -ge "$SYNC_DEADLINE" ]; then
-            log_warn "Sync deadline reached (${SYNC_DEADLINE}s), aborting remaining uploads"
-            break
-        fi
+    if [ -f "$SNAPSHOT_TIMESTAMP" ]; then
+        # Find files newer than the snapshot timestamp marker
+        find /hq -type f \
+            -newer "$SNAPSHOT_TIMESTAMP" \
+            ! -path '/hq/.git/*' \
+            ! -path '/hq/node_modules/*' \
+            ! -path '/hq/.claude/*' \
+            2>/dev/null | \
+        while IFS= read -r file; do
+            local rel_path="${file#/hq/}"
+            echo "$rel_path"
+        done > "$changed_files"
+    else
+        # Fallback: full md5 comparison (slow path)
+        log_warn "No snapshot timestamp, falling back to md5 comparison"
+        local current_manifest="/tmp/workspace-current.manifest"
+        rm -f "$current_manifest"
 
-        local old_hash=""
-        if [ -f "$SNAPSHOT_FILE" ]; then
+        find /hq -type f \
+            ! -path '/hq/.git/*' \
+            ! -path '/hq/node_modules/*' \
+            ! -path '/hq/.claude/*' \
+            -print0 2>/dev/null | \
+        while IFS= read -r -d '' file; do
+            local rel_path="${file#/hq/}"
+            local hash
+            hash=$(md5sum "$file" 2>/dev/null | cut -d' ' -f1) || continue
+            printf '%s\t%s\n' "$rel_path" "$hash"
+        done > "$current_manifest"
+
+        while IFS=$'\t' read -r rel_path current_hash; do
+            local old_hash=""
             old_hash=$(grep -P "^${rel_path}\t" "$SNAPSHOT_FILE" 2>/dev/null | cut -f2 || true)
-        fi
+            if [ "$current_hash" != "$old_hash" ]; then
+                echo "$rel_path" >> "$changed_files"
+            fi
+        done < "$current_manifest"
+        rm -f "$current_manifest"
+    fi
 
-        if [ "$current_hash" != "$old_hash" ]; then
-            echo "$rel_path" >> "$changed_files"
-        fi
-    done < "$current_manifest"
+    local changed_count=0
+    if [ -f "$changed_files" ] && [ -s "$changed_files" ]; then
+        changed_count=$(wc -l < "$changed_files")
+    fi
+    local diff_elapsed=$(( $(date +%s) - start_time ))
+    log_info "Diff computed in ${diff_elapsed}s — ${changed_count} files changed"
 
     # Upload changed/new files
     if [ -f "$changed_files" ] && [ -s "$changed_files" ]; then
@@ -223,7 +244,7 @@ diff_sync_to_s3() {
             fi
 
             local local_file="/hq/${rel_path}"
-            local s3_key="${S3_PREFIX}/${rel_path}"
+            local s3_key="${s3_prefix}/${rel_path}"
 
             if aws s3 cp "$local_file" "s3://${S3_BUCKET}/${s3_key}" \
                 --region "$s3_region" \
@@ -237,7 +258,7 @@ diff_sync_to_s3() {
     fi
 
     # --- Compute deleted files ---
-    # Files in snapshot but not in current
+    # Files in snapshot but no longer on disk
     while IFS=$'\t' read -r rel_path _hash; do
         local elapsed=$(( $(date +%s) - start_time ))
         if [ "$elapsed" -ge "$SYNC_DEADLINE" ]; then
@@ -245,8 +266,8 @@ diff_sync_to_s3() {
             break
         fi
 
-        if ! grep -qP "^${rel_path}\t" "$current_manifest" 2>/dev/null; then
-            local s3_key="${S3_PREFIX}/${rel_path}"
+        if [ ! -f "/hq/${rel_path}" ]; then
+            local s3_key="${s3_prefix}/${rel_path}"
             if aws s3 rm "s3://${S3_BUCKET}/${s3_key}" \
                 --region "$s3_region" 2>/dev/null; then
                 SYNC_DELETED=$((SYNC_DELETED + 1))
@@ -258,9 +279,8 @@ diff_sync_to_s3() {
     done < "$SNAPSHOT_FILE"
 
     # Cleanup temp files
-    rm -f "$current_manifest" "$changed_files"
+    rm -f "$changed_files"
 
-    local total=$((SYNC_UPLOADED + SYNC_DELETED))
     local elapsed=$(( $(date +%s) - start_time ))
     log_info "Diff sync complete — ${SYNC_UPLOADED} uploaded, ${SYNC_DELETED} deleted, ${SYNC_ERRORS} errors (${elapsed}s)"
 
