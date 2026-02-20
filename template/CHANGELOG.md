@@ -1,5 +1,23 @@
 # Changelog
 
+## v6.2.0 (2026-02-20)
+
+New CLAUDE.md behavioral sections and expanded learned rules.
+
+### Added
+
+- **CLAUDE.md — Session Handoffs** — Explicit handoff workflow: commit first, write handoff.json, update INDEX, create thread. Never plan mode during handoff.
+- **CLAUDE.md — Corrections & Accuracy** — Apply user corrections exactly as stated. No re-interpretation or paraphrasing.
+- **CLAUDE.md — Sub-Agent Rules** — Sub-agents must commit own work before completing. Orchestrator verifies uncommitted changes.
+- **CLAUDE.md — Git Workflow Rules** — Branch verification, merge-over-rebase for diverged branches, hook bypass during merge/rebase, no accidental main commits.
+- **CLAUDE.md — Vercel Deployments** — Org/team verification, framework detection checks, SSO fallback to local testing.
+
+### Changed
+
+- **CLAUDE.md — Learned Rules** — 6 new rules: Vercel custom domain deploy safety, Task() sub-agents lack MCP, Shopify 2026 auth, Vercel preview SSO, Vercel domain team move, Vercel framework detection. Max cap raised 10 → 25.
+
+---
+
 ## v6.1.0 (2026-02-20)
 
 Codex CLI integration — fixes codex workers not actually calling OpenAI Codex in the pipeline.
