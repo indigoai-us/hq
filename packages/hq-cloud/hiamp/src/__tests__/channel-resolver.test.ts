@@ -5,6 +5,7 @@ import type { HiampConfig } from '../config-loader.js';
 /** Build a minimal HiampConfig for testing */
 function makeConfig(overrides?: Partial<HiampConfig>): HiampConfig {
   return {
+    transport: 'slack',
     identity: {
       owner: 'stefan',
       instanceId: 'stefan-hq-primary',
@@ -88,7 +89,7 @@ describe('ChannelResolver', () => {
   describe('dedicated strategy', () => {
     it('should resolve to the dedicated channel', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dedicated';
+      config.slack!.channelStrategy = 'dedicated';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -104,8 +105,8 @@ describe('ChannelResolver', () => {
 
     it('should fail when no dedicated channel configured', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dedicated';
-      config.slack.channels = {};
+      config.slack!.channelStrategy = 'dedicated';
+      config.slack!.channels = {};
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -121,7 +122,7 @@ describe('ChannelResolver', () => {
   describe('dm strategy', () => {
     it('should open a DM with the peer Slack user', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
+      config.slack!.channelStrategy = 'dm';
 
       const mockSlackClient = {
         conversations: {
@@ -149,7 +150,7 @@ describe('ChannelResolver', () => {
 
     it('should cache DM channel IDs', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
+      config.slack!.channelStrategy = 'dm';
 
       const mockSlackClient = {
         conversations: {
@@ -171,8 +172,8 @@ describe('ChannelResolver', () => {
 
     it('should fail when peer has no slack-bot-id and no dedicated fallback', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
-      config.slack.channels = {}; // Remove dedicated fallback
+      config.slack!.channelStrategy = 'dm';
+      config.slack!.channels = {}; // Remove dedicated fallback
       config.peers[0] = { ...config.peers[0]!, slackBotId: undefined };
 
       const resolver = new ChannelResolver(config);
@@ -188,7 +189,7 @@ describe('ChannelResolver', () => {
 
     it('should fall back to dedicated when peer has no slack-bot-id', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
+      config.slack!.channelStrategy = 'dm';
       config.peers[0] = { ...config.peers[0]!, slackBotId: undefined };
 
       const resolver = new ChannelResolver(config);
@@ -205,8 +206,8 @@ describe('ChannelResolver', () => {
 
     it('should fail when no Slack client and no dedicated fallback', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
-      config.slack.channels = {}; // Remove dedicated fallback
+      config.slack!.channelStrategy = 'dm';
+      config.slack!.channels = {}; // Remove dedicated fallback
 
       const resolver = new ChannelResolver(config);
 
@@ -221,7 +222,7 @@ describe('ChannelResolver', () => {
 
     it('should handle Slack API error and fall back to dedicated', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
+      config.slack!.channelStrategy = 'dm';
 
       const mockSlackClient = {
         conversations: {
@@ -243,8 +244,8 @@ describe('ChannelResolver', () => {
 
     it('should fail on Slack API error with no dedicated fallback', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dm';
-      config.slack.channels = {}; // Remove dedicated fallback
+      config.slack!.channelStrategy = 'dm';
+      config.slack!.channels = {}; // Remove dedicated fallback
 
       const mockSlackClient = {
         conversations: {
@@ -268,7 +269,7 @@ describe('ChannelResolver', () => {
   describe('per-relationship strategy', () => {
     it('should resolve to the peer-specific channel', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'per-relationship';
+      config.slack!.channelStrategy = 'per-relationship';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -284,7 +285,7 @@ describe('ChannelResolver', () => {
 
     it('should resolve to different channels per peer', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'per-relationship';
+      config.slack!.channelStrategy = 'per-relationship';
       const resolver = new ChannelResolver(config);
 
       const alexResult = await resolver.resolve({ targetPeerOwner: 'alex' });
@@ -300,8 +301,8 @@ describe('ChannelResolver', () => {
 
     it('should fall back to dedicated when peer has no relationship channel', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'per-relationship';
-      config.slack.channels!.perRelationship = []; // empty
+      config.slack!.channelStrategy = 'per-relationship';
+      config.slack!.channels!.perRelationship = []; // empty
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -319,7 +320,7 @@ describe('ChannelResolver', () => {
   describe('contextual strategy', () => {
     it('should resolve based on context and peer', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'contextual';
+      config.slack!.channelStrategy = 'contextual';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -336,7 +337,7 @@ describe('ChannelResolver', () => {
 
     it('should fail when no context is provided', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'contextual';
+      config.slack!.channelStrategy = 'contextual';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -351,7 +352,7 @@ describe('ChannelResolver', () => {
 
     it('should fail when context does not match any channel for the peer', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'contextual';
+      config.slack!.channelStrategy = 'contextual';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -367,7 +368,7 @@ describe('ChannelResolver', () => {
 
     it('should resolve design context to Maria channel', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'contextual';
+      config.slack!.channelStrategy = 'contextual';
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -384,7 +385,7 @@ describe('ChannelResolver', () => {
   describe('strategy override', () => {
     it('should use strategy from input instead of config default', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'dedicated'; // default
+      config.slack!.channelStrategy = 'dedicated'; // default
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -402,9 +403,9 @@ describe('ChannelResolver', () => {
   describe('fallback to dedicated', () => {
     it('should fall back to dedicated when strategy fails and dedicated is configured', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'contextual';
+      config.slack!.channelStrategy = 'contextual';
       // No contextual channels configured
-      config.slack.channels!.contextual = [];
+      config.slack!.channels!.contextual = [];
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({
@@ -420,8 +421,8 @@ describe('ChannelResolver', () => {
 
     it('should fail entirely when strategy fails and no dedicated configured', async () => {
       const config = makeConfig();
-      config.slack.channelStrategy = 'per-relationship';
-      config.slack.channels = {}; // no channels at all
+      config.slack!.channelStrategy = 'per-relationship';
+      config.slack!.channels = {}; // no channels at all
       const resolver = new ChannelResolver(config);
 
       const result = await resolver.resolve({

@@ -85,6 +85,7 @@ function buildConfig(
   }>,
 ): HiampConfig {
   return {
+    transport: 'slack',
     identity: {
       owner,
       instanceId: `${owner}-hq-dev`,
@@ -314,7 +315,7 @@ async function deliverToInstance(
       ts: captured.ts,
       thread_ts: captured.thread_ts,
     },
-    instance.config.slack.appId, // local bot ID for echo filter
+    instance.config.slack!.appId, // local bot ID for echo filter
   );
 
   if (!detection.isHiamp) {

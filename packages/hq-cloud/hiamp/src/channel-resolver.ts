@@ -104,7 +104,7 @@ export class ChannelResolver {
       return {
         success: true,
         channelId: input.channelId,
-        strategy: input.strategy ?? this.config.slack.channelStrategy,
+        strategy: input.strategy ?? this.config.slack!.channelStrategy,
       };
     }
 
@@ -118,14 +118,14 @@ export class ChannelResolver {
       };
     }
 
-    const strategy = input.strategy ?? this.config.slack.channelStrategy;
+    const strategy = input.strategy ?? this.config.slack!.channelStrategy;
 
     // 2. Apply strategy
     const result = await this.resolveByStrategy(strategy, peer, input.context);
 
     // 3. Fall back to dedicated if strategy failed and dedicated is configured
     if (!result.success && strategy !== 'dedicated') {
-      const dedicated = this.config.slack.channels?.dedicated;
+      const dedicated = this.config.slack!.channels?.dedicated;
       if (dedicated) {
         return {
           success: true,
@@ -170,7 +170,7 @@ export class ChannelResolver {
    * Dedicated strategy: single shared channel.
    */
   private resolveDedicated(): ChannelResolveResult {
-    const dedicated = this.config.slack.channels?.dedicated;
+    const dedicated = this.config.slack!.channels?.dedicated;
     if (!dedicated) {
       return {
         success: false,
@@ -251,7 +251,7 @@ export class ChannelResolver {
    * Per-relationship strategy: dedicated channel per peer.
    */
   private resolvePerRelationship(peer: HiampPeer): ChannelResolveResult {
-    const channels = this.config.slack.channels?.perRelationship;
+    const channels = this.config.slack!.channels?.perRelationship;
     if (!channels) {
       return {
         success: false,
@@ -281,7 +281,7 @@ export class ChannelResolver {
    * Contextual strategy: channel based on project/context.
    */
   private resolveContextual(peer: HiampPeer, context?: string): ChannelResolveResult {
-    const channels = this.config.slack.channels?.contextual;
+    const channels = this.config.slack!.channels?.contextual;
     if (!channels) {
       return {
         success: false,

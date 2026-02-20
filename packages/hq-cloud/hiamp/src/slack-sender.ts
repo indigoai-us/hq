@@ -158,7 +158,7 @@ export class SlackSender {
   ) {
     this.config = config;
     this.slackClient =
-      options?.slackClient ?? new WebClient(config.slack.botToken);
+      options?.slackClient ?? new WebClient(config.slack!.botToken);
     this.channelResolver =
       options?.channelResolver ?? new ChannelResolver(config, this.slackClient);
     this.rateLimiter = options?.rateLimiter ?? new RateLimiter();

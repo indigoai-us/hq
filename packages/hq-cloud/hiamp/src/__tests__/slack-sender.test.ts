@@ -7,6 +7,7 @@ import type { HiampConfig } from '../config-loader.js';
 /** Build a minimal HiampConfig for testing */
 function makeConfig(overrides?: Partial<HiampConfig>): HiampConfig {
   return {
+    transport: 'slack',
     identity: {
       owner: 'stefan',
       instanceId: 'stefan-hq-primary',
@@ -520,8 +521,8 @@ describe('SlackSender', () => {
 
     it('should pass context to channel resolver', async () => {
       // Set up with contextual channels
-      config.slack.channelStrategy = 'contextual';
-      config.slack.channels = {
+      config.slack!.channelStrategy = 'contextual';
+      config.slack!.channels = {
         dedicated: { name: '#hq-agents', id: 'C0HQAGENTS' },
         contextual: [
           { context: 'hq-cloud', name: '#hq-cloud-dev', id: 'C0HQCLOUD', peers: ['alex'] },

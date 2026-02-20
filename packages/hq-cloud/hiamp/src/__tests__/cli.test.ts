@@ -10,12 +10,19 @@ import {
   handleReply,
   handleThread,
   handleShare,
+  handleMigrate,
+  generateMigrationConfig,
+  formatMigratedConfig,
   extractMessageId,
+  createTransport,
   main,
 } from '../cli.js';
 import type { CliArgs } from '../cli.js';
 import type { InboxEntry } from '../inbox.js';
 import type { ThreadState } from '../thread-manager.js';
+import type { HiampSlackConfig, HiampConfig } from '../config-loader.js';
+import { SlackTransport } from '../slack-transport.js';
+import { LinearTransport } from '../linear-transport.js';
 
 /** Generate a unique temp directory for each test */
 function makeTempDir(): string {
@@ -631,6 +638,545 @@ describe('handleShare', () => {
 });
 
 // ---------------------------------------------------------------------------
+// generateMigrationConfig (pure migration logic)
+// ---------------------------------------------------------------------------
+
+describe('generateMigrationConfig', () => {
+  it('generates a Linear config from a minimal Slack config', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'dedicated',
+      channels: {
+        dedicated: { name: '#hq-agents', id: 'C0HQAGENTS' },
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    expect(result.linear.apiKey).toBe('$LINEAR_API_KEY');
+    expect(result.linear.defaultTeam).toBe('ENG');
+    expect(result.linear.teams).toHaveLength(1);
+    expect(result.linear.teams[0]!.key).toBe('ENG');
+    expect(result.warnings).toHaveLength(0);
+    expect(result.summary.length).toBeGreaterThan(0);
+    expect(result.summary.some((s) => s.includes('Default team: ENG'))).toBe(true);
+  });
+
+  it('maps contextual channels to project mappings', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'contextual',
+      channels: {
+        contextual: [
+          { context: 'hq-cloud', name: '#hq-cloud-dev', id: 'C0HQCLOUD', peers: ['alex'] },
+          { context: 'design-system', name: '#design-collab', id: 'C0DESIGN', peers: ['maria'] },
+        ],
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    // Default team should have both project mappings
+    const defaultTeam = result.linear.teams.find((t) => t.key === 'ENG');
+    expect(defaultTeam).toBeDefined();
+    expect(defaultTeam!.projectMappings).toHaveLength(2);
+    expect(defaultTeam!.projectMappings![0]!.context).toBe('hq-cloud');
+    expect(defaultTeam!.projectMappings![0]!.projectId).toBe('TODO');
+    expect(defaultTeam!.projectMappings![1]!.context).toBe('design-system');
+    expect(defaultTeam!.projectMappings![1]!.projectId).toBe('TODO');
+
+    // Should warn about peer associations
+    expect(result.warnings.some((w) => w.includes('alex'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes('maria'))).toBe(true);
+  });
+
+  it('warns about per-relationship channels', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'per-relationship',
+      channels: {
+        perRelationship: [
+          { peer: 'alex', name: '#hq-stefan-alex', id: 'C0STEFANALEX' },
+          { peer: 'maria', name: '#hq-maria-stefan', id: 'C0MARIASTEFAN' },
+        ],
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0]).toContain('Per-relationship channel');
+    expect(result.warnings[0]).toContain('alex');
+    expect(result.warnings[1]).toContain('maria');
+  });
+
+  it('respects custom defaultTeam option', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'dedicated',
+      channels: {
+        dedicated: { name: '#hq-agents', id: 'C0HQAGENTS' },
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig, { defaultTeam: 'PLATFORM' });
+
+    expect(result.linear.defaultTeam).toBe('PLATFORM');
+    expect(result.linear.teams[0]!.key).toBe('PLATFORM');
+  });
+
+  it('respects custom apiKeyEnv option', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'dedicated',
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig, { apiKeyEnv: 'MY_LINEAR_KEY' });
+
+    expect(result.linear.apiKey).toBe('$MY_LINEAR_KEY');
+  });
+
+  it('handles a Slack config with no channels at all', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'dm',
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    expect(result.linear.defaultTeam).toBe('ENG');
+    expect(result.linear.teams).toHaveLength(1);
+    expect(result.linear.teams[0]!.key).toBe('ENG');
+    expect(result.linear.teams[0]!.projectMappings).toBeUndefined();
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it('does not create duplicate team entries', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'contextual',
+      channels: {
+        dedicated: { name: '#hq-agents', id: 'C0HQAGENTS' },
+        contextual: [
+          { context: 'project-a', name: '#proj-a', id: 'C0A', peers: [] },
+          { context: 'project-b', name: '#proj-b', id: 'C0B', peers: [] },
+        ],
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    // Should have exactly one team (ENG) with both mappings
+    expect(result.linear.teams).toHaveLength(1);
+    expect(result.linear.teams[0]!.projectMappings).toHaveLength(2);
+  });
+
+  it('does not warn for contextual channels with empty peers array', () => {
+    const slackConfig: HiampSlackConfig = {
+      botToken: 'xoxb-test',
+      appId: 'A0TEST',
+      workspaceId: 'T0TEST',
+      channelStrategy: 'contextual',
+      channels: {
+        contextual: [
+          { context: 'open-project', name: '#open', id: 'C0OPEN', peers: [] },
+        ],
+      },
+      eventMode: 'socket',
+    };
+
+    const result = generateMigrationConfig(slackConfig);
+
+    // No warnings because peers array is empty
+    expect(result.warnings).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatMigratedConfig
+// ---------------------------------------------------------------------------
+
+describe('formatMigratedConfig', () => {
+  it('formats a complete migrated config as YAML', () => {
+    const config: HiampConfig = {
+      transport: 'linear',
+      identity: {
+        owner: 'stefan',
+        instanceId: 'stefan-hq-primary',
+        displayName: "Stefan's HQ",
+      },
+      peers: [
+        {
+          owner: 'alex',
+          displayName: "Alex's HQ",
+          slackBotId: 'U0ALEX1234',
+          trustLevel: 'channel-scoped',
+          workers: [
+            { id: 'backend-dev', description: 'API endpoints', skills: ['api-dev', 'node'] },
+          ],
+          notes: 'Co-founder',
+        },
+      ],
+      linear: {
+        apiKey: '$LINEAR_API_KEY',
+        defaultTeam: 'ENG',
+        teams: [
+          {
+            key: 'ENG',
+            projectMappings: [
+              { context: 'hq-cloud', projectId: 'proj-uuid-1' },
+            ],
+          },
+        ],
+      },
+      workerPermissions: {
+        default: 'deny',
+        workers: [
+          {
+            id: 'architect',
+            send: true,
+            receive: true,
+            allowedIntents: ['handoff', 'request'],
+            allowedPeers: ['*'],
+          },
+        ],
+      },
+    };
+
+    const output = formatMigratedConfig(config);
+
+    expect(output).toContain('transport: linear');
+    expect(output).toContain('owner: stefan');
+    expect(output).toContain('instance-id: stefan-hq-primary');
+    expect(output).toContain('display-name: "Stefan\'s HQ"');
+    expect(output).toContain('api-key: $LINEAR_API_KEY');
+    expect(output).toContain('default-team: ENG');
+    expect(output).toContain('key: ENG');
+    expect(output).toContain('context: "hq-cloud"');
+    expect(output).toContain('project-id: "proj-uuid-1"');
+    expect(output).toContain('default: deny');
+    expect(output).toContain('id: architect');
+    expect(output).toContain('send: true');
+    expect(output).toContain('allowed-intents: [handoff, request]');
+    expect(output).toContain('allowed-peers: ["*"]');
+  });
+
+  it('preserves peer identity fields', () => {
+    const config: HiampConfig = {
+      transport: 'linear',
+      identity: { owner: 'stefan', instanceId: 'stefan-hq-primary' },
+      peers: [
+        {
+          owner: 'alex',
+          trustLevel: 'open',
+          workers: [{ id: 'backend-dev' }],
+        },
+      ],
+      linear: {
+        apiKey: '$LINEAR_API_KEY',
+        defaultTeam: 'ENG',
+        teams: [{ key: 'ENG' }],
+      },
+      workerPermissions: { default: 'deny', workers: [] },
+    };
+
+    const output = formatMigratedConfig(config);
+
+    expect(output).toContain('owner: stefan');
+    expect(output).toContain('owner: alex');
+    expect(output).toContain('trust-level: open');
+    expect(output).toContain('id: backend-dev');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handleMigrate (CLI handler)
+// ---------------------------------------------------------------------------
+
+describe('handleMigrate', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = makeTempDir();
+    await mkdir(tempDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('requires --from argument', async () => {
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { to: 'linear' },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('--from is required');
+  });
+
+  it('requires --to argument', async () => {
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'slack' },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('--to is required');
+  });
+
+  it('rejects unsupported --from value', async () => {
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'email', to: 'linear' },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('not supported');
+    expect(result.output).toContain('email');
+  });
+
+  it('rejects unsupported --to value', async () => {
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'slack', to: 'discord' },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('not supported');
+    expect(result.output).toContain('discord');
+  });
+
+  it('returns config error when config not found', async () => {
+    const oldEnv = process.env['HIAMP_CONFIG_PATH'];
+    delete process.env['HIAMP_CONFIG_PATH'];
+
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'slack', to: 'linear' },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('Error loading HIAMP config');
+
+    if (oldEnv !== undefined) {
+      process.env['HIAMP_CONFIG_PATH'] = oldEnv;
+    }
+  });
+
+  it('successfully migrates a Slack config file to Linear', async () => {
+    const configPath = join(tempDir, 'hiamp.yaml');
+    const yamlContent = `
+identity:
+  owner: stefan
+  instance-id: stefan-hq-primary
+
+peers:
+  - owner: alex
+    trust-level: open
+    workers:
+      - id: backend-dev
+
+slack:
+  bot-token: $SLACK_BOT_TOKEN
+  app-id: A0TEST
+  workspace-id: T0TEST
+  channel-strategy: dedicated
+  channels:
+    dedicated:
+      name: "#hq-agents"
+      id: C0HQAGENTS
+    contextual:
+      - context: "hq-cloud"
+        name: "#hq-cloud-dev"
+        id: C0HQCLOUD
+        peers: [alex]
+  event-mode: socket
+  socket-app-token: $SLACK_APP_TOKEN
+
+worker-permissions:
+  default: deny
+  workers:
+    - id: architect
+      send: true
+      receive: true
+`;
+    await writeFile(configPath, yamlContent, 'utf-8');
+
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'slack', to: 'linear', config: configPath },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+
+    expect(result.success).toBe(true);
+    expect(result.exitCode).toBe(0);
+
+    // Verify output contains migration header
+    expect(result.output).toContain('HIAMP Migration: Slack -> Linear');
+    expect(result.output).toContain('SUMMARY');
+
+    // Verify migrated config sections
+    expect(result.output).toContain('transport: linear');
+    expect(result.output).toContain('owner: stefan');
+    expect(result.output).toContain('instance-id: stefan-hq-primary');
+    expect(result.output).toContain('owner: alex');
+    expect(result.output).toContain('api-key: $LINEAR_API_KEY');
+    expect(result.output).toContain('default-team: ENG');
+    expect(result.output).toContain('context: "hq-cloud"');
+
+    // Verify worker permissions preserved
+    expect(result.output).toContain('id: architect');
+    expect(result.output).toContain('send: true');
+
+    // Verify TODO placeholder
+    expect(result.output).toContain('TODO');
+
+    // Verify warnings about peer associations
+    expect(result.output).toContain('WARNINGS');
+    expect(result.output).toContain('alex');
+  });
+
+  it('preserves identity through migration (owner and worker-id unchanged)', async () => {
+    const configPath = join(tempDir, 'hiamp.yaml');
+    const yamlContent = `
+identity:
+  owner: corey
+  instance-id: corey-hq-main
+  display-name: "Corey's HQ"
+
+peers:
+  - owner: stefan
+    trust-level: channel-scoped
+    slack-bot-id: U0STEFAN
+    workers:
+      - id: architect
+        description: "System design"
+        skills: [design, planning]
+
+slack:
+  bot-token: $SLACK_BOT_TOKEN
+  app-id: A0COREY
+  workspace-id: T0COREY
+  channel-strategy: dedicated
+  channels:
+    dedicated:
+      name: "#corey-agents"
+      id: C0COREYAGENTS
+  event-mode: socket
+  socket-app-token: $SLACK_APP_TOKEN
+
+worker-permissions:
+  default: deny
+  workers:
+    - id: frontend-dev
+      send: true
+      receive: true
+      allowed-intents: [handoff, request, inform]
+      allowed-peers: ["*"]
+`;
+    await writeFile(configPath, yamlContent, 'utf-8');
+
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: { from: 'slack', to: 'linear', config: configPath },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+
+    expect(result.success).toBe(true);
+
+    // Identity preserved exactly
+    expect(result.output).toContain('owner: corey');
+    expect(result.output).toContain('instance-id: corey-hq-main');
+    expect(result.output).toContain('display-name: "Corey\'s HQ"');
+
+    // Peer identity preserved
+    expect(result.output).toContain('owner: stefan');
+    expect(result.output).toContain('id: architect');
+
+    // Worker permissions preserved
+    expect(result.output).toContain('id: frontend-dev');
+    expect(result.output).toContain('allowed-intents: [handoff, request, inform]');
+  });
+
+  it('accepts --default-team override', async () => {
+    const configPath = join(tempDir, 'hiamp.yaml');
+    const yamlContent = `
+identity:
+  owner: stefan
+  instance-id: stefan-hq-primary
+
+peers:
+  - owner: alex
+    trust-level: open
+    workers:
+      - id: backend-dev
+
+slack:
+  bot-token: $SLACK_BOT_TOKEN
+  app-id: A0TEST
+  workspace-id: T0TEST
+  channel-strategy: dedicated
+  channels:
+    dedicated:
+      name: "#hq-agents"
+      id: C0HQAGENTS
+  event-mode: socket
+  socket-app-token: $SLACK_APP_TOKEN
+
+worker-permissions:
+  default: deny
+  workers: []
+`;
+    await writeFile(configPath, yamlContent, 'utf-8');
+
+    const args: CliArgs = {
+      subcommand: 'migrate',
+      options: {
+        from: 'slack',
+        to: 'linear',
+        config: configPath,
+        'default-team': 'PLATFORM',
+      },
+      flags: new Set(),
+    };
+    const result = await handleMigrate(args);
+
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('default-team: PLATFORM');
+    expect(result.output).toContain('key: PLATFORM');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // main (CLI dispatch)
 // ---------------------------------------------------------------------------
 
@@ -697,6 +1243,335 @@ describe('main', () => {
     expect(result.success).toBe(false);
     expect(result.output).toContain('--to is required');
   });
+
+  it('dispatches to migrate handler', async () => {
+    const result = await main(['migrate', '--to', 'linear']);
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('--from is required');
+  });
+
+  it('includes migrate in help output', async () => {
+    const result = await main([]);
+    expect(result.output).toContain('migrate');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createTransport (factory function)
+// ---------------------------------------------------------------------------
+
+describe('createTransport', () => {
+  it('returns SlackTransport when config.transport is "slack"', () => {
+    const config = makeConfig();
+    config.transport = 'slack';
+    const transport = createTransport(config);
+    expect(transport).toBeInstanceOf(SlackTransport);
+    expect(transport.name).toBe('slack');
+  });
+
+  it('returns LinearTransport when config.transport is "linear"', () => {
+    const oldKey = process.env['LINEAR_API_KEY'];
+    process.env['LINEAR_API_KEY'] = 'lin_test_fake_key_for_factory';
+    try {
+      const config: HiampConfig = {
+        transport: 'linear',
+        identity: { owner: 'stefan', instanceId: 'stefan-hq-primary' },
+        peers: [
+          {
+            owner: 'alex',
+            trustLevel: 'open',
+            workers: [{ id: 'backend-dev' }],
+          },
+        ],
+        linear: {
+          apiKey: '$LINEAR_API_KEY',
+          defaultTeam: 'ENG',
+          teams: [{ key: 'ENG' }],
+        },
+        workerPermissions: { default: 'allow', workers: [] },
+      };
+      const transport = createTransport(config);
+      expect(transport).toBeInstanceOf(LinearTransport);
+      expect(transport.name).toBe('linear');
+    } finally {
+      if (oldKey !== undefined) {
+        process.env['LINEAR_API_KEY'] = oldKey;
+      } else {
+        delete process.env['LINEAR_API_KEY'];
+      }
+    }
+  });
+
+  it('defaults to SlackTransport when transport field is missing/undefined', () => {
+    const config = makeConfig();
+    // Force transport to undefined to test default behavior
+    (config as Record<string, unknown>).transport = undefined;
+    const transport = createTransport(config as HiampConfig);
+    expect(transport).toBeInstanceOf(SlackTransport);
+  });
+
+  it('passes hqRoot option through to the transport', () => {
+    const oldKey = process.env['LINEAR_API_KEY'];
+    process.env['LINEAR_API_KEY'] = 'lin_test_fake_key_for_factory';
+    try {
+      const config: HiampConfig = {
+        transport: 'linear',
+        identity: { owner: 'stefan', instanceId: 'stefan-hq-primary' },
+        peers: [],
+        linear: {
+          apiKey: '$LINEAR_API_KEY',
+          defaultTeam: 'ENG',
+          teams: [{ key: 'ENG' }],
+        },
+        workerPermissions: { default: 'allow', workers: [] },
+      };
+      const transport = createTransport(config, { hqRoot: '/some/path' });
+      expect(transport).toBeInstanceOf(LinearTransport);
+    } finally {
+      if (oldKey !== undefined) {
+        process.env['LINEAR_API_KEY'] = oldKey;
+      } else {
+        delete process.env['LINEAR_API_KEY'];
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Transport-agnostic CLI behavior
+// ---------------------------------------------------------------------------
+
+describe('transport-agnostic CLI', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = makeTempDir();
+    await mkdir(tempDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe('handleReply uses Transport abstraction (not SlackSender)', () => {
+    it('uses transport.sendReply when threadRef (channelId) is available', async () => {
+      // Create an inbox entry with channelId but no Slack-specific fields
+      const inboxDir = join(tempDir, 'workspace', 'inbox', 'architect');
+      await mkdir(inboxDir, { recursive: true });
+
+      const entry: InboxEntry = {
+        message: {
+          version: 'v1',
+          id: 'msg-linear-reply-test',
+          from: 'alex/backend-dev',
+          to: 'stefan/architect',
+          intent: 'handoff',
+          body: 'Need your review.',
+          thread: 'thr-linear-test',
+        },
+        rawText: 'raw text',
+        receivedAt: '2026-02-12T10:30:00Z',
+        channelId: 'linear-issue-uuid-123', // Linear issue ID as channelId
+        read: false,
+        // No slackTs or slackThreadTs — simulates a Linear-sourced message
+      };
+
+      await writeFile(join(inboxDir, 'msg-linear-reply-test.json'), JSON.stringify(entry), 'utf-8');
+
+      // Clear env so config loading fails (validates we get past inbox lookup
+      // and reach the config loading step — proving transport abstraction path)
+      const oldEnv = process.env['HIAMP_CONFIG_PATH'];
+      delete process.env['HIAMP_CONFIG_PATH'];
+
+      const args: CliArgs = {
+        subcommand: 'reply',
+        options: {
+          'message-id': 'msg-linear-reply-test',
+          body: 'On it!',
+          'hq-root': tempDir,
+          worker: 'architect',
+        },
+        flags: new Set(),
+      };
+      const result = await handleReply(args);
+      expect(result.success).toBe(false);
+      // Should get past inbox lookup and threadRef determination, fail on config
+      expect(result.output).toContain('Error loading HIAMP config');
+
+      if (oldEnv !== undefined) {
+        process.env['HIAMP_CONFIG_PATH'] = oldEnv;
+      }
+    });
+
+    it('falls back to transport.send when no thread reference is available', async () => {
+      // Create an inbox entry with no threading info at all
+      const inboxDir = join(tempDir, 'workspace', 'inbox', 'architect');
+      await mkdir(inboxDir, { recursive: true });
+
+      const entry: InboxEntry = {
+        message: {
+          version: 'v1',
+          id: 'msg-no-thread-ref',
+          from: 'alex/backend-dev',
+          to: 'stefan/architect',
+          intent: 'inform',
+          body: 'Quick note.',
+        },
+        rawText: 'raw text',
+        receivedAt: '2026-02-12T10:30:00Z',
+        channelId: '', // Empty channelId (falsy)
+        read: false,
+      };
+
+      await writeFile(join(inboxDir, 'msg-no-thread-ref.json'), JSON.stringify(entry), 'utf-8');
+
+      const oldEnv = process.env['HIAMP_CONFIG_PATH'];
+      delete process.env['HIAMP_CONFIG_PATH'];
+
+      const args: CliArgs = {
+        subcommand: 'reply',
+        options: {
+          'message-id': 'msg-no-thread-ref',
+          body: 'Got it.',
+          'hq-root': tempDir,
+          worker: 'architect',
+        },
+        flags: new Set(),
+      };
+      const result = await handleReply(args);
+      expect(result.success).toBe(false);
+      // Should reach config loading (past the threadRef branching)
+      expect(result.output).toContain('Error loading HIAMP config');
+
+      if (oldEnv !== undefined) {
+        process.env['HIAMP_CONFIG_PATH'] = oldEnv;
+      }
+    });
+
+    it('validates intent before using transport', async () => {
+      const inboxDir = join(tempDir, 'workspace', 'inbox', 'architect');
+      await mkdir(inboxDir, { recursive: true });
+
+      const entry: InboxEntry = {
+        message: {
+          version: 'v1',
+          id: 'msg-intent-check',
+          from: 'alex/backend-dev',
+          to: 'stefan/architect',
+          intent: 'handoff',
+          body: 'Test.',
+        },
+        rawText: 'raw text',
+        receivedAt: '2026-02-12T10:30:00Z',
+        channelId: 'C0CHAN',
+        read: false,
+      };
+
+      await writeFile(join(inboxDir, 'msg-intent-check.json'), JSON.stringify(entry), 'utf-8');
+
+      // Create a config file that loads successfully
+      const configPath = join(tempDir, 'hiamp.yaml');
+      const yamlContent = `
+identity:
+  owner: stefan
+  instance-id: stefan-hq-primary
+
+peers:
+  - owner: alex
+    trust-level: open
+    workers:
+      - id: backend-dev
+
+slack:
+  bot-token: $SLACK_BOT_TOKEN
+  app-id: A0TEST
+  workspace-id: T0TEST
+  channel-strategy: dedicated
+  event-mode: socket
+
+worker-permissions:
+  default: allow
+  workers: []
+`;
+      await writeFile(configPath, yamlContent, 'utf-8');
+
+      const args: CliArgs = {
+        subcommand: 'reply',
+        options: {
+          'message-id': 'msg-intent-check',
+          body: 'Reply text',
+          'hq-root': tempDir,
+          worker: 'architect',
+          config: configPath,
+          intent: 'invalid-intent',
+        },
+        flags: new Set(),
+      };
+      const result = await handleReply(args);
+      expect(result.success).toBe(false);
+      expect(result.output).toContain('Invalid intent');
+    });
+  });
+
+  describe('handleShare uses Transport abstraction (not SlackSender)', () => {
+    it('reads files and uses transport.send for sharing', async () => {
+      // Create a test file to share
+      const testFilePath = join(tempDir, 'test-share.ts');
+      await writeFile(testFilePath, 'export const x = 42;', 'utf-8');
+
+      // Clear env so config loading fails (validates file reading succeeds
+      // and we reach the transport creation step)
+      const oldEnv = process.env['HIAMP_CONFIG_PATH'];
+      delete process.env['HIAMP_CONFIG_PATH'];
+
+      const args: CliArgs = {
+        subcommand: 'share',
+        options: {
+          to: 'alex/backend-dev',
+          files: testFilePath,
+          body: 'Here is the module.',
+        },
+        flags: new Set(),
+      };
+      const result = await handleShare(args);
+      expect(result.success).toBe(false);
+      // Should get past file reading and fail on config loading
+      expect(result.output).toContain('Error loading HIAMP config');
+
+      if (oldEnv !== undefined) {
+        process.env['HIAMP_CONFIG_PATH'] = oldEnv;
+      }
+    });
+
+    it('composes multiple files into the message body', async () => {
+      // Create two test files
+      const file1 = join(tempDir, 'api.ts');
+      const file2 = join(tempDir, 'types.json');
+      await writeFile(file1, 'export function hello() {}', 'utf-8');
+      await writeFile(file2, '{"key": "value"}', 'utf-8');
+
+      const oldEnv = process.env['HIAMP_CONFIG_PATH'];
+      delete process.env['HIAMP_CONFIG_PATH'];
+
+      const args: CliArgs = {
+        subcommand: 'share',
+        options: {
+          to: 'alex/backend-dev',
+          files: `${file1},${file2}`,
+          body: 'Two files for you.',
+        },
+        flags: new Set(),
+      };
+      const result = await handleShare(args);
+      expect(result.success).toBe(false);
+      // Reaches config loading step (past file reading) for both files
+      expect(result.output).toContain('Error loading HIAMP config');
+
+      if (oldEnv !== undefined) {
+        process.env['HIAMP_CONFIG_PATH'] = oldEnv;
+      }
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -706,6 +1581,7 @@ describe('main', () => {
 /** Build a minimal HiampConfig for tests that need one */
 function makeConfig() {
   return {
+    transport: 'slack' as const,
     identity: {
       owner: 'stefan',
       instanceId: 'stefan-hq-primary',

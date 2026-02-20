@@ -17,6 +17,7 @@ function makeTempDir(): string {
 /** Build a minimal HiampConfig for testing */
 function makeConfig(overrides?: Partial<HiampConfig>): HiampConfig {
   return {
+    transport: 'slack',
     identity: {
       owner: 'stefan',
       instanceId: 'stefan-hq-primary',

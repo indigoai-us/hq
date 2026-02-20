@@ -13,6 +13,7 @@ import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
 import { registerAuthCommand } from "./commands/auth.js";
 import { registerCloudSetupCommand } from "./commands/cloud-setup.js";
+import { registerHiampCommands } from "./commands/hiamp.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -46,5 +47,12 @@ registerAuthCommand(program);
 
 // Cloud session management (hq cloud setup-token|status)
 registerCloudSetupCommand(program);
+
+// HIAMP protocol commands (hq hiamp check|listen|status|send)
+const hiampCmd = program
+  .command("hiamp")
+  .description("HIAMP protocol — heartbeat, messaging, and status");
+
+registerHiampCommands(hiampCmd);
 
 program.parse();

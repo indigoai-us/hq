@@ -14,6 +14,9 @@ import yaml from 'js-yaml';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Transport type selection */
+export type TransportType = 'linear' | 'slack';
+
 /** Trust levels for peers */
 export type TrustLevel = 'open' | 'channel-scoped' | 'token-verified';
 
@@ -87,6 +90,54 @@ export interface HiampSlackConfig {
   socketAppToken?: string;
 }
 
+/** Mapping from HIAMP context tag to a Linear project */
+export interface HiampLinearProjectMapping {
+  /** HIAMP context tag (e.g., "hq-cloud") */
+  context: string;
+
+  /** Linear project UUID */
+  projectId: string;
+
+  /** Optional: specific issue ID to route to for this project */
+  issueId?: string;
+}
+
+/** Configuration for a single Linear team */
+export interface HiampLinearTeamConfig {
+  /** Linear team key (e.g., "ENG") */
+  key: string;
+
+  /** Team UUID (resolved and cached at runtime if not provided) */
+  teamId?: string;
+
+  /** Mappings from HIAMP context tags to Linear projects */
+  projectMappings?: HiampLinearProjectMapping[];
+
+  /** Optional: explicit issue ID for the team's agent-comms fallback */
+  agentCommsIssueId?: string;
+}
+
+/** Linear integration section */
+export interface HiampLinearConfig {
+  /** Linear API key (env var reference, e.g., $LINEAR_API_KEY) */
+  apiKey: string;
+
+  /** Default team key when no context matches */
+  defaultTeam: string;
+
+  /** Team configurations */
+  teams: HiampLinearTeamConfig[];
+
+  /** Heartbeat poll interval in minutes. Default: 5 */
+  heartbeatIntervalMinutes?: number;
+
+  /** Cache TTL in milliseconds for resolver lookups. Default: 300000 (5 min) */
+  cacheTtlMs?: number;
+
+  /** Linear issue IDs to watch immediately */
+  watchedQueries?: string[];
+}
+
 /** Rate limiting config */
 export interface RateLimitingConfig {
   maxMessagesPerMinute: number;
@@ -153,9 +204,14 @@ export interface HiampSettings {
 
 /** Complete HIAMP configuration */
 export interface HiampConfig {
+  /** Transport type: 'linear' or 'slack'. Default: 'linear' */
+  transport: TransportType;
   identity: HiampIdentity;
   peers: HiampPeer[];
-  slack: HiampSlackConfig;
+  /** Slack config. Required when transport is 'slack', optional when 'linear'. */
+  slack?: HiampSlackConfig;
+  /** Linear config. Required when transport is 'linear'. */
+  linear?: HiampLinearConfig;
   security?: HiampSecurityConfig;
   workerPermissions: WorkerPermissionsConfig;
   settings?: HiampSettings;
@@ -195,9 +251,11 @@ export function resolveEnvRef(value: string): string | undefined {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface RawConfig {
+  transport?: string;
   identity?: any;
   peers?: any[];
   slack?: any;
+  linear?: any;
   security?: any;
   'worker-permissions'?: any;
   settings?: any;
@@ -210,6 +268,7 @@ interface RawConfig {
 
 const OWNER_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 const INSTANCE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+const TRANSPORT_TYPES: TransportType[] = ['linear', 'slack'];
 const CHANNEL_STRATEGIES: ChannelStrategy[] = ['dedicated', 'dm', 'per-relationship', 'contextual'];
 const TRUST_LEVELS: TrustLevel[] = ['open', 'channel-scoped', 'token-verified'];
 
@@ -235,6 +294,28 @@ function validateRequired(
 // ---------------------------------------------------------------------------
 
 function transformConfig(raw: RawConfig, errors: ConfigValidationError[]): HiampConfig | null {
+  // --- transport ---
+  // If explicit transport is set, validate it. Otherwise infer from presence of sections:
+  // - If linear: section present -> linear
+  // - If only slack: section present -> slack (backward compatibility)
+  // - Default: linear
+  let transport: TransportType;
+  if (raw.transport) {
+    if (!TRANSPORT_TYPES.includes(raw.transport as TransportType)) {
+      errors.push({
+        field: 'transport',
+        message: `Invalid transport type: "${raw.transport}". Must be one of: ${TRANSPORT_TYPES.join(', ')}`,
+      });
+    }
+    transport = raw.transport as TransportType;
+  } else if (raw.linear) {
+    transport = 'linear';
+  } else if (raw.slack) {
+    transport = 'slack';
+  } else {
+    transport = 'linear';
+  }
+
   // --- identity ---
   if (!raw.identity) {
     errors.push({ field: 'identity', message: 'Required section "identity" is missing' });
@@ -281,63 +362,163 @@ function transformConfig(raw: RawConfig, errors: ConfigValidationError[]): Hiamp
     };
   });
 
-  // --- slack ---
-  if (!raw.slack) {
-    errors.push({ field: 'slack', message: 'Required section "slack" is missing' });
+  // --- slack (required for 'slack' transport, optional for 'linear') ---
+  let slack: HiampSlackConfig | undefined;
+  if (transport === 'slack' && !raw.slack) {
+    errors.push({ field: 'slack', message: 'Required section "slack" is missing (required when transport is "slack")' });
     return null;
   }
-  validateRequired(raw.slack, ['bot-token', 'app-id', 'workspace-id', 'channel-strategy', 'event-mode'], 'slack', errors);
+  if (raw.slack) {
+    validateRequired(raw.slack, ['bot-token', 'app-id', 'workspace-id', 'channel-strategy', 'event-mode'], 'slack', errors);
 
-  if (raw.slack['channel-strategy'] && !CHANNEL_STRATEGIES.includes(raw.slack['channel-strategy'])) {
-    errors.push({
-      field: 'slack.channel-strategy',
-      message: `Invalid channel strategy: ${raw.slack['channel-strategy']}`,
-    });
+    if (raw.slack['channel-strategy'] && !CHANNEL_STRATEGIES.includes(raw.slack['channel-strategy'])) {
+      errors.push({
+        field: 'slack.channel-strategy',
+        message: `Invalid channel strategy: ${raw.slack['channel-strategy']}`,
+      });
+    }
+
+    // Resolve bot token from env
+    const rawBotToken: string = raw.slack['bot-token'] ?? '';
+    const resolvedBotToken = resolveEnvRef(rawBotToken);
+
+    const channels: ChannelConfig = {};
+    if (raw.slack.channels) {
+      const ch = raw.slack.channels;
+      if (ch.dedicated) {
+        channels.dedicated = { name: ch.dedicated.name, id: ch.dedicated.id };
+      }
+      if (ch['per-relationship']) {
+        channels.perRelationship = ch['per-relationship'].map(
+          (r: { peer: string; name: string; id: string }) => ({
+            peer: r.peer,
+            name: r.name,
+            id: r.id,
+          }),
+        );
+      }
+      if (ch.contextual) {
+        channels.contextual = ch.contextual.map(
+          (c: { context: string; name: string; id: string; peers: string[] }) => ({
+            context: c.context,
+            name: c.name,
+            id: c.id,
+            peers: c.peers,
+          }),
+        );
+      }
+    }
+
+    slack = {
+      botToken: resolvedBotToken ?? rawBotToken,
+      appId: raw.slack['app-id'],
+      workspaceId: raw.slack['workspace-id'],
+      channelStrategy: raw.slack['channel-strategy'] as ChannelStrategy,
+      channels,
+      eventMode: raw.slack['event-mode'] as EventMode,
+      webhookUrl: raw.slack['webhook-url'] ?? null,
+      socketAppToken: raw.slack['socket-app-token']
+        ? resolveEnvRef(raw.slack['socket-app-token'])
+        : undefined,
+    };
   }
 
-  // Resolve bot token from env
-  const rawBotToken: string = raw.slack['bot-token'] ?? '';
-  const resolvedBotToken = resolveEnvRef(rawBotToken);
-
-  const channels: ChannelConfig = {};
-  if (raw.slack.channels) {
-    const ch = raw.slack.channels;
-    if (ch.dedicated) {
-      channels.dedicated = { name: ch.dedicated.name, id: ch.dedicated.id };
-    }
-    if (ch['per-relationship']) {
-      channels.perRelationship = ch['per-relationship'].map(
-        (r: { peer: string; name: string; id: string }) => ({
-          peer: r.peer,
-          name: r.name,
-          id: r.id,
-        }),
-      );
-    }
-    if (ch.contextual) {
-      channels.contextual = ch.contextual.map(
-        (c: { context: string; name: string; id: string; peers: string[] }) => ({
-          context: c.context,
-          name: c.name,
-          id: c.id,
-          peers: c.peers,
-        }),
-      );
-    }
+  // --- linear (required for 'linear' transport, optional for 'slack') ---
+  let linear: HiampLinearConfig | undefined;
+  if (transport === 'linear' && !raw.linear) {
+    errors.push({ field: 'linear', message: 'Required section "linear" is missing (required when transport is "linear")' });
+    return null;
   }
+  if (raw.linear) {
+    // Validate required Linear fields
+    if (!raw.linear['api-key'] && !raw.linear.apiKey) {
+      errors.push({ field: 'linear.api-key', message: 'Required field "api-key" is missing in linear section' });
+    }
+    if (!raw.linear['default-team'] && !raw.linear.defaultTeam) {
+      errors.push({ field: 'linear.default-team', message: 'Required field "default-team" is missing in linear section' });
+    }
+    if (!raw.linear.teams || !Array.isArray(raw.linear.teams) || raw.linear.teams.length === 0) {
+      errors.push({ field: 'linear.teams', message: 'Required field "teams" is missing or empty in linear section' });
+    }
 
-  const slack: HiampSlackConfig = {
-    botToken: resolvedBotToken ?? rawBotToken,
-    appId: raw.slack['app-id'],
-    workspaceId: raw.slack['workspace-id'],
-    channelStrategy: raw.slack['channel-strategy'] as ChannelStrategy,
-    channels,
-    eventMode: raw.slack['event-mode'] as EventMode,
-    webhookUrl: raw.slack['webhook-url'] ?? null,
-    socketAppToken: raw.slack['socket-app-token']
-      ? resolveEnvRef(raw.slack['socket-app-token'])
-      : undefined,
-  };
+    // Validate team entries
+    const rawTeams = raw.linear.teams ?? [];
+    for (let i = 0; i < rawTeams.length; i++) {
+      const t = rawTeams[i];
+      if (!t.key) {
+        errors.push({ field: `linear.teams[${i}].key`, message: 'Required field "key" is missing in team entry' });
+      }
+      // Validate project mappings if present
+      if (t['project-mappings'] && Array.isArray(t['project-mappings'])) {
+        for (let j = 0; j < t['project-mappings'].length; j++) {
+          const pm = t['project-mappings'][j];
+          if (!pm.context) {
+            errors.push({ field: `linear.teams[${i}].project-mappings[${j}].context`, message: 'Required field "context" is missing in project mapping' });
+          }
+          if (!pm['project-id'] && !pm.projectId) {
+            errors.push({ field: `linear.teams[${i}].project-mappings[${j}].project-id`, message: 'Required field "project-id" is missing in project mapping' });
+          }
+        }
+      }
+    }
+
+    // Resolve API key from env
+    const rawApiKey: string = raw.linear['api-key'] ?? raw.linear.apiKey ?? '';
+    const resolvedApiKey = resolveEnvRef(rawApiKey);
+
+    // Verify default team is listed in teams
+    const defaultTeamKey: string = raw.linear['default-team'] ?? raw.linear.defaultTeam ?? '';
+    if (defaultTeamKey && rawTeams.length > 0) {
+      const hasDefaultTeam = rawTeams.some((t: { key: string }) => t.key === defaultTeamKey);
+      if (!hasDefaultTeam) {
+        errors.push({
+          field: 'linear.default-team',
+          message: `Default team "${defaultTeamKey}" is not listed in linear.teams`,
+        });
+      }
+    }
+
+    // Transform teams
+    const teams: HiampLinearTeamConfig[] = rawTeams.map(
+      (t: {
+        key: string;
+        'team-id'?: string;
+        teamId?: string;
+        'project-mappings'?: Array<{
+          context: string;
+          'project-id'?: string;
+          projectId?: string;
+          'issue-id'?: string;
+          issueId?: string;
+        }>;
+        'agent-comms-issue-id'?: string;
+        agentCommsIssueId?: string;
+      }) => {
+        const teamConfig: HiampLinearTeamConfig = {
+          key: t.key,
+          teamId: t['team-id'] ?? t.teamId,
+          agentCommsIssueId: t['agent-comms-issue-id'] ?? t.agentCommsIssueId,
+        };
+        if (t['project-mappings'] && Array.isArray(t['project-mappings'])) {
+          teamConfig.projectMappings = t['project-mappings'].map((pm) => ({
+            context: pm.context,
+            projectId: pm['project-id'] ?? pm.projectId ?? '',
+            issueId: pm['issue-id'] ?? pm.issueId,
+          }));
+        }
+        return teamConfig;
+      },
+    );
+
+    linear = {
+      apiKey: resolvedApiKey ?? rawApiKey,
+      defaultTeam: defaultTeamKey,
+      teams,
+      heartbeatIntervalMinutes: raw.linear['heartbeat-interval-minutes'] ?? raw.linear.heartbeatIntervalMinutes,
+      cacheTtlMs: raw.linear['cache-ttl-ms'] ?? raw.linear.cacheTtlMs,
+      watchedQueries: raw.linear['watched-queries'] ?? raw.linear.watchedQueries,
+    };
+  }
 
   // --- security ---
   let security: HiampSecurityConfig | undefined;
@@ -422,9 +603,11 @@ function transformConfig(raw: RawConfig, errors: ConfigValidationError[]): Hiamp
   }
 
   return {
+    transport,
     identity,
     peers,
     slack,
+    linear,
     security,
     workerPermissions,
     settings,

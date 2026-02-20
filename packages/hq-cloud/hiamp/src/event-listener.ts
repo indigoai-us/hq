@@ -340,7 +340,7 @@ export class EventListener {
       throw new Error('EventListener is already running');
     }
 
-    const appToken = this.config.slack.socketAppToken;
+    const appToken = this.config.slack!.socketAppToken;
     if (!appToken) {
       throw new Error(
         'Socket mode requires socket-app-token in the Slack config',
@@ -348,6 +348,7 @@ export class EventListener {
     }
 
     // Dynamic import to avoid requiring @slack/socket-mode as a hard dependency
+    // @ts-expect-error -- @slack/socket-mode is an optional peer dependency, dynamically imported
     const { SocketModeClient } = await import('@slack/socket-mode');
 
     const client = new SocketModeClient({ appToken });
@@ -409,7 +410,7 @@ export class EventListener {
    */
   private getConfiguredChannels(): string[] {
     const channels: string[] = [];
-    const ch = this.config.slack.channels;
+    const ch = this.config.slack!.channels;
 
     if (ch?.dedicated) {
       channels.push(ch.dedicated.id);

@@ -169,7 +169,7 @@ describe('config-loader', () => {
       expect(result.config.identity.instanceId).toBe('stefan-hq-primary');
       expect(result.config.peers).toHaveLength(1);
       expect(result.config.peers[0]?.owner).toBe('alex');
-      expect(result.config.slack.channelStrategy).toBe('dedicated');
+      expect(result.config.slack!.channelStrategy).toBe('dedicated');
       expect(result.config.workerPermissions.default).toBe('deny');
     });
 
@@ -197,13 +197,13 @@ describe('config-loader', () => {
       expect(config.peers[1]?.trustLevel).toBe('token-verified');
 
       // Slack
-      expect(config.slack.botToken).toBe('xoxb-test-token-123');
-      expect(config.slack.channelStrategy).toBe('per-relationship');
-      expect(config.slack.channels?.dedicated?.id).toBe('C0HQAGENTS');
-      expect(config.slack.channels?.perRelationship).toHaveLength(2);
-      expect(config.slack.channels?.perRelationship?.[0]?.peer).toBe('alex');
-      expect(config.slack.channels?.contextual).toHaveLength(1);
-      expect(config.slack.channels?.contextual?.[0]?.context).toBe('hq-cloud');
+      expect(config.slack!.botToken).toBe('xoxb-test-token-123');
+      expect(config.slack!.channelStrategy).toBe('per-relationship');
+      expect(config.slack!.channels?.dedicated?.id).toBe('C0HQAGENTS');
+      expect(config.slack!.channels?.perRelationship).toHaveLength(2);
+      expect(config.slack!.channels?.perRelationship?.[0]?.peer).toBe('alex');
+      expect(config.slack!.channels?.contextual).toHaveLength(1);
+      expect(config.slack!.channels?.contextual?.[0]?.context).toBe('hq-cloud');
 
       // Security
       expect(config.security?.killSwitch).toBe(false);
@@ -269,8 +269,9 @@ worker-permissions:
       expect(result.errors.some((e) => e.field === 'peers')).toBe(true);
     });
 
-    it('should fail on missing slack section', () => {
+    it('should fail on missing slack section when transport is slack', () => {
       const yaml = `
+transport: slack
 identity:
   owner: stefan
   instance-id: stefan-hq-primary
@@ -287,6 +288,26 @@ worker-permissions:
       expect(result.success).toBe(false);
       if (result.success) return;
       expect(result.errors.some((e) => e.field === 'slack')).toBe(true);
+    });
+
+    it('should fail on missing linear section when transport defaults to linear', () => {
+      const yaml = `
+identity:
+  owner: stefan
+  instance-id: stefan-hq-primary
+peers:
+  - owner: alex
+    trust-level: open
+    workers:
+      - id: backend-dev
+worker-permissions:
+  default: deny
+  workers: []
+`;
+      const result = loadConfigFromString(yaml);
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.errors.some((e) => e.field === 'linear')).toBe(true);
     });
 
     it('should fail on missing worker-permissions section', () => {
@@ -327,7 +348,7 @@ slack:
       const result = loadConfigFromString(MINIMAL_CONFIG);
       expect(result.success).toBe(true);
       if (!result.success) return;
-      expect(result.config.slack.botToken).toBe('xoxb-test-token-123');
+      expect(result.config.slack!.botToken).toBe('xoxb-test-token-123');
     });
 
     it('should fail on invalid owner format', () => {

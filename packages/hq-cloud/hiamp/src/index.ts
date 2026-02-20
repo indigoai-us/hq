@@ -74,7 +74,28 @@ export {
   THREAD_ID_PREFIX,
 } from './constants.js';
 
-// Slack integration
+// Transport abstraction
+export type {
+  Transport,
+  TransportSendInput,
+  TransportReplyInput,
+  TransportSendResult,
+  TransportSendSuccess,
+  TransportSendFailure,
+  TransportResolveInput,
+  TransportResolveResult,
+  TransportResolveSuccess,
+  TransportResolveFailure,
+  TransportReceivedMessage,
+  TransportMessageHandler,
+  TransportErrorHandler,
+} from './transport.js';
+
+/** @deprecated Use LinearTransport instead. */
+export { SlackTransport } from './slack-transport.js';
+export type { SlackTransportOptions } from './slack-transport.js';
+
+// Slack integration (low-level components — prefer Transport interface)
 export { SlackSender } from './slack-sender.js';
 export type { SendInput, ReplyInput, SendResult, SendSuccess, SendFailure } from './slack-sender.js';
 
@@ -167,3 +188,30 @@ export type {
   TimedOutEntry,
   TimeoutTrackerOptions,
 } from './timeout-tracker.js';
+
+// Linear integration (US-002)
+export { LinearClient } from './linear-client.js';
+export type {
+  LinearIssue,
+  LinearComment,
+  LinearTeam,
+  LinearProject,
+  PaginatedResult,
+  ListOptions,
+  SearchIssuesOptions,
+  LinearGraphQLError,
+  LinearResult,
+  LinearErrorCode,
+  LinearClientOptions,
+} from './linear-client.js';
+
+// Linear channel resolver (US-003)
+export { LinearChannelResolver } from './linear-channel-resolver.js';
+export type {
+  LinearProjectMapping,
+  LinearTeamConfig,
+  LinearResolverConfig,
+  LinearResolveSuccess,
+  LinearResolveFailure,
+  LinearResolveResult,
+} from './linear-channel-resolver.js';
