@@ -39,6 +39,7 @@ describe("useSetupStatus", () => {
       setupComplete: true,
       s3Prefix: "user_123/hq/",
       fileCount: 100,
+      hqRoot: null,
     });
     const { result } = renderHook(() => useSetupStatus());
 
@@ -55,6 +56,7 @@ describe("useSetupStatus", () => {
       setupComplete: true,
       s3Prefix: "user_123/hq/",
       fileCount: 1132,
+      hqRoot: "C:\\hq",
     });
     const { result } = renderHook(() => useSetupStatus());
 
@@ -65,6 +67,7 @@ describe("useSetupStatus", () => {
     expect(result.current.setupComplete).toBe(true);
     expect(result.current.s3Prefix).toBe("user_123/hq/");
     expect(result.current.fileCount).toBe(1132);
+    expect(result.current.hqRoot).toBe("C:\\hq");
   });
 
   it("returns setupComplete=false when API says setup is not complete", async () => {
@@ -72,6 +75,7 @@ describe("useSetupStatus", () => {
       setupComplete: false,
       s3Prefix: null,
       fileCount: 0,
+      hqRoot: null,
     });
     const { result } = renderHook(() => useSetupStatus());
 
@@ -82,6 +86,39 @@ describe("useSetupStatus", () => {
     expect(result.current.setupComplete).toBe(false);
     expect(result.current.s3Prefix).toBeNull();
     expect(result.current.fileCount).toBe(0);
+    expect(result.current.hqRoot).toBeNull();
+  });
+
+  it("returns hqRoot when API provides it", async () => {
+    mockCheckSetupStatus.mockResolvedValue({
+      setupComplete: false,
+      s3Prefix: null,
+      fileCount: 0,
+      hqRoot: "/home/user/hq",
+    });
+    const { result } = renderHook(() => useSetupStatus());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.hqRoot).toBe("/home/user/hq");
+  });
+
+  it("returns hqRoot=null when API does not provide it", async () => {
+    mockCheckSetupStatus.mockResolvedValue({
+      setupComplete: true,
+      s3Prefix: "user_123/hq/",
+      fileCount: 100,
+      hqRoot: null,
+    });
+    const { result } = renderHook(() => useSetupStatus());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.hqRoot).toBeNull();
   });
 
   it("assumes setupComplete=true on non-auth API errors", async () => {
@@ -94,6 +131,7 @@ describe("useSetupStatus", () => {
 
     // Non-auth error: assume setup complete to avoid blocking users
     expect(result.current.setupComplete).toBe(true);
+    expect(result.current.hqRoot).toBeNull();
   });
 
   it("keeps setupComplete=false on auth errors", async () => {
@@ -121,6 +159,7 @@ describe("useSetupStatus", () => {
       setupComplete: true,
       s3Prefix: "user_123/hq/",
       fileCount: 100,
+      hqRoot: null,
     });
     const { result } = renderHook(() => useSetupStatus());
 
@@ -143,6 +182,7 @@ describe("useSetupStatus", () => {
       setupComplete: true,
       s3Prefix: "user_123/hq/",
       fileCount: 100,
+      hqRoot: null,
     });
     const { result } = renderHook(() => useSetupStatus());
 
@@ -156,6 +196,7 @@ describe("useSetupStatus", () => {
       setupComplete: true,
       s3Prefix: "user_123/hq/",
       fileCount: 100,
+      hqRoot: null,
     });
     const { result, rerender } = renderHook(() => useSetupStatus());
 

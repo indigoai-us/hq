@@ -36,9 +36,11 @@ import {
   checkSetupStatus,
   handlePostLoginSetup,
   performPostLoginSync,
+  promptHqRoot,
   classifySyncResult,
   printSyncSummary,
   type SetupStatusResponse,
+  type PromptInputFn,
 } from '../commands/auth.js';
 import type { PushResult } from '../utils/sync.js';
 
@@ -92,6 +94,7 @@ describe('checkSetupStatus', () => {
       setupComplete: true,
       s3Prefix: 'user_abc123/hq/',
       fileCount: 42,
+      hqRoot: '/home/user/hq',
     };
 
     mockApiRequest.mockResolvedValueOnce({
@@ -110,6 +113,7 @@ describe('checkSetupStatus', () => {
       setupComplete: false,
       s3Prefix: 'user_abc123/hq/',
       fileCount: 0,
+      hqRoot: null,
     };
 
     mockApiRequest.mockResolvedValueOnce({
@@ -172,7 +176,7 @@ describe('handlePostLoginSetup', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { setupComplete: true, s3Prefix: 'user_abc/hq/', fileCount: 150 },
+      data: { setupComplete: true, s3Prefix: 'user_abc/hq/', fileCount: 150, hqRoot: '/mock/hq' },
     });
 
     await handlePostLoginSetup(false);
@@ -182,11 +186,11 @@ describe('handlePostLoginSetup', () => {
     expect(mockPushChanges).not.toHaveBeenCalled();
   });
 
-  it('triggers auto-sync when setupComplete is false', async () => {
+  it('triggers auto-sync when setupComplete is false and hqRoot is already set', async () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0 },
+      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0, hqRoot: '/mock/hq' },
     });
 
     mockComputeLocalManifest.mockReturnValue([
@@ -207,7 +211,7 @@ describe('handlePostLoginSetup', () => {
     mockApiRequest.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0 },
+      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0, hqRoot: '/mock/hq' },
     });
 
     mockComputeLocalManifest.mockReturnValue([]);
@@ -259,9 +263,8 @@ describe('performPostLoginSync', () => {
     ]);
     mockPushChanges.mockResolvedValueOnce(makePushResult({ total: 1, uploaded: 1 }));
 
-    await performPostLoginSync();
+    await performPostLoginSync('/mock/hq');
 
-    expect(mockFindHqRoot).toHaveBeenCalled();
     expect(mockComputeLocalManifest).toHaveBeenCalledWith('/mock/hq');
     // pushChanges now receives a progress callback as second arg
     expect(mockPushChanges).toHaveBeenCalledWith('/mock/hq', expect.any(Function));
@@ -272,7 +275,7 @@ describe('performPostLoginSync', () => {
     mockComputeLocalManifest.mockReturnValue([]);
     mockPushChanges.mockResolvedValueOnce(makePushResult());
 
-    await performPostLoginSync();
+    await performPostLoginSync('/mock/hq');
 
     expect(consoleOutput.some((line) => line.includes('No files to upload'))).toBe(true);
   });
@@ -290,7 +293,7 @@ describe('performPostLoginSync', () => {
       })),
     }));
 
-    await performPostLoginSync();
+    await performPostLoginSync('/mock/hq');
 
     // Should show "Synced 1113 files. 19 skipped (see details with --verbose)."
     expect(consoleOutput.some((line) => line.includes('Synced 1113 files'))).toBe(true);
@@ -308,7 +311,7 @@ describe('performPostLoginSync', () => {
       ],
     }));
 
-    await performPostLoginSync(true);
+    await performPostLoginSync('/mock/hq', true);
 
     // With verbose, should list individual skipped files
     expect(consoleOutput.some((line) => line.includes('dir/.gitkeep'))).toBe(true);
@@ -323,7 +326,7 @@ describe('performPostLoginSync', () => {
     ]);
     mockPushChanges.mockResolvedValueOnce(makePushResult({ total: 3, uploaded: 3 }));
 
-    await performPostLoginSync();
+    await performPostLoginSync('/mock/hq');
 
     expect(consoleOutput.some((line) => line.includes('Synced 3 files'))).toBe(true);
   });
@@ -332,21 +335,11 @@ describe('performPostLoginSync', () => {
     mockComputeLocalManifest.mockReturnValue([]);
     mockPushChanges.mockRejectedValueOnce(new Error('Sync diff failed: HTTP 500'));
 
-    await performPostLoginSync();
+    await performPostLoginSync('/mock/hq');
 
     // Should print a warning, not throw
     expect(consoleOutput.some((line) => line.includes('Warning: Initial sync encountered an error'))).toBe(true);
     expect(consoleOutput.some((line) => line.includes('hq sync push'))).toBe(true);
-  });
-
-  it('handles findHqRoot throwing gracefully', async () => {
-    mockFindHqRoot.mockImplementationOnce(() => {
-      throw new Error('Could not find HQ root');
-    });
-
-    await performPostLoginSync();
-
-    expect(consoleOutput.some((line) => line.includes('Warning: Initial sync encountered an error'))).toBe(true);
   });
 
   // ── US-005: Total failure → retry prompt ─────────────────────────────────
@@ -376,7 +369,7 @@ describe('performPostLoginSync', () => {
     // Mock retry prompt to accept
     const mockPrompt = vi.fn().mockResolvedValue(true);
 
-    await performPostLoginSync(false, mockPrompt);
+    await performPostLoginSync('/mock/hq', false, mockPrompt);
 
     // Should have been prompted
     expect(mockPrompt).toHaveBeenCalledWith('Retry initial sync? (Y/n)');
@@ -405,7 +398,7 @@ describe('performPostLoginSync', () => {
     // Mock retry prompt to decline
     const mockPrompt = vi.fn().mockResolvedValue(false);
 
-    await performPostLoginSync(false, mockPrompt);
+    await performPostLoginSync('/mock/hq', false, mockPrompt);
 
     expect(mockPrompt).toHaveBeenCalled();
     expect(consoleOutput.some((line) => line.includes('hq sync push'))).toBe(true);
@@ -434,7 +427,7 @@ describe('performPostLoginSync', () => {
 
     const mockPrompt = vi.fn().mockResolvedValue(true);
 
-    await performPostLoginSync(false, mockPrompt);
+    await performPostLoginSync('/mock/hq', false, mockPrompt);
 
     expect(mockPrompt).toHaveBeenCalledWith('Some files failed. Retry failed files? (Y/n)');
     expect(consoleOutput.some((line) => line.includes('Retrying failed files'))).toBe(true);
@@ -457,7 +450,7 @@ describe('performPostLoginSync', () => {
 
     const mockPrompt = vi.fn();
 
-    await performPostLoginSync(false, mockPrompt);
+    await performPostLoginSync('/mock/hq', false, mockPrompt);
 
     // Should NOT prompt — >50% success is considered success with warnings
     expect(mockPrompt).not.toHaveBeenCalled();
@@ -481,7 +474,7 @@ describe('performPostLoginSync', () => {
 
     const mockPrompt = vi.fn();
 
-    await performPostLoginSync(false, mockPrompt);
+    await performPostLoginSync('/mock/hq', false, mockPrompt);
 
     // No retry prompt
     expect(mockPrompt).not.toHaveBeenCalled();
@@ -504,7 +497,7 @@ describe('performPostLoginSync', () => {
       errors: ['Request body is too large'],
     }));
 
-    await performPostLoginSync(true); // verbose=true
+    await performPostLoginSync('/mock/hq', true); // verbose=true
 
     // Should show the individual failed file with its error
     expect(consoleOutput.some((line) => line.includes('big-image.jpeg'))).toBe(true);
@@ -524,7 +517,7 @@ describe('performPostLoginSync', () => {
       errors: Array.from({ length: 5 }, (_, i) => `Error ${i}`),
     }));
 
-    await performPostLoginSync(false); // verbose=false
+    await performPostLoginSync('/mock/hq', false); // verbose=false
 
     // Should show first 3 errors
     expect(consoleOutput.some((line) => line.includes('fail0.txt'))).toBe(true);
@@ -533,6 +526,187 @@ describe('performPostLoginSync', () => {
     // Should show overflow hint
     expect(consoleOutput.some((line) => line.includes('and 2 more'))).toBe(true);
     expect(consoleOutput.some((line) => line.includes('--verbose'))).toBe(true);
+  });
+});
+
+// ── promptHqRoot ──────────────────────────────────────────────────────────────
+
+describe('promptHqRoot', () => {
+  it('prompts user and returns path when valid', async () => {
+    const mockInput = vi.fn().mockResolvedValue('/valid/hq');
+    const mockValidate = vi.fn().mockReturnValue(true);
+
+    // Mock the apiRequest for saving hqRoot
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const result = await promptHqRoot(mockInput, mockValidate);
+
+    expect(result).not.toBeNull();
+    expect(mockInput).toHaveBeenCalledTimes(1);
+    expect(mockInput).toHaveBeenCalledWith(expect.stringContaining('Where is your HQ system located?'));
+    // Should have saved to API
+    expect(mockApiRequest).toHaveBeenCalledWith('PUT', '/api/settings', { hqRoot: expect.any(String) });
+  });
+
+  it('uses detected default when user presses Enter (empty input)', async () => {
+    // findHqRoot mock already returns '/mock/hq'
+    const mockInput = vi.fn().mockResolvedValue(''); // empty = accept default
+    const mockValidate = vi.fn().mockReturnValue(true);
+
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const result = await promptHqRoot(mockInput, mockValidate);
+
+    expect(result).not.toBeNull();
+    // Should have used findHqRoot's return value
+    expect(mockValidate).toHaveBeenCalled();
+  });
+
+  it('shows default path hint in prompt', async () => {
+    const mockInput = vi.fn().mockResolvedValue('');
+    const mockValidate = vi.fn().mockReturnValue(true);
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    await promptHqRoot(mockInput, mockValidate);
+
+    // Prompt should contain the detected default path
+    expect(mockInput).toHaveBeenCalledWith(expect.stringContaining('/mock/hq'));
+  });
+
+  it('re-prompts on invalid path (up to 3 attempts)', async () => {
+    const mockInput = vi.fn()
+      .mockResolvedValueOnce('/bad/path1')
+      .mockResolvedValueOnce('/bad/path2')
+      .mockResolvedValueOnce('/bad/path3');
+    const mockValidate = vi.fn().mockReturnValue(false);
+
+    const result = await promptHqRoot(mockInput, mockValidate);
+
+    expect(result).toBeNull();
+    expect(mockInput).toHaveBeenCalledTimes(3);
+    // Should show error messages for invalid paths
+    expect(consoleOutput.some((line) => line.includes('does not appear to be an HQ directory'))).toBe(true);
+    // Should show final failure message
+    expect(consoleOutput.some((line) => line.includes('Could not find a valid HQ directory after 3 attempts'))).toBe(true);
+  });
+
+  it('succeeds on second attempt after first invalid path', async () => {
+    const mockInput = vi.fn()
+      .mockResolvedValueOnce('/bad/path')
+      .mockResolvedValueOnce('/good/path');
+    const mockValidate = vi.fn()
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const result = await promptHqRoot(mockInput, mockValidate);
+
+    expect(result).not.toBeNull();
+    expect(mockInput).toHaveBeenCalledTimes(2);
+    // Should show remaining attempts warning
+    expect(consoleOutput.some((line) => line.includes('2 attempts remaining'))).toBe(true);
+  });
+
+  it('saves hqRoot to API via PUT /api/settings', async () => {
+    const mockInput = vi.fn().mockResolvedValue('/my/hq');
+    const mockValidate = vi.fn().mockReturnValue(true);
+
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    await promptHqRoot(mockInput, mockValidate);
+
+    expect(mockApiRequest).toHaveBeenCalledWith('PUT', '/api/settings', { hqRoot: expect.stringContaining('hq') });
+  });
+
+  it('continues even if saving to API fails', async () => {
+    const mockInput = vi.fn().mockResolvedValue('/valid/hq');
+    const mockValidate = vi.fn().mockReturnValue(true);
+
+    mockApiRequest.mockRejectedValueOnce(new Error('Network error'));
+
+    const result = await promptHqRoot(mockInput, mockValidate);
+
+    // Should still return the path even if API save failed
+    expect(result).not.toBeNull();
+    expect(consoleOutput.some((line) => line.includes('Could not save HQ root to cloud settings'))).toBe(true);
+  });
+});
+
+// ── handlePostLoginSetup: hqRoot prompt flow ──────────────────────────────────
+
+describe('handlePostLoginSetup — hqRoot prompt', () => {
+  it('prompts for hqRoot when status.hqRoot is null', async () => {
+    // Setup status returns hqRoot: null
+    mockApiRequest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0, hqRoot: null },
+    });
+
+    // Mock the prompt input to return a path
+    const mockInput: PromptInputFn = vi.fn().mockResolvedValue('/prompted/hq');
+    const mockValidate = vi.fn().mockReturnValue(true);
+
+    // Mock the PUT /api/settings call for saving hqRoot
+    mockApiRequest.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    // Mock sync
+    mockComputeLocalManifest.mockReturnValue([]);
+    mockPushChanges.mockResolvedValueOnce(makePushResult({ total: 1, uploaded: 1 }));
+
+    await handlePostLoginSetup(false, false, undefined, mockInput, mockValidate);
+
+    // Should have prompted for hqRoot
+    expect(mockInput).toHaveBeenCalled();
+    // Should have proceeded to sync
+    expect(mockPushChanges).toHaveBeenCalled();
+  });
+
+  it('does NOT prompt when status.hqRoot is already set', async () => {
+    // Setup status returns hqRoot already set
+    mockApiRequest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0, hqRoot: '/existing/hq' },
+    });
+
+    mockComputeLocalManifest.mockReturnValue([]);
+    mockPushChanges.mockResolvedValueOnce(makePushResult({ total: 1, uploaded: 1 }));
+
+    const mockInput: PromptInputFn = vi.fn();
+
+    await handlePostLoginSetup(false, false, undefined, mockInput);
+
+    // Should NOT have prompted — hqRoot was already set
+    expect(mockInput).not.toHaveBeenCalled();
+    // Should proceed directly to sync with the existing hqRoot
+    expect(mockPushChanges).toHaveBeenCalledWith('/existing/hq', expect.any(Function));
+  });
+
+  it('skips sync when user fails to provide valid hqRoot after 3 attempts', async () => {
+    // Setup status returns hqRoot: null
+    mockApiRequest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { setupComplete: false, s3Prefix: 'user_abc/hq/', fileCount: 0, hqRoot: null },
+    });
+
+    // All attempts fail validation
+    const mockInput: PromptInputFn = vi.fn()
+      .mockResolvedValueOnce('/bad1')
+      .mockResolvedValueOnce('/bad2')
+      .mockResolvedValueOnce('/bad3');
+    const mockValidate = vi.fn().mockReturnValue(false);
+
+    await handlePostLoginSetup(false, false, undefined, mockInput, mockValidate);
+
+    // Should have prompted 3 times
+    expect(mockInput).toHaveBeenCalledTimes(3);
+    // Should NOT have synced
+    expect(mockPushChanges).not.toHaveBeenCalled();
+    // Should show skip message
+    expect(consoleOutput.some((line) => line.includes('Setup skipped'))).toBe(true);
   });
 });
 

@@ -15,7 +15,7 @@ export async function fetchSettings(): Promise<UserSettingsResponse> {
 }
 
 export async function updateSettings(
-  data: { hqDir?: string; notifications?: Record<string, boolean> },
+  data: { hqDir?: string; hqRoot?: string; notifications?: Record<string, boolean> },
 ): Promise<UserSettingsResponse> {
   return apiRequest<UserSettingsResponse>("/api/settings", {
     method: "PUT",

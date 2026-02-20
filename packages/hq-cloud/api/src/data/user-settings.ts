@@ -19,6 +19,7 @@ export interface NotificationSettings {
 export interface UserSettings {
   clerkUserId: string;
   hqDir: string | null;
+  hqRoot: string | null;
   s3Prefix: string | null;
   notifications: NotificationSettings;
   claudeTokenEncrypted: string | null;
@@ -29,6 +30,7 @@ export interface UserSettings {
 
 export interface UpdateUserSettingsInput {
   hqDir?: string;
+  hqRoot?: string;
   s3Prefix?: string;
   notifications?: Partial<NotificationSettings>;
 }
@@ -67,6 +69,7 @@ export async function createUserSettings(
   const settings: UserSettings = {
     clerkUserId,
     hqDir: input.hqDir,
+    hqRoot: null,
     s3Prefix: input.s3Prefix ?? null,
     notifications: { ...DEFAULT_NOTIFICATIONS },
     claudeTokenEncrypted: null,
@@ -95,6 +98,10 @@ export async function updateUserSettings(
     setFields.hqDir = input.hqDir;
   }
 
+  if (input.hqRoot !== undefined) {
+    setFields.hqRoot = input.hqRoot;
+  }
+
   if (input.s3Prefix !== undefined) {
     setFields.s3Prefix = input.s3Prefix;
   }
@@ -115,6 +122,7 @@ export async function updateUserSettings(
         clerkUserId,
         createdAt: now,
         ...(input.hqDir === undefined ? { hqDir: null } : {}),
+        ...(input.hqRoot === undefined ? { hqRoot: null } : {}),
         ...(input.notifications === undefined
           ? { notifications: { ...DEFAULT_NOTIFICATIONS } }
           : {}),
@@ -231,6 +239,7 @@ export async function provisionS3Prefix(clerkUserId: string): Promise<void> {
     await col.insertOne({
       clerkUserId,
       hqDir: null,
+      hqRoot: null,
       s3Prefix: prefix,
       notifications: { ...DEFAULT_NOTIFICATIONS },
       claudeTokenEncrypted: null,

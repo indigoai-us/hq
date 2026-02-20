@@ -98,6 +98,7 @@ interface SetupStatusResponse {
   setupComplete: boolean;
   s3Prefix: string | null;
   fileCount: number;
+  hqRoot: string | null;
 }
 
 interface ErrorResponse {
@@ -137,6 +138,7 @@ describe('GET /api/auth/setup-status (no MongoDB)', () => {
     expect(data.setupComplete).toBe(false);
     expect(data.s3Prefix).toBeNull();
     expect(data.fileCount).toBe(0);
+    expect(data.hqRoot).toBeNull();
   });
 
   it('should return 401 for unauthenticated requests', async () => {
@@ -189,6 +191,7 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     expect(data.setupComplete).toBe(false);
     expect(data.s3Prefix).toBeNull();
     expect(data.fileCount).toBe(0);
+    expect(data.hqRoot).toBeNull();
   });
 
   it('should return setupComplete=false when s3Prefix is null', async () => {
@@ -196,6 +199,7 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: '/home/user/hq-root',
       s3Prefix: null,
       notifications: { enabled: true },
     });
@@ -209,12 +213,14 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     expect(data.setupComplete).toBe(false);
     expect(data.s3Prefix).toBeNull();
     expect(data.fileCount).toBe(0);
+    expect(data.hqRoot).toBe('/home/user/hq-root');
   });
 
   it('should return setupComplete=false when s3Prefix is set but no files exist', async () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: null,
       s3Prefix: 'test-user-id/hq/',
       notifications: { enabled: true },
     });
@@ -235,12 +241,14 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     expect(data.setupComplete).toBe(false);
     expect(data.s3Prefix).toBe('test-user-id/hq/');
     expect(data.fileCount).toBe(0);
+    expect(data.hqRoot).toBeNull();
   });
 
   it('should return setupComplete=true when s3Prefix is set AND files exist', async () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: 'C:\\hq-root',
       s3Prefix: 'test-user-id/hq/',
       notifications: { enabled: true },
     });
@@ -263,12 +271,14 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     expect(data.setupComplete).toBe(true);
     expect(data.s3Prefix).toBe('test-user-id/hq/');
     expect(data.fileCount).toBe(1);
+    expect(data.hqRoot).toBe('C:\\hq-root');
   });
 
   it('should return setupComplete=false when S3 list fails', async () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: null,
       s3Prefix: 'test-user-id/hq/',
       notifications: { enabled: true },
     });
@@ -299,6 +309,7 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: null,
       s3Prefix: 'test-user-id/hq/',
       notifications: { enabled: true },
     });
@@ -325,6 +336,7 @@ describe('GET /api/auth/setup-status (with MongoDB)', () => {
     settingsStore.set('test-user-id', {
       clerkUserId: 'test-user-id',
       hqDir: 'C:\\hq',
+      hqRoot: null,
       s3Prefix: 'test-user-id/hq/',
       notifications: { enabled: true },
     });

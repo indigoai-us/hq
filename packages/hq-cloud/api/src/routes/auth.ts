@@ -197,12 +197,14 @@ export const authRoutes: FastifyPluginCallback = (
         setupComplete: false,
         s3Prefix: null,
         fileCount: 0,
+        hqRoot: null,
       });
     }
 
     // Look up user settings to get s3Prefix
     const settings = await getUserSettings(userId);
     const s3Prefix = settings?.s3Prefix ?? null;
+    const hqRoot = settings?.hqRoot ?? null;
 
     // If no s3Prefix, setup is not complete
     if (!s3Prefix) {
@@ -210,6 +212,7 @@ export const authRoutes: FastifyPluginCallback = (
         setupComplete: false,
         s3Prefix: null,
         fileCount: 0,
+        hqRoot,
       });
     }
 
@@ -234,6 +237,7 @@ export const authRoutes: FastifyPluginCallback = (
         setupComplete: false,
         s3Prefix,
         fileCount: 0,
+        hqRoot,
       });
     }
 
@@ -241,6 +245,7 @@ export const authRoutes: FastifyPluginCallback = (
       setupComplete: fileCount > 0,
       s3Prefix,
       fileCount,
+      hqRoot,
     });
   });
 

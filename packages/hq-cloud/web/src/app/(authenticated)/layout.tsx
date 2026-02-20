@@ -24,7 +24,7 @@ export default function AuthenticatedLayout({
 }) {
   const { isLoading } = useAuth();
   const { isChecking, isOnboarded } = useOnboarding();
-  const { setupComplete, isLoading: setupLoading } = useSetupStatus();
+  const { setupComplete, isLoading: setupLoading, hqRoot, recheck: recheckSetup } = useSetupStatus();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -131,7 +131,7 @@ export default function AuthenticatedLayout({
         {/* Setup banner (shown when files not synced) */}
         {showSetupBanner && (
           <div className="pt-4">
-            <SetupBanner onDismiss={handleDismissBanner} />
+            <SetupBanner onDismiss={handleDismissBanner} hqRoot={hqRoot} onHqRootSaved={recheckSetup} />
           </div>
         )}
 

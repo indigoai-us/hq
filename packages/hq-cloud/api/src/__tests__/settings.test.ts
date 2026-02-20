@@ -29,6 +29,7 @@ vi.mock('../data/user-settings.js', () => {
       const settings = {
         clerkUserId: userId,
         hqDir: input.hqDir,
+        hqRoot: null,
         s3Prefix: input.s3Prefix ?? null,
         notifications: {
           enabled: true,
@@ -50,6 +51,7 @@ vi.mock('../data/user-settings.js', () => {
         existing = {
           clerkUserId: userId,
           hqDir: null,
+          hqRoot: null,
           s3Prefix: null,
           notifications: {
             enabled: true,
@@ -65,6 +67,7 @@ vi.mock('../data/user-settings.js', () => {
         store.set(userId, existing);
       }
       if (input.hqDir !== undefined) existing.hqDir = input.hqDir;
+      if (input.hqRoot !== undefined) existing.hqRoot = input.hqRoot;
       if (input.s3Prefix !== undefined) existing.s3Prefix = input.s3Prefix;
       if (input.notifications) {
         existing.notifications = { ...(existing.notifications as Record<string, boolean>), ...(input.notifications as Record<string, boolean>) };
@@ -108,6 +111,7 @@ vi.mock('../data/user-settings.js', () => {
 
 interface SettingsResponse {
   hqDir: string | null;
+  hqRoot: string | null;
   notifications: {
     enabled: boolean;
     questionsEnabled: boolean;
@@ -326,7 +330,7 @@ describe('Settings with MongoDB (mocked)', () => {
   });
 
   describe('GET /api/settings', () => {
-    it('should return null hqDir for new user', async () => {
+    it('should return null hqDir and null hqRoot for new user', async () => {
       const response = await fetch(`${baseUrl}/api/settings`, {
         headers: { Authorization: 'Bearer test-clerk-jwt' },
       });
@@ -334,6 +338,7 @@ describe('Settings with MongoDB (mocked)', () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as SettingsResponse;
       expect(data.hqDir).toBeNull();
+      expect(data.hqRoot).toBeNull();
       expect(data.onboarded).toBe(false);
     });
 
@@ -413,6 +418,57 @@ describe('Settings with MongoDB (mocked)', () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as SettingsResponse;
       expect(data.notifications).toBeDefined();
+    });
+
+    it('should update hqRoot', async () => {
+      // Setup first
+      await fetch(`${baseUrl}/api/settings/setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({ hqDir: '/home/user/hq' }),
+      });
+
+      const response = await fetch(`${baseUrl}/api/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({ hqRoot: '/home/user/hq-root' }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as SettingsResponse;
+      expect(data.hqRoot).toBe('/home/user/hq-root');
+    });
+
+    it('should reject empty hqRoot', async () => {
+      const response = await fetch(`${baseUrl}/api/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({ hqRoot: '   ' }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject non-string hqRoot', async () => {
+      const response = await fetch(`${baseUrl}/api/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-clerk-jwt',
+        },
+        body: JSON.stringify({ hqRoot: 123 }),
+      });
+
+      expect(response.status).toBe(400);
     });
   });
 

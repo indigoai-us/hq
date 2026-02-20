@@ -14,6 +14,8 @@ interface UseSetupStatusResult {
   s3Prefix: string | null;
   /** Number of files in S3 */
   fileCount: number;
+  /** The user's configured HQ root path (null if not set) */
+  hqRoot: string | null;
   /** Re-check setup status (e.g., after sync completes) */
   recheck: () => Promise<void>;
 }
@@ -35,6 +37,7 @@ export function useSetupStatus(): UseSetupStatusResult {
     setupComplete: false,
     s3Prefix: null,
     fileCount: 0,
+    hqRoot: null,
   });
 
   // Prevent duplicate fetches (React strict mode, fast re-renders)
@@ -56,7 +59,7 @@ export function useSetupStatus(): UseSetupStatusResult {
         message.includes("Bearer token");
 
       if (!isAuthError) {
-        setStatus({ setupComplete: true, s3Prefix: null, fileCount: 0 });
+        setStatus({ setupComplete: true, s3Prefix: null, fileCount: 0, hqRoot: null });
       }
     } finally {
       setIsLoading(false);
@@ -86,6 +89,7 @@ export function useSetupStatus(): UseSetupStatusResult {
     setupComplete: status.setupComplete,
     s3Prefix: status.s3Prefix,
     fileCount: status.fileCount,
+    hqRoot: status.hqRoot,
     recheck,
   };
 }

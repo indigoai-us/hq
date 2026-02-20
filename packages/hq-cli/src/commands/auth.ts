@@ -13,6 +13,8 @@
 import { Command } from 'commander';
 import * as http from 'http';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import chalk from 'chalk';
 import * as readline from 'readline';
 import {
@@ -36,6 +38,7 @@ export interface SetupStatusResponse {
   setupComplete: boolean;
   s3Prefix: string | null;
   fileCount: number;
+  hqRoot: string | null;
 }
 
 /** Port range for the localhost callback server */
@@ -245,6 +248,114 @@ export function promptRetry(question: string): Promise<boolean> {
   });
 }
 
+/** Type for a function that prompts the user for a line of text input. */
+export type PromptInputFn = (question: string) => Promise<string>;
+
+/**
+ * Prompt the user for a line of text input via readline.
+ * Returns the trimmed answer.
+ */
+function promptInput(question: string): Promise<string> {
+  if (!process.stdin.isTTY) {
+    return Promise.resolve('');
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+/**
+ * Validate that a path looks like an HQ root directory.
+ * Must exist and contain either a `.claude` or `workers` directory.
+ */
+export function isValidHqRoot(dirPath: string): boolean {
+  try {
+    if (!fs.existsSync(dirPath)) return false;
+    const stat = fs.statSync(dirPath);
+    if (!stat.isDirectory()) return false;
+    return (
+      fs.existsSync(path.join(dirPath, '.claude')) ||
+      fs.existsSync(path.join(dirPath, 'workers'))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prompt the user for their HQ root path during initial setup.
+ *
+ * - Auto-detects a default using findHqRoot() from cwd
+ * - Validates the path contains `.claude` or `workers`
+ * - Re-prompts up to 3 times on invalid input
+ * - Saves the resolved path to the API via PUT /api/settings
+ *
+ * @param _promptInputFn - Optional override for the text input prompt (for testing)
+ * @param _validateFn - Optional override for path validation (for testing)
+ * @returns The resolved HQ root path, or null if the user gave up
+ */
+export async function promptHqRoot(
+  _promptInputFn?: PromptInputFn,
+  _validateFn?: (dirPath: string) => boolean,
+): Promise<string | null> {
+  const ask = _promptInputFn ?? promptInput;
+  const validate = _validateFn ?? isValidHqRoot;
+
+  // Auto-detect a default from cwd
+  const detectedDefault = findHqRoot();
+
+  const MAX_ATTEMPTS = 3;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const defaultHint = detectedDefault ? ` (${detectedDefault})` : '';
+    const answer = await ask(`Where is your HQ system located?${defaultHint}: `);
+
+    // Use default if user just pressed Enter
+    const chosenPath = answer || detectedDefault;
+
+    if (!chosenPath) {
+      console.log(chalk.yellow('No path provided. Please enter the path to your HQ directory.'));
+      continue;
+    }
+
+    // Normalize the path
+    const resolved = path.resolve(chosenPath);
+
+    if (validate(resolved)) {
+      // Save to API
+      try {
+        await apiRequest('PUT', '/api/settings', { hqRoot: resolved });
+      } catch {
+        console.log(chalk.yellow('Warning: Could not save HQ root to cloud settings.'));
+      }
+      return resolved;
+    }
+
+    const remaining = MAX_ATTEMPTS - attempt - 1;
+    if (remaining > 0) {
+      console.log(
+        chalk.yellow(
+          `"${resolved}" does not appear to be an HQ directory (missing .claude or workers directory). ` +
+          `${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`,
+        ),
+      );
+    } else {
+      console.log(chalk.red('Could not find a valid HQ directory after 3 attempts.'));
+    }
+  }
+
+  return null;
+}
+
 /**
  * Write an in-place progress line to stdout (TTY only).
  * Non-TTY environments get no output (progress is shown in summary).
@@ -350,17 +461,18 @@ export function classifySyncResult(result: PushResult): 'total-failure' | 'parti
  * - Partial failure retry: "Some files failed. Retry failed files? (Y/n)"
  * - Verbose mode: shows individual file errors
  *
+ * @param hqRoot - Absolute path to the HQ root directory
  * @param verbose - If true, show individual file skip/error details
  * @param _promptFn - Optional override for retry prompt (for testing)
  */
 export async function performPostLoginSync(
+  hqRoot: string,
   verbose: boolean = false,
   _promptFn?: (question: string) => Promise<boolean>,
 ): Promise<void> {
   const askRetry = _promptFn ?? promptRetry;
 
   try {
-    const hqRoot = findHqRoot();
     console.log(chalk.blue('Computing local manifest...'));
     const manifest = computeLocalManifest(hqRoot);
     console.log(chalk.dim(`  ${manifest.length} local files scanned`));
@@ -415,14 +527,21 @@ export async function performPostLoginSync(
  * Called after successful authentication.
  * If skipSync is true, the setup status check and auto-sync are skipped entirely.
  *
+ * When setupComplete is false and hqRoot is not yet stored on the server,
+ * prompts the user for their HQ root path and saves it before syncing.
+ *
  * @param skipSync - If true, skip setup check and sync entirely
  * @param verbose - If true, show detailed file-level info during sync
  * @param _promptFn - Optional override for retry prompt (for testing)
+ * @param _promptInputFn - Optional override for text input prompt (for testing)
+ * @param _validateFn - Optional override for HQ root validation (for testing)
  */
 export async function handlePostLoginSetup(
   skipSync: boolean,
   verbose: boolean = false,
   _promptFn?: (question: string) => Promise<boolean>,
+  _promptInputFn?: PromptInputFn,
+  _validateFn?: (dirPath: string) => boolean,
 ): Promise<void> {
   if (skipSync) {
     return;
@@ -441,8 +560,20 @@ export async function handlePostLoginSetup(
   if (status.setupComplete) {
     console.log(chalk.green(`HQ Cloud is set up and synced (${status.fileCount} files).`));
   } else {
+    // Determine the HQ root path
+    let hqRoot: string | null = status.hqRoot;
+
+    if (!hqRoot) {
+      // Prompt the user for the HQ root path
+      hqRoot = await promptHqRoot(_promptInputFn, _validateFn);
+      if (!hqRoot) {
+        console.log(chalk.yellow('Setup skipped. You can retry later with "hq sync push".'));
+        return;
+      }
+    }
+
     console.log(chalk.yellow('Initial sync needed. Starting upload of your HQ files...'));
-    await performPostLoginSync(verbose, _promptFn);
+    await performPostLoginSync(hqRoot, verbose, _promptFn);
   }
 }
 

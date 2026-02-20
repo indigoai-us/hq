@@ -22,6 +22,7 @@ interface SetupBody {
 
 interface UpdateSettingsBody {
   hqDir?: string;
+  hqRoot?: string;
   notifications?: {
     enabled?: boolean;
     questionsEnabled?: boolean;
@@ -65,6 +66,7 @@ export const settingsRoutes: FastifyPluginCallback = (
     if (!settings) {
       return reply.send({
         hqDir: null,
+        hqRoot: null,
         s3Prefix: null,
         notifications: {
           enabled: true,
@@ -78,6 +80,7 @@ export const settingsRoutes: FastifyPluginCallback = (
 
     return reply.send({
       hqDir: settings.hqDir,
+      hqRoot: settings.hqRoot ?? null,
       s3Prefix: settings.s3Prefix,
       notifications: settings.notifications,
       onboarded: settings.hqDir !== null,
@@ -97,7 +100,7 @@ export const settingsRoutes: FastifyPluginCallback = (
       return reply.status(401).send({ error: 'Unauthorized' });
     }
 
-    const { hqDir, notifications } = request.body ?? {};
+    const { hqDir, hqRoot, notifications } = request.body ?? {};
 
     if (hqDir !== undefined && typeof hqDir !== 'string') {
       return reply.status(400).send({
@@ -113,13 +116,29 @@ export const settingsRoutes: FastifyPluginCallback = (
       });
     }
 
+    if (hqRoot !== undefined && typeof hqRoot !== 'string') {
+      return reply.status(400).send({
+        error: 'Bad Request',
+        message: 'hqRoot must be a string',
+      });
+    }
+
+    if (hqRoot !== undefined && hqRoot.trim().length === 0) {
+      return reply.status(400).send({
+        error: 'Bad Request',
+        message: 'hqRoot cannot be empty',
+      });
+    }
+
     const input: UpdateUserSettingsInput = {};
     if (hqDir !== undefined) input.hqDir = hqDir;
+    if (hqRoot !== undefined) input.hqRoot = hqRoot;
     if (notifications !== undefined) input.notifications = notifications;
 
     const updated = await updateUserSettings(userId, input);
     return reply.send({
       hqDir: updated?.hqDir ?? null,
+      hqRoot: updated?.hqRoot ?? null,
       notifications: updated?.notifications,
       onboarded: updated?.hqDir !== null,
     });

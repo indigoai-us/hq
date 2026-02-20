@@ -49,4 +49,5 @@ export interface SetupStatusResponse {
   setupComplete: boolean;
   s3Prefix: string | null;
   fileCount: number;
+  hqRoot: string | null;
 }
