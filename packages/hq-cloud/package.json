@@ -4,14 +4,14 @@
   "version": "0.1.0",
   "description": "Cloud infrastructure for running HQ workers remotely",
   "scripts": {
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint:fix",
-    "format": "pnpm -r format",
-    "format:check": "pnpm -r format:check",
-    "test": "pnpm -r test",
-    "dev": "pnpm --filter api dev"
+    "build": "echo 'hq-cloud sub-packages are built separately (CodeBuild/Vercel)'",
+    "typecheck": "echo 'run typecheck in individual sub-packages'",
+    "lint": "echo 'run lint in individual sub-packages'",
+    "lint:fix": "echo 'run lint:fix in individual sub-packages'",
+    "format": "echo 'run format in individual sub-packages'",
+    "format:check": "echo 'run format:check in individual sub-packages'",
+    "test": "echo 'run test in individual sub-packages'",
+    "dev": "echo 'run dev in individual sub-packages'"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
