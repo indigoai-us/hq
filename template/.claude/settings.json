@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "defaultMode": "plan"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-hq-glob.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/auto-checkpoint-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/auto-checkpoint-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/auto-handoff-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

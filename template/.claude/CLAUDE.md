@@ -59,6 +59,17 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, settings, w
 - When task spans multiple companies (rare), explicitly acknowledge cross-company scope and handle each separately
 - Public workers (dev-team, content-team, qa) are company-agnostic — inherit active company from invocation context
 - All private workers declare `company:` in worker.yaml and registry.yaml
+- NEVER use Linear credentials from a different company's settings
+- Before any Linear API call, validate: config.json `workspace` field matches expected company
+
+## Policies
+
+Before executing tasks for a company, check `companies/{co}/policies/` for standing rules. Policies override default behavior. Hard enforcement policies block on violation; soft enforcement policies note deviations.
+
+**Template:** `companies/_template/policies/example-policy.md`
+**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + markdown body
+
+Policies differ from Learned Rules: policies are proactive standing directives; learned rules are reactive anti-patterns. If a policy conflicts with a learned rule, the policy takes precedence.
 
 ## Infrastructure-First
 
@@ -94,9 +105,13 @@ Public: frontend-designer, qa-tester, security-scanner + dev-team (16) + content
 
 When spawning Task agents for story/task completion: each sub-agent MUST commit its own work before completing. The orchestrator should verify uncommitted changes after each sub-agent returns and commit them if the sub-agent failed to do so.
 
+## File Locking
+
+Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orchestrator.yaml`. Stories declare `files: []` in prd.json. `/execute-task` acquires locks in `{repo}/.file-locks.json` + state.json `checkedOutFiles` on start, releases on completion/failure. `/run-project` skips conflicting stories during task selection (configurable: `hard_block`, `soft_block`, `read_only_fallback`). Stale locks (dead PID + timeout) auto-cleaned.
+
 ## Commands
 
-22 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+23 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
@@ -186,6 +201,9 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - **vercel preview SSO**: `vercel deploy --public` makes source public, NOT bypasses deployment protection (SSO). Vercel preview URLs always require login unless project-level protection is disabled. To test a preview without auth: run prod server locally (`npm run build && npm run start`). <!-- 2026-02-21 -->
 - **Vercel domain team move**: When purchasing a domain via Vercel/Name.com, it can land in the wrong team/org. Check ownership with `GET /v6/domains/{domain}?teamId={teamId}` across all teams. Move between teams with `PATCH /v6/domains/{domain}?teamId={source}` body `{"op": "move-out", "destination": "{target_team_id}"}`. Cannot delete Vercel-purchased domains — must move them. <!-- 2026-02-20 -->
 - **Vercel framework detection**: If Vercel project has `framework: null`, production builds deploy but serve 404 on all routes (even though build succeeds). Fix with `PATCH /v9/projects/{id}` setting `{"framework":"nextjs","installCommand":"pnpm install"}` then redeploy. Always verify framework is set after project creation. <!-- 2026-02-20 -->
+- **pre-deploy domain check**: Before ANY Vercel deploy to a custom domain, ALWAYS (1) `curl -s` the live URL to see what's currently there, (2) check which Vercel project owns the domain (`GET /v6/domains/{domain}`), (3) read the relevant infra knowledge for domain registry. NEVER remove a domain from one project to assign it to another — add new routes within the existing project instead. <!-- 2026-02-20 -->
+- **EAS build env vars**: EAS production builds do NOT inherit local `.env` files — `EXPO_PUBLIC_*` vars must be set on expo.dev or via CLI before building or the app crashes on launch. Set with: `eas env:create production --name KEY --value VALUE --visibility sensitive --scope project --non-interactive`. Use `sensitive` (NOT `secret`) for `EXPO_PUBLIC_*` vars — EAS rejects `secret` visibility for public-prefixed vars. Verify with `eas env:list production` before triggering build. <!-- 2026-02-21 -->
+- **Vercel env var trailing newlines**: When piping values to `vercel env add`, ALWAYS use `printf` (no trailing newline) — NOT `echo`. `echo` appends `\n` to the value, causing API calls with those credentials to fail with 400 Bad Request. Diagnose with `vercel env pull` and inspect for `\n` in values. <!-- 2026-02-21 -->
 
 ## Learning System
 
