@@ -240,16 +240,17 @@ For each path in `updated_files`:
 3. **Compare local to upstream.** If identical → skip. `"Already up to date: {path}"`. Continue.
 4. **Special handling for `.claude/CLAUDE.md`** → go to section 5b-CLAUDE below.
 5. **Special handling for `workers/registry.yaml`** → go to section 5b-REGISTRY below.
-6. **Three-way merge for all other files:**
+6. **Special handling for `.claude/settings.json`** → go to section 5b-SETTINGS below.
+7. **Three-way merge for all other files:**
    - Fetch **base** content (from CURRENT version tag):
      ```bash
      gh api "repos/coreyepstein/hq-starter-kit/contents/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
      ```
-   - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 6c.
-   - **6a. If local == base** (user never customized): auto-update.
+   - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 7b.
+   - **7a. If local == base** (user never customized): auto-update.
      - If `DRY_RUN`: `"Would auto-update: {path} (no local customizations)"`. Skip write.
      - Otherwise: write upstream content, increment `auto_updated`. `"✓ Auto-updated: {path}"`
-   - **6b. If local != base** (user customized): **CONFLICT**.
+   - **7b. If local != base** (user customized): **CONFLICT**.
      - Show unified diff of upstream changes (base → upstream).
      - Show note that local file has been customized from the base version.
      - Use AskUserQuestion:
@@ -313,6 +314,35 @@ Never auto-overwrite — user has custom workers.
    ```
 3. If `DRY_RUN`: report `"Would prompt: workers/registry.yaml"`.
 4. If skipped: add to `skipped_files`.
+
+### 5b-SETTINGS: settings.json Special Handling
+
+Never auto-overwrite — user has custom permissions and hooks.
+
+1. Parse both local and upstream `.claude/settings.json` as JSON.
+2. Compare by top-level key:
+   - **`permissions`**: keep local (user's choice). Report if upstream differs.
+   - **`hooks`**: merge by event type (`PreToolUse`, `PostToolUse`, `PreCompact`, etc.)
+3. For each hook event type in upstream:
+   - **New event type** (in upstream, not in local): offer to add.
+     ```
+     New hook event type found in upstream settings.json:
+
+     "{EventType}": [
+       { "matcher": "{matcher}", "hooks": [...] }
+     ]
+
+     Add this hook? [Y/n]
+     ```
+     If yes and not dry run: add the event type block to local hooks.
+   - **Existing event type** (in both): compare individual matcher+command pairs.
+     - New entries (matcher+command in upstream, not in local): offer to add.
+     - Changed entries (same matcher, different command/timeout): show diff, ask overwrite/skip.
+     - Local-only entries: keep (user's custom hooks).
+   - **Local-only event type** (not in upstream): keep silently.
+4. If any changes were made, show the resulting `settings.json` diff. Ask: `"Apply these settings changes? [Y/n]"`
+5. If `DRY_RUN`: report what would change, no write.
+6. If skipped: add `settings.json` to `skipped_files`.
 
 ### 5c. Breaking Changes
 
@@ -466,6 +496,7 @@ Run `/migrate` without --check to apply.
 
 - **NEVER auto-overwrite CLAUDE.md** — always section-level merge with per-section approval
 - **NEVER auto-overwrite registry.yaml** — user has custom workers, always ask
+- **NEVER auto-overwrite settings.json** — merge hooks by event type, preserve user permissions and custom hooks
 - **Always offer skip** — user can decline any individual file update
 - **Idempotent** — content-based comparison, no external state. Running twice is safe
 - **Network-safe** — report and skip on individual fetch failure, don't abort entire migration
