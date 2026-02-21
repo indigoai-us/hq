@@ -1,25 +1,24 @@
 {
   "name": "create-hq",
-  "version": "6.0.0",
+  "version": "5.0.0",
   "description": "Create a new HQ — Personal OS for AI Workers",
   "bin": {
     "create-hq": "./dist/index.js"
   },
   "files": [
     "dist",
-    "template"
+    "../../template"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist",
-    "prepack": "node -e \"require('fs').cpSync('../../template','./template',{recursive:true})\"",
-    "postpack": "node -e \"require('fs').rmSync('./template',{recursive:true,force:true})\""
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
-    "fs-extra": "^11.2.0"
+    "fs-extra": "^11.2.0",
+    "ora": "^8.1.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
