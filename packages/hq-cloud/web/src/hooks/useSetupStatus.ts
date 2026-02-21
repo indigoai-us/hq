@@ -49,18 +49,9 @@ export function useSetupStatus(): UseSetupStatusResult {
       const result = await checkSetupStatus();
       setStatus(result);
     } catch (err) {
-      // On auth errors, leave setupComplete false (user needs to re-auth).
-      // On non-auth errors (network, server), assume setup is complete
-      // to avoid blocking users when the backend is temporarily down.
-      const message = err instanceof Error ? err.message : "";
-      const isAuthError =
-        message.includes("Not authenticated") ||
-        message.includes("401") ||
-        message.includes("Bearer token");
-
-      if (!isAuthError) {
-        setStatus({ setupComplete: true, s3Prefix: null, fileCount: 0, hqRoot: null });
-      }
+      // On any error (auth, network, server), leave setupComplete as false.
+      // The banner will show, which is the safer fallback — users can dismiss it.
+      console.warn("[useSetupStatus] Failed to check setup status:", err);
     } finally {
       setIsLoading(false);
     }
