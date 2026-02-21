@@ -4,6 +4,69 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.3.0 (from v6.2.0)
+
+### New Files
+- `.claude/hooks/block-hq-glob.sh` — Glob safety hook (blocks Glob from HQ root to prevent timeouts)
+- `companies/_template/policies/example-policy.md` — Policy template for `/newcompany` scaffolding
+
+### Updated Files
+- `.claude/CLAUDE.md` — 2 new sections (Policies, File Locking) + expanded Company Isolation + 4 new learned rules
+- `.claude/settings.json` — New PreToolUse hook for Glob safety
+- `.claude/commands/update-hq.md` — settings.json merge logic (5b-SETTINGS), template directory handling
+
+### New CLAUDE.md Sections
+Add these sections to your `.claude/CLAUDE.md`:
+
+1. **Policies** (after Company Isolation) — Company-scoped standing rules with hard/soft enforcement
+2. **File Locking** (after Sub-Agent Rules) — Concurrent edit prevention for multi-agent projects
+
+### New Company Isolation Rules
+Add to your `## Company Isolation` section:
+- `NEVER use Linear credentials from a different company's settings`
+- `Before any Linear API call, validate: config.json workspace field matches expected company`
+
+### New Learned Rules
+Add to your `## Learned Rules` section:
+- `pre-deploy domain check` — Always check live URL and domain ownership before deploying to custom domains
+- `EAS build env vars` — EAS production builds don't inherit local .env; set EXPO_PUBLIC_* via CLI
+- `Vercel env var trailing newlines` — Use printf not echo when piping to vercel env add
+- `model routing` — Workers declare execution.model in worker.yaml; stories can override via model_hint
+
+### Glob Safety Hook
+1. Copy `.claude/hooks/block-hq-glob.sh` to your HQ
+2. Make executable: `chmod +x .claude/hooks/block-hq-glob.sh`
+3. Add to your `.claude/settings.json` under `hooks`:
+   ```json
+   "PreToolUse": [
+     {
+       "matcher": "Glob",
+       "hooks": [
+         {
+           "type": "command",
+           "command": ".claude/hooks/block-hq-glob.sh",
+           "timeout": 5
+         }
+       ]
+     }
+   ]
+   ```
+
+### Migration Steps
+1. Copy `.claude/hooks/block-hq-glob.sh` and make executable
+2. Merge PreToolUse section into your `.claude/settings.json` (or let `/update-hq` handle it — v6.3.0 adds JSON-aware settings merge)
+3. Merge 2 new CLAUDE.md sections: Policies, File Locking
+4. Add 2 new Company Isolation rules
+5. Add 4 new learned rules to your Learned Rules section
+6. Copy `companies/_template/policies/example-policy.md` for policy scaffolding
+7. Update `.claude/commands/update-hq.md` for safe settings.json migration in future upgrades
+8. Run `/search-reindex`
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v6.2.0 (from v6.1.0)
 
 ### Updated Files

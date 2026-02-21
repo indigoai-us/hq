@@ -1,5 +1,26 @@
 # Changelog
 
+## v6.3.0 (2026-02-21)
+
+Policies, file locking, Glob safety hook, and safe settings.json migration.
+
+### Added
+
+- **CLAUDE.md — Policies** — Company-scoped standing rules (`companies/{co}/policies/`) with hard/soft enforcement. Proactive directives that override default behavior. Template at `companies/_template/policies/example-policy.md`.
+- **CLAUDE.md — File Locking** — Story-scoped file flags prevent concurrent edit conflicts in multi-agent projects. Config via `settings/orchestrator.yaml`, locks in `.file-locks.json`.
+- **Glob safety hook** — PreToolUse hook (`block-hq-glob.sh`) blocks Glob from HQ root, preventing 20s+ timeouts from symlinked repos. Suggests scoped paths instead.
+- **companies/_template/policies/** — Policy template for `/newcompany` scaffolding. YAML frontmatter (id, title, scope, trigger, enforcement) + markdown body.
+- **/update-hq — settings.json merge** — New 5b-SETTINGS section with JSON-aware hook merging. Preserves user permissions and custom hooks, adds new hook entries from upstream without overwriting.
+
+### Changed
+
+- **CLAUDE.md — Company Isolation** — Added Linear credentials cross-posting guard: validate `workspace` field matches expected company before any Linear API call.
+- **CLAUDE.md — Learned Rules** — 4 new rules: pre-deploy domain check, EAS build env vars, Vercel env var trailing newlines, model routing.
+- **`.claude/settings.json`** — Added PreToolUse hook entry for Glob safety.
+- **/update-hq** — Added settings.json special handling (5b-SETTINGS section), template directory handling, updated step numbering.
+
+---
+
 ## v6.2.0 (2026-02-20)
 
 New CLAUDE.md behavioral sections and expanded learned rules.
