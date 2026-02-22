@@ -1,0 +1,40 @@
+{
+  "id": "6ea0dba5-ee4a-438e-87ad-185a7ceb16ea",
+  "slug": "lizzie-liu",
+  "name": {
+    "display": "Lizzie Liu",
+    "first": "Lizzie",
+    "last": "Liu",
+    "aliases": []
+  },
+  "emails": [],
+  "phones": [],
+  "companies": [
+    {
+      "name": "Indigo",
+      "current": true
+    }
+  ],
+  "title": "",
+  "identifiers": {
+    "slack": [
+      {
+        "workspace": "indigo-ai",
+        "userId": "U0796B30YEL"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "type": "migration",
+      "date": "2026-02-22T04:42:57.288Z",
+      "context": "Initial CRM seed from HQ knowledge files",
+      "ref": "knowledge/integrations/slack.md"
+    }
+  ],
+  "interactions": [],
+  "tags": [],
+  "notes": "",
+  "createdAt": "2026-02-22T04:42:57.469Z",
+  "updatedAt": "2026-02-22T04:42:57.469Z"
+}

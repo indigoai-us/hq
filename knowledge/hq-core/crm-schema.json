@@ -1,0 +1,313 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HQ CRM Contact",
+  "description": "Schema for a contact record in the HQ CRM system. Each contact is stored as a separate JSON file at workspace/crm/contacts/{slug}.json.",
+  "type": "object",
+  "required": ["id", "name", "slug", "emails", "phones", "companies", "identifiers", "sources", "interactions", "tags", "createdAt", "updatedAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the contact. Format: UUID v4.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-safe slug derived from name. Used as the filename: {slug}.json.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "object",
+      "description": "Contact's name, split into components for flexibility.",
+      "required": ["display"],
+      "properties": {
+        "display": {
+          "type": "string",
+          "description": "Full display name (e.g., 'Corey Epstein')."
+        },
+        "first": {
+          "type": "string",
+          "description": "First/given name."
+        },
+        "last": {
+          "type": "string",
+          "description": "Last/family name."
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Alternative names or nicknames.",
+          "items": { "type": "string" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "emails": {
+      "type": "array",
+      "description": "Email addresses associated with this contact.",
+      "items": {
+        "type": "object",
+        "required": ["address"],
+        "properties": {
+          "address": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address."
+          },
+          "primary": {
+            "type": "boolean",
+            "description": "Whether this is the primary email.",
+            "default": false
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional label (e.g., 'work', 'personal')."
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "phones": {
+      "type": "array",
+      "description": "Phone numbers associated with this contact.",
+      "items": {
+        "type": "object",
+        "required": ["number"],
+        "properties": {
+          "number": {
+            "type": "string",
+            "description": "Phone number (any format accepted, E.164 preferred)."
+          },
+          "primary": {
+            "type": "boolean",
+            "description": "Whether this is the primary phone.",
+            "default": false
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional label (e.g., 'mobile', 'work')."
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "companies": {
+      "type": "array",
+      "description": "Companies this contact is associated with.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Company name."
+          },
+          "role": {
+            "type": "string",
+            "description": "Contact's role/title at this company."
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Whether this is a current affiliation.",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "title": {
+      "type": "string",
+      "description": "Current job title or professional role."
+    },
+    "identifiers": {
+      "type": "object",
+      "description": "External system identifiers. Each key is a system name, value is an array of identifier objects for that system. Supports multiple entries per system (e.g., multiple Slack workspaces).",
+      "properties": {
+        "slack": {
+          "type": "array",
+          "description": "Slack identifiers across workspaces.",
+          "items": {
+            "type": "object",
+            "required": ["userId"],
+            "properties": {
+              "workspace": {
+                "type": "string",
+                "description": "Slack workspace name or Team ID."
+              },
+              "userId": {
+                "type": "string",
+                "description": "Slack user ID (e.g., 'U042Z9XCRK3')."
+              },
+              "dmChannel": {
+                "type": "string",
+                "description": "Direct message channel ID for quick messaging."
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Slack display name."
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "linear": {
+          "type": "array",
+          "description": "Linear identifiers across workspaces.",
+          "items": {
+            "type": "object",
+            "required": ["userId"],
+            "properties": {
+              "workspace": {
+                "type": "string",
+                "description": "Linear workspace slug."
+              },
+              "userId": {
+                "type": "string",
+                "description": "Linear user UUID."
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Linear display name or username."
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "github": {
+          "type": "array",
+          "description": "GitHub identifiers.",
+          "items": {
+            "type": "object",
+            "required": ["username"],
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "GitHub username."
+              },
+              "profileUrl": {
+                "type": "string",
+                "description": "GitHub profile URL."
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "email": {
+          "type": "array",
+          "description": "Email-based identifiers (mirrors emails[] but structured for identifier lookup).",
+          "items": {
+            "type": "object",
+            "required": ["address"],
+            "properties": {
+              "address": {
+                "type": "string",
+                "format": "email",
+                "description": "Email address."
+              },
+              "primary": {
+                "type": "boolean",
+                "description": "Whether this is the primary email identity.",
+                "default": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": {
+        "type": "array",
+        "description": "Additional identifier systems. Each is an array of objects with system-specific fields. New identifier types can be added without schema changes.",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Tracks where/how this contact was discovered or added. Append-only.",
+      "items": {
+        "type": "object",
+        "required": ["type", "date"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Source type.",
+            "enum": ["slack", "email", "linear", "document", "manual", "migration", "web-research"]
+          },
+          "ref": {
+            "type": "string",
+            "description": "Reference to source material (file path, message ID, URL, etc.)."
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the contact was discovered from this source (ISO 8601)."
+          },
+          "context": {
+            "type": "string",
+            "description": "Brief description of the discovery context."
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "interactions": {
+      "type": "array",
+      "description": "Append-only log of interactions with this contact.",
+      "items": {
+        "type": "object",
+        "required": ["date", "type", "summary"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the interaction occurred (ISO 8601)."
+          },
+          "type": {
+            "type": "string",
+            "description": "Interaction type (e.g., 'slack-message', 'email-sent', 'email-received', 'linear-comment', 'linear-assignment', 'meeting', 'call')."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief description of the interaction."
+          },
+          "ref": {
+            "type": "string",
+            "description": "Reference to the interaction source (message ID, issue URL, etc.)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "tags": {
+      "type": "array",
+      "description": "Free-form tags for categorization and filtering.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about this contact."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this contact record was created (ISO 8601)."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this contact record was last modified (ISO 8601)."
+    }
+  },
+  "additionalProperties": false
+}
