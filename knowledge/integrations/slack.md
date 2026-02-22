@@ -4,9 +4,108 @@ Send and read messages in Slack workspaces via the Slack Web API. Supports multi
 
 ## Rules
 
-1. **Always use the Quick Lookup Directory first.** Before sending any message, check the directory below for the recipient's DM Channel ID. Never make API calls to resolve known contacts.
-2. **Update the directory after every message.** Any time we message a person or channel not yet in the directory -- or whose DM Channel was blank -- update the Quick Lookup Directory with the returned DM channel/channel ID immediately after sending. This ensures every subsequent message is instant.
+1. **CRM is the single source of truth for people.** Before sending any message, look up the recipient in the CRM (via `crm.findContact()`) for their DM Channel ID, User ID, and workspace. The CRM replaces all hardcoded people directories. Fall back to the Channel IDs table below only for channel (non-person) lookups.
+2. **Update CRM after every message.** Any time we message a person or channel, update the CRM contact's slack identifier with the returned DM channel ID (if not already stored). See "CRM Auto-Detect" section below for the full protocol.
 3. **ASCII only on Windows.** See Windows Encoding Rule section below.
+4. **CRM auto-detect is mandatory.** After reading or sending Slack messages, always check the CRM for all people involved and create/update contacts. See "CRM Auto-Detect" section below.
+5. **Never hardcode people data in this file.** All person identifiers (user IDs, DM channels, display names) live in `workspace/crm/contacts/`. This file only contains API patterns, tokens, workspace info, and channel IDs.
+
+## CRM Auto-Detect (People Tracking)
+
+When processing Slack messages (reading or sending), workers MUST check the CRM for all people involved and create/update contact records. This ensures every Slack interaction builds the rolodex automatically.
+
+### After Reading Messages (conversations.history, conversations.replies)
+
+For each message in the response:
+
+1. **Extract the sender's user ID** from the `user` field (e.g., `"user": "U042Z9XCRK3"`)
+2. **Extract any mentioned user IDs** from `<@U...>` patterns in the message `text`
+3. **For each user ID found**, run the CRM lookup:
+
+```javascript
+const crm = require('./.claude/lib/crm.js');
+
+// Look up by Slack user ID
+const matches = crm.findContact({ slack: { userId: 'U042Z9XCRK3' } });
+
+if (matches.length > 0) {
+  // Contact exists -- add interaction
+  const contact = matches[0];
+  crm.addInteraction(contact.slug, {
+    date: new Date().toISOString(),
+    type: 'slack-message',
+    summary: 'Message in #channel-name: brief summary of message content',
+    ref: 'workspace-name/#channel-name/timestamp'
+  });
+} else {
+  // Contact not found -- resolve name via users.info, then create
+  // Step 1: Get user info from Slack API
+  // curl -s "https://slack.com/api/users.info?user=U042Z9XCRK3" \
+  //   -H "Authorization: Bearer $SLACK_USER_TOKEN"
+  // Extract: real_name, display_name, profile.email (if available)
+
+  // Step 2: Create CRM contact
+  crm.createContact({
+    name: realName,  // from users.info response
+    emails: profileEmail ? [{ address: profileEmail }] : [],
+    identifiers: {
+      slack: [{
+        workspace: 'workspace-name',  // e.g., 'indigo-ai' or 'frogbearventures'
+        userId: 'U042Z9XCRK3',
+        displayName: displayName  // from users.info
+      }]
+    },
+    sources: [{
+      type: 'slack',
+      ref: 'workspace-name/#channel-name/timestamp',
+      date: new Date().toISOString(),
+      context: 'Auto-detected from Slack message'
+    }]
+  });
+}
+```
+
+### After Sending Messages (chat.postMessage)
+
+When sending a message to a person (DM) or channel:
+
+1. **If sending to a user (DM)**, look up the recipient's user ID in CRM
+2. **If the message text contains `<@U...>` mentions**, look up each mentioned user
+3. **Apply the same create-or-update logic** as the reading flow above
+4. For the interaction type, use `'slack-message-sent'` to distinguish outgoing messages:
+
+```javascript
+crm.addInteraction(contact.slug, {
+  date: new Date().toISOString(),
+  type: 'slack-message-sent',
+  summary: 'Sent DM to contact: brief summary of message',
+  ref: 'workspace-name/DM/timestamp'
+});
+```
+
+### Rules for Auto-Detect
+
+1. **Always call users.info for unknown user IDs.** Never create a contact with just a user ID and no name. The `real_name` field from users.info is the display name.
+2. **Use the correct workspace name** based on which token is being used (indigo-ai for `$SLACK_USER_TOKEN`, frogbearventures for `$FROGBEAR_SLACK_USER_TOKEN`).
+3. **Do not add interactions for bot users.** Skip user IDs that resolve to bots (users.info `is_bot: true`).
+4. **Batch lookups efficiently.** When reading multiple messages, collect all unique user IDs first, then do CRM lookups and users.info calls in batch rather than per-message.
+5. **Interaction summaries should be brief** (one sentence). Include channel name and topic, not full message text.
+6. **Skip self-interactions.** Do not log interactions for Stefan's own messages (user ID varies by workspace -- check CRM for self-contact by name if needed).
+7. **DM channel discovery.** When a new DM channel is opened (via conversations.open), write the `dmChannel` back to the CRM contact's slack identifier, not to this file.
+
+### users.info API Pattern
+
+```bash
+curl -s "https://slack.com/api/users.info?user=USER_ID" \
+  -H "Authorization: Bearer $SLACK_USER_TOKEN"
+```
+
+Response fields to extract:
+- `user.real_name` -- full display name (use for contact name)
+- `user.profile.display_name` -- Slack display name (use for identifier displayName)
+- `user.profile.email` -- email address (may be empty depending on workspace settings)
+- `user.is_bot` -- skip if true
+- `user.profile.title` -- job title (use for contact title field if available)
 
 ## Tokens
 
@@ -47,21 +146,41 @@ Load tokens in Bash: `source C:/hq/.env` (won't work on Windows — read the fil
 | FrogBear | frogbearventures.slack.com | T08RUDAR21X | U08RUDAR4FK |
 | Synesis | TBD | TBD | TBD |
 
-## Quick Lookup Directory
+## CRM Lookup Protocol (People)
 
-> **People data now lives in workspace/crm/contacts/.** Use CRM utilities for lookups.
->
-> ```javascript
-> const crm = require('./.claude/lib/crm.js');
-> // Find by name
-> crm.findContact({ name: 'Corey' });
-> // Find by Slack user ID
-> crm.findContact({ slack: { userId: 'U042Z9XCRK3' } });
-> // Find by email
-> crm.findContact({ email: 'corey@getindigo.ai' });
-> ```
->
-> Channel IDs are still listed below for quick reference.
+All person data lives in `workspace/crm/contacts/`. Use CRM utilities for all people lookups:
+
+```javascript
+const crm = require('./.claude/lib/crm.js');
+
+// === SENDING A MESSAGE ===
+// Step 1: Look up recipient in CRM for their DM Channel ID
+const matches = crm.findContact({ name: 'Corey' });
+// or: crm.findContact({ slack: { userId: 'U042Z9XCRK3' } });
+// or: crm.findContact({ email: 'corey@getindigo.ai' });
+
+if (matches.length > 0) {
+  const contact = matches[0];
+  // Get Slack identifier for the correct workspace
+  const slackId = contact.identifiers.slack?.find(s => s.workspace === 'indigo-ai');
+  const channel = slackId?.dmChannel || slackId?.userId;
+  // Use 'channel' in chat.postMessage
+}
+
+// Step 2: After sending, if a new DM channel was returned (conversations.open),
+// write it back to the CRM contact -- NOT to this file:
+crm.updateContact(contact.slug, {
+  identifiers: {
+    slack: [{ workspace: 'indigo-ai', userId: slackId.userId, dmChannel: newDmChannelId }]
+  }
+});
+```
+
+**Workflow for unknown recipients:** If the person is not in CRM, use their Slack User ID directly as the `channel` parameter (Slack auto-opens DM), then create a CRM contact with the returned DM channel ID.
+
+**Quick resolution:** Workers can also use the crm-manager's `lookup-person` skill (`/run crm-manager lookup-person`) for formatted contact cards with all identifiers.
+
+Channel IDs (non-person) are still listed below for quick reference.
 
 ### Indigo (`$SLACK_USER_TOKEN`)
 
@@ -69,7 +188,7 @@ Load tokens in Bash: `source C:/hq/.env` (won't work on Windows — read the fil
 
 | Channel | Channel ID | Notes |
 |---------|------------|-------|
-| | | (add as discovered) |
+| #project-hq | C0ACTRKLN7N | HQ project updates |
 
 ### FrogBear (`$FROGBEAR_SLACK_USER_TOKEN`)
 
@@ -194,18 +313,25 @@ Banned characters and their ASCII replacements:
 
 ## Sending Quick Reference
 
-To DM someone from the directory above, no lookups needed:
+To DM someone, always look up their DM Channel ID from the CRM first:
 
 ```bash
-# Example: DM Aaron (FrogBear)
+# Step 1: Look up recipient in CRM (conceptual -- workers do this via crm.findContact())
+# crm.findContact({ name: 'Aaron' }) -> identifiers.slack[workspace=frogbearventures].dmChannel
+
+# Step 2: Use the DM Channel ID from CRM
 TOKEN=$(grep 'FROGBEAR_SLACK_USER_TOKEN' C:/hq/.env | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r')
 curl -s -X POST "https://slack.com/api/chat.postMessage" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"channel":"D08RANPFLFQ","text":"message here"}'
+  -d '{"channel":"DM_CHANNEL_FROM_CRM","text":"message here"}'
 ```
 
-When DMing someone whose DM Channel is blank, use their User ID as the `channel` value (Slack auto-opens the DM) and record the returned `channel` ID in the directory above for next time.
+When DMing someone whose DM Channel is blank in the CRM, use their User ID as the `channel` value (Slack auto-opens the DM) and write the returned `channel` ID back to the CRM contact's slack identifier (via `crm.updateContact(slug, { identifiers: { slack: [{ workspace, userId, dmChannel: returnedChannelId }] } })`).
+
+**Never hardcode DM Channel IDs in commands or knowledge files.** Always read from CRM.
+
+**Remember:** After sending any message, run the CRM auto-detect flow (see "CRM Auto-Detect" section above) to log the interaction.
 
 ## Scopes Configured
 
