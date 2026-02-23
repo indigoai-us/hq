@@ -35,13 +35,14 @@ Example: /execute-task campaign-migration/CAM-003
 
 ### 2. Load Task Spec
 
-Read and validate `projects/{project}/prd.json`:
+Resolve project location — search `companies/*/projects/{project}/prd.json` first, then `projects/{project}/prd.json` (personal/HQ fallback):
 
 ```javascript
-// Strict: prd.json required. No README.md fallback.
-const prdPath = `projects/${project}/prd.json`
+// Resolve: find prd.json across company dirs or root
+const prdPath = glob(`companies/*/projects/${project}/prd.json`)[0]
+  || `projects/${project}/prd.json`
 if (!fileExists(prdPath)) {
-  STOP: `ERROR: ${prdPath} not found. Run /prd ${project} first.`
+  STOP: `ERROR: prd.json not found for ${project}. Run /prd ${project} first.`
 }
 
 const prd = JSON.parse(read(prdPath))
@@ -242,16 +243,41 @@ Write to `workspace/orchestrator/{project}/executions/{task-id}.json`:
 }
 ```
 
-### 5.5 Load Scoped Learnings
+### 5.5 Acquire File Locks
 
-Learnings live inside the files they govern — no separate learnings files.
+If the story has a non-empty `files` array and the target repo has a `repoPath` in prd metadata:
 
-1. For each worker in the selected sequence:
-   - Worker `instructions:` in `worker.yaml` includes a `## Learnings` subsection with accumulated rules from prior `/learn` injections
-   - These are loaded automatically in step 6a when reading worker config
-2. `.claude/CLAUDE.md` `## Learned Rules` (global hot rules) is already in session context
+1. **Load config**: Read `settings/orchestrator.yaml` → `file_locking`
+2. **Skip if disabled**: If `file_locking.enabled: false`, skip this step entirely
+3. **Read existing locks**: Read `{repoPath}/.file-locks.json` (create if missing: `{"version":1,"locks":[]}`)
+4. **Stale lock cleanup**: For each existing lock, check if owner PID is running (`kill -0 {pid} 2>/dev/null`). If not running AND lock is older than `stale_lock_timeout_minutes`, remove it
+5. **Conflict check**: For each file in `task.files`, check if already locked by another story:
+   - If conflicts found, apply `conflict_mode`:
+     - `hard_block`: STOP — report conflicting files + owner story, exit with structured JSON `{"status":"blocked","blocked_by":[...]}`
+     - `soft_block`: Log warning, proceed but instruct workers to skip locked files. Add `locked_files` to worker prompt context
+     - `read_only_fallback`: Log warning, proceed. Add `read_only_files` to worker prompt context
+6. **Acquire locks**: For each file in `task.files`, append to `.file-locks.json`:
+   ```json
+   {"file": "{path}", "owner": {"project": "{project}", "story": "{task.id}", "pid": {$$}}, "acquired_at": "{ISO8601}"}
+   ```
+   (`$$` = current shell PID via `echo $$`)
+7. **Update state.json**: Read orchestrator state, update project's `checkedOutFiles`:
+   ```json
+   [{"file": "{path}", "story": "{task.id}", "repo": "{repoPath}"}]
+   ```
+   Write state.json back
 
-No extra file reads needed — learnings are part of the source files.
+Report: `File locks acquired: {N} files for {task.id}`
+
+### 5.6 Load Applicable Policies
+
+Load policies from all three directories and filter by `trigger` field:
+
+1. **Company policies**: Determine active company (from prd.json `metadata.company` or manifest repo lookup). Read all files in `companies/{co}/policies/` — check each policy's `trigger` for applicability to current task.
+2. **Repo policies**: If working inside a repo, check `{repo}/.claude/policies/` if it exists.
+3. **Global policies**: Read `.claude/policies/` for cross-cutting and command-scoped rules.
+
+Include applicable policy rules in worker prompts (step 6b) under `### Applicable Policies`.
 
 ### 6. Execute Each Phase
 
@@ -259,7 +285,7 @@ For each worker in sequence:
 
 #### 6a. Load Worker Config
 
-Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `workers/{worker-id}/worker.yaml` for non-dev-team):
+Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `companies/*/workers/{worker-id}/worker.yaml` for company workers, `workers/public/{worker-id}/worker.yaml` for shared):
 - `instructions` - Worker's role and process
 - `context.base` - Files worker always needs
 - `skills.installed` - Worker's skills
@@ -293,16 +319,8 @@ Story-level `model_hint` (from prd.json) overrides worker default. Fallback: opu
 ### Codebase Exploration
 If the target repo has a qmd collection (check `qmd status`), prefer `qmd vsearch "<concept>" -c {collection} --json -n 10` for conceptual search (e.g. "where is auth handled", "billing service pattern"). Use Grep only for exact pattern matching (specific imports, function references, string literals).
 
-### Human-in-the-Loop Decisions
-If your task requires the user to make BATCH decisions (5+ items with the same option set), use /decide instead of AskUserQuestion:
-1. Build a DecisionQueue (see /decide command for schema)
-2. Write queue.json to repos/private/decision-ui/data/
-3. Start decision-ui server if not running, notify user
-4. Poll GET /api/status until completedAt is set
-5. Read responses.json and continue
-
-Use AskUserQuestion for: single clarifications, yes/no, 1-3 choices.
-Use /decide for: batch classification, review queues, multi-item triage (5+ items).
+### Applicable Policies
+{policies loaded in step 5.6, if any}
 
 ### Your Instructions
 {worker.instructions}
@@ -310,11 +328,8 @@ Use /decide for: batch classification, review queues, multi-item triage (5+ item
 ### Back Pressure (Run Before Completing)
 {worker.verification.post_execute commands}
 
-If repo is `repos/private/abacus-site`, also run:
-```bash
-npm run check-coverage                                                    # all routes covered
-npm run generate-manifest && git diff --quiet tests/e2e/manifest.json     # manifest fresh
-```
+# Add repo-specific back-pressure checks here if needed
+# e.g. coverage checks, manifest freshness, etc.
 
 ### Output Requirements
 When complete, provide JSON:
@@ -416,6 +431,15 @@ If success:
 - Update execution state
 - Continue to next phase
 
+#### 6d.5 Expand File Locks (Dynamic)
+
+If file locking is enabled and worker output contains `files_created` or `files_modified`:
+1. Compute `new_files` = files in worker output NOT already in `.file-locks.json` for this story
+2. If `new_files` is non-empty: acquire locks for them (same as step 5.5 item 6) — append to `.file-locks.json` and state.json `checkedOutFiles`
+3. Also update story's `files` array in prd.json with the new paths (so future sessions know the full scope)
+
+This ensures stories that touch more files than predicted still get proper lock coverage.
+
 #### 6e. Update Execution State
 
 After each phase:
@@ -449,10 +473,21 @@ Create `workspace/metrics/` if it doesn't exist. This is append-only — no read
 
 When all phases complete:
 
+#### 7.0 Release File Locks
+
+If file locking is enabled and locks were acquired in step 5.5:
+1. Read `{repoPath}/.file-locks.json`
+2. Remove all entries where `owner.project === "{project}" && owner.story === "{task.id}"`
+3. Write updated `.file-locks.json`
+4. Read orchestrator state.json, remove matching entries from project's `checkedOutFiles`
+5. Write state.json
+
+This runs BEFORE PRD update so locks are released even if later steps fail.
+
 #### 7a. Update PRD
 
 ```javascript
-// Update projects/{project}/prd.json
+// Update resolved prd.json (at companies/{co}/projects/{project}/prd.json)
 task.passes = true
 ```
 
@@ -474,6 +509,28 @@ curl -s -X POST https://api.linear.app/graphql \
 ```
 
 Skip silently if no `linearIssueId` on the story or no credentials configured. Linear sync is best-effort — never block task completion on it.
+
+**Cross-company guard**: Before using `linearCredentials`, verify the path matches the active company per `companies/manifest.yaml`. If it points to a different company's settings, ABORT Linear sync and warn.
+
+#### 7a.6 Comment on Linear issue (if configured)
+
+After state sync, add a comment to the Linear issue:
+
+```bash
+# On completion: notify reviewers
+COMMENT="Completed by HQ. Ready for review."
+
+# If prd.metadata has linearReviewers (member keys from config.json members block):
+# Look up member name from config.json, append @mention
+# e.g. "Completed by HQ. Ready for review. cc @{reviewer-name}"
+
+curl -s -X POST https://api.linear.app/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: $LINEAR_KEY" \
+  -d "{\"query\": \"mutation { commentCreate(input: { issueId: \\\"$ISSUE_ID\\\", body: \\\"$COMMENT\\\" }) { success } }\"}"
+```
+
+When task is blocked or needs resolution, comment with blocker context + @mention the relevant team member. Skip silently if not configured.
 
 #### 7b. Update Documentation
 
@@ -531,9 +588,9 @@ Run `/learn` with structured input from execution:
 }
 ```
 
-`/learn` handles: injection into source files, global promotion, event logging, dedup.
+`/learn` handles: policy file creation, event logging, dedup.
 
-If task completed cleanly with no failures/retries/notable patterns, `/learn` will log the event only (no rule injection).
+If task completed cleanly with no failures/retries/notable patterns, `/learn` will log the event only (no policy created).
 
 #### 7b.6 Reindex
 
@@ -557,6 +614,22 @@ Key decisions:
 Learning captured: workspace/learnings/{project}/{task-id}.json
 PRD updated: passes: true
 ```
+
+#### 7c.5 iMessage Notify (if configured)
+
+Check `settings/contacts.yaml` for contacts whose `context` list includes the current project name. For each matching contact, send a brief completion update via iMessage:
+
+```bash
+# Count completed vs total stories
+COMPLETED=$(grep -c '"passes": true' "${prdPath}" || echo 0)
+TOTAL=$(python3 -c "import json; print(len(json.load(open('${prdPath}'))['userStories']))")
+PCT=$((COMPLETED * 100 / TOTAL))
+
+~/scripts/imessage.sh "{contact.imessage}" \
+  "{project} update: {task.title} is done! $COMPLETED/$TOTAL stories complete ($PCT%)"
+```
+
+Best-effort — never block task completion on iMessage delivery. Log and continue if Messages.app errors.
 
 #### 7d. Structured Output for Orchestrator
 
@@ -583,7 +656,9 @@ When invoked as a sub-agent by `/run-project`, end with this JSON so the orchest
 
 If any phase fails after retry:
 
-0. **Auto-capture failure as learning:**
+0. **Release file locks:** Same as step 7.0 — release all locks for this story from both `.file-locks.json` and state.json. Never orphan locks on failure.
+
+0.5. **Auto-capture failure as learning:**
    Run `/learn` with:
    ```json
    {
@@ -655,10 +730,10 @@ Context passed between workers:
 - **Capture learnings** - Every task generates learning entry
 - **Handoffs preserve context** - Next worker knows what happened
 - **Fail fast, fail loud** - Stop on errors, don't hide them
-- **Abacus E2E enforcement** - When repo is abacus-site, back pressure includes manifest freshness + coverage check. Workers must update/add E2E tests for modified pages.
 - **prd.json is required** - never read or fall back to README.md
 - **Validate prd.json on load** - fail loudly on missing/malformed fields
 - **Orchestrator-compatible output** - always end with structured JSON block (step 7d) so `/run-project` can parse results without absorbing full context
 - **ALWAYS use agent-browser** for all browser interactions (OAuth flows, GTM, Meta, Google Ads, CIO, etc.). NEVER open headed browsers expecting manual user input — agent-browser handles auth states automatically via saved browser-state files
 - **Do NOT use EnterPlanMode or TodoWrite** — /execute-task IS the planning and execution pipeline. The PRD, task classification, and worker sequencing replace ad-hoc planning. Follow the steps in order.
 - **Always reindex after task completion** — `qmd update` after every completed task (step 7b.6)
+- **Never rewrite the PRD** — sub-agents may only update the current story's `passes`, `notes`, and `linearIssueId` fields. Never restructure, rename, add, or remove stories. The orchestrator validates PRD integrity after each sub-agent returns.

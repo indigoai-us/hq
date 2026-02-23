@@ -64,12 +64,17 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, settings, w
 
 ## Policies
 
-Before executing tasks for a company, check `companies/{co}/policies/` for standing rules. Policies override default behavior. Hard enforcement policies block on violation; soft enforcement policies note deviations.
+Before executing tasks, load applicable policies from all three directories:
+1. `companies/{co}/policies/` — company-scoped rules (infer company from context)
+2. `repos/{repo}/.claude/policies/` — repo-scoped rules (if working inside a repo)
+3. `.claude/policies/` — cross-cutting + command-scoped rules
 
+Hard enforcement policies block on violation; soft enforcement policies note deviations.
+
+**Spec:** `knowledge/public/hq-core/policies-spec.md`
 **Template:** `companies/_template/policies/example-policy.md`
-**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + markdown body
-
-Policies differ from Learned Rules: policies are proactive standing directives; learned rules are reactive anti-patterns. If a policy conflicts with a learned rule, the policy takes precedence.
+**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + `## Rule` + `## Rationale`
+**Precedence:** company > repo > command > global
 
 ## Infrastructure-First
 
@@ -111,7 +116,7 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-23 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+25 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
@@ -119,15 +124,13 @@ Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-sec
 
 ## Knowledge Repos
 
-Every knowledge folder is its own git repo, symlinked into HQ. This enables independent versioning, sharing, and publishing per knowledge base.
+Every knowledge folder is its own git repo with independent versioning.
 
-**Convention:** Repos live in `repos/public/` or `repos/private/`. Symlinks in `knowledge/` and `companies/*/knowledge` point to them. The symlinks are tracked by HQ git; the repo contents are gitignored.
+**Company knowledge** (`companies/{co}/knowledge/`): Embedded git repos — the `.git/` lives inside the directory. HQ gitignores the content. To commit: `cd companies/{co}/knowledge/ && git add && git commit && git push`.
 
-**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all follow symlinks.
+**Shared knowledge** (`knowledge/public/`): Symlinks to `repos/public/knowledge-{name}/`. To commit: `cd` to the symlink target repo.
 
-**Committing knowledge changes:** Changes show in `git status` of the *target repo* (not HQ). To commit:
-1. `cd` to the symlink target (e.g. `repos/public/knowledge-ralph/`)
-2. `git add`, `git commit`, `git push` in that repo
+**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
 
 **Repo inventory:** See `knowledge/public/hq-core/quick-reference.md`
 
@@ -207,16 +210,16 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 ## Learning System
 
-Learnings are rules injected directly into the files they govern:
-- Worker rules → `worker.yaml` `instructions:` block
-- Command rules → command `.md` `## Rules` section
-- Knowledge rules → relevant knowledge file (commit to that file's knowledge repo after injection)
-- Global rules → this file `## Learned Rules`
+Learnings are captured as **policy files** in scope-appropriate directories:
+- Company rules → `companies/{co}/policies/{slug}.md`
+- Repo rules → `repos/{pub|priv}/{repo}/.claude/policies/{slug}.md`
+- Command rules → `.claude/policies/{slug}.md` (with `scope: command`)
+- Cross-cutting rules → `.claude/policies/{slug}.md`
 
-- `/learn` captures and classifies learnings automatically after task execution
-- `/remember` delegates to `/learn` — user corrections always promote to Tier 1
+- `/learn` captures, classifies, and writes policy files automatically after task execution
+- `/remember` delegates to `/learn` — user corrections get `enforcement: hard`
 
-Event log: `workspace/learnings/*.json` (append-only, for analysis/dedup).
+Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 
 ## Git Workflow Rules
 

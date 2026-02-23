@@ -4,6 +4,44 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.4.0 (from v6.3.0)
+
+### New Commands
+Copy these files from starter-kit to your HQ:
+- `.claude/commands/launch-brand.md` — DTC brand launch (concept → PRD)
+- `.claude/commands/imessage.md` — Send iMessage to contacts
+
+### Updated Commands
+Review and merge changes to:
+- `.claude/commands/execute-task.md` — File lock acquisition (5.5), policy loading (5.6), dynamic lock expansion (6d.5), lock release on failure (8.0), iMessage notify (7c.5), Linear comments (7a.6), company-scoped project resolution
+- `.claude/commands/prd.md` — Company-scoped projects (`companies/{co}/projects/`), `files` field in story schema, board sync (5.5), mandatory creation rule, STOP after creation
+- `.claude/commands/run-project.md` — Company-scoped resolution, board sync (4.5), file lock conflict check (5a.1), Linear comments (5a.6), policy re-read in auto-reanchor
+- `.claude/commands/newworker.md` — Company-scoped worker paths
+- `.claude/commands/checkpoint.md` — Embedded repo support in knowledge state capture
+
+### CLAUDE.md Updates
+
+**Policies section** — Replace with three-directory structure:
+```
+Before executing tasks, load applicable policies from all three directories:
+1. companies/{co}/policies/ — company-scoped rules
+2. repos/{repo}/.claude/policies/ — repo-scoped rules
+3. .claude/policies/ — cross-cutting + command-scoped rules
+Precedence: company > repo > command > global
+```
+
+**Learning System section** — Update to reflect policy-file-based approach (learnings → policy files, not inline injection).
+
+**Knowledge Repos section** — Distinguish embedded company repos from symlinked shared repos.
+
+**Commands count** — Update "23 commands" → "25 commands".
+
+### Breaking Changes
+- `/prd` now creates projects at `companies/{co}/projects/{name}/` instead of `projects/{name}/`. Root `projects/` is fallback for personal/HQ-only projects.
+- `/prd` now requires `/handoff` after creation — no implementation in same session.
+
+---
+
 ## Migrating to v6.3.0 (from v6.2.0)
 
 ### New Files
