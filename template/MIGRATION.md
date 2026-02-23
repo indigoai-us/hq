@@ -8,7 +8,6 @@ Instructions for updating existing HQ installations to new versions.
 
 ### New Commands
 Copy these files from starter-kit to your HQ:
-- `.claude/commands/launch-brand.md` — DTC brand launch (concept → PRD)
 - `.claude/commands/imessage.md` — Send iMessage to contacts
 
 ### Updated Commands
@@ -34,7 +33,7 @@ Precedence: company > repo > command > global
 
 **Knowledge Repos section** — Distinguish embedded company repos from symlinked shared repos.
 
-**Commands count** — Update "23 commands" → "25 commands".
+**Commands count** — Update "23 commands" → "24 commands".
 
 ### Breaking Changes
 - `/prd` now creates projects at `companies/{co}/projects/{name}/` instead of `projects/{name}/`. Root `projects/` is fallback for personal/HQ-only projects.
