@@ -47,10 +47,10 @@ Classification, worker selection, worker pipelines, PRD updates, and learning ca
 - If a task was mid-pipeline (has execution state with incomplete phases), `/execute-task` will resume from the incomplete phase inside its sub-agent
 
 **If `{project}`:**
-- Check `projects/{project}/prd.json` exists
-- If prd.json **MISSING**: STOP immediately. Do not fall back to README.md.
+- Resolve project location: search `companies/*/projects/{project}/prd.json` first, then `projects/{project}/prd.json` (personal/HQ fallback)
+- If prd.json **MISSING** everywhere: STOP immediately. Do not fall back to README.md.
   ```
-  ERROR: projects/{project}/prd.json not found.
+  ERROR: prd.json not found for {project}.
 
   /run-project requires prd.json (not README.md).
   Fix: Run /prd {project} to generate prd.json.
@@ -61,9 +61,11 @@ Classification, worker selection, worker pipelines, PRD updates, and learning ca
 
 ### 2. Load Project
 
-Read and validate `projects/{project}/prd.json`:
+Resolve and read prd.json:
 ```javascript
-const prd = JSON.parse(read(`projects/${project}/prd.json`))
+const prdPath = glob(`companies/*/projects/${project}/prd.json`)[0]
+  || `projects/${project}/prd.json`
+const prd = JSON.parse(read(prdPath))
 
 // Strict: userStories required. No fallback.
 const stories = prd.userStories
@@ -108,7 +110,7 @@ Write `workspace/orchestrator/{project}/state.json`:
 ```json
 {
   "project": "{project}",
-  "prd_path": "projects/{project}/prd.json",
+  "prd_path": "{resolved prdPath}",
   "status": "in_progress",
   "started_at": "{ISO8601}",
   "updated_at": "{ISO8601}",
@@ -118,6 +120,14 @@ Write `workspace/orchestrator/{project}/state.json`:
   "retries": 0
 }
 ```
+
+### 4.5 Sync Board Status → in_progress
+
+Read resolved prd.json → `metadata.company`.
+If company exists, read `companies/manifest.yaml` → `{company}.board_path`.
+If board_path exists, read `companies/{co}/board.json`, find project entry by `prd_path`.
+If found and `status !== "in_progress"`: set `status = "in_progress"`, update `updated_at`, write board.json back.
+Skip silently on any error — never block execution on board sync.
 
 ### 5. The Loop
 
@@ -129,12 +139,36 @@ while (remaining tasks with passes: false):
     5a. SELECT next task
         - Priority order from PRD
         - Respect dependsOn (skip if deps incomplete)
-        - First incomplete + unblocked task
+        - Check file lock conflicts (see 5a.1)
+        - First incomplete + unblocked + non-conflicting task
 
         Report:
         ```
         Next: {task.id} - {task.title}
         Progress: {completed}/{total}
+        ```
+
+    5a.1 FILE LOCK CONFLICT CHECK
+
+        Read `settings/orchestrator.yaml` → `file_locking`.
+        If `enabled: false`, skip this check.
+
+        Read `{repoPath}/.file-locks.json` (if exists).
+        For each candidate story (incomplete + deps met):
+        - Compare story `files` against active locks
+        - If ANY overlap AND `conflict_mode: hard_block`:
+          skip this story, try next candidate
+        - If overlap AND `soft_block` or `read_only_fallback`:
+          allow selection (conflict handled by /execute-task)
+
+        If ALL remaining stories conflict:
+        ```
+        All remaining stories have file conflicts.
+        Locked files: {list with owners}
+        Options:
+        1. Wait (locks may release when other sessions complete)
+        2. Force-clear stale locks (check PID liveness)
+        3. Abort
         ```
 
     5a.5 SYNC LINEAR (if configured, best-effort)
@@ -149,6 +183,26 @@ while (remaining tasks with passes: false):
           -d "{\"query\": \"mutation { issueUpdate(id: \\\"{task.linearIssueId}\\\", input: { stateId: \\\"$IN_PROGRESS_STATE\\\" }) { success } }\"}"
         ```
         Skip silently if not configured. Never block execution on Linear sync.
+
+        **Cross-company guard**: Before using `linearCredentials`, verify the path matches the active company per `companies/manifest.yaml`. If it points to a different company's settings, ABORT Linear sync and warn.
+
+    5a.6 COMMENT ON LINEAR ISSUE (if configured, best-effort)
+
+        After state sync, comment on the issue:
+        ```bash
+        COMMENT="Started by HQ — task in progress."
+        curl -s -X POST https://api.linear.app/graphql \
+          -H "Content-Type: application/json" \
+          -H "Authorization: $LINEAR_KEY" \
+          -d "{\"query\": \"mutation { commentCreate(input: { issueId: \\\"{task.linearIssueId}\\\", body: \\\"$COMMENT\\\" }) { success } }\"}"
+        ```
+
+        When moving to In Review after completion, comment + @mention reviewer(s):
+        ```bash
+        COMMENT="Completed by HQ. Ready for review. cc @{reviewer_name}"
+        ```
+        Look up reviewer name from config.json `members` block. Fall back to display name if ID lookup fails.
+        Skip silently if not configured.
 
     5b. EXECUTE task via sub-agent
 
@@ -168,10 +222,6 @@ while (remaining tasks with passes: false):
 
                    Model hint for this story: {task.model_hint || 'none — use worker defaults'}
                    (If set, pass as model_hint override when resolving model in step 6a)
-
-                   Note: If the task involves batch human decisions (classifying,
-                   reviewing, or triaging 5+ items), use /decide to spawn the
-                   decision-ui instead of AskUserQuestion.
 
                    After completion, output ONLY this structured JSON:
                    {
@@ -228,8 +278,8 @@ while (remaining tasks with passes: false):
         2. Refresh git state: `git log --oneline -3`
         3. If task failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
            (searches across all knowledge, worker yamls, and command files)
-        4. Re-read CLAUDE.md `## Learned Rules`
-           (another session may have added rules via /learn)
+        4. Re-read applicable policies (company + repo + global `.claude/policies/`)
+           (another session may have added policies via /learn)
 
         This is silent — no user interaction. Prevents stale context
         between tasks, especially for multi-session projects.
@@ -326,7 +376,13 @@ Otherwise, aggregate into this markdown template and write to `workspace/reports
 
 **Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
 
-**Update INDEX.md files:** Regenerate `projects/INDEX.md` and `workspace/orchestrator/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+**Sync board status → done:**
+Read resolved prd.json → `metadata.company` → `board_path` from manifest.
+Find entry in board.json by `prd_path`.
+If found: set `status = "done"`, update `updated_at`, write board.json back.
+Skip silently on any error.
+
+**Update INDEX.md files:** Regenerate `companies/{co}/projects/INDEX.md` and `workspace/orchestrator/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
 **Post-project cleanup:**
 1. `qmd update 2>/dev/null || true` — reindex all changes from project
@@ -387,7 +443,7 @@ Prepend **product-planner** if task spec is unclear or acceptance criteria are v
 ```json
 {
   "project": "campaign-migration",
-  "prd_path": "projects/campaign-migration/prd.json",
+  "prd_path": "companies/{company}/projects/{project}/prd.json",
   "status": "in_progress|paused|completed",
   "started_at": "ISO8601",
   "updated_at": "ISO8601",
