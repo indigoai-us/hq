@@ -6,7 +6,6 @@ Company-scoped projects, file lock acquisition, policy loading, and new commands
 
 ### Added
 
-- **/launch-brand** — DTC brand launch command: interactive interview → company scaffold → execution-ready PRD with 10 stories, all in one session.
 - **/imessage** — Send iMessage to saved contacts via Messages.app.
 - **/execute-task — File lock acquisition** (step 5.5) — Acquires file locks on start, releases on completion/failure. Conflict modes: `hard_block`, `soft_block`, `read_only_fallback`.
 - **/execute-task — Policy loading** (step 5.6) — Loads applicable policies from company, repo, and global directories before worker execution.

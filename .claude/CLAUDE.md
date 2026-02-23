@@ -116,7 +116,7 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-25 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+24 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
