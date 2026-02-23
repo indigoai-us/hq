@@ -1,0 +1,186 @@
+# Workers Registry
+# Index of all workers in this HQ
+
+# Worker Types:
+# - CodeWorker: Implements features, fixes bugs, refactors
+# - ContentWorker: Drafts content, maintains voice consistency
+# - SocialWorker: Social media posting, engagement
+# - ResearchWorker: Analysis, market research, competitive intel
+# - OpsWorker: Reports, monitoring, automation
+# - Library: Shared utilities (not executable)
+
+version: "4.0"
+updated: "2026-01-31"
+
+workers:
+  # ===================
+  # Dev Team (12 workers)
+  # ===================
+  # Full development team for autonomous project execution
+  # See workers/dev-team/README.md for workflow
+
+  - id: project-manager
+    path: workers/dev-team/project-manager/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "PRD lifecycle, issue selection, learning aggregation"
+
+  - id: task-executor
+    path: workers/dev-team/task-executor/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Analyze issue, route to workers, validate completion"
+
+  - id: architect
+    path: workers/dev-team/architect/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "System design, API design, architecture decisions"
+
+  - id: backend-dev
+    path: workers/dev-team/backend-dev/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "API endpoints, business logic, backend implementation"
+
+  - id: database-dev
+    path: workers/dev-team/database-dev/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Schema design, migrations, query optimization"
+
+  - id: dev-qa-tester
+    path: workers/dev-team/qa-tester/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Testing, browser automation, accessibility, demo accounts"
+
+  - id: frontend-dev
+    path: workers/dev-team/frontend-dev/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "React/Next components, pages, UI implementation"
+
+  - id: motion-designer
+    path: workers/dev-team/motion-designer/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Animations, transitions, visual polish, image generation"
+
+  - id: infra-dev
+    path: workers/dev-team/infra-dev/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "CI/CD pipelines, deployment, monitoring"
+
+  - id: code-reviewer
+    path: workers/dev-team/code-reviewer/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "PR review, merge management, code quality gating"
+
+  - id: knowledge-curator
+    path: workers/dev-team/knowledge-curator/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "Process learnings, update knowledge bases, documentation"
+
+  - id: product-planner
+    path: workers/dev-team/product-planner/
+    type: CodeWorker
+    visibility: public
+    team: dev-team
+    status: active
+    description: "PRD creation, technical specs, API contracts"
+
+  # ===================
+  # Standalone Workers
+  # ===================
+
+  - id: security-scanner
+    path: workers/security-scanner/
+    type: OpsWorker
+    visibility: public
+    status: active
+    description: "Security scanning and vulnerability detection"
+
+  - id: crm-manager
+    path: workers/crm-manager/
+    type: OpsWorker
+    visibility: public
+    status: active
+    description: "Contact intelligence: enrich, deduplicate, lookup, and manage CRM contacts"
+
+  # ===================
+  # Content Team (5 workers)
+  # ===================
+
+  - id: content-brand
+    path: workers/content-brand/
+    type: ContentWorker
+    visibility: public
+    team: content-team
+    status: active
+    description: "Brand voice, messaging, tone analysis"
+
+  - id: content-sales
+    path: workers/content-sales/
+    type: ContentWorker
+    visibility: public
+    team: content-team
+    status: active
+    description: "Conversion copy, CTAs, value props"
+
+  - id: content-product
+    path: workers/content-product/
+    type: ContentWorker
+    visibility: public
+    team: content-team
+    status: active
+    description: "Feature accuracy, technical claims verification"
+
+  - id: content-legal
+    path: workers/content-legal/
+    type: ContentWorker
+    visibility: public
+    team: content-team
+    status: active
+    description: "Regulatory compliance, claim verification"
+
+  - id: content-shared
+    path: workers/content-shared/
+    type: Library
+    visibility: public
+    team: content-team
+    status: active
+    description: "Shared utilities for content analysis workers (types, parser, scorer, reporter)"
+
+  - id: blog-writer
+    path: workers/blog-writer/
+    type: ContentWorker
+    visibility: public
+    team: content-team
+    status: active
+    description: "Research topics and write blog articles for the Indigo blog (getindigo.ai/blog)"

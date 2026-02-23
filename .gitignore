@@ -21,6 +21,27 @@ Thumbs.db
 # Astro
 .astro/
 
+# Next.js
+.next/
+
+# Vercel
+.vercel/
+
+# Test artifacts
+playwright-report/
+test-results/
+coverage/
+
+# Rust build output
+target/
+
+# Sub-package lockfiles (monorepo uses root lockfile)
+packages/*/pnpm-lock.yaml
+
+# Claude Code logs
+claude_stderr.txt
+claude_stdout.txt
+
 # Template workspace artifacts (keep structure, ignore content)
 template/workspace/threads/*.json
 !template/workspace/threads/.gitkeep
@@ -28,3 +49,22 @@ template/workspace/checkpoints/*.json
 !template/workspace/checkpoints/.gitkeep
 template/workspace/learnings/*.json
 !template/workspace/learnings/.gitkeep
+
+# Workspace user data (instance-specific, not source code)
+workspace/crm/contacts/*.json
+!workspace/crm/contacts/.gitkeep
+workspace/threads/*.json
+!workspace/threads/.gitkeep
+workspace/orchestrator/*/
+!workspace/orchestrator/.gitkeep
+workspace/checkpoints/*.json
+!workspace/checkpoints/.gitkeep
+workspace/learnings/*.json
+!workspace/learnings/.gitkeep
+workspace/reports/*.md
+!workspace/reports/.gitkeep
+workspace/hiamp/
+workspace/content-ideas/*.jsonl
+!workspace/content-ideas/.gitkeep
+workspace/scratch/
+workspace/drafts/
