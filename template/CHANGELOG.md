@@ -1,5 +1,39 @@
 # Changelog
 
+## v6.4.0 (2026-02-23)
+
+Company-scoped projects, file lock acquisition, policy loading, and new commands.
+
+### Added
+
+- **/launch-brand** — DTC brand launch command: interactive interview → company scaffold → execution-ready PRD with 10 stories, all in one session.
+- **/imessage** — Send iMessage to saved contacts via Messages.app.
+- **/execute-task — File lock acquisition** (step 5.5) — Acquires file locks on start, releases on completion/failure. Conflict modes: `hard_block`, `soft_block`, `read_only_fallback`.
+- **/execute-task — Policy loading** (step 5.6) — Loads applicable policies from company, repo, and global directories before worker execution.
+- **/execute-task — Dynamic file lock expansion** (step 6d.5) — Workers can touch more files than predicted; locks expand dynamically.
+- **/execute-task — File lock release on failure** (step 8.0) — Locks released even on task failure to prevent orphaned locks.
+- **/execute-task — iMessage notify** (step 7c.5) — Optional completion notifications to contacts whose `context` includes the project.
+- **/execute-task — Linear comments** (step 7a.6) — Comment on Linear issues with @mentions on state changes.
+- **/run-project — Board sync** (step 4.5) — Sync project status to `board.json` on start and completion.
+- **/run-project — File lock conflict check** (step 5a.1) — Skip stories with file conflicts during task selection.
+- **/run-project — Linear comments** (step 5a.6) — Comment on issues during state transitions.
+- **/prd — Board sync** (step 5.5) — Upsert project entry in `board.json` after PRD creation.
+- **/prd — `files` field** — Story schema now includes `files: []` for file lock tracking.
+
+### Changed
+
+- **/execute-task** — Company-scoped project resolution: searches `companies/*/projects/` first, then `projects/` fallback.
+- **/prd** — Company-scoped project creation at `companies/{co}/projects/{name}/`. Infrastructure pre-check now creates embedded repos (`git init` in `companies/{co}/knowledge/`).
+- **/prd** — STOP after creation + handoff. Hard block on implementation in same session. MANDATORY file creation rule added.
+- **/run-project** — Company-scoped project resolution. Auto-reanchor now re-reads policies (not learned rules). Board sync on completion.
+- **/newworker** — Updated paths for company-scoped workers (`companies/{co}/workers/{id}/`).
+- **/checkpoint** — Knowledge repo git state check now supports embedded repos (not just symlinks).
+- **CLAUDE.md — Policies** — Three-directory structure (company > repo > global) with precedence and spec reference.
+- **CLAUDE.md — Learning System** — Migrated from inline injection to policy file creation.
+- **CLAUDE.md — Knowledge Repos** — Clarified embedded vs symlinked repos.
+
+---
+
 ## v6.3.0 (2026-02-21)
 
 Policies, file locking, Glob safety hook, and safe settings.json migration.

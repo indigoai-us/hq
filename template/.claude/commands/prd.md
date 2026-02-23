@@ -28,11 +28,10 @@ Before asking questions, explore HQ:
 
 **Workers:**
 - Read `workers/registry.yaml`
-- Glob `workers/*/worker.yaml`, `workers/public/dev-team/*/worker.yaml`
+- Glob `workers/public/*/worker.yaml`, `workers/public/dev-team/*/worker.yaml`, `companies/*/workers/*/worker.yaml`
 
 **Existing Projects:**
-- `ls projects/`
-- Glob `projects/*/prd.json` (check overlap)
+- Glob `companies/*/projects/*/prd.json` + `projects/*/prd.json` (check overlap)
 
 **Knowledge (use qmd, not Grep):**
 - `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
@@ -54,7 +53,7 @@ Scanned HQ:
 
 Before generating the PRD, verify infrastructure exists for the target company/repo:
 
-1. **Company**: If project targets a company, read `companies/manifest.yaml`. If company has `knowledge: null`, flag: "Company {co} has no knowledge repo. Create one? [Y/n]" — if yes, create repo at `repos/private/knowledge-{co}`, symlink to `companies/{co}/knowledge`, update manifest + modules.yaml.
+1. **Company**: If project targets a company, read `companies/manifest.yaml`. If company has `knowledge: null`, flag: "Company {co} has no knowledge repo. Create one? [Y/n]" — if yes, create embedded repo at `companies/{co}/knowledge/` with `git init`, update manifest + modules.yaml.
 
 2. **Repo**: If `repoPath` specified and doesn't exist locally, flag: "Repo not found at {path}. Clone it or create new?" Add to `manifest.yaml` if missing.
 
@@ -65,9 +64,10 @@ Fix any gaps before proceeding.
 ## Step 3: Get + Validate Project Name
 
 Ask for project slug (or infer from description). Then:
-1. Check if `projects/{name}/` exists
+1. Determine company from context (infer from description, repo, or ask)
+2. Check if `companies/{co}/projects/{name}/` exists (also check root `projects/{name}/` for personal/HQ)
    - If exists: "Project exists. Continue editing or choose different name?"
-2. Validate slug format (lowercase, hyphens only)
+3. Validate slug format (lowercase, hyphens only)
 
 ## Step 4: Discovery Interview
 
@@ -96,9 +96,9 @@ Ask questions in batches. Users respond: "1A, 2C"
 
 ## Step 5: Generate PRD
 
-Create `projects/{name}/` folder with two files.
+Create `companies/{co}/projects/{name}/` folder with two files. Use root `projects/{name}/` only for personal/HQ projects.
 
-### Primary: projects/{name}/prd.json
+### Primary: companies/{co}/projects/{name}/prd.json
 
 This is the **source of truth**. `/run-project` and `/execute-task` consume this file.
 
@@ -115,6 +115,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
       "acceptanceCriteria": ["{Specific verifiable criterion}"],
       "priority": 1,
       "passes": false,
+      "files": [],
       "labels": [],
       "dependsOn": [],
       "notes": "",
@@ -133,7 +134,9 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
 }
 ```
 
-### Derived: projects/{name}/README.md
+**Populating `files`:** For each story, infer file paths from the description + acceptance criteria + target repo structure. If `repoPath` is set, search the repo (via qmd or Glob) to find existing files the story will modify, and predict new files it will create. Paths are repo-relative (e.g. `src/middleware/auth.ts`, not absolute). Best-effort — empty is fine for stories with unclear scope.
+
+### Derived: companies/{co}/projects/{name}/README.md
 
 Generate FROM the prd.json data. Human-friendly view.
 
@@ -172,6 +175,31 @@ Generate FROM the prd.json data. Human-friendly view.
 {Remaining questions}
 ```
 
+## Step 5.5: Sync to Company Board
+
+Read `companies/manifest.yaml` to find `metadata.company` → `board_path`.
+
+If `board_path` exists, read `companies/{co}/board.json` and upsert a project entry:
+- **Match**: find existing entry by `prd_path === "companies/{co}/projects/{name}/prd.json"` or title similarity
+- **If found**: update `status` to `prd_created`, set `prd_path`, update `updated_at`
+- **If not found**: append new entry:
+  ```json
+  {
+    "id": "{co-prefix}-proj-{N+1}",
+    "title": "{project name}",
+    "description": "{1-sentence description}",
+    "status": "prd_created",
+    "scope": "company",
+    "app": null,
+    "initiative_id": null,
+    "prd_path": "companies/{co}/projects/{name}/prd.json",
+    "created_at": "{ISO8601}",
+    "updated_at": "{ISO8601}"
+  }
+  ```
+- Write updated `board.json` back to `board_path`
+- If no `metadata.company` in prd.json or no board_path, skip silently
+
 ## Step 6: Register with Orchestrator
 
 Read `workspace/orchestrator/state.json`. Append to `projects` array:
@@ -180,7 +208,7 @@ Read `workspace/orchestrator/state.json`. Append to `projects` array:
 {
   "name": "{name}",
   "state": "READY",
-  "prdPath": "projects/{name}/prd.json",
+  "prdPath": "companies/{co}/projects/{name}/prd.json",
   "updatedAt": "{ISO8601}",
   "storiesComplete": 0,
   "storiesTotal": "{N}",
@@ -206,35 +234,31 @@ Run `/learn` to register the new project in the learning system:
   "source": "build-activity",
   "severity": "medium",
   "scope": "global",
-  "rule": "Project {name} exists at projects/{name}/ with {N} stories targeting {repoPath or 'no repo'}",
+  "rule": "Project {name} exists at companies/{co}/projects/{name}/ with {N} stories targeting {repoPath or 'no repo'}",
   "context": "Created via /prd"
 }
 ```
 
 Also reindex: `qmd update 2>/dev/null || true`
 
-**Update INDEX.md:** Regenerate `projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+**Update INDEX.md:** Regenerate `companies/{co}/projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
-## Step 8: Execution Choice
-
-Based on complexity, recommend execution path:
-
-**>3 stories OR dependencies OR multi-file:** recommend `/run-project`
-**1-3 simple stories:** recommend in-process or `/execute-task`
+## Step 8: Confirm & STOP
 
 Tell user:
 ```
 Project **{name}** created with {N} user stories.
 
 Files:
-  projects/{name}/prd.json   (source of truth)
-  projects/{name}/README.md  (human-readable)
+  companies/{co}/projects/{name}/prd.json   (source of truth — tracks all work)
+  companies/{co}/projects/{name}/README.md  (human-readable view)
 
-Recommended execution:
-1. /run-project {name}  (orchestrator loop, crash recovery)
-2. /execute-task {name}/US-001  (run stories one at a time)
-3. Execute now (in this session, simple projects only)
+To execute, start a new session and run:
+  /run-project {name}        (multi-story orchestrator)
+  /execute-task {name}/US-001 (single story)
 ```
+
+**Then run `/handoff` and end the session.** Do NOT proceed to execution.
 
 ## Story Guidelines
 
@@ -244,6 +268,7 @@ Recommended execution:
 - Keep stories atomic (one deliverable each)
 - Every story starts with `passes: false`
 - `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
+- `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
 
 ## Rules
 
@@ -253,5 +278,7 @@ Recommended execution:
 - **All stories start with `passes: false`** — `/run-project` marks them true
 - **Do NOT use EnterPlanMode** — this skill IS planning
 - **Do NOT use TodoWrite** — PRD stories track tasks
-- **Do NOT implement** — just create the PRD
+- **HARD BLOCK: Do NOT implement** — ONLY create the PRD files (`companies/{co}/projects/{name}/prd.json` + `README.md`). NEVER edit target files (repos, decks, sites, etc.) during a `/prd` session. Plan mode approval = "approved to generate PRD files," NOT "approved to implement." Implementation happens via `/execute-task` or `/run-project` AFTER PRD creation. Violating this bypasses project tracking, worker assignment, handoffs, and quality gates
+- **STOP after PRD creation** — After Step 8 confirmation, run `/handoff` and end session. NEVER start executing stories, running workers, or writing implementation code in the same session as `/prd`. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation (Ralph pattern). prd.json tracks all work for humans and future agent runs — this separation is mandatory
 - **Infrastructure before planning** — never create a PRD that references infrastructure (company, repo, knowledge) that doesn't exist. Fix gaps first (Step 2.5)
+- **MANDATORY: Always create project files** — Every /prd invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for /run-project. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files

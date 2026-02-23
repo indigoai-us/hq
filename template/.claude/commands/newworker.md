@@ -49,7 +49,7 @@ Ask these questions (can batch related ones):
 
 ## Generate Worker
 
-Create folder: `workers/{worker-id}/` (flat structure, no categories)
+Create folder: `companies/{company}/workers/{worker-id}/` for company workers, or `workers/public/{worker-id}/` for shared workers
 
 ### worker.yaml
 
@@ -101,7 +101,7 @@ Add to `workers/registry.yaml`:
 
 ```yaml
   - id: {worker-id}
-    path: workers/{worker-id}/
+    path: companies/{company}/workers/{worker-id}/   # or workers/public/{worker-id}/ for shared
     type: {WorkerType}
     status: active
     description: "{1-sentence description}"
@@ -115,7 +115,7 @@ Workers can get tasks from:
    - For workers that implement features
    - Reference existing project or create one with `/prd`
 
-2. **Queue file**: `workers/{worker-id}/queue.json`
+2. **Queue file**: `companies/{company}/workers/{worker-id}/queue.json` (or `workers/public/{worker-id}/queue.json` for shared)
    - For workers with simple, repeating tasks (posting, monitoring)
    - Create with:
      ```json
@@ -143,10 +143,12 @@ Workers can get tasks from:
 1. **registry.yaml**: Append entry to `workers/registry.yaml`:
    ```yaml
    - id: {worker-id}
-     path: workers/{public|private}/{worker-id}/
+     path: workers/public/{worker-id}/               # shared workers
+     # OR
+     path: companies/{company}/workers/{worker-id}/  # company workers
      type: {WorkerType}
      visibility: {public|private}
-     company: {company if private, omit if public}
+     company: {company if company-scoped, omit if public}
      status: active
      description: "{1-sentence}"
    ```
@@ -164,7 +166,7 @@ Run `/learn` to register the new worker in the learning system:
   "source": "build-activity",
   "severity": "medium",
   "scope": "global",
-  "rule": "Worker {worker-id} exists at workers/{path}/ for {1-sentence purpose}",
+  "rule": "Worker {worker-id} exists at companies/{company}/workers/{worker-id}/ (or workers/public/{worker-id}/ if shared) for {1-sentence purpose}",
   "context": "Created via /newworker"
 }
 ```
@@ -172,12 +174,12 @@ Run `/learn` to register the new worker in the learning system:
 ### Reindex + Update INDEX
 
 1. `qmd update 2>/dev/null || true`
-2. Regenerate `workers/public/INDEX.md` or `workers/private/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+2. Regenerate `workers/public/INDEX.md` (shared workers) or `companies/{company}/workers/INDEX.md` (company workers) per `knowledge/public/hq-core/index-md-spec.md`.
 
 ### Report to User
 
 Provide next steps:
-1. "Worker created at `workers/{worker-id}/`"
+1. "Worker created at `companies/{company}/workers/{worker-id}/` (or `workers/public/{worker-id}/` if shared)"
 2. "Registered in registry.yaml + manifest.yaml"
 3. "Test with on-demand execution first"
 4. If using queue: "Add tasks to queue.json to get started"

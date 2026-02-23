@@ -38,11 +38,11 @@ Save current work state as a thread to survive context loss.
    ```
 
 4. **Capture knowledge repo git states**
-   Knowledge folders are separate git repos (symlinked). For any knowledge path in files_touched, capture its repo state:
+   Knowledge folders are separate git repos (symlinked or embedded). For any knowledge path in files_touched, capture its repo state:
    ```bash
    # For each knowledge repo with changes:
    for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
-     [ -L "$symlink" ] || continue
+     [ -L "$symlink" ] || [ -d "$symlink/.git" ] || continue
      repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
      dirty=$(cd "$repo_dir" && git status --porcelain)
      [ -z "$dirty" ] && continue
@@ -64,7 +64,7 @@ Save current work state as a thread to survive context loss.
      "created_at": "ISO8601",
      "updated_at": "ISO8601",
 
-     "workspace_root": "~/Documents/HQ",
+     "workspace_root": "~/",
      "cwd": "current/working/dir",
 
      "git": {
