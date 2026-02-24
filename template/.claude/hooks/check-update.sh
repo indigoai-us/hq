@@ -10,7 +10,7 @@ set -uo pipefail
 # --- Configuration ---
 CACHE_TTL_SECONDS=86400  # 24 hours
 GH_TIMEOUT=3             # seconds
-REPO="coreyepstein/hq-starter-kit"
+REPO="indigoai-us/hq"
 
 # --- Resolve HQ root ---
 HQ="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)" || exit 0
