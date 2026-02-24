@@ -113,6 +113,17 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 23 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
+## Auto-Update Check
+
+A PreToolUse hook (`check-update.sh`) runs on the first `Read` call of each session and checks for HQ starter-kit updates once per day (cached in `.hq-version-check.json`).
+
+**When you see** `HQ UPDATE AVAILABLE: v{version} ...` in hook output or additionalContext:
+1. Relay the notification to the user verbatim (version numbers and release URL)
+2. Offer to run `/update-hq` to apply the upgrade
+3. If the user confirms, execute `/update-hq` — it handles the full migration
+
+**Do not** suppress, summarize, or skip the notification. The user should always know when an update is available.
+
 ## Knowledge Bases
 
 Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
