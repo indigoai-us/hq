@@ -61,7 +61,7 @@ Not just files. Active systems that:
 |------|----------|---------|
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Yes | `npm install -g @anthropic-ai/claude-code` |
 | [GitHub CLI](https://cli.github.com/) | Yes | `brew install gh` then `gh auth login` |
-| [qmd](https://github.com/tobi/qmd) | Recommended | `brew install tobi/tap/qmd` |
+| [qmd](https://github.com/tobi/qmd) | Recommended | `npm install -g @tobilu/qmd` |
 | [OpenAI Codex](https://openai.com/codex) | Optional | `npm install -g @openai/codex` then `codex login` |
 | [Vercel CLI](https://vercel.com/docs/cli) | Optional | `npm install -g vercel` then `vercel login` |
 
