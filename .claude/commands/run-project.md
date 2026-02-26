@@ -374,6 +374,13 @@ Otherwise, aggregate into this markdown template and write to `workspace/reports
 3. Promote repeated patterns to Tier 1 via `/learn` (severity: high, source: pattern-repetition)
 4. Write project retrospective to `workspace/reports/{project}-retro.md`
 
+**Audit project context (if context directory exists):**
+If `projects/{project}/context/` exists, spawn context-manager audit:
+```
+Task({ subagent_type: "general-purpose", prompt: "/run context-manager audit --project {project}", description: "audit context {project}" })
+```
+Report written to `workspace/context-audits/{project}-{date}.md`. If no context directory, log suggestion to progress.txt. Skip silently on error.
+
 **Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
 
 **Sync board status → done:**

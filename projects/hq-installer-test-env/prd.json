@@ -1,0 +1,139 @@
+{
+  "name": "hq-installer-test-env",
+  "description": "Automated test environment for hq-installer using GitHub Actions to verify Windows and macOS installers work from zero to functional HQ",
+  "branchName": "feature/hq-installer-test-env",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create GitHub Actions workflow structure",
+      "description": "As a developer, I want a GitHub Actions workflow that triggers on installer changes so that I can automatically verify the installer works before merging",
+      "acceptanceCriteria": [
+        "Workflow file created at .github/workflows/test-installer.yml",
+        "Triggers on pull_request when installer/** files change",
+        "Triggers on workflow_dispatch for manual runs",
+        "Matrix strategy defined for windows-latest and macos-latest",
+        "Jobs run in parallel for faster feedback"
+      ],
+      "priority": 1,
+      "passes": true,
+      "labels": ["infra", "ci"],
+      "dependsOn": [],
+      "notes": "Completed 2026-01-31. Workflow skeleton with PR triggers, workflow_dispatch, parallel Windows/macOS jobs."
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Windows unattended install and test job",
+      "description": "As a developer, I want the Windows CI job to build and run the installer silently so that I can verify it works without manual interaction",
+      "acceptanceCriteria": [
+        "Job installs NSIS build tools",
+        "Job builds the installer from installer/windows/hq-installer.nsi",
+        "Installer runs in silent/unattended mode (/S flag)",
+        "Job runs installer/tests/test-windows.ps1 after install",
+        "Job fails if any test assertion fails",
+        "Job outputs clear pass/fail summary"
+      ],
+      "priority": 2,
+      "passes": true,
+      "labels": ["windows", "ci"],
+      "dependsOn": ["US-001"],
+      "notes": "Completed 2026-01-31. Full Windows CI job with NSIS build, silent install, verification tests, and artifact upload."
+    },
+    {
+      "id": "US-003",
+      "title": "Implement macOS install and test job",
+      "description": "As a developer, I want the macOS CI job to build and run the installer so that I can verify it works on real macOS",
+      "acceptanceCriteria": [
+        "Job installs required build tools (pkgbuild, productbuild)",
+        "Job builds the .pkg from installer/macos/build-pkg.sh",
+        "Installer runs via sudo installer -pkg ... -target /",
+        "Job runs installer/tests/test-macos.sh after install",
+        "Job fails if any test assertion fails",
+        "Job outputs clear pass/fail summary"
+      ],
+      "priority": 2,
+      "passes": true,
+      "labels": ["macos", "ci"],
+      "dependsOn": ["US-001"],
+      "notes": "Completed 2026-01-31. Full macOS CI job with pkgbuild/productbuild, build-pkg.sh, silent install, verification tests, and artifact upload."
+    },
+    {
+      "id": "US-004",
+      "title": "Add caching for faster CI runs",
+      "description": "As a developer, I want CI runs to be fast so that I don't waste time and Actions minutes waiting for tests",
+      "acceptanceCriteria": [
+        "Node.js installer cached between runs (avoid re-download)",
+        "NSIS tools cached on Windows",
+        "Total CI time under 10 minutes for both platforms combined",
+        "Cache keys include relevant file hashes for invalidation"
+      ],
+      "priority": 3,
+      "passes": true,
+      "labels": ["optimization", "ci"],
+      "dependsOn": ["US-002", "US-003"],
+      "notes": "Completed 2026-01-31. NSIS cache with conditional install steps and verification. Node.js via setup-node@v4 implicit caching. Saves ~2-4 min on cache hits."
+    },
+    {
+      "id": "US-005",
+      "title": "Create CI-compatible test scripts",
+      "description": "As a developer, I want test scripts that work in CI headless environments so that tests run reliably without GUI interaction",
+      "acceptanceCriteria": [
+        "test-windows.ps1 updated to handle CI environment (no GUI prompts)",
+        "test-macos.sh updated to handle CI environment (no GUI prompts)",
+        "Scripts skip Claude OAuth verification (requires browser)",
+        "Scripts output structured results (exit codes, summary)",
+        "Scripts handle cleanup on failure"
+      ],
+      "priority": 3,
+      "passes": true,
+      "labels": ["testing"],
+      "dependsOn": ["US-002", "US-003"],
+      "notes": "Completed 2026-01-31. Added CI detection, OAuth/GUI skip in CI, structured JSON output, signal trap cleanup, diagnostics on failure."
+    },
+    {
+      "id": "US-006",
+      "title": "Add functional verification tests",
+      "description": "As a developer, I want to verify the installed HQ is actually functional so that I catch real-world failures",
+      "acceptanceCriteria": [
+        "Test verifies Node.js runs: node --version",
+        "Test verifies npm runs: npm --version",
+        "Test verifies Claude CLI installed: claude --version",
+        "Test verifies my-hq directory structure exists with required files",
+        "Test verifies claude --help runs from my-hq directory",
+        "Test runs a basic HQ operation (e.g., /help command)"
+      ],
+      "priority": 4,
+      "passes": true,
+      "labels": ["testing", "verification"],
+      "dependsOn": ["US-005"],
+      "notes": "Completed 2026-01-31. Added HQ Functionality Verification section: slash commands, CLAUDE.md content, worker definitions, comprehensive readiness check."
+    },
+    {
+      "id": "US-007",
+      "title": "Document local testing workflow",
+      "description": "As a developer, I want documentation on running tests locally so that I can verify changes before pushing",
+      "acceptanceCriteria": [
+        "README documents how to run Windows tests locally (Docker or Sandbox)",
+        "README documents how to run macOS tests locally (fresh user account)",
+        "README documents how to trigger workflow manually",
+        "README includes troubleshooting for common CI failures"
+      ],
+      "priority": 5,
+      "passes": true,
+      "labels": ["docs"],
+      "dependsOn": ["US-002", "US-003"],
+      "notes": "Completed 2026-01-31. Created installer/tests/README.md with Windows/macOS local testing, CI workflow docs, and troubleshooting guide."
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-01-31T12:00:00Z",
+    "goal": "Automated CI testing that verifies hq-installer works from zero to functional HQ on both Windows and macOS",
+    "successCriteria": "Single workflow runs on installer PRs, tests both platforms in parallel, completes in under 10 minutes, outputs clear pass/fail",
+    "qualityGates": [],
+    "repoPath": "C:/my-hq",
+    "baseBranch": "main",
+    "approach": "GitHub Actions with matrix (windows-latest, macos-latest) - fastest path to real OS testing with cost optimization via caching and selective triggers",
+    "relatedWorkers": ["infra-dev", "qa-tester", "architect"],
+    "knowledge": ["installer/TESTING.md", "installer/tests/"],
+    "relatedProjects": ["hq-installer"]
+  }
+}

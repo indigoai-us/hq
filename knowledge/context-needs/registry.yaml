@@ -1,0 +1,221 @@
+# Worker Context Needs Registry
+# Documents what project context each worker type needs to do their best work.
+#
+# When a new worker is created via /newworker, their context needs are captured
+# here so the context-manager can ensure projects have the required context.
+#
+# See README.md for how to declare context needs for new workers.
+
+version: "1.0"
+updated: "2026-01-27"
+
+# Context file reference (from project-context schema):
+#   - overview.md: Purpose, goals, current state
+#   - architecture.md: Stack, structure, patterns, dependencies
+#   - domain.md: Glossary, concepts, business rules
+#   - decisions.md: Architectural decision records
+#   - stakeholders.md: People, systems, communication channels
+#   - learnings.md: Patterns, gotchas, tips, open questions
+
+worker_types:
+  # ------------------------------
+  # CodeWorker
+  # ------------------------------
+  # Implements features, fixes bugs, refactors code.
+  # Needs deep technical understanding of the project.
+  CodeWorker:
+    description: "Implements features, fixes bugs, refactors code"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Understand project purpose and current state"
+        - file: architecture.md
+          reason: "Know the tech stack, patterns, and structure"
+        - file: domain.md
+          reason: "Understand terminology and business rules"
+      recommended:
+        - file: decisions.md
+          reason: "Understand why things are built the way they are"
+        - file: learnings.md
+          reason: "Avoid past mistakes and leverage discovered patterns"
+      optional:
+        - file: stakeholders.md
+          reason: "Know who to coordinate with for dependencies"
+    external_context:
+      - type: brand_guidelines
+        when: "Working on user-facing features"
+      - type: api_specs
+        when: "Integrating with external services"
+
+  # ------------------------------
+  # ContentWorker
+  # ------------------------------
+  # Drafts content, maintains voice consistency, analyzes messaging.
+  # Needs product understanding and brand/voice guidelines.
+  ContentWorker:
+    description: "Drafts content, maintains voice consistency"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Understand what the product does and its value proposition"
+      recommended:
+        - file: domain.md
+          reason: "Use correct terminology in content"
+        - file: stakeholders.md
+          reason: "Understand target audiences"
+      optional:
+        - file: architecture.md
+          reason: "Technical accuracy for product documentation"
+    external_context:
+      - type: brand_guidelines
+        when: "Always - voice consistency is core to this worker"
+      - type: messaging_frameworks
+        when: "Always - key messages and positioning"
+      - type: competitor_analysis
+        when: "Differentiation messaging"
+
+  # ------------------------------
+  # SocialWorker
+  # ------------------------------
+  # Posts to social platforms, manages engagement.
+  # Needs product context and personal/brand voice guidelines.
+  SocialWorker:
+    description: "Social media posting and engagement"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Know what you're posting about"
+      optional:
+        - file: domain.md
+          reason: "Use correct terminology, avoid jargon errors"
+        - file: learnings.md
+          reason: "Know what messaging resonates"
+    external_context:
+      - type: voice_style_guide
+        when: "Always - voice consistency defines the worker"
+      - type: profile
+        when: "Personal accounts - understand poster's background"
+      - type: content_calendar
+        when: "Scheduled posting workflows"
+
+  # ------------------------------
+  # ResearchWorker
+  # ------------------------------
+  # Analysis, market research, competitive intelligence.
+  # Needs domain understanding and stakeholder context.
+  ResearchWorker:
+    description: "Analysis, market research, competitive intel"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Understand what to research and why"
+        - file: domain.md
+          reason: "Understand the domain being researched"
+      recommended:
+        - file: stakeholders.md
+          reason: "Know who will consume the research"
+      optional:
+        - file: architecture.md
+          reason: "Technical research requires system understanding"
+    external_context:
+      - type: competitor_data
+        when: "Competitive analysis"
+      - type: market_data
+        when: "Market research"
+
+  # ------------------------------
+  # OpsWorker
+  # ------------------------------
+  # Reports, monitoring, automation, security scanning.
+  # Needs technical understanding for operational tasks.
+  OpsWorker:
+    description: "Reports, monitoring, automation, security"
+    context_needs:
+      required:
+        - file: architecture.md
+          reason: "Know what systems to monitor/scan/automate"
+      recommended:
+        - file: overview.md
+          reason: "Understand operational priorities"
+      optional:
+        - file: stakeholders.md
+          reason: "Know who to alert for issues"
+    external_context:
+      - type: security_policies
+        when: "Security scanning and compliance"
+      - type: runbooks
+        when: "Incident response and automation"
+      - type: sla_requirements
+        when: "Monitoring and alerting"
+
+  # ------------------------------
+  # AssistantWorker
+  # ------------------------------
+  # Personal assistance tasks, email digests, scheduling.
+  # Context needs vary widely by task.
+  AssistantWorker:
+    description: "Personal assistance, email, scheduling"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Understand project priorities for task context"
+      recommended:
+        - file: stakeholders.md
+          reason: "Know who to communicate with"
+      optional:
+        - file: domain.md
+          reason: "Task-specific terminology"
+    external_context:
+      - type: profile
+        when: "Always - understand who you're assisting"
+      - type: preferences
+        when: "Communication style, scheduling preferences"
+      - type: calendar
+        when: "Scheduling tasks"
+
+# ------------------------------
+# Individual Worker Overrides
+# ------------------------------
+# Specific workers can override or extend their type's defaults.
+# Use format: workers.{worker-id}
+
+workers:
+  # Example: architect needs decisions.md as required, not recommended
+  architect:
+    extends: CodeWorker
+    overrides:
+      required:
+        - file: decisions.md
+          reason: "Must understand past decisions before making new ones"
+
+  # Example: security-scanner has specific external needs
+  security-scanner:
+    extends: OpsWorker
+    overrides:
+      required:
+        - file: architecture.md
+          reason: "Must know all codepaths and data flows to scan"
+    additional_external:
+      - type: security_framework
+        path: knowledge/ai-security-framework/
+        when: "Always - defines scanning rules"
+
+  # context-manager reads context to audit/maintain it
+  context-manager:
+    extends: CodeWorker
+    description: "Manages project context lifecycle"
+    context_needs:
+      required:
+        - file: overview.md
+          reason: "Validate context matches project purpose"
+        - file: architecture.md
+          reason: "Validate context matches implementation"
+        - file: domain.md
+          reason: "Validate terminology accuracy"
+      recommended:
+        - file: decisions.md
+          reason: "Ensure decisions are documented"
+        - file: stakeholders.md
+          reason: "Know who to consult for context updates"
+        - file: learnings.md
+          reason: "Preserve and curate accumulated knowledge"

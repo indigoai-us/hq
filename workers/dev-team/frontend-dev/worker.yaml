@@ -15,6 +15,8 @@ context:
     - workers/public/dev-team/frontend-dev/
     - workers/public/dev-team/frontend-dev/skills/
     - knowledge/public/dev-team/patterns/frontend/
+    - knowledge/public/testing/templates/
+    - knowledge/public/testing/e2e-cloud.md
   dynamic:
     - pattern: "{target_repo}/src/components/"
       when: always
@@ -60,6 +62,7 @@ mcp:
     - create_page
     - fix_ui_bug
     - add_form
+    - e2e_testing
 
 # State Machine (Loom pattern)
 state_machine:
@@ -86,6 +89,7 @@ instructions: |
   | create-page | Create new page/route |
   | fix-ui-bug | Fix frontend bug |
   | add-form | Add form with validation |
+  | e2e-testing | Write, run, and debug E2E tests |
 
   ## Patterns
 

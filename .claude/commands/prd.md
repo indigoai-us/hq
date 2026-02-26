@@ -40,6 +40,7 @@ Before asking questions, explore HQ:
 - If target repo has a qmd collection (e.g. `vyg`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
+
 Present:
 ```
 Scanned HQ:
@@ -71,6 +72,7 @@ Ask for project slug (or infer from description). Then:
 
 ## Step 4: Discovery Interview
 
+
 Ask questions in batches. Users respond: "1A, 2C"
 
 **Batch 1: Problem & Success**
@@ -93,6 +95,17 @@ Ask questions in batches. Users respond: "1A, 2C"
 9. Does this need a new worker or skill?
 10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 11. Branch name? (default: `feature/{project-name}`)
+12. Base branch? (default: `main`, or `staging` for indigo-nx, etc.) — Pure Ralph creates feature branch from this
+
+**Batch 4: E2E Testing (recommended for deployable projects)**
+For each user story targeting a deployable repo, specify E2E tests:
+
+13. What E2E tests should verify this story works?
+    - For UI: "Page loads", "User can complete [action]", "Form shows validation errors"
+    - For API: "Endpoint returns expected response", "Error cases handled"
+    - For CLI: "Command runs successfully", "Opens correct URL"
+    - For integration: "Full flow from [A] to [B] works"
+    - Leave empty for non-deployable projects (knowledge, content, data)
 
 ## Step 5: Generate PRD
 
@@ -101,6 +114,7 @@ Create `companies/{co}/projects/{name}/` folder with two files. Use root `projec
 ### Primary: companies/{co}/projects/{name}/prd.json
 
 This is the **source of truth**. `/run-project` and `/execute-task` consume this file.
+
 
 ```json
 {
@@ -113,6 +127,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
       "title": "{Story title}",
       "description": "{As a [user], I want [feature] so that [benefit]}",
       "acceptanceCriteria": ["{Specific verifiable criterion}"],
+      "e2eTests": [],
       "priority": 1,
       "passes": false,
       "files": [],
@@ -128,6 +143,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
     "successCriteria": "{Measurable outcome}",
     "qualityGates": ["{commands from Batch 3}"],
     "repoPath": "{repos/private/repo-name or empty}",
+    "baseBranch": "{main or staging or master}",
     "relatedWorkers": ["{worker-ids from scan}"],
     "knowledge": ["{relevant knowledge paths}"]
   }
@@ -137,6 +153,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
 **Populating `files`:** For each story, infer file paths from the description + acceptance criteria + target repo structure. If `repoPath` is set, search the repo (via qmd or Glob) to find existing files the story will modify, and predict new files it will create. Paths are repo-relative (e.g. `src/middleware/auth.ts`, not absolute). Best-effort — empty is fine for stories with unclear scope.
 
 ### Derived: companies/{co}/projects/{name}/README.md
+
 
 Generate FROM the prd.json data. Human-friendly view.
 
@@ -164,6 +181,10 @@ Generate FROM the prd.json data. Human-friendly view.
 **Acceptance Criteria:**
 - [ ] {criterion 1}
 - [ ] {criterion 2}
+
+**E2E Tests:** (if non-empty)
+- [ ] {e2eTest 1}
+- [ ] {e2eTest 2}
 
 ## Non-Goals
 {What's out of scope}
@@ -199,6 +220,7 @@ If `board_path` exists, read `companies/{co}/board.json` and upsert a project en
   ```
 - Write updated `board.json` back to `board_path`
 - If no `metadata.company` in prd.json or no board_path, skip silently
+
 
 ## Step 6: Register with Orchestrator
 
@@ -260,6 +282,7 @@ To execute, start a new session and run:
 
 **Then run `/handoff` and end the session.** Do NOT proceed to execution.
 
+
 ## Story Guidelines
 
 - Each story completable in one AI session
@@ -269,6 +292,8 @@ To execute, start a new session and run:
 - Every story starts with `passes: false`
 - `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
 - `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
+- `e2eTests` (recommended for deployable projects): list of E2E test descriptions. Leave `[]` for non-code projects. Used by back-pressure in `/execute-task`
+- For deployable projects, include at least one story dedicated to E2E test infrastructure (Phase 0 pattern)
 
 ## Rules
 
@@ -282,3 +307,5 @@ To execute, start a new session and run:
 - **STOP after PRD creation** — After Step 8 confirmation, run `/handoff` and end session. NEVER start executing stories, running workers, or writing implementation code in the same session as `/prd`. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation (Ralph pattern). prd.json tracks all work for humans and future agent runs — this separation is mandatory
 - **Infrastructure before planning** — never create a PRD that references infrastructure (company, repo, knowledge) that doesn't exist. Fix gaps first (Step 2.5)
 - **MANDATORY: Always create project files** — Every /prd invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for /run-project. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files
+- **Every story MUST have testable acceptance criteria** — "works correctly" is not acceptable
+- **Include testing stories** — For deployable projects, at least one story should be dedicated to E2E test infrastructure

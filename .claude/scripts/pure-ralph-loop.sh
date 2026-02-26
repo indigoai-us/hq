@@ -305,21 +305,29 @@ get_task_count() {
 
 get_completed_count() {
     local prd="$1"
-    echo "$prd" | jq '[.features[] | select(.passes == true)] | length'
+    # Check for both passes:true (old format) and status:"completed" (new format)
+    echo "$prd" | jq '[.features[] | select(.passes == true or .status == "completed")] | length'
+}
+
+is_task_complete() {
+    # Helper to check if a task is complete (either format)
+    # Returns "true" or "false"
+    local task="$1"
+    echo "$task" | jq -r 'if .passes == true or .status == "completed" then "true" else "false" end'
 }
 
 get_next_task() {
     local prd="$1"
 
     # Find first task where:
-    # 1. passes != true
-    # 2. all dependencies (if any) have passes == true
+    # 1. not complete (passes != true AND status != "completed")
+    # 2. all dependencies (if any) are complete
     echo "$prd" | jq -c '
         .features as $all |
-        [.features[] | select(.passes != true)] |
+        [.features[] | select(.passes != true and .status != "completed")] |
         map(select(
             if .dependsOn then
-                [.dependsOn[] as $dep | $all[] | select(.id == $dep) | .passes == true] | all
+                [.dependsOn[] as $dep | $all[] | select(.id == $dep) | (.passes == true or .status == "completed")] | all
             else
                 true
             end
@@ -331,7 +339,7 @@ get_next_task() {
 get_prior_context() {
     local prd="$1"
     echo "$prd" | jq -r '
-        [.features[] | select(.passes == true and .notes != null and .notes != "") | "- \(.id): \(.notes)"] | join("\n")
+        [.features[] | select((.passes == true or .status == "completed") and .notes != null and .notes != "") | "- \(.id): \(.notes)"] | join("\n")
     '
 }
 
@@ -485,10 +493,10 @@ EOF
                 # Poll until the prompt file is removed or PRD is updated
                 while [[ -f "$prompt_file" ]]; do
                     sleep 5
-                    # Check if PRD was updated for this task
-                    local task_passes
-                    task_passes=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | .passes")
-                    if [[ "$task_passes" == "true" ]]; then
+                    # Check if PRD was updated for this task (either format)
+                    local task_complete
+                    task_complete=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | if .passes == true or .status == \"completed\" then \"true\" else \"false\" end")
+                    if [[ "$task_complete" == "true" ]]; then
                         break
                     fi
                 done
@@ -502,12 +510,12 @@ end tell
 EOF
                 write_log "Waiting for Claude session to complete in Terminal..."
                 echo -e "${YELLOW}>>> SWITCH TO THE Terminal WINDOW TO WATCH CLAUDE WORK <<<${NC}"
-                # Poll until PRD is updated
+                # Poll until PRD is updated (either format)
                 while true; do
                     sleep 5
-                    local task_passes
-                    task_passes=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | .passes")
-                    if [[ "$task_passes" == "true" ]]; then
+                    local task_complete
+                    task_complete=$(cat "$PRD_PATH" | jq -r ".features[] | select(.id == \"$task_id\") | if .passes == true or .status == \"completed\" then \"true\" else \"false\" end")
+                    if [[ "$task_complete" == "true" ]]; then
                         break
                     fi
                 done
@@ -596,10 +604,11 @@ initialize_beads() {
         task_id=$(echo "$task" | jq -r '.id')
         task_title=$(echo "$task" | jq -r '.title')
         passes=$(echo "$task" | jq -r '.passes')
+        task_status=$(echo "$task" | jq -r '.status')
 
         local bead_id="${PROJECT_NAME}-${task_id}"
         local status
-        if [[ "$passes" == "true" ]]; then
+        if [[ "$passes" == "true" ]] || [[ "$task_status" == "completed" ]]; then
             status="done"
         else
             status="todo"
@@ -649,9 +658,9 @@ aggregate_learnings() {
     local technical_count=0
     local gotchas_count=0
 
-    # Extract notes and categorize
+    # Extract notes and categorize (check both completion formats)
     local notes
-    notes=$(echo "$prd" | jq -r '.features[] | select(.passes == true and .notes != null and .notes != "") | .notes')
+    notes=$(echo "$prd" | jq -r '.features[] | select((.passes == true or .status == "completed") and .notes != null and .notes != "") | .notes')
 
     while IFS= read -r note; do
         [[ -z "$note" ]] && continue
@@ -770,6 +779,93 @@ start_ralph_loop() {
 
             # Aggregate learnings on project completion
             aggregate_learnings "$prd"
+
+            # Create PR using gh CLI
+            echo ""
+            echo -e "${CYAN}Creating pull request...${NC}"
+            write_log "Creating PR for completed project"
+
+            pushd "$TARGET_REPO" > /dev/null
+
+            # Get current branch
+            local current_branch
+            current_branch=$(git branch --show-current)
+
+            # Check for fork remote (prefer fork over origin for PRs)
+            local push_remote="origin"
+            local upstream_repo=""
+
+            if git remote | grep -q "^myfork$"; then
+                push_remote="myfork"
+                # Get upstream repo from origin URL
+                local origin_url
+                origin_url=$(git remote get-url origin 2>/dev/null)
+                if [[ "$origin_url" =~ github\.com[/:]([^/]+/[^/.]+) ]]; then
+                    upstream_repo="${BASH_REMATCH[1]}"
+                    upstream_repo="${upstream_repo%.git}"
+                fi
+                echo -e "${GRAY}Fork detected - pushing to '$push_remote', PR to '$upstream_repo'${NC}"
+            elif git remote | grep -q "^fork$"; then
+                push_remote="fork"
+                local origin_url
+                origin_url=$(git remote get-url origin 2>/dev/null)
+                if [[ "$origin_url" =~ github\.com[/:]([^/]+/[^/.]+) ]]; then
+                    upstream_repo="${BASH_REMATCH[1]}"
+                    upstream_repo="${upstream_repo%.git}"
+                fi
+                echo -e "${GRAY}Fork detected - pushing to '$push_remote', PR to '$upstream_repo'${NC}"
+            fi
+
+            # Push branch
+            echo -e "${GRAY}Pushing branch $current_branch to $push_remote...${NC}"
+            git push -u "$push_remote" "$current_branch" 2>/dev/null || true
+
+            # Check if gh is available
+            if command -v gh &> /dev/null; then
+                # Build PR body from PRD
+                local pr_title="feat: $PROJECT_NAME"
+                local goal
+                goal=$(echo "$prd" | jq -r '.goal // "Project completion"')
+                local task_list
+                task_list=$(echo "$prd" | jq -r '.features[] | "- **\(.id):** \(.title)"')
+
+                local pr_body
+                pr_body=$(cat <<PRBODY
+## Summary
+
+$goal
+
+## Completed Tasks
+
+$task_list
+
+---
+*Created by Pure Ralph*
+PRBODY
+)
+
+                # Create PR (specify upstream repo if using fork)
+                local pr_url
+                if [[ -n "$upstream_repo" ]]; then
+                    pr_url=$(gh pr create --repo "$upstream_repo" --title "$pr_title" --body "$pr_body" 2>&1)
+                else
+                    pr_url=$(gh pr create --title "$pr_title" --body "$pr_body" 2>&1)
+                fi
+
+                if [[ $? -eq 0 ]]; then
+                    echo -e "${GREEN}PR Created: $pr_url${NC}"
+                    write_log "PR created: $pr_url" "SUCCESS"
+                else
+                    echo -e "${YELLOW}PR creation note: $pr_url${NC}"
+                    write_log "PR creation returned: $pr_url" "WARN"
+                fi
+            else
+                echo -e "${YELLOW}gh CLI not available - manual PR required${NC}"
+                echo -e "${GRAY}Push complete. Create PR at: https://github.com${NC}"
+                write_log "gh CLI not available, manual PR needed" "WARN"
+            fi
+
+            popd > /dev/null
 
             break
         fi

@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Test results
+test-results/
+playwright-report/
+test-results.json
+test-output.txt
+
+# Playwright
+.cache/
+blob-report/
+playwright/.cache/

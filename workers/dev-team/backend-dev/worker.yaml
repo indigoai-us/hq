@@ -15,6 +15,8 @@ context:
     - workers/public/dev-team/backend-dev/
     - workers/public/dev-team/backend-dev/skills/
     - knowledge/public/dev-team/patterns/backend/
+    - knowledge/public/testing/templates/
+    - knowledge/public/testing/e2e-cloud.md
   dynamic:
     - pattern: "{target_repo}/src/"
       when: always
@@ -62,6 +64,7 @@ mcp:
     - implement_service
     - add_middleware
     - fix_backend_bug
+    - e2e_testing
 
 # State Machine (Loom pattern)
 state_machine:
@@ -88,6 +91,7 @@ instructions: |
   | implement-service | Create service/business logic layer |
   | add-middleware | Add Express/Next.js middleware |
   | fix-backend-bug | Fix server-side bug |
+  | e2e-testing | Write, run, and debug E2E tests |
 
   ## CLI Usage
 

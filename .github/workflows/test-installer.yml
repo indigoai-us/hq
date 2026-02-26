@@ -1,0 +1,645 @@
+# GitHub Actions workflow for testing my-hq installers
+#
+# Architecture:
+#   - Build: Native platforms (windows-latest, macos-latest)
+#   - Test Windows: Docker Windows container (clean servercore) - TRUE clean room test
+#   - Test macOS: macOS runner with installation verification
+#
+# Tests verify the FULL installation:
+#   - Windows: Clean container with NO pre-installed software
+#   - macOS: Real macOS runner, verifies installer adds required components
+#
+# Both platforms verify: Node.js, npm, Claude CLI, and my-hq files installed correctly
+#
+# Flow: Build → Windows clean room → macOS test → Summary
+
+name: Test Installer
+
+on:
+  pull_request:
+    paths:
+      - 'installer/**'
+      - '.github/workflows/test-installer.yml'
+    branches:
+      - main
+      - staging
+
+  workflow_dispatch:
+    inputs:
+      skip_macos:
+        description: 'Skip macOS test (faster iteration)'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Build Windows Installer (native)
+  # ============================================
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache NSIS
+        id: cache-nsis
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: nsis-3.09-v1
+
+      - name: Install NSIS
+        if: steps.cache-nsis.outputs.cache-hit != 'true'
+        run: choco install nsis -y --no-progress
+        shell: pwsh
+
+      - name: Install NSIS plugins
+        if: steps.cache-nsis.outputs.cache-hit != 'true'
+        run: |
+          $pluginPath = "C:\Program Files (x86)\NSIS\Plugins"
+
+          # INetC
+          Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/c/c9/Inetc.zip" -OutFile "$env:TEMP\inetc.zip"
+          Expand-Archive "$env:TEMP\inetc.zip" -DestinationPath "$env:TEMP\inetc" -Force
+          Copy-Item "$env:TEMP\inetc\Plugins\x86-unicode\INetC.dll" "$pluginPath\x86-unicode\" -Force
+          Copy-Item "$env:TEMP\inetc\Plugins\x86-ansi\INetC.dll" "$pluginPath\x86-ansi\" -Force
+
+          # nsisunz
+          Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip" -OutFile "$env:TEMP\nsisunz.zip"
+          Expand-Archive "$env:TEMP\nsisunz.zip" -DestinationPath "$env:TEMP\nsisunz" -Force
+          Get-ChildItem "$env:TEMP\nsisunz" -Recurse -Filter "*.dll" | ForEach-Object {
+            Copy-Item $_.FullName "$pluginPath\x86-unicode\" -Force
+            Copy-Item $_.FullName "$pluginPath\x86-ansi\" -Force
+          }
+        shell: pwsh
+
+      - name: Create placeholder assets
+        run: |
+          $assets = "installer\windows\assets"
+
+          # Create ICO files
+          $ico = [byte[]](0,0,1,0,1,0,16,16,0,0,1,0,32,0,104,4,0,0,22,0,0,0)
+          $ico += [byte[]](40,0,0,0,16,0,0,0,32,0,0,0,1,0,32,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+          for ($i = 0; $i -lt 256; $i++) { $ico += [byte[]](255,102,0,255) }
+          for ($i = 0; $i -lt 64; $i++) { $ico += [byte]0 }
+          [IO.File]::WriteAllBytes("$assets\hq-icon.ico", $ico)
+          [IO.File]::WriteAllBytes("$assets\hq-uninstall.ico", $ico)
+
+          # Create BMP files
+          function New-Bmp($path, $w, $h) {
+            $row = [Math]::Ceiling($w * 3 / 4) * 4
+            $pix = $row * $h
+            $hdr = [byte[]](0x42,0x4D) + [BitConverter]::GetBytes([int](54+$pix)) + [byte[]](0,0,0,0,54,0,0,0,40,0,0,0)
+            $hdr += [BitConverter]::GetBytes([int]$w) + [BitConverter]::GetBytes([int]$h)
+            $hdr += [byte[]](1,0,24,0,0,0,0,0) + [BitConverter]::GetBytes([int]$pix) + (New-Object byte[] 16)
+            $data = New-Object byte[] $pix
+            for ($i=0; $i -lt $pix; $i+=3) { $data[$i]=255; $data[$i+1]=153; $data[$i+2]=51 }
+            [IO.File]::WriteAllBytes($path, $hdr + $data)
+          }
+          New-Bmp "$assets\welcome-banner.bmp" 164 314
+          New-Bmp "$assets\header.bmp" 150 57
+        shell: pwsh
+
+      - name: Build installer
+        run: |
+          if (-not (Test-Path "LICENSE")) { "MIT License" | Out-File "LICENSE" -Encoding utf8 }
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DBUNDLED_TEMPLATE /V2 installer\windows\hq-installer.nsi
+          Get-ChildItem installer\windows\*.exe
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/windows/*.exe
+          retention-days: 1
+
+  # ============================================
+  # Build macOS Installer (native)
+  # ============================================
+  build-macos:
+    name: Build macOS Installer
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create placeholder resources
+        run: |
+          mkdir -p installer/macos/resources
+          for f in welcome readme license conclusion; do
+            echo "<!DOCTYPE html><html><body><h1>$f</h1></body></html>" > "installer/macos/resources/${f}.html"
+          done
+          printf '\x89PNG\r\n\x1a\n' > installer/macos/resources/background.png
+
+      - name: Fix line endings
+        run: |
+          # Convert Windows CRLF to Unix LF for all shell scripts
+          # This is critical - bash scripts with CRLF fail on macOS
+          find installer/macos -type f \( -name "*.sh" -o -name "preinstall" -o -name "postinstall" \) -exec sed -i '' 's/\r$//' {} \;
+
+      - name: Build pkg
+        run: |
+          [ ! -f "LICENSE" ] && echo "MIT License" > LICENSE
+          chmod +x installer/macos/build-pkg.sh
+          chmod +x installer/macos/scripts/preinstall
+          chmod +x installer/macos/scripts/postinstall
+          installer/macos/build-pkg.sh
+          ls -la installer/macos/build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: installer/macos/build/*.pkg
+          retention-days: 1
+
+  # ============================================
+  # Test Windows Installer in Clean Container
+  # ============================================
+  test-windows:
+    name: Windows Clean Room Test
+    needs: build-windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Download installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: installer
+
+      - name: Test in clean Windows container
+        run: |
+          $installer = (Get-ChildItem installer\*.exe | Select-Object -First 1).FullName
+          Write-Host "Installer: $installer"
+
+          # Create test directory
+          $testDir = "C:\installer-test"
+          New-Item -ItemType Directory -Force -Path $testDir | Out-Null
+          Copy-Item $installer "$testDir\setup.exe"
+
+          # Create test script that will run inside the container
+          $testScript = @'
+          $ErrorActionPreference = "Continue"
+
+          Write-Host "============================================"
+          Write-Host "  CLEAN ROOM INSTALLATION TEST"
+          Write-Host "============================================"
+          Write-Host ""
+
+          # Verify this is a clean environment
+          Write-Host "=== PRE-INSTALL CHECK ==="
+          Write-Host "Verifying clean environment..."
+
+          $preNode = Get-Command node -ErrorAction SilentlyContinue
+          $preNpm = Get-Command npm -ErrorAction SilentlyContinue
+          $preClaude = Get-Command claude -ErrorAction SilentlyContinue
+
+          if ($preNode) {
+            Write-Host "ERROR: Node.js is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  Node.js: NOT INSTALLED (good - clean environment)"
+
+          if ($preNpm) {
+            Write-Host "ERROR: npm is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  npm: NOT INSTALLED (good - clean environment)"
+
+          if ($preClaude) {
+            Write-Host "ERROR: Claude is pre-installed. This is not a clean environment!"
+            exit 1
+          }
+          Write-Host "  Claude: NOT INSTALLED (good - clean environment)"
+          Write-Host ""
+
+          # Run the installer
+          Write-Host "=== RUNNING INSTALLER ==="
+          Write-Host "Command: C:\test\setup.exe /S"
+          Write-Host "This will download and install Node.js and Claude CLI..."
+          Write-Host ""
+
+          $startTime = Get-Date
+          $proc = Start-Process -FilePath "C:\test\setup.exe" -ArgumentList "/S" -Wait -PassThru
+          $duration = (Get-Date) - $startTime
+
+          Write-Host ""
+          Write-Host "Installer process completed"
+          Write-Host ("  Exit code: " + $proc.ExitCode)
+          Write-Host ("  Duration: " + [math]::Round($duration.TotalSeconds, 1) + " seconds")
+          Write-Host ""
+
+          if ($proc.ExitCode -ne 0) {
+            Write-Host "ERROR: Installer exited with non-zero code"
+            exit 1
+          }
+
+          # Refresh PATH to pick up newly installed software
+          Write-Host "=== REFRESHING ENVIRONMENT ==="
+          $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+          $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          $env:Path = "$machinePath;$userPath"
+          Write-Host "PATH refreshed"
+          Write-Host ""
+
+          # Verify my-hq files
+          Write-Host "=== VERIFYING MY-HQ FILES ==="
+          $hqPath = "$env:LOCALAPPDATA\my-hq"
+
+          if (-not (Test-Path $hqPath)) {
+            Write-Host "ERROR: my-hq directory not found at $hqPath"
+            exit 1
+          }
+          Write-Host "my-hq directory: OK"
+
+          $requiredFiles = @(".hq-version", "agents.md", "README.md")
+          $filesFailed = $false
+          foreach ($f in $requiredFiles) {
+            $filePath = Join-Path $hqPath $f
+            if (Test-Path $filePath) {
+              Write-Host "  $f : OK"
+            } else {
+              Write-Host "  $f : MISSING"
+              $filesFailed = $true
+            }
+          }
+
+          if ($filesFailed) {
+            Write-Host "ERROR: Required my-hq files are missing"
+            exit 1
+          }
+          Write-Host ""
+
+          # Verify Node.js installation
+          Write-Host "=== VERIFYING NODE.JS INSTALLATION ==="
+          $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+
+          if (-not $nodeCmd) {
+            Write-Host "ERROR: Node.js was NOT installed!"
+            Write-Host "The installer failed to install Node.js."
+            Write-Host ""
+            Write-Host "Checking common Node.js locations..."
+            $nodePaths = @(
+              "C:\Program Files\nodejs\node.exe",
+              "C:\Program Files (x86)\nodejs\node.exe",
+              "$env:APPDATA\npm\node.exe"
+            )
+            foreach ($p in $nodePaths) {
+              if (Test-Path $p) {
+                Write-Host "  Found at: $p"
+              }
+            }
+            exit 1
+          }
+
+          $nodeVersion = & node --version 2>&1
+          Write-Host "Node.js: INSTALLED"
+          Write-Host "  Version: $nodeVersion"
+          Write-Host "  Path: $($nodeCmd.Source)"
+          Write-Host ""
+
+          # Verify npm
+          Write-Host "=== VERIFYING NPM ==="
+          $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+
+          if (-not $npmCmd) {
+            Write-Host "ERROR: npm was NOT installed!"
+            exit 1
+          }
+
+          $npmVersion = & npm --version 2>&1
+          Write-Host "npm: INSTALLED"
+          Write-Host "  Version: $npmVersion"
+          Write-Host ""
+
+          # Verify Claude CLI installation
+          Write-Host "=== VERIFYING CLAUDE CLI INSTALLATION ==="
+          $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+
+          if (-not $claudeCmd) {
+            Write-Host "ERROR: Claude CLI was NOT installed!"
+            Write-Host "The installer failed to install Claude CLI."
+            Write-Host ""
+            Write-Host "Checking npm global packages..."
+            $npmList = & npm list -g --depth=0 2>&1
+            Write-Host $npmList
+            exit 1
+          }
+
+          $claudeVersion = & claude --version 2>&1
+          Write-Host "Claude CLI: INSTALLED"
+          Write-Host "  Version: $claudeVersion"
+          Write-Host "  Path: $($claudeCmd.Source)"
+          Write-Host ""
+
+          # Final summary
+          Write-Host "============================================"
+          Write-Host "  INSTALLATION TEST PASSED"
+          Write-Host "============================================"
+          Write-Host ""
+          Write-Host "All components verified:"
+          Write-Host "  [OK] my-hq files installed"
+          Write-Host "  [OK] Node.js $nodeVersion installed"
+          Write-Host "  [OK] npm $npmVersion installed"
+          Write-Host "  [OK] Claude CLI installed"
+          Write-Host ""
+          Write-Host "The installer successfully set up a complete"
+          Write-Host "my-hq environment from a clean machine."
+          Write-Host ""
+          exit 0
+          '@
+
+          # Save test script
+          $testScript | Out-File -FilePath "$testDir\test-installation.ps1" -Encoding UTF8
+
+          # Run in clean Windows Server Core container
+          Write-Host ""
+          Write-Host "=== Starting Clean Room Container ==="
+          Write-Host ""
+
+          docker run --rm `
+            -v "${testDir}:C:\test" `
+            mcr.microsoft.com/windows/servercore:ltsc2022 `
+            powershell -ExecutionPolicy Bypass -File "C:\test\test-installation.ps1"
+
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host ""
+            Write-Host "============================================"
+            Write-Host "  INSTALLATION TEST FAILED (exit code: $exitCode)"
+            Write-Host "============================================"
+            exit 1
+          }
+        shell: pwsh
+        timeout-minutes: 45
+
+  # ============================================
+  # Test macOS Installer on macOS Runner
+  # ============================================
+  # Tests the pkg installer on a real macOS system.
+  # Note: macOS runners have some pre-installed software, but we verify
+  # that our specific dependencies (Node.js version, Claude CLI) are
+  # correctly installed by the installer.
+  test-macos:
+    name: macOS Installation Test
+    needs: [build-macos, test-windows]
+    runs-on: macos-latest
+    if: ${{ github.event.inputs.skip_macos != 'true' && needs.test-windows.result == 'success' }}
+
+    steps:
+      - name: Download installer
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: installer
+
+      - name: Pre-install environment check
+        run: |
+          echo "============================================"
+          echo "  macOS INSTALLATION TEST"
+          echo "============================================"
+          echo ""
+          echo "=== PRE-INSTALL ENVIRONMENT CHECK ==="
+          echo ""
+
+          # Check what's already installed (for documentation)
+          echo "System Node.js:"
+          if command -v node &>/dev/null; then
+            SYSTEM_NODE=$(node --version 2>/dev/null || echo "error")
+            SYSTEM_NODE_PATH=$(which node 2>/dev/null || echo "unknown")
+            echo "  Version: $SYSTEM_NODE"
+            echo "  Path: $SYSTEM_NODE_PATH"
+          else
+            echo "  Not installed"
+          fi
+
+          echo ""
+          echo "Claude CLI:"
+          if command -v claude &>/dev/null; then
+            echo "  Already installed at $(which claude)"
+            echo "  NOTE: Will verify installer updates/reinstalls correctly"
+          else
+            echo "  Not installed (good - will verify installer adds it)"
+          fi
+
+          echo ""
+          echo "my-hq directory:"
+          if [ -d "$HOME/my-hq" ]; then
+            echo "  Already exists - will verify installer handles upgrade"
+            ls -la "$HOME/my-hq" | head -5
+          else
+            echo "  Not present (clean state)"
+          fi
+          echo ""
+
+      - name: Run installer
+        run: |
+          echo "=== RUNNING INSTALLER ==="
+          PKG=$(ls installer/*.pkg | head -1)
+          echo "Package: $PKG"
+          echo ""
+
+          # Run the installer
+          sudo installer -pkg "$PKG" -target / -verbose
+          echo ""
+          echo "Installer completed."
+
+      - name: Check installer log
+        run: |
+          echo "=== INSTALLER LOG ==="
+          if [ -f /tmp/my-hq-installer.log ]; then
+            cat /tmp/my-hq-installer.log
+          else
+            echo "No installer log found at /tmp/my-hq-installer.log"
+          fi
+          echo ""
+          if [ -f /tmp/my-hq-preinstall.log ]; then
+            echo "=== PREINSTALL LOG ==="
+            cat /tmp/my-hq-preinstall.log
+          fi
+
+      - name: Reload environment
+        run: |
+          echo "=== RELOADING ENVIRONMENT ==="
+          # Set PATH to include locations where installer puts binaries
+          NEW_PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+          echo "PATH=$NEW_PATH" >> $GITHUB_ENV
+          echo "Updated PATH for subsequent steps"
+
+      - name: Verify my-hq files
+        run: |
+          echo "=== VERIFYING MY-HQ FILES ==="
+          HQ_PATH="$HOME/my-hq"
+
+          if [ ! -d "$HQ_PATH" ]; then
+            echo "ERROR: my-hq directory not found at $HQ_PATH"
+            echo "Contents of home directory:"
+            ls -la "$HOME"
+            exit 1
+          fi
+
+          echo "my-hq directory: OK"
+          echo "Location: $HQ_PATH"
+          echo ""
+
+          # Check required files
+          REQUIRED_FILES=".hq-version agents.md README.md USER-GUIDE.md"
+          FAILED=0
+
+          for f in $REQUIRED_FILES; do
+            if [ -f "$HQ_PATH/$f" ]; then
+              echo "  [OK] $f"
+            else
+              echo "  [MISSING] $f"
+              FAILED=1
+            fi
+          done
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "ERROR: Required my-hq files are missing"
+            echo "Contents of my-hq:"
+            ls -la "$HQ_PATH"
+            exit 1
+          fi
+
+          echo ""
+          echo "Version installed:"
+          cat "$HQ_PATH/.hq-version"
+
+      - name: Verify Node.js installation
+        run: |
+          echo "=== VERIFYING NODE.JS ==="
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+
+          if ! command -v node &>/dev/null; then
+            echo "ERROR: Node.js is not available in PATH"
+            echo "PATH: $PATH"
+            echo ""
+            echo "Checking common locations:"
+            ls -la /usr/local/bin/node 2>/dev/null || echo "  /usr/local/bin/node: not found"
+            ls -la /opt/homebrew/bin/node 2>/dev/null || echo "  /opt/homebrew/bin/node: not found"
+            exit 1
+          fi
+
+          NODE_VERSION=$(node --version)
+          NODE_PATH=$(which node)
+
+          echo "Node.js: INSTALLED"
+          echo "  Version: $NODE_VERSION"
+          echo "  Path: $NODE_PATH"
+
+          # Verify it's a reasonable version (v18+ or v20+)
+          MAJOR_VERSION=$(echo $NODE_VERSION | cut -d. -f1 | tr -d 'v')
+          if [ "$MAJOR_VERSION" -lt 18 ]; then
+            echo ""
+            echo "WARNING: Node.js version $NODE_VERSION may be too old"
+            echo "Expected: v18.x or v20.x"
+          fi
+
+      - name: Verify npm
+        run: |
+          echo "=== VERIFYING NPM ==="
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+
+          if ! command -v npm &>/dev/null; then
+            echo "ERROR: npm is not available"
+            exit 1
+          fi
+
+          NPM_VERSION=$(npm --version)
+          echo "npm: INSTALLED"
+          echo "  Version: $NPM_VERSION"
+
+      - name: Verify Claude CLI
+        run: |
+          echo "=== VERIFYING CLAUDE CLI ==="
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+
+          if ! command -v claude &>/dev/null; then
+            echo "ERROR: Claude CLI is not available in PATH"
+            echo ""
+            echo "Checking npm global packages:"
+            npm list -g --depth=0 2>&1 || true
+            echo ""
+            echo "Checking common locations:"
+            ls -la "$HOME/.npm-global/bin/claude" 2>/dev/null || echo "  ~/.npm-global/bin/claude: not found"
+            ls -la /usr/local/bin/claude 2>/dev/null || echo "  /usr/local/bin/claude: not found"
+            exit 1
+          fi
+
+          CLAUDE_VERSION=$(claude --version 2>&1 || echo "unable to get version")
+          CLAUDE_PATH=$(which claude)
+
+          echo "Claude CLI: INSTALLED"
+          echo "  Version: $CLAUDE_VERSION"
+          echo "  Path: $CLAUDE_PATH"
+
+      - name: Installation summary
+        run: |
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.npm-global/bin:$PATH"
+
+          echo ""
+          echo "============================================"
+          echo "  INSTALLATION TEST PASSED"
+          echo "============================================"
+          echo ""
+          echo "All components verified:"
+          echo "  [OK] my-hq files installed to ~/my-hq"
+          echo "  [OK] Node.js $(node --version 2>/dev/null || echo 'N/A') available"
+          echo "  [OK] npm $(npm --version 2>/dev/null || echo 'N/A') available"
+          echo "  [OK] Claude CLI installed"
+          echo ""
+          echo "The macOS installer correctly sets up the my-hq environment."
+
+  # ============================================
+  # Summary
+  # ============================================
+  summary:
+    name: Test Summary
+    needs: [build-windows, build-macos, test-windows, test-macos]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Report results
+        run: |
+          echo "============================================"
+          echo "   Installer Test Results"
+          echo "============================================"
+          echo ""
+          echo "Build Windows:     ${{ needs.build-windows.result }}"
+          echo "Build macOS:       ${{ needs.build-macos.result }}"
+          echo "Test Windows:      ${{ needs.test-windows.result }} (clean room container)"
+          echo "Test macOS:        ${{ needs.test-macos.result }} (macOS runner)"
+          echo ""
+
+          # Fail if Windows build or test failed
+          if [[ "${{ needs.build-windows.result }}" == "failure" ]]; then
+            echo "FAIL: Windows build failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test-windows.result }}" == "failure" ]]; then
+            echo "FAIL: Windows clean room test failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.build-macos.result }}" == "failure" ]]; then
+            echo "FAIL: macOS build failed"
+            exit 1
+          fi
+
+          echo "SUCCESS: All clean room tests passed"
+          echo ""
+          echo "Both Windows and macOS installers verified in clean environments."

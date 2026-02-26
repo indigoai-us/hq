@@ -120,7 +120,7 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Knowledge Bases
 
-Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
+Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework, testing. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Repos
 
@@ -173,6 +173,25 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 **When in doubt:** `qmd search "project name"` finds files by topic without any timeout risk
 
+## Core Principles
+
+1. **Infrastructure scales, effort doesn't** - Build reusable systems
+2. **Workers should grow smarter** - Capture learnings in knowledge bases
+3. **Context is precious** - Checkpoint often, don't let work evaporate
+4. **Test before ship** - If you can't verify it works, you can't ship it
+5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
+
+## E2E Testing Standards
+
+For deployable projects (web, API, CLI):
+- E2E tests verify the product works, not just the code
+- Tests are back-pressure in the Ralph loop (fail = task incomplete)
+- Knowledge base: `knowledge/public/testing/` (templates, infra guides, agent-browser)
+- PRDs include optional `e2eTests` per story
+- Workers use `e2e-testing` skill for writing/running tests
+
+**Full guide:** `knowledge/public/testing/e2e-cloud.md`
+
 ## Learned Rules
 
 <!-- Max 25. Worker-scoped rules go in worker.yaml, not here. -->
@@ -207,6 +226,11 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - **pre-deploy domain check**: Before ANY Vercel deploy to a custom domain, ALWAYS (1) `curl -s` the live URL to see what's currently there, (2) check which Vercel project owns the domain (`GET /v6/domains/{domain}`), (3) read the relevant infra knowledge for domain registry. NEVER remove a domain from one project to assign it to another — add new routes within the existing project instead. <!-- 2026-02-20 -->
 - **EAS build env vars**: EAS production builds do NOT inherit local `.env` files — `EXPO_PUBLIC_*` vars must be set on expo.dev or via CLI before building or the app crashes on launch. Set with: `eas env:create production --name KEY --value VALUE --visibility sensitive --scope project --non-interactive`. Use `sensitive` (NOT `secret`) for `EXPO_PUBLIC_*` vars — EAS rejects `secret` visibility for public-prefixed vars. Verify with `eas env:list production` before triggering build. <!-- 2026-02-21 -->
 - **Vercel env var trailing newlines**: When piping values to `vercel env add`, ALWAYS use `printf` (no trailing newline) — NOT `echo`. `echo` appends `\n` to the value, causing API calls with those credentials to fail with 400 Bad Request. Diagnose with `vercel env pull` and inspect for `\n` in values. <!-- 2026-02-21 -->
+- **E2E tests cover real user flows**: Write E2E tests that exercise the actual user flow — run the CLI, open the URL in Playwright, verify the page renders. Unit tests passing ≠ product works. <!-- e2e-cloud-testing -->
+- **Test before marking complete**: Never mark a task `passes: true` without running tests AND verifying the feature works. <!-- e2e-cloud-testing -->
+- **PRD test-first structure**: PRDs should include E2E tests per story, verification commands, and Phase 0 test infrastructure. <!-- e2e-cloud-testing -->
+- **PRD baseBranch**: Include `metadata.baseBranch` so Pure Ralph creates feature branches from the correct base. <!-- e2e-cloud-testing -->
+- **Script/schema compatibility**: When updating PRD schema (e.g. `features` → `userStories`), also update all scripts that consume PRDs. <!-- e2e-cloud-testing -->
 
 ## Learning System
 

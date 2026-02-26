@@ -43,7 +43,14 @@ Ask these questions (can batch related ones):
 - **What files should be loaded per-task?** (dynamic context)
 - **What should be excluded?** (noise reduction)
 
-### 5. Verification
+### 5. Context Needs
+- **What project context does this worker need?** (overview, architecture, domain, decisions, stakeholders, learnings)
+- **Does it need more or less than its type's defaults?** (see `knowledge/context-needs/registry.yaml`)
+- **Any external context required?** (brand guidelines, API specs, voice guides, etc.)
+
+**Tip:** Reference `knowledge/context-needs/README.md` for context file descriptions. Most workers can use their type's defaults.
+
+### 6. Verification
 - **What checks ensure quality?** (type checks, character limits, voice consistency)
 - **Does it need human approval?** (before external actions)
 
@@ -83,6 +90,15 @@ verification:
     - {checks}
   approval_required: {true|false}
 
+context_needs:
+  # Reference knowledge/context-needs/registry.yaml for type defaults
+  # Only include if overriding type defaults
+  extends: {WorkerType}  # Inherit type defaults
+  overrides:  # Optional: override specific needs
+    required:
+      - file: {context-file}
+        reason: "{why this worker needs this}"
+
 tasks:
   source: projects/{associated-project}/prd.json  # Or queue.json for simple task queues
   one_at_a_time: true
@@ -106,6 +122,26 @@ Add to `workers/registry.yaml`:
     status: active
     description: "{1-sentence description}"
 ```
+
+### Update Context Needs Registry (if overriding defaults)
+
+If the worker has context needs different from its type's defaults, add to `knowledge/context-needs/registry.yaml`:
+
+```yaml
+workers:
+  {worker-id}:
+    extends: {WorkerType}
+    overrides:
+      required:
+        - file: {context-file}
+          reason: "{why this worker specifically needs this}"
+    additional_external:
+      - type: {external-context-type}
+        path: {path-to-external-context}
+        when: "{when this context is needed}"
+```
+
+**Skip this if:** The worker's needs match its type's defaults (most common case).
 
 ### Task Source Options
 
