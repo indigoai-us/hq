@@ -1,0 +1,27 @@
+# Skills Registry
+# Index of all skills in .claude/skills/
+# Kept in sync with actual skill directories.
+# /cleanup --reindex validates this file against the filesystem.
+
+skills:
+  # --- Execution Skills ---
+
+  - id: architect
+    path: .claude/skills/architect/
+    type: execution
+    description: "System design, API design, and architecture decisions"
+
+  - id: code-reviewer
+    path: .claude/skills/code-reviewer/
+    type: execution
+    description: "Code review, quality gating, and merge management"
+
+  # --- Composition Skills ---
+
+  - id: full-stack
+    path: .claude/skills/full-stack/
+    type: composition
+    description: "End-to-end feature delivery by chaining architect, backend, frontend, and review skills"
+
+  # --- Templates ---
+  # _template/ is not a skill — it is the schema reference for new skills.
