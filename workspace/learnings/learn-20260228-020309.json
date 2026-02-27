@@ -1,0 +1,15 @@
+{
+  "event_id": "learn-20260228",
+  "rules": [
+    {
+      "rule": "ALWAYS: Push to remote after committing (git push)",
+      "scope": "global",
+      "target_file": ".claude/CLAUDE.md",
+      "severity": "medium"
+    }
+  ],
+  "source": "user-correction",
+  "dedup_action": "new",
+  "promoted_to_global": true,
+  "created_at": "2026-02-28T00:00:00Z"
+}
