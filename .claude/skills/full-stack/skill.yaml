@@ -6,12 +6,12 @@ type: composition
 depends_on:
   - skill: architect
     when: always
+  - skill: database
+    when: "task involves schema changes or migrations"
   - skill: backend
     when: "task involves API or server-side logic"
   - skill: frontend
     when: "task involves UI or client-side code"
-  - skill: database
-    when: "task involves schema changes or migrations"
   - skill: code-reviewer
     when: always
   - skill: qa

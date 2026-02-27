@@ -42,6 +42,15 @@ instructions: |
   - Breaking changes require a migration section in the ADR
   - Prefer composition over inheritance in component design
   - Document trade-offs explicitly — no silent compromises
+  - Present design options with trade-offs; get approval before finalizing contracts
+  - Surface breaking changes clearly before any implementation begins
+
+  ## React Architecture Patterns
+
+  - Strategic Suspense boundary placement for parallel data fetching
+  - Server vs client component decisions — minimize RSC serialization boundaries
+  - Bundle splitting strategy: dynamic imports, avoid barrel file architectures
+  - React.cache() placement for cross-request deduplication
 
   ## Output
 
