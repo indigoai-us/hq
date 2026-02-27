@@ -51,16 +51,20 @@ GHQ/
 
 ## Commands
 
-Commands live in `.claude/commands/`. Currently empty — commands are added as the GHQ project matures.
+Commands live in `.claude/commands/`.
 
-**Planned commands (from PRD):**
-- `/prd` — Create project PRD
-- `/run-project` — Execute PRD stories via skill chain
-- `/execute-task` — Run a single story with a skill
-- `/checkpoint` — Save session state as a thread
-- `/handoff` — Prepare session handoff JSON
-- `/cleanup` — Maintenance (reindex, validate PRDs, purge old threads)
-- `/search` — Search threads and knowledge
+| Command | Description |
+|---------|-------------|
+| `/prd` | Create project PRD |
+| `/run-project` | Execute PRD stories via skill chain |
+| `/execute-task` | Run a single story with a skill |
+| `/checkpoint` | Save session state as a thread |
+| `/handoff` | Prepare session handoff JSON |
+| `/learn` | Capture and classify learnings |
+| `/newcompany` | Scaffold a new company with full infrastructure |
+| `/garden` | Content audit and curation |
+| `/cleanup` | Validate structural integrity; `--reindex` rebuilds all INDEX.md files |
+| `/search` | Search GHQ knowledge + repos via qmd (BM25, semantic, hybrid) |
 
 ## Knowledge Bases
 
