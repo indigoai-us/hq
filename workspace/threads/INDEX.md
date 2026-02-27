@@ -1,4 +1,4 @@
-# Personal Knowledge — Index
+# Threads — Index
 
 > Auto-generated. Updated: 2026-02-28
 
