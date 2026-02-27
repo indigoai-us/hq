@@ -1,0 +1,43 @@
+# GHQ
+
+Personal OS for orchestrating work across companies and AI.
+
+## Structure
+
+```
+.claude/          commands/, skills/, hooks/, policies/
+companies/        {slug}/settings/, knowledge/, data/
+knowledge/        shared knowledge (skills framework, etc.)
+projects/         PRDs and project state
+workspace/        runtime state, threads, checkpoints
+```
+
+## Rules
+
+- **Context diet**: Never pre-load. Read only what the current task requires.
+- **Skill-first**: Load `skill.yaml` before specialized tasks. Load command `.md` before running commands. Never pre-load.
+- **Git workflow**: Work on `main` or worktrees only -- never feature branches.
+- **Company isolation**: `companies/manifest.yaml` maps ownership. Never cross-contaminate credentials, knowledge, or deploy targets.
+- **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
+- **Sub-agent commits**: Each sub-agent MUST commit its own work before completing.
+- **No AI attribution**: Never include Co-Authored-By or AI names in commit messages.
+
+## Skills
+
+Skills load on demand via `.claude/skills/`. Registry: `.claude/skills/registry.yaml`.
+Skill docs: `knowledge/skills/README.md`. Template: `.claude/skills/_template/skill.yaml`.
+
+## Search (qmd)
+
+```
+qmd search "<query>" --json -n 10        # BM25 keyword (fast, default)
+qmd vsearch "<query>" --json -n 10       # semantic/conceptual
+qmd query "<query>" --json -n 10         # hybrid BM25 + vector (best, slower)
+```
+
+Add `-c <collection>` to scope searches. Use `qmd` before Grep for exploration.
+
+## Learned Rules
+
+<!-- Max 10 rules. When full, evict the least-referenced rule. -->
+<!-- Scoped rules go in skills or policies, not here. -->
