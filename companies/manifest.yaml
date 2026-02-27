@@ -26,3 +26,13 @@ personal:
   vercel_projects: []
   qmd_collections:
     - personal
+
+content-co:
+  repos: []
+  settings: companies/content-co/settings/
+  skills: []
+  knowledge: companies/content-co/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections:
+    - content-co
