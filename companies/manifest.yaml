@@ -1,0 +1,28 @@
+# Company Manifest
+# Maps each company to its repos, settings, skills, knowledge, and deploy targets.
+#
+# Isolation rules (enforced by .claude/policies/company-isolation.md):
+#   - NEVER read credentials from a company's settings/ for a different company's task
+#   - NEVER mix company knowledge in outputs (e.g. Company-A brand in a Company-B report)
+#   - NEVER deploy to a company's Vercel project / GitHub repo from a different company's context
+#   - Infer active company from: cwd, skill being run, files being accessed, project repo
+#   - Cross-company tasks are rare; when they occur, acknowledge scope and handle each separately
+#
+# Schema per entry:
+#   repos:            list of repo paths (relative to workspace root)
+#   settings:         path to credentials/env directory (shielded by .claudeignore)
+#   skills:           list of skill slugs owned by this company
+#   knowledge:        path to company knowledge directory
+#   deploy:           list of deploy target descriptors
+#   vercel_projects:  list of Vercel project slugs
+#   qmd_collections:  list of qmd collection names scoped to this company
+
+personal:
+  repos: []
+  settings: companies/personal/settings/
+  skills: []
+  knowledge: companies/personal/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections:
+    - personal
