@@ -36,3 +36,13 @@ content-co:
   vercel_projects: []
   qmd_collections:
     - content-co
+
+ship-it-code:
+  repos: []
+  settings: companies/ship-it-code/settings/
+  skills: []
+  knowledge: companies/ship-it-code/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections:
+    - ship-it-code
