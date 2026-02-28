@@ -10,6 +10,10 @@ None yet.
 
 None assigned.
 
+## Assets
+
+Brand assets at `companies/ship-it-code/assets/brand/` — profile picture, banner, and watermark (SVG sources + raster exports).
+
 ## Knowledge
 
 Located at `companies/ship-it-code/knowledge/`.

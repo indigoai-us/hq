@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="600" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0f1923"/>
+      <stop offset="100%" stop-color="#080c10"/>
+    </radialGradient>
+    <filter id="glowA" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="rocketGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00ff41"/>
+      <stop offset="100%" stop-color="#00cc33"/>
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff6600"/>
+      <stop offset="60%" stop-color="#ff3300"/>
+      <stop offset="100%" stop-color="#ff000055"/>
+    </linearGradient>
+    <clipPath id="circleClipA">
+      <circle cx="300" cy="300" r="270"/>
+    </clipPath>
+    <pattern id="scanlines" patternUnits="userSpaceOnUse" width="600" height="4">
+      <rect width="600" height="2" fill="#00ff41"/>
+    </pattern>
+  </defs>
+
+  <!-- Full background -->
+  <rect width="600" height="600" fill="#080c10"/>
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.06" stroke="#00ff41" stroke-width="1">
+    <line x1="0" y1="100" x2="600" y2="100"/>
+    <line x1="0" y1="200" x2="600" y2="200"/>
+    <line x1="0" y1="300" x2="600" y2="300"/>
+    <line x1="0" y1="400" x2="600" y2="400"/>
+    <line x1="0" y1="500" x2="600" y2="500"/>
+    <line x1="100" y1="0" x2="100" y2="600"/>
+    <line x1="200" y1="0" x2="200" y2="600"/>
+    <line x1="300" y1="0" x2="300" y2="600"/>
+    <line x1="400" y1="0" x2="400" y2="600"/>
+    <line x1="500" y1="0" x2="500" y2="600"/>
+  </g>
+
+  <!-- Scanline effect -->
+  <g opacity="0.03">
+    <rect width="600" height="600" fill="url(#scanlines)"/>
+  </g>
+
+  <!-- Rocket body -->
+  <g filter="url(#glowA)" transform="translate(300, 280)">
+    <!-- Rocket shape -->
+    <path d="M0,-140 C25,-130 40,-80 40,-20 L40,60 L20,90 L-20,90 L-40,60 L-40,-20 C-40,-80 -25,-130 0,-140Z"
+          fill="none" stroke="#00ff41" stroke-width="3.5" stroke-linejoin="round"/>
+
+    <!-- Nose cone highlight -->
+    <path d="M0,-140 C15,-130 25,-90 28,-50"
+          fill="none" stroke="#00ff4140" stroke-width="2"/>
+
+    <!-- Window -->
+    <circle cx="0" cy="-30" r="18" fill="none" stroke="#00ff41" stroke-width="3"/>
+    <circle cx="0" cy="-30" r="10" fill="#00ff4120" stroke="#00ff4160" stroke-width="1"/>
+
+    <!-- Code brackets inside window area -->
+    <text x="-1" y="-24" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace"
+          font-size="18" font-weight="bold" fill="#00ff41" opacity="0.9">&lt;/&gt;</text>
+
+    <!-- Fins -->
+    <path d="M-40,30 L-65,80 L-40,65Z" fill="none" stroke="#00ff41" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M40,30 L65,80 L40,65Z" fill="none" stroke="#00ff41" stroke-width="3" stroke-linejoin="round"/>
+
+    <!-- Body detail lines -->
+    <line x1="-30" y1="20" x2="30" y2="20" stroke="#00ff4150" stroke-width="1.5"/>
+    <line x1="-35" y1="50" x2="35" y2="50" stroke="#00ff4150" stroke-width="1.5"/>
+
+    <!-- Exhaust flames -->
+    <g filter="url(#glowStrong)">
+      <path d="M-18,90 Q-12,130 0,160 Q12,130 18,90"
+            fill="none" stroke="#ff6600" stroke-width="2.5" opacity="0.9"/>
+      <path d="M-10,90 Q-5,120 0,145 Q5,120 10,90"
+            fill="none" stroke="#ff9900" stroke-width="2" opacity="0.7"/>
+      <path d="M-5,90 Q0,110 0,130 Q0,110 5,90"
+            fill="none" stroke="#ffcc00" stroke-width="1.5" opacity="0.5"/>
+    </g>
+  </g>
+
+  <!-- Terminal prompt at bottom -->
+  <g filter="url(#glowA)">
+    <text x="300" y="490" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Courier New', monospace"
+          font-size="26" fill="#00ff41" opacity="0.7" letter-spacing="2">$ ship it _</text>
+  </g>
+
+  <!-- Subtle border -->
+  <rect width="600" height="600" fill="none" stroke="#00ff4118" stroke-width="2"/>
+</svg>
