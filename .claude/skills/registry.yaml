@@ -36,6 +36,11 @@ skills:
     type: execution
     description: "Testing, validation, and accessibility verification"
 
+  - id: video-gen
+    path: .claude/skills/video-gen/
+    type: execution
+    description: "Video production: script to voiceover, Remotion render, and ffmpeg post-processing"
+
   # --- Composition Skills ---
 
   - id: full-stack

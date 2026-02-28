@@ -13,4 +13,5 @@
 | `frontend/` | 1 files — React/Next.js components, pages, and client-side logic |
 | `full-stack/` | 1 files — End-to-end feature delivery via architect, backend, frontend, and review |
 | `qa/` | 1 files — Testing, validation, and accessibility verification |
+| `video-gen/` | 1 files — Video production: script to voiceover, Remotion render, and ffmpeg post-processing |
 | `registry.yaml` | Skills Registry |
