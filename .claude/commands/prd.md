@@ -63,7 +63,7 @@ Ask for project slug (or infer from description). Then:
 
 ## Step 4: Discovery Interview
 
-Ask questions in batches. Users respond: "1A, 2C"
+Ask questions in batches using AskUserQuestion
 
 **Batch 1: Problem & Success**
 1. Core problem or goal?
