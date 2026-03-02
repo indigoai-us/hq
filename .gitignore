@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 workspace/scratch/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
