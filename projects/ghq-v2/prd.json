@@ -1,0 +1,270 @@
+{
+  "name": "ghq-v2",
+  "description": "Clean-break redesign of GHQ with beads-centric task tracking, native SKILL.md skills, company symlinks, and loops/ runtime state.",
+  "branchName": "main",
+  "worktree": false,
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold directory structure and initialize git repo",
+      "description": "As a GHQ operator, I want the ghq_v2 directory tree created with git init so that all subsequent phases have a home.",
+      "acceptanceCriteria": [
+        "~/repos/ghq_v2/ exists with git initialized",
+        ".claude/skills/ contains 20 subdirectories (architect, backend, frontend, database, code-reviewer, qa, full-stack, enhancement, video-gen, prd, run-project, execute-task, learn, search, checkpoint, garden, cleanup, handoff, newcompany, newproject)",
+        ".claude/hooks/ directory exists",
+        "knowledge/ contains subdirectories: ralph, skills, policies, ghq-core, video-gen",
+        "loops/ directory exists",
+        "companies/ directory exists",
+        "~/Documents/GHQ/companies/ base directory exists"
+      ],
+      "e2eTests": [
+        "ls ~/repos/ghq_v2/.claude/skills/ | wc -l returns 20 directories",
+        "git status in ghq_v2 shows clean init"
+      ],
+      "priority": 1,
+      "passes": false,
+      "archive": false,
+      "labels": ["scaffold"],
+      "dependsOn": [],
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Write root configuration files",
+      "description": "As a GHQ operator, I want CLAUDE.md, settings.json, .gitignore, .claudeignore, README.md, AGENTS.md, and manifest.yaml created so the repo is properly configured.",
+      "acceptanceCriteria": [
+        ".claude/CLAUDE.md references bd, SKILL.md, loops/, company symlinks — not prd.json, skill.yaml, workspace/, commands/",
+        ".claude/settings.json has PreToolUse (Glob), PostToolUse (Bash), and PreCompact hooks configured",
+        ".gitignore includes companies/ line",
+        ".claudeignore has minimal credential patterns (.env, *.pem, *.key)",
+        "README.md has setup instructions and philosophy",
+        "AGENTS.md has beads integration section (copy from v1)",
+        "companies/manifest.yaml has schema header with no company entries"
+      ],
+      "e2eTests": [
+        "grep 'SKILL.md' .claude/CLAUDE.md succeeds",
+        "grep 'bd ' .claude/CLAUDE.md succeeds",
+        "grep 'companies/' .gitignore succeeds",
+        "grep 'companies/' .claudeignore returns nothing (companies/ not in claudeignore)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "archive": false,
+      "labels": ["config"],
+      "dependsOn": ["US-001"],
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Initialize beads database",
+      "description": "As a GHQ operator, I want beads initialized at the ghq_v2 root so all task tracking goes through a single bd instance.",
+      "acceptanceCriteria": [
+        "bd init completes successfully in ~/repos/ghq_v2",
+        ".beads/ directory exists with dolt database",
+        "bd ready runs without error",
+        ".beads/ contents are tracked in git (not gitignored)"
+      ],
+      "e2eTests": [
+        "cd ~/repos/ghq_v2 && bd ready returns exit code 0"
+      ],
+      "priority": 1,
+      "passes": false,
+      "archive": false,
+      "labels": ["beads"],
+      "dependsOn": ["US-001"],
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create hook scripts",
+      "description": "As a GHQ operator, I want the 3 hook scripts (block-ghq-glob, auto-checkpoint-trigger, auto-handoff-trigger) created and executable so GHQ protections are active.",
+      "acceptanceCriteria": [
+        "block-ghq-glob.sh blocks Glob from ghq_v2 root, suggests knowledge/, loops/, .claude/skills/ paths",
+        "auto-checkpoint-trigger.sh detects git commit and nudges appending JSONL to loops/history.jsonl",
+        "auto-handoff-trigger.sh fires on PreCompact and nudges /handoff",
+        "All 3 scripts pass bash -n syntax check",
+        "All 3 scripts are executable (chmod +x)"
+      ],
+      "e2eTests": [
+        "bash -n .claude/hooks/block-ghq-glob.sh exits 0",
+        "bash -n .claude/hooks/auto-checkpoint-trigger.sh exits 0",
+        "bash -n .claude/hooks/auto-handoff-trigger.sh exits 0",
+        "ls -la .claude/hooks/*.sh shows executable permissions"
+      ],
+      "priority": 2,
+      "passes": false,
+      "archive": false,
+      "labels": ["hooks"],
+      "dependsOn": ["US-001"],
+      "notes": "Translate from v1 hooks with v2 path updates"
+    },
+    {
+      "id": "US-005",
+      "title": "Migrate and rewrite knowledge files",
+      "description": "As a GHQ operator, I want the knowledge/ directory populated with Ralph methodology (copied), video-gen docs (copied), and rewritten ghq-core schemas, skill guides, and policies for v2.",
+      "acceptanceCriteria": [
+        "knowledge/ralph/ has all 13 files copied from v1",
+        "knowledge/video-gen/ has 3 files copied from v1",
+        "knowledge/ghq-core/quick-reference.md rewritten for v2 (SKILL.md, beads, loops/)",
+        "knowledge/ghq-core/skill-schema.md documents native SKILL.md format (not skill.yaml)",
+        "knowledge/ghq-core/prd-schema.md documents beads-based PRD workflow (not prd.json)",
+        "knowledge/ghq-core/loops-schema.md documents state.jsonl and history.jsonl formats",
+        "knowledge/ghq-core/index-md-spec.md and project-template.md copied from v1",
+        "knowledge/policies/company-isolation.md moved from .claude/policies/ with symlink notes",
+        "knowledge/skills/README.md rewritten for SKILL.md authoring",
+        "knowledge/INDEX.md updated with v2 entries"
+      ],
+      "e2eTests": [
+        "ls knowledge/ralph/ | wc -l returns 13+",
+        "grep 'SKILL.md' knowledge/skills/README.md succeeds",
+        "grep 'prd.json' knowledge/ghq-core/prd-schema.md returns nothing (no v1 references)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "archive": false,
+      "labels": ["knowledge", "migration"],
+      "dependsOn": ["US-001"],
+      "notes": "Copy ralph/ and video-gen/ as-is. Rewrite ghq-core/ schemas, skills/README.md, and add policies/"
+    },
+    {
+      "id": "US-006",
+      "title": "Translate 9 execution and composition skills to SKILL.md",
+      "description": "As a GHQ operator, I want the 9 existing skills (architect, backend, frontend, database, code-reviewer, qa, video-gen, full-stack, enhancement) translated from skill.yaml to native SKILL.md format.",
+      "acceptanceCriteria": [
+        "Each skill has .claude/skills/<name>/SKILL.md with frontmatter description",
+        "Instructions content preserved from skill.yaml",
+        "Composition skills (full-stack, enhancement) have Execution Order section replacing depends_on YAML",
+        "No skill.yaml or registry.yaml files exist anywhere",
+        "No .claude/commands/ directory exists"
+      ],
+      "e2eTests": [
+        "ls .claude/skills/architect/SKILL.md .claude/skills/backend/SKILL.md .claude/skills/frontend/SKILL.md .claude/skills/database/SKILL.md .claude/skills/code-reviewer/SKILL.md .claude/skills/qa/SKILL.md .claude/skills/video-gen/SKILL.md .claude/skills/full-stack/SKILL.md .claude/skills/enhancement/SKILL.md — all exist",
+        "Each SKILL.md starts with --- frontmatter containing description:"
+      ],
+      "priority": 2,
+      "passes": false,
+      "archive": false,
+      "labels": ["skills", "migration"],
+      "dependsOn": ["US-001"],
+      "notes": "Read each v1 skill.yaml, extract instructions block, wrap in SKILL.md format"
+    },
+    {
+      "id": "US-007",
+      "title": "Translate 10 commands to SKILL.md with beads integration",
+      "description": "As a GHQ operator, I want the 10 existing commands (prd, run-project, execute-task, learn, search, checkpoint, garden, cleanup, handoff, newcompany) translated to SKILL.md format with beads and loops/ integration.",
+      "acceptanceCriteria": [
+        "prd/SKILL.md creates beads epics+tasks via bd create instead of prd.json",
+        "run-project/SKILL.md uses bd ready, bd update --claim, bd close instead of prd.json parsing",
+        "execute-task/SKILL.md reads tasks from bd show instead of prd.json, resolves chains from SKILL.md body",
+        "learn/SKILL.md targets SKILL.md files (not skill.yaml), logs to loops/history.jsonl",
+        "search/SKILL.md has updated directory references",
+        "checkpoint/SKILL.md appends to loops/state.jsonl",
+        "garden/SKILL.md checks SKILL.md existence (no registry)",
+        "cleanup/SKILL.md verifies SKILL.md files, updates INDEX.md locations for v2",
+        "handoff/SKILL.md reads from loops/, writes to loops/history.jsonl",
+        "newcompany/SKILL.md creates ~/Documents/GHQ/companies/<slug>/, symlink, and beads parent epic"
+      ],
+      "e2eTests": [
+        "grep 'bd create' .claude/skills/prd/SKILL.md succeeds",
+        "grep 'bd ready' .claude/skills/run-project/SKILL.md succeeds",
+        "grep 'bd show' .claude/skills/execute-task/SKILL.md succeeds",
+        "grep 'loops/' .claude/skills/checkpoint/SKILL.md succeeds",
+        "grep 'prd.json' .claude/skills/prd/SKILL.md returns nothing",
+        "grep 'skill.yaml' .claude/skills/execute-task/SKILL.md returns nothing"
+      ],
+      "priority": 2,
+      "passes": false,
+      "archive": false,
+      "labels": ["skills", "migration", "beads"],
+      "dependsOn": ["US-001", "US-003"],
+      "notes": "prd, run-project, execute-task, and newcompany need major rewrites. Others need moderate updates."
+    },
+    {
+      "id": "US-008",
+      "title": "Create newproject skill",
+      "description": "As a GHQ operator, I want a /newproject skill that scaffolds a project inside a company with directory structure and a child beads epic.",
+      "acceptanceCriteria": [
+        ".claude/skills/newproject/SKILL.md exists with frontmatter",
+        "Skill creates project dirs: knowledge/, workspace/, assets/, repos/, tools/",
+        "Skill creates child beads epic under company's parent epic",
+        "Skill validates company exists in manifest.yaml before proceeding",
+        "Skill validates project doesn't already exist"
+      ],
+      "e2eTests": [
+        "grep 'bd create' .claude/skills/newproject/SKILL.md succeeds",
+        "grep 'manifest.yaml' .claude/skills/newproject/SKILL.md succeeds"
+      ],
+      "priority": 3,
+      "passes": false,
+      "archive": false,
+      "labels": ["skills", "new"],
+      "dependsOn": ["US-001"],
+      "notes": "New skill, not a translation"
+    },
+    {
+      "id": "US-009",
+      "title": "Create loops/ runtime state structure",
+      "description": "As a GHQ operator, I want loops/ initialized with empty JSONL files and schema documentation so runtime state has a home.",
+      "acceptanceCriteria": [
+        "loops/state.jsonl exists (empty)",
+        "loops/history.jsonl exists (empty)",
+        "loops/README.md documents both JSONL schemas with field tables and event types"
+      ],
+      "e2eTests": [
+        "wc -l loops/state.jsonl returns 0",
+        "wc -l loops/history.jsonl returns 0",
+        "grep 'state.jsonl' loops/README.md succeeds"
+      ],
+      "priority": 3,
+      "passes": false,
+      "archive": false,
+      "labels": ["loops"],
+      "dependsOn": ["US-001"],
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Final validation and initial commit",
+      "description": "As a GHQ operator, I want the complete ghq_v2 scaffold validated (no v1 artifacts, all files present) and committed as the initial git commit.",
+      "acceptanceCriteria": [
+        "20 SKILL.md files exist in .claude/skills/",
+        "No skill.yaml, registry.yaml, or .claude/commands/ exists",
+        "No workspace/ or projects/ directories exist (v1 artifacts)",
+        "3 hook scripts exist and are executable",
+        ".beads/ initialized and bd ready works",
+        "companies/manifest.yaml exists",
+        "loops/ has state.jsonl, history.jsonl, README.md",
+        "Initial git commit created with all files"
+      ],
+      "e2eTests": [
+        "find .claude/skills -name SKILL.md | wc -l returns 20",
+        "test ! -f .claude/skills/registry.yaml",
+        "test ! -d .claude/commands",
+        "test ! -d workspace",
+        "cd ~/repos/ghq_v2 && bd ready exits 0",
+        "git log --oneline -1 shows initial commit"
+      ],
+      "priority": 3,
+      "passes": false,
+      "archive": false,
+      "labels": ["validation"],
+      "dependsOn": ["US-002", "US-003", "US-004", "US-005", "US-006", "US-007", "US-008", "US-009"],
+      "notes": "This is the final gating story — runs after everything else."
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-03-03T12:00:00Z",
+    "baseBranch": "main",
+    "goal": "Create ghq_v2 from scratch: beads-centric task tracking, native SKILL.md skills, company symlinks to ~/Documents/GHQ/, loops/ runtime state",
+    "successCriteria": "All 20 skills translated and present as SKILL.md, beads initialized, hooks working, knowledge migrated, no v1 artifacts remaining",
+    "qualityGates": ["Structure validation: file counts, no v1 artifacts, hooks executable, bd ready works"],
+    "repoPath": "~/repos/ghq_v2",
+    "relatedSkills": ["architect", "full-stack"],
+    "knowledge": [
+      "knowledge/ralph/",
+      "knowledge/ghq-core/skill-schema.md",
+      "knowledge/ghq-core/prd-schema.md"
+    ],
+    "relatedProjects": []
+  }
+}

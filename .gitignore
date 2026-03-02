@@ -5,3 +5,5 @@ workspace/scratch/
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+.beads/dolt-server.activity
+.beads/dolt-monitor.pid
