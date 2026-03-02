@@ -111,17 +111,21 @@ bd automatically syncs with git:
 
 ### Important Rules
 
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
+- Use bd for ALL task tracking
+- Always use `--json` flag for programmatic use
+- Link discovered work with `discovered-from` dependencies
+- Check `bd ready` before asking "what should I work on?"
+- Do NOT create markdown TODO lists
+- Do NOT use external issue trackers
+- Do NOT duplicate tracking systems
 
-For more details, see README.md and docs/QUICKSTART.md.
+For more details, see README.md.
 
 <!-- END BEADS INTEGRATION -->
+
+## Skills
+
+Skills are loaded on demand from `.claude/skills/<name>/SKILL.md`. Read the skill's SKILL.md before executing specialized tasks. Never pre-load skills.
 
 ## Landing the Plane (Session Completion)
 

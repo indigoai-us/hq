@@ -1,36 +1,64 @@
-# GHQ
+# GHQ v2
 
-GHQ is a personal operating system for orchestrating work across companies, workers, and AI — a companion to HQ designed for a group/team context.
+Personal OS for orchestrating work across companies and AI.
 
-## What is GHQ?
+## Philosophy
 
-GHQ mirrors the structure and conventions of [HQ](https://github.com/hassaans/hq) but is scoped for shared or multi-contributor use. Where HQ is a single-user personal OS, GHQ is built for group coordination: shared workers, shared knowledge, and cross-company orchestration in a team setting.
+GHQ is a structured environment for managing multi-company work with AI agents. It provides:
 
-## How GHQ differs from HQ
-
-| Aspect | HQ | GHQ |
-|--------|-----|-----|
-| Scope | Single user (personal) | Group / team |
-| Workers | Personal + public | Shared team workers |
-| Company isolation | Per user | Per team/org |
-| Credentials | `companies/*/settings/` (private) | `companies/*/settings/` (team-managed) |
-| Repos | `~/repos` symlink | `~/repos` symlink |
+- **Company isolation** -- each company's knowledge, credentials, and deploy targets are kept separate
+- **Skill-based agents** -- reusable skills loaded on demand via `SKILL.md`
+- **Task tracking** -- `bd` (beads) for dependency-aware, git-friendly issue management
+- **Runtime loops** -- active work sessions tracked in `loops/`
 
 ## Directory Structure
 
 ```
-.claude/          Claude agent commands, skills, hooks, and policies
-companies/        Per-company knowledge, settings, and data
-knowledge/        Shared knowledge bases
-projects/         Active and archived projects
-repos/            Symlink to ~/repos (all code repositories)
-workspace/        Working files: threads, reports, orchestrator state
+.claude/          Claude agent skills (SKILL.md), hooks
+companies/        Symlinks to ~/Documents/GHQ/companies/{slug}/
+knowledge/        Shared knowledge bases and policies
+loops/            Runtime state, active loops, checkpoints
 ```
+
+## Setup
+
+1. **Clone the repo:**
+   ```bash
+   git clone <repo-url> ~/repos/ghq_v2
+   cd ~/repos/ghq_v2
+   ```
+
+2. **Initialize beads:**
+   ```bash
+   bd init
+   ```
+
+3. **Set up company directories:**
+   ```bash
+   mkdir -p ~/Documents/GHQ/companies/{your-company}
+   ln -s ~/Documents/GHQ/companies/your-company companies/your-company
+   ```
+
+4. **Verify setup:**
+   ```bash
+   bd ready          # Should show available work
+   ls companies/     # Should show your company symlinks
+   ```
+
+## Key Concepts
+
+### Companies
+Company data (credentials, knowledge, deploy targets) lives at `~/Documents/GHQ/companies/` and is symlinked into the repo's `companies/` directory. The `companies/` directory itself is gitignored to prevent credential leaks.
+
+### Skills
+Skills live in `.claude/skills/<name>/` with a `SKILL.md` file that Claude discovers on demand. Each skill encapsulates a specific capability (frontend, backend, deployment, etc.).
+
+### Task Tracking (bd)
+All task tracking uses `bd` (beads). Never use markdown TODO lists or external trackers. Issues auto-sync to `.beads/issues.jsonl` for git version control.
+
+### Loops
+The `loops/` directory holds runtime state for active work sessions -- checkpoints, thread context, and orchestrator state.
 
 ## Security
 
-Credentials are stored in `companies/*/settings/` and are excluded from Claude's context via `.claudeignore`. This means Claude can work across companies without reading secrets directly — credentials are accessed only by the tools and workers that explicitly need them.
-
-## Getting Started
-
-See `.claude/commands/` for available slash commands and `workers/registry.yaml` (once scaffolded) for the worker index.
+Credentials are excluded from Claude's context via `.claudeignore` patterns (`.env`, `*.pem`, `*.key`). The `companies/` directory is gitignored entirely.

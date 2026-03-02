@@ -6,30 +6,33 @@
 GHQ/
 ├── .claude/
 │   ├── CLAUDE.md           # Project-level instructions
-│   ├── commands/           # Slash commands
 │   ├── hooks/              # PreToolUse / PostToolUse hooks
-│   ├── policies/           # Enforcement rules
-│   └── skills/             # Skill definitions + registry
-│       ├── registry.yaml
-│       ├── _template/
+│   └── skills/             # SKILL.md files (native Claude Code format)
 │       ├── architect/
+│       │   └── SKILL.md
 │       ├── code-reviewer/
+│       │   └── SKILL.md
 │       └── full-stack/
+│           └── SKILL.md
+├── companies/ -> ~/Documents/GHQ/companies/   # Symlink to secure storage
 ├── knowledge/
 │   ├── ghq-core/           # GHQ schemas, specs, quick reference
-│   ├── ralph/              # Ralph Wiggum Loop methodology
-│   └── skills/             # Skill framework documentation
-├── projects/               # Project PRDs
-├── repos/                  # Cloned repos (targets of skill execution)
-└── workspace/
-    ├── orchestrator/       # /run-project state
-    ├── reports/            # Generated reports
-    └── threads/            # Session checkpoints + handoffs
+│   ├── policies/           # Enforcement policies
+│   ├── ralph/              # Ralph methodology
+│   ├── skills/             # Skill authoring guide
+│   └── video-gen/          # Video generation pipeline docs
+├── loops/
+│   ├── state.jsonl         # Append-only execution state
+│   └── history.jsonl       # Completed loop records
+├── projects/               # Project PRDs (beads-managed)
+└── repos/                  # Cloned repos (targets of skill execution)
 ```
 
 ## Skills
 
 ### Registered Skills
+
+Skills are discovered automatically by Claude Code from `.claude/skills/*/SKILL.md`. No registry file needed.
 
 | Skill | Type | Purpose |
 |-------|------|---------|
@@ -37,9 +40,9 @@ GHQ/
 | `code-reviewer` | execution | Code review, quality gating, and merge management |
 | `full-stack` | composition | End-to-end feature delivery (chains architect + backend + frontend + review) |
 
-### Skill Registry
+### Skill Format
 
-`.claude/skills/registry.yaml` — index of all skills. Updated by `/cleanup --reindex`.
+Each skill is a `SKILL.md` file in `.claude/skills/{skill-id}/SKILL.md`. See [Skill Schema](skill-schema.md) for the full format.
 
 ### Skill Types
 
@@ -49,64 +52,66 @@ GHQ/
 | `composition` | Chains other skills; orchestrator resolves the chain |
 | `library` | Shared context loaded by other skills |
 
-## Commands
+## Projects and PRDs
 
-Commands live in `.claude/commands/`.
+Projects are managed with `bd` (beads CLI) for issue tracking:
 
-| Command | Description |
-|---------|-------------|
-| `/prd` | Create project PRD |
-| `/run-project` | Execute PRD stories via skill chain |
-| `/execute-task` | Run a single story with a skill |
-| `/checkpoint` | Save session state as a thread |
-| `/handoff` | Prepare session handoff JSON |
-| `/learn` | Capture and classify learnings |
-| `/newcompany` | Scaffold a new company with full infrastructure |
-| `/garden` | Content audit and curation |
-| `/cleanup` | Validate structural integrity; `--reindex` rebuilds all INDEX.md files |
-| `/search` | Search GHQ knowledge + repos via qmd (BM25, semantic, hybrid) |
+```bash
+bd list                    # List all stories
+bd show US-001             # Show story details
+bd close US-001            # Mark story complete
+bd create "title"          # Create new story
+```
+
+PRD files live in `projects/{project-name}/` and are tracked by beads.
+
+## Loops (Execution State)
+
+The `loops/` directory replaces the v1 `workspace/` directory:
+
+| File | Purpose |
+|------|---------|
+| `loops/state.jsonl` | Append-only log of current execution state |
+| `loops/history.jsonl` | Completed loop records with outcomes |
+
+See [Loops Schema](loops-schema.md) for full field definitions.
+
+## Companies
+
+Companies are stored outside the repo at `~/Documents/GHQ/companies/` and symlinked into the project:
+
+```
+companies/ -> ~/Documents/GHQ/companies/
+  {slug}/
+    settings/    # Credentials, API keys (gitignored via symlink)
+    knowledge/   # Company-specific knowledge
+    data/        # Company-specific data
+```
+
+The symlink keeps sensitive data out of the git repo. See [Company Isolation](../policies/company-isolation.md).
 
 ## Knowledge Bases
 
 | Path | Contents |
 |------|----------|
 | `knowledge/ghq-core/` | GHQ schemas, index-md spec, quick reference |
-| `knowledge/ralph/` | Ralph Wiggum Loop methodology (01-overview through 10-workflow) |
-| `knowledge/skills/` | Skill framework documentation and concepts |
-
-## Projects
-
-`projects/{project-name}/prd.json` — each project has a PRD JSON file.
-
-See [PRD Schema](prd-schema.md) for full field definitions.
-
-## Threads (Session State)
-
-`workspace/threads/{thread_id}.json` — checkpoints and handoffs.
-
-Thread ID format: `T-{YYYYMMDD}-{HHMMSS}-{slug}`
-
-See [Thread Schema](thread-schema.md) for full field definitions.
-
-## Checkpoints
-
-`workspace/orchestrator/state.json` — current `/run-project` execution state.
-
-See [Checkpoint Schema](checkpoint-schema.json) for the JSON schema.
+| `knowledge/policies/` | Enforcement policies (company isolation, etc.) |
+| `knowledge/ralph/` | Ralph methodology (01-overview through 11-team-training) |
+| `knowledge/skills/` | Skill authoring guide |
+| `knowledge/video-gen/` | Video generation pipeline reference |
 
 ## Key Schemas
 
 | Schema | File |
 |--------|------|
-| Thread / checkpoint | [thread-schema.md](thread-schema.md) |
-| PRD | [prd-schema.md](prd-schema.md) |
-| Checkpoint JSON Schema | [checkpoint-schema.json](checkpoint-schema.json) |
-| Skill YAML | [skill-schema.md](skill-schema.md) |
+| PRD / beads workflow | [prd-schema.md](prd-schema.md) |
+| Skill (SKILL.md) | [skill-schema.md](skill-schema.md) |
+| Loops state | [loops-schema.md](loops-schema.md) |
 | INDEX.md format | [index-md-spec.md](index-md-spec.md) |
 
 ## Ralph Loop
 
-GHQ runs the Ralph Wiggum Loop for autonomous project execution:
+GHQ runs the Ralph methodology for autonomous project execution:
 
 ```
 /run-project
@@ -117,7 +122,8 @@ GHQ runs the Ralph Wiggum Loop for autonomous project execution:
       -> spawn sub-agent per skill
       -> pass handoff JSON between skills
       -> run back-pressure checks after each skill
-      -> mark story passes: true on success
+      -> append result to loops/state.jsonl
+      -> mark story complete on success
 ```
 
 Full methodology: `knowledge/ralph/`
@@ -128,17 +134,17 @@ After each skill completes, the orchestrator runs:
 
 | Check | Command |
 |-------|---------|
-| Tests | Configured in `metadata.qualityGates` |
-| Typecheck | Configured in `metadata.qualityGates` |
-| Lint | Configured in `metadata.qualityGates` |
-| Build | Configured in `metadata.qualityGates` |
+| Tests | Configured in project PRD |
+| Typecheck | Configured in project PRD |
+| Lint | Configured in project PRD |
+| Build | Configured in project PRD |
 
 If checks fail, the skill gets one retry. If the retry fails, the story is blocked.
 
 ## Conventions
 
 - Story IDs: `US-XXX` format
-- Branch names: `feature/{name}` format
+- Work on `main` or worktrees only -- never feature branches
 - Skill IDs: lowercase with hyphens (e.g., `code-reviewer`)
-- Thread IDs: `T-{YYYYMMDD}-{HHMMSS}-{slug}`
 - All times: ISO8601 UTC
+- Companies accessed via symlink, never committed to repo

@@ -1,201 +1,151 @@
-# Skill Schema
+# Skill Schema (SKILL.md)
 
-Skills are the composable execution units in GHQ. Each skill lives in `.claude/skills/{skill-id}/skill.yaml` and declares its identity, dependencies, context needs, and instructions.
+Skills are the composable execution units in GHQ. Each skill lives in `.claude/skills/{skill-id}/SKILL.md` and uses the native Claude Code skill format -- a Markdown file with YAML frontmatter.
 
-> For the conceptual overview of the skill system (types, composition, execution model, handoff protocol), see [knowledge/skills/README.md](../skills/README.md). This document focuses on the YAML schema itself.
+> For the conceptual overview of the skill system (types, composition, execution model), see [knowledge/skills/README.md](../skills/README.md). This document focuses on the SKILL.md schema itself.
 
 ## File Location
 
 ```
 .claude/skills/
-  registry.yaml          # Index of all skills
-  _template/
-    skill.yaml           # Schema reference (not a real skill)
   {skill-id}/
-    skill.yaml           # Skill definition
-    README.md            # Optional extended docs
+    SKILL.md           # Skill definition (native Claude Code format)
+    README.md          # Optional extended docs
 ```
 
-## Full Schema
+No registry file is needed. Claude Code discovers skills automatically from `.claude/skills/*/SKILL.md`.
 
-```yaml
-# Required
-id: string                     # Unique identifier, matches directory name
-name: string                   # Human-readable display name
-description: string            # One-sentence summary
-type: execution|composition|library
+## SKILL.md Format
 
-# Optional
-depends_on:
-  - string                     # Simple: always-loaded dependency
-  - skill: string              # Conditional dependency
-    when: string               # Natural-language condition or "always"
+A SKILL.md file is a Markdown document with YAML frontmatter. The frontmatter declares metadata; the Markdown body contains instructions.
 
-context:
-  base:
-    - string                   # Paths always loaded when skill activates
-  dynamic:
-    - pattern: string          # Path pattern, {repo} replaced at runtime
-      when: string             # Natural-language condition or "always"
-  exclude:
-    - string                   # Patterns to never load
+### Minimal Example
 
-instructions: |
-  Multi-line prompt loaded when the skill activates.
-```
-
-## Field Definitions
-
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Matches the directory name exactly. Lowercase with hyphens (e.g., `code-reviewer`) |
-| `name` | string | Human-readable label shown in logs (e.g., `Code Reviewer`) |
-| `description` | string | One-sentence summary of what the skill does |
-| `type` | enum | `execution`, `composition`, or `library` — see Skill Types below |
-
-### Skill Types
-
-| Type | Purpose | Executable? |
-|------|---------|-------------|
-| `execution` | Does work directly (writes code, reviews, designs) | Yes |
-| `composition` | Chains other skills via `depends_on` | No — orchestrator resolves the chain |
-| `library` | Shared utilities loaded as context by other skills | No |
-
-### depends_on
-
-Declares skills this skill requires. Two forms:
-
-**Simple (unconditional):**
-```yaml
-depends_on:
-  - architect
-  - code-reviewer
-```
-
-**Conditional:**
-```yaml
-depends_on:
-  - skill: database
-    when: "task involves schema changes"
-  - skill: architect
-    when: always
-```
-
-The `when` field is evaluated by `/execute-task` against the task description. `when: always` is unconditional.
-
-### context
-
-Controls what files are loaded into the sub-agent's context when the skill activates.
-
-| Sub-field | Description |
-|-----------|-------------|
-| `base` | Paths always loaded. Use for skill instructions, patterns, and static knowledge |
-| `dynamic` | Paths loaded conditionally. `{repo}` is replaced with the target repository path at runtime |
-| `exclude` | Glob patterns to never load (saves context window) |
-
-**Example:**
-```yaml
-context:
-  base:
-    - .claude/skills/backend/
-    - knowledge/ghq-core/
-  dynamic:
-    - pattern: "{repo}/src/"
-      when: always
-    - pattern: "{repo}/prisma/"
-      when: "task involves database"
-  exclude:
-    - node_modules/
-    - dist/
-    - "*.test.ts"
-```
-
-### instructions
-
-A multi-line YAML string containing the prompt injected into the sub-agent when this skill activates. Keep it focused on the skill's domain. Reference `context.base` files rather than duplicating their content.
-
-```yaml
-instructions: |
-  You are the backend skill. Your job is to implement server-side logic
-  based on the architect's design decisions.
-
-  - Follow patterns in {repo}/src/
-  - Write tests for all new endpoints
-  - Run `npm run typecheck` before marking work complete
-```
-
-## Registry Entry
-
-Every skill must be registered in `.claude/skills/registry.yaml`:
-
-```yaml
-- id: my-skill
-  path: .claude/skills/my-skill/
-  type: execution
-  description: "What this skill does"
-```
-
-The registry is the index that `/execute-task` uses to discover and load skills. It is kept in sync by `/cleanup --reindex`.
-
-## No Version Field
-
-Unlike HQ workers, skills have no `version:` field. Git history tracks skill evolution. This keeps skill files lean and avoids version drift issues.
-
-## Minimal Example (Execution Skill)
-
-```yaml
-id: backend
+```markdown
+---
 name: Backend Developer
 description: Implements server-side logic, APIs, and database integrations
-type: execution
+---
 
-context:
-  base:
-    - .claude/skills/backend/
-  dynamic:
-    - pattern: "{repo}/src/"
-      when: always
+# Backend Developer
 
-instructions: |
-  Implement the backend changes described in the task.
-  Follow existing patterns in src/.
-  Write tests for all new code.
+Implement the backend changes described in the task.
+
+- Follow existing patterns in src/
+- Write tests for all new code
+- Run `npm run typecheck` before marking work complete
 ```
 
-## Composition Example
+### Full Example
 
-```yaml
-id: full-stack
+```markdown
+---
+name: Architect
+description: System design, API design, and architecture decisions
+---
+
+# Architect
+
+You are the architect skill. Design the system changes needed for the task.
+
+## Responsibilities
+
+- Analyze requirements and propose architecture
+- Document API contracts and data models
+- Make technology decisions with rationale
+- Consider scalability, maintainability, and security
+
+## Output
+
+Produce a design document covering:
+1. Overview of changes
+2. API endpoints or interfaces
+3. Data model changes
+4. Key decisions with rationale
+
+## Constraints
+
+- Follow existing patterns in the codebase
+- Prefer simple solutions over clever ones
+- Document trade-offs explicitly
+```
+
+## Frontmatter Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Human-readable display name |
+| `description` | string | Yes | One-sentence summary shown in skill listings |
+
+The skill's `id` is inferred from the directory name (e.g., `.claude/skills/architect/` has id `architect`).
+
+## Markdown Body
+
+The body is the instruction prompt loaded when the skill activates. It should:
+
+- Focus on the skill's domain
+- Define responsibilities and constraints
+- Specify expected output format
+- Reference relevant knowledge paths rather than duplicating content
+
+## Skill Types
+
+GHQ skills have three conceptual types, expressed through their instructions:
+
+| Type | Purpose | How Expressed |
+|------|---------|---------------|
+| `execution` | Does work directly (writes code, reviews, designs) | Instructions describe work to do |
+| `composition` | Chains other skills | Instructions describe the chain and handoff protocol |
+| `library` | Shared context loaded by other skills | Instructions provide reference material |
+
+## Composition Skills
+
+A composition skill's SKILL.md describes the dependency chain in its instructions:
+
+```markdown
+---
 name: Full Stack
-description: Chains architect, backend, frontend, and code-reviewer for complete feature work
-type: composition
+description: End-to-end feature delivery chaining architect, backend, frontend, and review
+---
 
-depends_on:
-  - skill: architect
-    when: always
-  - skill: backend
-    when: "task involves server-side logic"
-  - skill: frontend
-    when: "task involves UI changes"
-  - skill: code-reviewer
-    when: always
+# Full Stack
+
+This is a composition skill. Execute the following skills in order:
+
+1. **architect** -- Design the solution
+2. **backend** -- Implement server-side logic (if task involves server-side)
+3. **frontend** -- Implement UI changes (if task involves UI)
+4. **code-reviewer** -- Review all changes
+
+Pass handoff JSON between each skill.
 ```
 
-## Validation Rules
+## Migration from skill.yaml (v1)
 
-A valid skill.yaml must:
+v2 replaces the custom `skill.yaml` + `registry.yaml` system with native Claude Code `SKILL.md` files:
 
-1. Have all four required fields (`id`, `name`, `description`, `type`)
-2. Have `id` that exactly matches its directory name
-3. Have `type` that is one of the three allowed values
-4. Have a matching entry in `registry.yaml`
-5. Not duplicate an existing `id`
+| v1 (skill.yaml) | v2 (SKILL.md) |
+|------------------|----------------|
+| `id:` field | Inferred from directory name |
+| `name:` field | `name:` in frontmatter |
+| `description:` field | `description:` in frontmatter |
+| `type:` field | Expressed in instructions |
+| `depends_on:` field | Described in instructions |
+| `context:` block | Not needed; Claude Code handles context |
+| `instructions:` field | Markdown body |
+| `registry.yaml` | Not needed; auto-discovered |
+
+## Validation
+
+A valid SKILL.md must:
+
+1. Have YAML frontmatter with `name` and `description`
+2. Have a non-empty Markdown body with instructions
+3. Live in `.claude/skills/{skill-id}/SKILL.md`
+4. Have a directory name that is lowercase with hyphens
 
 ## See Also
 
-- [Skill Framework Overview](../skills/README.md) — Concepts, execution model, handoff protocol
-- [.claude/skills/](../../.claude/skills/) — All skill definitions
-- [.claude/skills/registry.yaml](../../.claude/skills/registry.yaml) — Skill registry
-- [Quick Reference](quick-reference.md) — GHQ commands overview
+- [Skill Authoring Guide](../skills/README.md) -- Concepts, creation workflow
+- [.claude/skills/](../../.claude/skills/) -- All skill definitions
+- [Quick Reference](quick-reference.md) -- GHQ overview

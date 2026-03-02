@@ -1,133 +1,142 @@
-# Skill Framework
+# Skill Authoring Guide
 
-Skills are composable modules that replace HQ's worker system. They live in `.claude/skills/` and load on demand -- no context is burned until a skill activates.
+Skills are composable modules that load on demand in GHQ. They use the native Claude Code `SKILL.md` format -- a Markdown file with YAML frontmatter that Claude Code discovers automatically.
 
-## Concepts
+## Quick Start
 
-**Skill** -- a YAML file (`skill.yaml`) that declares identity, dependencies, context needs, and instructions. Skills are not autonomous agents. They are context modules that an orchestrator (`/execute-task`) loads into a sub-agent.
+1. Create the skill directory:
+   ```bash
+   mkdir .claude/skills/my-skill
+   ```
 
-**Skill types:**
+2. Write `.claude/skills/my-skill/SKILL.md`:
+   ```markdown
+   ---
+   name: My Skill
+   description: One-sentence summary of what this skill does
+   ---
 
-| Type | Purpose | Executable? |
-|------|---------|-------------|
-| `execution` | Does work directly (writes code, reviews, designs) | Yes |
-| `composition` | Chains other skills via `depends_on` | No (orchestrator resolves the chain) |
-| `library` | Shared utilities loaded by other skills | No (loaded as context by other skills) |
+   # My Skill
 
-**Registry** -- `.claude/skills/registry.yaml` lists all skills. Kept in sync by `/cleanup --reindex`.
+   Instructions for what this skill does when activated.
 
-## Skill Schema
+   - Responsibility 1
+   - Responsibility 2
+   - Constraint or quality gate
+   ```
 
-Every skill lives in `.claude/skills/{skill-id}/skill.yaml`. The full template is at `.claude/skills/_template/skill.yaml`.
+3. Done. Claude Code discovers it automatically from `.claude/skills/*/SKILL.md`.
 
-### Required Fields
+## SKILL.md Format
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique identifier, matches directory name |
-| `name` | string | Human-readable display name |
-| `description` | string | One-sentence summary |
-| `type` | enum | `execution`, `composition`, or `library` |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `depends_on` | list | Skills this skill depends on |
-| `context` | object | Files to load (`base`, `dynamic`, `exclude`) |
-| `instructions` | string | Prompt loaded when the skill activates |
-
-### No Version Field
-
-Git history tracks skill evolution. No `version:` field needed.
-
-## Dependencies and Composition
-
-Skills declare dependencies via `depends_on`. The orchestrator (`/execute-task`) resolves the full dependency chain before execution.
-
-### Simple Dependencies
+### Frontmatter (Required)
 
 ```yaml
-depends_on:
-  - architect
-  - code-reviewer
+---
+name: Human-Readable Name
+description: One-sentence summary shown in skill listings
+---
 ```
 
-Both skills always load when this skill is used.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name (e.g., "Backend Developer") |
+| `description` | string | Yes | One-sentence summary |
 
-### Conditional Dependencies
+The skill's **id** is inferred from the directory name. For example, `.claude/skills/code-reviewer/SKILL.md` has id `code-reviewer`.
 
-```yaml
-depends_on:
-  - skill: database
-    when: "task involves schema changes"
-  - skill: architect
-    when: always
+### Body (Required)
+
+The Markdown body is the instruction prompt loaded when the skill activates. Write it as if you are briefing a developer:
+
+- Define the skill's responsibilities
+- Specify constraints and quality expectations
+- Describe expected output format
+- Reference knowledge paths rather than duplicating content
+
+## Skill Types
+
+GHQ recognizes three conceptual skill types. The type is expressed through the instructions, not a metadata field:
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **execution** | Does work directly | architect, backend, code-reviewer |
+| **composition** | Chains other skills in sequence | full-stack |
+| **library** | Provides shared context | (loaded by other skills) |
+
+### Execution Skills
+
+The most common type. The SKILL.md contains direct instructions for work:
+
+```markdown
+---
+name: Backend Developer
+description: Implements server-side logic, APIs, and database integrations
+---
+
+# Backend Developer
+
+Implement the backend changes described in the task.
+
+## Responsibilities
+- Write server-side code following existing patterns
+- Create or update API endpoints
+- Write tests for all new code
+
+## Quality Gates
+- Run `npm run typecheck` before completing
+- All new endpoints must have test coverage
 ```
-
-The `when` field is a natural-language condition evaluated by `/execute-task` against the task description. `when: always` means the dependency is unconditional.
 
 ### Composition Skills
 
-A composition skill does no work itself. It declares a dependency chain that the orchestrator executes in order.
+A composition skill orchestrates other skills. Its SKILL.md describes the chain:
 
-Example: `full-stack` depends on `[architect, backend, frontend, code-reviewer, qa]`. When `/execute-task` classifies a task as full-stack, it:
+```markdown
+---
+name: Full Stack
+description: End-to-end feature delivery chaining multiple skills
+---
 
-1. Loads `full-stack/skill.yaml`
-2. Resolves `depends_on` into an ordered list
-3. Evaluates each `when` condition against the task
-4. Executes matching skills sequentially, passing handoff JSON between them
+# Full Stack
 
-## Context Loading
+Execute the following skills in order, passing handoff context between each:
 
-Skills declare what files they need. Nothing loads until the skill activates.
-
-```yaml
-context:
-  base:
-    - .claude/skills/my-skill/        # Always loaded
-    - knowledge/patterns/             # Always loaded
-
-  dynamic:
-    - pattern: "{repo}/src/"          # Loaded at runtime
-      when: always
-    - pattern: "{repo}/prisma/"
-      when: "task involves database"
-
-  exclude:
-    - node_modules/
-    - dist/
+1. **architect** -- Design the solution
+2. **backend** -- Implement server-side logic (if needed)
+3. **frontend** -- Implement UI changes (if needed)
+4. **code-reviewer** -- Review all changes
 ```
 
-**`base`** -- files always loaded when the skill activates.
-**`dynamic`** -- files loaded conditionally. `{repo}` is replaced with the target repository path at runtime.
-**`exclude`** -- patterns to never load (saves context window).
+### Library Skills
 
-## Execution Model
+Library skills provide shared context. They are referenced in other skills' instructions:
 
-Skills do not run themselves. The execution flow is:
+```markdown
+---
+name: API Patterns
+description: Shared REST API patterns and conventions for backend skills
+---
 
+# API Patterns
+
+## Endpoint Conventions
+- Use plural nouns for resource paths
+- Always return JSON
+- Include pagination for list endpoints
+...
 ```
-/run-project
-  -> loops through PRD stories
-  -> /execute-task per story
-    -> classifies task type
-    -> resolves skill chain
-    -> spawns sub-agent per skill with fresh context
-    -> passes handoff JSON between skills
-    -> runs back-pressure checks after each skill
-```
 
-### Handoff Protocol
+## Handoff Protocol
 
-Each skill in a chain receives structured handoff JSON from the previous skill:
+When skills run in a chain, each skill passes structured context to the next:
 
 ```json
 {
   "from_skill": "architect",
   "to_skill": "backend",
   "summary": "Designed REST API with 3 endpoints",
-  "files_changed": ["src/api/routes.ts"],
+  "files_changed": ["docs/design.md"],
   "decisions": ["chose REST over GraphQL for simplicity"],
   "back_pressure": {
     "tests": "pass",
@@ -136,64 +145,34 @@ Each skill in a chain receives structured handoff JSON from the previous skill:
 }
 ```
 
-### Back-Pressure
+## Back-Pressure
 
-After each skill completes, the orchestrator runs verification checks (tests, type checks, lint). If checks fail, the skill gets one retry. If the retry fails, the story is marked as blocked.
+After each skill completes, the orchestrator runs quality gates (tests, typecheck, lint, build). If checks fail:
 
-## How Skills Differ from HQ Workers
+1. Skill gets one retry
+2. If retry fails, story is blocked
+3. Result is appended to `loops/state.jsonl`
 
-| Aspect | HQ Workers | GHQ Skills |
-|--------|-----------|------------|
-| Identity | `worker.yaml` with type, team, version | `skill.yaml` with type only |
-| Execution | MCP servers, state machines, spawn methods | Context modules loaded by orchestrator |
-| Organization | Teams (dev-team, content-team, social-team) | Flat directory, no teams |
-| Composition | Ad-hoc worker pipelines | Declarative `depends_on` chains |
-| Context | Always loaded via CLAUDE.md references | Loaded on demand when skill activates |
-| Configuration | execution, verification, reporting, mcp sections | Just context and instructions |
-| Complexity | ~100 lines per worker.yaml | ~30-50 lines per skill.yaml |
+## Naming Conventions
 
-## Creating a New Skill
-
-1. Copy the template:
-   ```
-   cp -r .claude/skills/_template .claude/skills/{my-skill}
-   ```
-
-2. Edit `.claude/skills/{my-skill}/skill.yaml`:
-   - Set `id`, `name`, `description`, `type`
-   - Add `depends_on` if this skill chains others
-   - Define `context` paths
-   - Write `instructions`
-
-3. Register in `.claude/skills/registry.yaml`:
-   ```yaml
-   - id: my-skill
-     path: .claude/skills/my-skill/
-     type: execution
-     description: "What this skill does"
-   ```
-
-4. Run `/cleanup --reindex` to validate.
+- Directory name: lowercase with hyphens (e.g., `code-reviewer`)
+- Display name: title case (e.g., "Code Reviewer")
+- Description: one sentence, no period
 
 ## Directory Layout
 
 ```
 .claude/skills/
-  _template/          Schema reference (not a skill)
-    skill.yaml
-  registry.yaml       Index of all skills
   architect/
-    skill.yaml
+    SKILL.md
   code-reviewer/
-    skill.yaml
+    SKILL.md
   full-stack/
-    skill.yaml
-  backend/            (future — US-018)
-    skill.yaml
-  frontend/           (future — US-018)
-    skill.yaml
-  database/           (future — US-018)
-    skill.yaml
-  qa/                 (future — US-018)
-    skill.yaml
+    SKILL.md
 ```
+
+## See Also
+
+- [Skill Schema Reference](../ghq-core/skill-schema.md) -- Full SKILL.md field definitions
+- [.claude/skills/](../../.claude/skills/) -- All skill definitions
+- [Quick Reference](../ghq-core/quick-reference.md) -- GHQ overview
