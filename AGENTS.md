@@ -76,6 +76,21 @@ bd update bd-42 --priority 1 --json
 bd close bd-42 --reason "Completed" --json
 ```
 
+**Draft tasks** (not ready to execute):
+
+```bash
+bd create "Plan feature X" --json       # creates as open
+bd update <id> --status draft --json    # mark as draft (excluded from bd ready)
+bd update <id> --status open --json     # promote when ready
+```
+
+**Decision tasks** (require human judgment):
+
+```bash
+bd create "Choose database engine" --type decision -p 1 --json
+./loops/scripts/bd-resolve.sh <id> --answer "Use PostgreSQL" --json
+```
+
 ### Issue Types
 
 - `bug` - Something broken
@@ -83,6 +98,7 @@ bd close bd-42 --reason "Completed" --json
 - `task` - Work item (tests, docs, refactoring)
 - `epic` - Large feature with subtasks
 - `chore` - Maintenance (dependencies, tooling)
+- `decision` - Requires human judgment (use `bd-resolve` to close)
 
 ### Priorities
 
@@ -92,14 +108,25 @@ bd close bd-42 --reason "Completed" --json
 - `3` - Low (polish, optimization)
 - `4` - Backlog (future ideas)
 
+### Statuses
+
+- `draft` - Exists but not ready to execute (excluded from `bd ready`)
+- `open` - Ready for work
+- `in_progress` - Actively being worked on
+- `blocked` - Waiting on a dependency
+- `closed` - Completed
+- `deferred` - Postponed for later
+
 ### Workflow for AI Agents
 
-1. **Check ready work**: `bd ready` shows unblocked issues
+1. **Check ready work**: `bd ready` shows unblocked issues (excludes draft)
 2. **Claim your task atomically**: `bd update <id> --claim`
 3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
+4. **Need a decision?** Create a decision task:
+   - `bd create "Choose approach" --type decision -p 1 --deps blocks:<current-task>`
+5. **Discover new work?** Create linked issue:
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
+6. **Complete**: `bd close <id> --reason "Done"`
 
 ### Auto-Sync
 
