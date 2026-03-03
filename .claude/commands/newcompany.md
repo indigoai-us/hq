@@ -77,6 +77,7 @@ EOF
   knowledge: companies/{slug}/knowledge/
   deploy: []
   vercel_projects: []
+  epic: {epic-id}
   qmd_collections:
     - {slug}
 ```
@@ -125,13 +126,28 @@ Credentials and config at `companies/{slug}/settings/` (excluded from version co
 Company-scoped rules at `companies/{slug}/policies/`.
 ```
 
-### 8. Reindex
+### 8. Create Root Epic
+
+Create a beads root epic for the company. All future work for this company will be tracked as children of this epic.
+
+```bash
+bd create "{Name}" --type epic --description "Root epic for {Name} — {brief description}." --labels "company,{slug}" --json
+```
+
+Capture the epic ID from the JSON output. Add it to the manifest entry:
+
+```yaml
+{slug}:
+  epic: {epic-id}
+```
+
+### 9. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-### 9. Report
+### 10. Report
 
 ```
 Company {slug} scaffolded:
@@ -141,6 +157,7 @@ Company {slug} scaffolded:
   Projects:   companies/{slug}/projects/
   Settings:   companies/{slug}/settings/
   Manifest:   updated
+  Epic:       {epic-id}
   qmd:        collection "{slug}" {created | skipped}
 ```
 
