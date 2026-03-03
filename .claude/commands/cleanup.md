@@ -121,6 +121,138 @@ find workspace/threads -name "T-*-auto-*.json" -mtime +14 2>/dev/null
 find workspace/threads -name "*.json" -not -name "*-auto-*" -mtime +30 2>/dev/null
 ```
 
+### 7. Symlink Health
+
+**Policy**: All symlinks in `companies/` must resolve to existing targets.
+
+```bash
+# Find dangling symlinks in companies/ (follow -L to detect broken)
+for link in companies/*/; do
+  [[ -L "${link%/}" ]] || continue
+  [[ -e "${link%/}" ]] || echo "DANGLING_SYMLINK: ${link%/} → $(readlink "${link%/}")"
+done
+```
+
+**Violations**:
+- Dangling symlink → target does not exist, needs fixing
+
+### 8. Duplicate Files
+
+**Policy**: No identical content across knowledge directories.
+
+```bash
+# MD5 hash all .md files in knowledge dirs, flag duplicates (macOS-compatible)
+find knowledge/ -L companies/*/knowledge/ -name "*.md" -not -name "INDEX.md" -exec md5 -r {} \; 2>/dev/null | sort | awk '{h=$1; if(seen[h]) print "DUPLICATE: " seen[h] " = " $2; else seen[h]=$2}'
+```
+
+If duplicates found, show the duplicate pairs (hash + paths).
+
+**Violations**:
+- Files with identical content → should be consolidated or symlinked
+
+### 9. Large Files
+
+**Policy**: No files over 500KB in tracked git content.
+
+```bash
+# Find large files, excluding .git, .dolt, .beads, node_modules, worktrees
+find . -not -path './.git/*' -not -path './.dolt/*' -not -path './.beads/*' -not -path './node_modules/*' -not -path './.claude/worktrees/*' -type f -size +500k 2>/dev/null
+```
+
+**Violations**:
+- File over 500KB → should be moved to LFS, compressed, or gitignored
+
+### 10. TODO/FIXME Scan
+
+**Policy**: Surface inline TODOs across the repo (informational, not a failure).
+
+```bash
+# Scan for TODO/FIXME markers in tracked file types (exclude self and plans)
+grep -rn "TODO\|FIXME\|HACK\|XXX" --include="*.md" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v '.git/' | grep -v '.claude/commands/' | grep -v '.claude/plans/' | head -20
+```
+
+Report count. This check is **informational** — it never fails the audit.
+
+### 11. Skill SKILL.md Validity
+
+**Policy**: Each SKILL.md must have valid YAML frontmatter with `name` and `description` fields, plus a non-empty markdown body (per `knowledge/ghq-core/skill-schema.md`).
+
+```bash
+for dir in .claude/skills/*/; do
+  skill=$(basename "$dir")
+  [[ "$skill" == "_template" ]] && continue
+  file="${dir}SKILL.md"
+  [[ -f "$file" ]] || continue
+
+  # Check directory name is lowercase with hyphens
+  echo "$skill" | grep -qE '^[a-z0-9-]+$' || echo "INVALID_NAME: $skill (must be lowercase with hyphens)"
+
+  # Check frontmatter has name and description
+  grep -q "^name:" "$file" || echo "MISSING_FIELD: $skill/SKILL.md lacks 'name' in frontmatter"
+  grep -q "^description:" "$file" || echo "MISSING_FIELD: $skill/SKILL.md lacks 'description' in frontmatter"
+
+  # Check body is non-empty (content after closing ---)
+  body=$(awk '/^---$/{n++; next} n>=2' "$file" | tr -d '[:space:]')
+  [[ -z "$body" ]] && echo "EMPTY_BODY: $skill/SKILL.md has no instructions"
+done
+```
+
+**Violations**:
+- Missing `name` or `description` in frontmatter → must be added
+- Empty body → skill has no instructions
+- Invalid directory name → must be lowercase with hyphens only
+
+### 12. qmd Index Freshness
+
+**Policy**: qmd search index should not be stale relative to indexed content.
+
+```bash
+# Check qmd index freshness against content files
+qmd_db="$HOME/.cache/qmd/index.sqlite"
+if [[ -f "$qmd_db" ]]; then
+  # Check if any .md files are newer than the index
+  stale_count=$(find . -name "*.md" -not -path './.git/*' -newer "$qmd_db" 2>/dev/null | wc -l | tr -d ' ')
+  [[ "$stale_count" -gt 0 ]] && echo "STALE: qmd index is behind $stale_count file(s). Run: qmd update"
+else
+  echo "MISSING: no qmd database found at $qmd_db"
+fi
+```
+
+**Violations**:
+- Index older than content → run `qmd update`
+- No database file → qmd not initialized
+
+### 13. CLAUDE.md Learned Rules Count
+
+**Policy**: Learned rules sections have a 10-rule max. Warn when approaching capacity (8+).
+
+```bash
+# Project-level rules
+project_count=$(grep -c "^- \*\*ALWAYS\*\*" .claude/CLAUDE.md 2>/dev/null || echo 0)
+echo "PROJECT_RULES: $project_count/10"
+[[ "$project_count" -ge 8 ]] && echo "WARNING: project CLAUDE.md approaching rule cap ($project_count/10)"
+
+# Global rules
+global_count=$(grep -c "^- \*\*ALWAYS\*\*" ~/.claude/CLAUDE.md 2>/dev/null || echo 0)
+echo "GLOBAL_RULES: $global_count/10"
+[[ "$global_count" -ge 8 ]] && echo "WARNING: global CLAUDE.md approaching rule cap ($global_count/10)"
+```
+
+**Violations**:
+- 8+ rules → approaching cap, consider evicting stale rules
+- 10 rules → at cap, must evict before adding new rules
+
+### 14. Ignored but Tracked
+
+**Policy**: No files matching `.gitignore` patterns should be tracked by git.
+
+```bash
+git ls-files -i --exclude-standard 2>/dev/null
+```
+
+**Violations**:
+- File is both tracked and ignored → should be untracked (`git rm --cached`) or removed from `.gitignore`
+
 ---
 
 ## Output Format
@@ -138,8 +270,16 @@ GHQ Cleanup Audit
 ✓ Manifest: consistent
 ✓ Git: clean
 ✓ Threads: no stale files
+✓ Symlinks: all resolve
+✓ Duplicates: none
+✓ Large files: none (>500KB)
+✓ TODOs: 3 found (informational)
+✓ Skill validity: 8 valid
+✗ qmd index: stale (2 files newer)
+✓ Learned rules: 1/10 (project), 2/10 (global)
+✓ Ignored-but-tracked: none
 
-Summary: 2 issues found
+Summary: 3 issues found
 Run /cleanup --reindex to rebuild all INDEX.md files
 ```
 
@@ -154,6 +294,14 @@ GHQ Cleanup Audit
 ✓ Manifest: consistent
 ✓ Git: clean
 ✓ Threads: no stale files
+✓ Symlinks: all resolve
+✓ Duplicates: none
+✓ Large files: none (>500KB)
+✓ TODOs: 0 found (informational)
+✓ Skill validity: 8 valid
+✓ qmd index: fresh
+✓ Learned rules: 1/10 (project), 2/10 (global)
+✓ Ignored-but-tracked: none
 
 Summary: GHQ is healthy
 ```
