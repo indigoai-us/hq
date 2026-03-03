@@ -4,10 +4,6 @@
 
 | Name | Description |
 |------|-------------|
-| `audit-company-isolation.md` | Audit: Company Isolation |
-| `audit-consolidated-report.md` | GHQ Integrity Review -- Consolidated Audit Report |
-| `audit-directory-structure.md` | Audit: Directory Structure |
-| `audit-knowledge-qmd.md` | Audit: Knowledge & QMD System |
 | `index-md-spec.md` | INDEX.md Specification |
 | `loops-schema.md` | Loops Schema |
 | `project-template.md` | Project Template |

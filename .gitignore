@@ -13,3 +13,4 @@ companies/*
 .beads/dolt-monitor.pid
 .beads/dolt-server.port
 /.claude/worktrees
+loops/state.jsonl

@@ -8,4 +8,4 @@
 | `policies/` | Redirect index — canonical policies in `.claude/policies/` |
 | `ralph/` | 12 files — Ralph Wiggum Loop methodology documentation |
 | `skills/` | 1 file — Skill authoring guide and conceptual overview |
-| `video-gen/` | 3 files — Video generation pipeline and Remotion pattern reference |
+| `video-gen/` | 2 files — Video generation pipeline and Remotion pattern reference |
