@@ -60,3 +60,4 @@
 {"ts":"2026-03-03T10:03:42Z","type":"story_complete","story_id":"ghq-uik.1.4.1","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-03T09:34:00Z","type":"story_complete","story_id":"ghq-uik.1.4.1","data":{"skills_run":["direct-execution"],"summary":"Fixed QMD config: replaced stale ghq collection with hq pointing to ~/repos/ghq, purged 704 orphaned chunks, reindexed 31 docs"}}
 {"ts":"2026-03-03T10:05:30Z","type":"skill_start","story_id":"ghq-uik.1.4.3","skill_id":"enhancement","data":{}}
+{"ts":"2026-03-03T10:10:41Z","type":"story_complete","story_id":"ghq-uik.1.4.3","data":{"skills_run":["enhancement"]}}
