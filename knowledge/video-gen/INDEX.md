@@ -1,9 +1,8 @@
-# Video Gen — Knowledge Index
+# Video Gen — Index
 
-> Reference material for the video-gen skill.
+> Auto-generated. Updated: 2026-03-04
 
-| File | Description |
+| Name | Description |
 |------|-------------|
-| `INDEX.md` | This file |
 | `pipeline-reference.md` | ElevenLabs TTS API, Remotion CLI flags, ffmpeg recipe cookbook |
 | `remotion-patterns.md` | Remotion project structure and component patterns |
