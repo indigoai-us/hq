@@ -14,7 +14,7 @@ Ultra-lean state machine with batch-parallel execution. Builds a dependency grap
 ## Core Pattern (Batch-Parallel, Fresh-Context)
 
 The orchestrator is an **ultra-lean state machine**. It builds a dependency graph, groups subtasks into parallel batches, and spawns up to 5 sub-agents concurrently per batch via `/execute-task`. The orchestrator:
-- Builds dependency DAG and groups subtasks into execution batches via `scripts/dep-graph.sh`
+- Builds dependency DAG and groups subtasks into execution batches via `loops/scripts/dep-graph.sh`
 - Spawns up to 5 sub-agents in parallel per batch (fresh context per sub-agent)
 - Waits for ALL sub-agents in a batch to complete before proceeding to the next batch
 - Receives only a structured JSON summary from each sub-agent
@@ -133,7 +133,7 @@ Before entering the loop, build a dependency DAG from all subtasks and group the
 **Generate batches:**
 
 ```bash
-BATCHES=$(scripts/dep-graph.sh {task-id})
+BATCHES=$(loops/scripts/dep-graph.sh {task-id})
 # Output: [["taskA","taskB"], ["taskC"], ["taskD","taskE"]]
 # Each inner array is a batch of independent subtasks that can run in parallel.
 # Batches are ordered: batch 0 must complete before batch 1 starts.
@@ -209,7 +209,7 @@ for each batch in BATCHES:
     ')
 
     # Detect overlaps and get sub-batches
-    SUB_BATCHES=$(echo "$OVERLAP_INPUT" | scripts/file-overlap.sh --stdin)
+    SUB_BATCHES=$(echo "$OVERLAP_INPUT" | loops/scripts/file-overlap.sh --stdin)
     # Output: [["taskA","taskC"], ["taskB"]]
     # If no overlap: [["taskA","taskB","taskC"]] (unchanged)
     # Overlap logs appear on stderr (e.g., "file-overlap: serialized taskB after taskA due to overlap on: SKILL.md")
@@ -277,7 +277,7 @@ for each batch in BATCHES:
         to split it into sub-batches that avoid file conflicts:
 
         ```bash
-        SUB_BATCHES=$(echo "$OVERLAP_INPUT" | scripts/file-overlap.sh --stdin)
+        SUB_BATCHES=$(echo "$OVERLAP_INPUT" | loops/scripts/file-overlap.sh --stdin)
         # If overlap detected: [["task-a","task-c"], ["task-b"]]
         # If no overlap:       [["task-a","task-b","task-c"]]
         ```
@@ -445,7 +445,7 @@ for each batch in BATCHES:
 
         After processing each batch (not each subtask), refresh context:
         1. Re-fetch subtasks from beads: `bd children {task-id} --json`
-        2. Rebuild dependency graph: `scripts/dep-graph.sh {task-id}`
+        2. Rebuild dependency graph: `loops/scripts/dep-graph.sh {task-id}`
            (closed tasks may unlock new batches)
         3. Refresh git state: `git log --oneline -5`
         4. If any subtask failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
@@ -465,7 +465,7 @@ for each batch in BATCHES:
 |-----------|-------------|
 | Max 5 concurrent sub-agents | Chunk splitting in step 5a |
 | No nested run-loops | Each sub-agent runs /execute-task, not /run-loop |
-| No shared file state between parallel agents | File overlap detection in step 4c via `scripts/file-overlap.sh` |
+| No shared file state between parallel agents | File overlap detection in step 4c via `loops/scripts/file-overlap.sh` |
 | No parallel file conflicts | Overlap detection splits conflicting tasks into sequential sub-batches (step 4c) |
 | Batch ordering respects dependencies | Dependency graph from step 4b |
 | Failed sub-agent does not block peers | Post-batch collection in step 5c |
@@ -557,7 +557,7 @@ COMPLETED:
 - **ONE loop at a time** -- no nested run-loops. Sub-agents run /execute-task, never /run-loop.
 - **Max 5 concurrent sub-agents** -- batches larger than 5 are chunked. Never exceed 5 parallel Task() calls.
 - **Batch-parallel execution** -- independent subtasks within a batch run concurrently. Dependent subtasks wait for their batch.
-- **Overlap-safe parallelism** -- before spawning, each batch is checked for file overlap via `scripts/file-overlap.sh`. Overlapping subtasks are serialized into sequential sub-batches. Logs indicate when serialization occurs.
+- **Overlap-safe parallelism** -- before spawning, each batch is checked for file overlap via `loops/scripts/file-overlap.sh`. Overlapping subtasks are serialized into sequential sub-batches. Logs indicate when serialization occurs.
 - **All-in-one-message dispatch** -- all Task() calls for a chunk MUST be in the same message to enable parallel execution.
 - **Wait for full batch** -- never start the next batch (or sub-batch) until ALL sub-agents in the current chunk have returned.
 - **Sub-agent per subtask** -- each subtask runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes skill phases directly.

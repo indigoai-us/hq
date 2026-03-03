@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test-dep-graph.sh -- Tests for dep-graph.sh dependency batching algorithm
 #
-# Usage: ./scripts/test-dep-graph.sh
+# Usage: ./loops/scripts/test-dep-graph.sh
 #
 # Tests the three core scenarios from acceptance criteria:
 #   1. All independent subtasks -> single batch

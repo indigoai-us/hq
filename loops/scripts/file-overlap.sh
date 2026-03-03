@@ -7,8 +7,8 @@
 # write conflicts.
 #
 # Usage:
-#   echo '<json>' | ./scripts/file-overlap.sh --stdin   # Read from stdin
-#   ./scripts/file-overlap.sh <parent-task-id> <batch-json>  # Fetch from beads
+#   echo '<json>' | ./loops/scripts/file-overlap.sh --stdin   # Read from stdin
+#   ./loops/scripts/file-overlap.sh <parent-task-id> <batch-json>  # Fetch from beads
 #
 # Input JSON format (stdin):
 #   {

@@ -7,8 +7,8 @@
 # Batch N+1 depends on all tasks in batch N being completed.
 #
 # Usage:
-#   ./scripts/dep-graph.sh <parent-task-id>       # Fetch from beads
-#   echo '<json>' | ./scripts/dep-graph.sh --stdin  # Read from stdin (for testing)
+#   ./loops/scripts/dep-graph.sh <parent-task-id>       # Fetch from beads
+#   echo '<json>' | ./loops/scripts/dep-graph.sh --stdin  # Read from stdin (for testing)
 #
 # Output (JSON):
 #   [["taskA","taskB"], ["taskC"], ["taskD","taskE"]]

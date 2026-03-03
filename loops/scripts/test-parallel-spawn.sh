@@ -5,7 +5,7 @@
 # These are structural/logic tests that verify the orchestrator's batching behavior
 # without actually spawning sub-agents (which requires the Claude Task tool).
 #
-# Usage: ./scripts/test-parallel-spawn.sh
+# Usage: ./loops/scripts/test-parallel-spawn.sh
 #
 # Tests:
 #   1. Single batch of 3 tasks -> all 3 spawned in one round

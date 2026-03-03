@@ -4,7 +4,7 @@
 # Validates that subtasks with overlapping file scopes are separated into
 # different batches to prevent parallel write conflicts.
 #
-# Usage: ./scripts/test-file-overlap.sh
+# Usage: ./loops/scripts/test-file-overlap.sh
 
 set -euo pipefail
 
