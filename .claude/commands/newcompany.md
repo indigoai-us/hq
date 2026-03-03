@@ -29,11 +29,19 @@ Ask (batch):
 
 ### 3. Scaffold Directory
 
+`companies/` is a symlink to `~/Documents/GHQ/companies/`. All company data lives outside the repo.
+Scaffold directly in the symlink target:
+
 ```bash
-mkdir -p companies/{slug}/settings
-mkdir -p companies/{slug}/knowledge
-mkdir -p companies/{slug}/policies
-mkdir -p companies/{slug}/projects
+mkdir -p ~/Documents/GHQ/companies/{slug}/settings
+mkdir -p ~/Documents/GHQ/companies/{slug}/knowledge
+mkdir -p ~/Documents/GHQ/companies/{slug}/policies
+mkdir -p ~/Documents/GHQ/companies/{slug}/projects
+```
+
+Verify the directory is accessible through the repo symlink:
+```bash
+ls companies/{slug}/
 ```
 
 ### 4. Create knowledge/INDEX.md
@@ -138,6 +146,7 @@ Company {slug} scaffolded:
 
 ## Rules
 
+- `companies/` is a symlink to `~/Documents/GHQ/companies/` — never commit company data to the repo
 - All fields in manifest.yaml must be non-null (use empty arrays `[]`, not `null`)
 - Knowledge directory with INDEX.md is mandatory — always create one
 - Always update manifest.yaml and run qmd update in the same operation
