@@ -1,7 +1,10 @@
 node_modules/
 .DS_Store
 workspace/scratch/
-companies
+# Company data lives outside repo (symlinked from ~/Documents/GHQ/companies/)
+# Track manifest.yaml but ignore individual company symlinks
+companies/*
+!companies/manifest.yaml
 
 # Dolt database files (added by bd init)
 .dolt/
