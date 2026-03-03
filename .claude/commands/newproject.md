@@ -67,6 +67,7 @@ Ask (batch):
 2. Brief description (1-2 sentences)?
 3. Associated repos? (paths or "none")
 4. Skills this project will use? Show relevant skills from `.claude/skills/*/SKILL.md` (or "none")
+5. Success criteria? (what does success look like for this project — 2-3 bullet points)
 
 ### 5. Create Project Epic in Beads
 
@@ -74,7 +75,10 @@ Ask (batch):
 bd create "{Project Name}" \
   --type epic \
   --parent {company-epic-id} \
-  --description "{description}" \
+  --description "{description}
+
+## Success Criteria
+{success criteria bullet points from step 4}" \
   --labels "{company-slug},{project-slug}" \
   --json
 ```

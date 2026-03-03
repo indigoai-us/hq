@@ -26,6 +26,7 @@ Ask (batch):
 3. Existing repos to associate? (paths or "none")
 4. Settings needed? (API keys, credentials — or "none for now")
 5. Existing skills to assign? (or "none")
+6. Success criteria? (what does success look like for this company — 2-3 bullet points)
 
 ### 3. Scaffold Directory
 
@@ -132,7 +133,10 @@ Company-scoped rules at `companies/{slug}/policies/`.
 Create a beads root epic for the company. All future work for this company will be tracked as children of this epic.
 
 ```bash
-bd create "{Name}" --type epic --description "Root epic for {Name} — {brief description}." --labels "company,{slug}" --json
+bd create "{Name}" --type epic --description "Root epic for {Name} — {brief description}.
+
+## Success Criteria
+{success criteria bullet points from step 2}" --labels "company,{slug}" --json
 ```
 
 Capture the epic ID from the JSON output. Add it to the manifest entry:
