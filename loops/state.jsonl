@@ -76,3 +76,5 @@
 {"ts":"2026-03-03T23:26:10Z","type":"skill_start","story_id":"ghq-uik.1.5.2","skill_id":"direct","data":{}}
 {"ts":"2026-03-03T23:27:57Z","type":"story_complete","story_id":"ghq-uik.1.5.2","data":{"skills_run":["direct"]}}
 {"ts":"2026-03-03T23:28:34Z","type":"skill_start","story_id":"ghq-uik.1.5.1","skill_id":"enhancement","data":{}}
+{"ts":"2026-03-03T23:45:37Z","type":"skill_complete","story_id":"ghq-uik.1.5.1","skill_id":"enhancement","data":{"files_changed":["AGENTS.md","loops/scripts/bd-resolve.sh","loops/scripts/test-bd-extensions.sh","loops/state.jsonl"],"back_pressure":{"tests":"pass","lint":"skipped","typecheck":"skipped"}}}
+{"ts":"2026-03-03T23:45:37Z","type":"story_complete","story_id":"ghq-uik.1.5.1","data":{"skills_run":["enhancement"]}}
