@@ -19,7 +19,7 @@ Arguments: `{query}` -- the research question (required).
 
 ## Process
 
-Follow these five phases in order. Do not skip phases.
+Follow these six phases in order. Do not skip phases.
 
 ### Phase 1: Query Clarification
 
@@ -125,13 +125,32 @@ For each source, track:
 
 Do not start writing the report yet. Organize your thinking first.
 
-### Phase 5: Report Generation
+### Phase 5: Link Validation
+
+Before writing the report, verify that all cited URLs are accessible.
+
+1. For each unique URL in the source tracker, attempt a `WebFetch` request
+2. Mark each URL as **live** or **dead** based on the response:
+   - **Live**: WebFetch returns content (any non-error response)
+   - **Dead**: WebFetch returns an error, timeout, or empty content
+3. For dead links:
+   - Attempt one retry with the URL (transient failures happen)
+   - If still dead, search for an alternative source covering the same finding using `WebSearch`
+   - If an alternative is found and confirms the finding, replace the dead URL with the new one
+   - If no alternative is found, flag the finding as **[unverified -- original source unavailable]** in the report
+4. Remove any source from the tracker that is both dead and has no replacement
+5. Re-number citations if sources were removed to maintain sequential ordering
+6. Log a summary: `{N} sources validated, {M} dead links found, {R} replaced, {D} removed`
+
+**Validation budget:** Do not spend more than one WebFetch call per URL (plus one retry for dead links). This phase should be fast.
+
+### Phase 6: Report Generation
 
 1. Ask the user where to save the report:
    - If user provides a full file path: save there
    - If user provides a directory: generate filename as `deep-research-{query-slug}-{YYYY-MM-DD}.md`
    - If user provides nothing: save to `./deep-research-{query-slug}-{YYYY-MM-DD}.md` in cwd
-2. Write each section following the outline from Phase 4
+2. Write each section following the outline from Phase 4, using only validated sources from Phase 5
 3. Insert inline citations as footnotes `[1]`, `[2]`, or `[1, 3]` for multiple sources
 4. Write the executive summary last, after all sections are complete
 5. Append the source table
@@ -209,6 +228,8 @@ Areas that would benefit from further research.}
 - Present the search plan before starting research but proceed without waiting for approval
 - Limit clarifying questions to 2 maximum -- preserve the autonomous feel
 - Always include Gaps and Limitations -- honest research acknowledges unknowns
+- Never skip link validation -- all cited URLs must be verified before the report is finalized
+- Dead links must be replaced or flagged -- never include a dead URL in the final Sources table without marking it
 - Save the report file and confirm the path to the user
 - Respect copyright: use original wording in the report, do not reproduce large chunks of source text
 
@@ -216,3 +237,4 @@ Areas that would benefit from further research.}
 
 - Markdown report file saved to user-specified or default path
 - Console summary: axes searched, sources found, iterations used, report path
+- Link validation summary: sources validated, dead links found, replacements made, removals
