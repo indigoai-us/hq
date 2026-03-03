@@ -1,0 +1,3 @@
+{"ts":"2026-03-03T02:10:00Z","type":"loop_start","data":{"task_id":"ghq-uik.1.1","stories_total":6,"stories_pending":6}}
+{"ts":"2026-03-03T02:07:45Z","type":"skill_start","story_id":"ghq-uik.1.1.1","skill_id":"direct-execution","data":{}}
+{"ts":"2026-03-03T02:10:15Z","type":"story_complete","story_id":"ghq-uik.1.1.1","data":{"skills_run":["direct-execution"]}}
