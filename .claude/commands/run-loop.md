@@ -125,6 +125,51 @@ Append a `loop_start` entry to `loops/state.jsonl`:
 {"ts":"{ISO8601}","type":"loop_start","data":{"task_id":"{task-id}","stories_total":{total},"stories_pending":{remaining.length}}}
 ```
 
+### 4b. Build Dependency Graph and Batch Plan
+
+Before entering the loop, build a dependency DAG from all subtasks and group them into parallel execution batches. This determines the execution order and which subtasks can run concurrently.
+
+**Generate batches:**
+
+```bash
+BATCHES=$(scripts/dep-graph.sh {task-id})
+# Output: [["taskA","taskB"], ["taskC"], ["taskD","taskE"]]
+# Each inner array is a batch of independent subtasks that can run in parallel.
+# Batches are ordered: batch 0 must complete before batch 1 starts.
+```
+
+**Algorithm (Kahn topological sort with level tracking):**
+
+1. Fetch all subtasks via `bd children {task-id} --json`
+2. Filter to open/in_progress subtasks only (closed = already resolved)
+3. Extract `blocks`-type dependencies (ignore `parent-child` which is structural)
+4. Build in-degree map (count of unresolved blocking deps per subtask)
+5. Iteratively:
+   - Collect all subtasks with in-degree 0 (no unresolved deps) into a batch
+   - Remove them from the graph
+   - Decrement in-degrees of their dependents
+   - Repeat until all subtasks are placed
+
+**Edge cases handled:**
+
+| Scenario | Result |
+|----------|--------|
+| No dependencies between subtasks | All subtasks in a single batch (maximum parallelism) |
+| Linear chain (A blocks B blocks C) | Each subtask in its own batch (fully sequential) |
+| Diamond (A blocks B+C, B+C block D) | Batches: [A], [B,C], [D] |
+| Closed dependency | Treated as resolved (does not block) |
+| Cycle detected | All remaining subtasks dumped in final batch (fallback) |
+
+**Display the batch plan:**
+
+```
+Batch Plan for {task-id}:
+  Batch 1: {id1}, {id2}  (parallel)
+  Batch 2: {id3}          (sequential)
+  Batch 3: {id4}, {id5}  (parallel)
+Total: {N} batches, {M} subtasks
+```
+
 ### 5. The Loop
 
 The orchestrator is an **ultra-lean state machine**. It picks subtasks and delegates everything to sub-agents. Classification, skill selection, skill chains, and learning capture all happen inside the sub-agent via `/execute-task`. The orchestrator NEVER accumulates implementation context.
