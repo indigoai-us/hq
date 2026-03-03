@@ -14,6 +14,7 @@
 #   2. Records the answer in metadata (resolution_answer, resolved_at, resolved_by)
 #   3. Adds a comment with the answer text
 #   4. Closes the issue with reason="resolved"
+#   5. Writes to preferences.yaml if the decision has company/action context
 #
 # Exit codes:
 #   0  Success
@@ -144,6 +145,57 @@ bd comments "$ISSUE_ID" add "Decision resolved: $ANSWER" --quiet 2>/dev/null || 
 
 # Close the issue
 bd close "$ISSUE_ID" --reason "resolved" --quiet 2>/dev/null || true
+
+# ─────────────────────────────────────────────────
+# Write preference (if company/action context exists)
+# ─────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WRITE_PREF="$SCRIPT_DIR/write-preference.sh"
+
+if [[ -x "$WRITE_PREF" ]]; then
+  # Extract company and action from issue metadata or labels
+  PREF_INFO=$(echo "$ISSUE_JSON" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+issue = data[0] if isinstance(data, list) else data
+meta = issue.get('metadata', {})
+labels = issue.get('labels', [])
+
+# Company: from metadata.company or first company-like label
+company = meta.get('company', '')
+if not company:
+    # Try to find company from labels
+    for label in labels:
+        if label in ('launch-grid', 'production-house'):
+            company = label
+            break
+
+# Action: from metadata.action or metadata.escalation_action
+action = meta.get('action', '') or meta.get('escalation_action', '')
+
+# Question: from issue title
+question = issue.get('title', '')
+
+# Applies_to: from metadata.applies_to or 'all'
+applies_to = meta.get('applies_to', 'all')
+
+if company and action:
+    print(f'{company}|{action}|{question}|{applies_to}')
+else:
+    print('')
+" 2>/dev/null) || true
+
+  if [[ -n "$PREF_INFO" ]]; then
+    IFS='|' read -r PREF_COMPANY PREF_ACTION PREF_QUESTION PREF_APPLIES_TO <<< "$PREF_INFO"
+    "$WRITE_PREF" \
+      --company "$PREF_COMPANY" \
+      --action "$PREF_ACTION" \
+      --question "$PREF_QUESTION" \
+      --answer "$ANSWER" \
+      --applies-to "$PREF_APPLIES_TO" \
+      --decision-id "$ISSUE_ID" 2>/dev/null || true
+  fi
+fi
 
 # ─────────────────────────────────────────────────
 # Output
