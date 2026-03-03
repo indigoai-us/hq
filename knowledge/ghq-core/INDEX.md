@@ -6,6 +6,7 @@
 |------|-------------|
 | `audit-company-isolation.md` | Audit: Company Isolation |
 | `audit-directory-structure.md` | Audit: Directory Structure |
+| `audit-knowledge-qmd.md` | Audit: Knowledge & QMD System |
 | `index-md-spec.md` | INDEX.md Specification |
 | `loops-schema.md` | Loops Schema |
 | `project-template.md` | Project Template |
