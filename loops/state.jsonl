@@ -54,3 +54,5 @@
 {"ts":"2026-03-03T10:00:00Z","type":"loop_end","data":{"task_id":"ghq-uik.1.4","stories_completed":5,"stories_blocked":0}}
 {"ts":"2026-03-03T16:15:00Z","type":"loop_start","data":{"task_id":"ghq-53s.1.1","stories_total":6,"stories_pending":5}}
 {"ts":"2026-03-03T16:18:13Z","type":"skill_start","story_id":"ghq-53s.1.1.2","skill_id":"direct-execution","data":{}}
+{"ts":"2026-03-03T16:23:00Z","type":"skill_complete","story_id":"ghq-53s.1.1.2","skill_id":"direct-execution","data":{"summary":"Transcribed 3 Charisma on Command videos with AssemblyAI speaker diarization","files_created":["assets/voice-clone/transcripts/5-common-habits.json","assets/voice-clone/transcripts/6-verbal-tricks.json","assets/voice-clone/transcripts/secrets-psychology.json","assets/voice-clone/transcribe.py"],"key_decisions":["Used AssemblyAI universal-3-pro model with speech_models parameter","Stored transcripts as structured JSON with utterances and word-level data","Each word includes speaker label for downstream narrator extraction"]}}
+{"ts":"2026-03-03T16:23:00Z","type":"story_complete","story_id":"ghq-53s.1.1.2","data":{"skills_run":["direct-execution"]}}
