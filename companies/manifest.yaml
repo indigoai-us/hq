@@ -29,3 +29,16 @@ launch-grid:
   epic: ghq-uik
   qmd_collections:
     - launch-grid
+
+production-house:
+  symlink: production-house
+  repos: []
+  settings: companies/production-house/settings/
+  skills:
+    - video-gen
+  knowledge: companies/production-house/knowledge/
+  deploy: []
+  vercel_projects: []
+  epic: ghq-53s
+  qmd_collections:
+    - production-house
