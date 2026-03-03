@@ -43,3 +43,5 @@ Add `-c <collection>` to scope searches. Use `qmd` before Grep for exploration.
 
 <!-- Max 10 rules. When full, evict the least-referenced rule. -->
 <!-- Scoped rules go in skills or policies, not here. -->
+
+- **ALWAYS**: `companies/` contains symlinks. Use `--follow-links` (Grep tool) or `-L` (find) to traverse them. <!-- user-correction | 2026-03-03 -->
