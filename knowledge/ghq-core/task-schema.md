@@ -7,7 +7,7 @@ Tasks in GHQ are managed through beads (`bd` CLI). Only companies and projects a
 Tasks are stored in the beads database (`.beads/`). No filesystem files needed -- all task data lives in beads.
 
 ```
-Company Epic                    ← created by /newcompany
+Company Epic                    ← created by /new-company
 └── Project Epic                ← created manually or by /create-task (if project doesn't exist)
     └── Task                    ← created by /create-task
         ├── Subtask 1
@@ -19,7 +19,7 @@ Company Epic                    ← created by /newcompany
 
 ## Creating Tasks
 
-### Company Epic (created by /newcompany)
+### Company Epic (created by /new-company)
 
 ```bash
 bd create "Company Name" --type epic --labels "company"

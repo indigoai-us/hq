@@ -87,7 +87,7 @@ ffmpeg -i out/video.mp4 -i voiceover.mp3 \
 **Add PNG watermark (bottom-right):**
 ```bash
 ffmpeg -i out/merged.mp4 \
-  -i companies/ship-it-code/assets/brand/ship-it-code-watermark.png \
+  -i companies/{company}/assets/brand/{company}-watermark.png \
   -filter_complex "overlay=W-w-50:H-h-50" -c:a copy out/watermarked.mp4
 ```
 
@@ -112,7 +112,7 @@ See `knowledge/video-gen/pipeline-reference.md` for more recipes.
 - Never hardcode API keys — read from env vars
 - Never commit intermediate binary files (mp3, wav) to git
 - Add `out/` to `.gitignore` in project directories
-- For ship-it-code videos, always apply the watermark
+- Always apply the watermark using the active company's brand assets
 - Present render plan (resolution, fps, duration, scenes) before rendering
 - Respect company isolation: only use brand assets for the matching company
 

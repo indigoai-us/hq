@@ -5,7 +5,7 @@ argument-hint: [project-slug] [--company company-slug]
 visibility: public
 ---
 
-# /newproject - Project Scaffolding
+# /new-project - Project Scaffolding
 
 Create a new project with a beads epic and directory structure under a company.
 
@@ -14,8 +14,8 @@ Create a new project with a beads epic and directory structure under a company.
 ## Hierarchy
 
 ```
-Company Epic (existing)         ← created by /newcompany
-└── Project Epic (created here) ← /newproject creates this
+Company Epic (existing)         ← created by /new-company
+└── Project Epic (created here) ← /new-project creates this
     └── Task (future)           ← created by /create-task
         ├── Subtask 1
         └── Subtask 2

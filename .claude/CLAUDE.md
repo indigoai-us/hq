@@ -5,10 +5,13 @@ Personal OS for orchestrating work across companies and AI.
 ## Structure
 
 ```
+.beads/           issue tracker (bd CLI), JSONL backup
 .claude/          commands/, skills/, hooks/, policies/
-companies/        {slug}/settings/, knowledge/, data/, projects/
+companies/        {slug}/settings/, knowledge/, projects/, policies/
 knowledge/        shared knowledge (skills framework, etc.)
 loops/            execution state (state.jsonl, history.jsonl)
+AGENTS.md         agent onboarding (bd workflow, shell safety, skills)
+README.md         project overview
 ```
 
 ## Rules

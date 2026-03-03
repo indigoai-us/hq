@@ -5,7 +5,7 @@ argument-hint: [company-slug]
 visibility: public
 ---
 
-# /newcompany - Company Scaffolding
+# /new-company - Company Scaffolding
 
 Create a new company with complete infrastructure in one operation.
 

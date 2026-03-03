@@ -86,18 +86,18 @@ companies/ -> ~/Documents/GHQ/companies/
   {slug}/
     settings/    # Credentials, API keys (gitignored via symlink)
     knowledge/   # Company-specific knowledge
-    data/        # Company-specific data
     projects/    # Company long-running projects
+    policies/    # Company-specific policies
 ```
 
-The symlink keeps sensitive data out of the git repo. See [Company Isolation](../policies/company-isolation.md).
+The symlink keeps sensitive data out of the git repo. See `.claude/policies/company-isolation.md`.
 
 ## Knowledge Bases
 
 | Path | Contents |
 |------|----------|
 | `knowledge/ghq-core/` | GHQ schemas, index-md spec, quick reference |
-| `knowledge/policies/` | Enforcement policies (company isolation, etc.) |
+| `knowledge/policies/` | Redirect index (canonical policies in `.claude/policies/`) |
 | `knowledge/ralph/` | Ralph methodology (01-overview through 11-team-training) |
 | `knowledge/skills/` | Skill authoring guide |
 | `knowledge/video-gen/` | Video generation pipeline reference |

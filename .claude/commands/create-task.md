@@ -16,7 +16,7 @@ Create a task with subtasks under an existing project epic. Only companies and p
 ## Hierarchy
 
 ```
-Company Epic (existing)         ← created by /newcompany
+Company Epic (existing)         ← created by /new-company
 └── Project Epic (existing)     ← created manually or by project setup
     └── Task (created here)     ← /create-task creates this
         ├── Subtask 1
