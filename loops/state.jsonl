@@ -14,3 +14,5 @@
 {"ts":"2026-03-03T02:25:40Z","type":"skill_start","story_id":"ghq-uik.1.2.2","skill_id":"content-direct","data":{}}
 {"ts":"2026-03-03T02:27:12Z","type":"story_complete","story_id":"ghq-uik.1.2.2","data":{"skills_run":["content-direct"]}}
 {"ts":"2026-03-03T02:28:49Z","type":"skill_start","story_id":"ghq-uik.1.2.3","skill_id":"enhancement","data":{}}
+{"ts":"2026-03-03T02:33:01Z","type":"skill_complete","story_id":"ghq-uik.1.2.3","skill_id":"enhancement","data":{"summary":"Added Phase 5 link validation to deep-research SKILL.md and validated E2E"}}
+{"ts":"2026-03-03T02:33:01Z","type":"story_complete","story_id":"ghq-uik.1.2.3","data":{"skills_run":["enhancement"]}}
