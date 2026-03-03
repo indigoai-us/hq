@@ -62,3 +62,5 @@
 {"ts":"2026-03-03T16:27:14Z","type":"skill_complete","story_id":"ghq-53s.1.1.3","skill_id":"code-reviewer","data":{"summary":"Reviewed extract_narrator.py. No blocking issues. Removed unused CROSSFADE_MS constant. Approved."}}
 {"ts":"2026-03-03T16:27:40Z","type":"skill_complete","story_id":"ghq-53s.1.1.3","skill_id":"qa","data":{"summary":"All 5 acceptance criteria pass. E2E tests pass: file exists (68MB > 5MB), file plays without errors. Audio validated via ffprobe."}}
 {"ts":"2026-03-03T16:28:01Z","type":"story_complete","story_id":"ghq-53s.1.1.3","data":{"skills_run":["implementation","code-reviewer","qa"]}}
+{"ts":"2026-03-03T16:26:00Z","type":"story_complete","story_id":"ghq-53s.1.1.3","data":{"skills_run":["implementation","code-reviewer","qa"]}}
+{"ts":"2026-03-03T16:30:37Z","type":"skill_start","story_id":"ghq-53s.1.1.4","skill_id":"enhancement","data":{}}
