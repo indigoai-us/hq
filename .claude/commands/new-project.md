@@ -141,32 +141,19 @@ View tasks:
   bd children {epic-id} --pretty
 ```
 
-### 9. Optionally Create qmd Collection
-
-Ask: "Create a qmd collection for this project's knowledge? (yes/no)"
-
-If yes:
-```bash
-qmd collection add companies/{company-slug}/projects/{project-slug}/knowledge --name {project-slug} --mask "**/*.md"
-qmd update 2>/dev/null || true
-```
-
-If no: skip — user can add later.
-
-### 10. Reindex
+### 9. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-### 11. Report
+### 10. Report
 
 ```
 Project {project-slug} scaffolded:
   Epic:       {epic-id} (under {company-slug})
   Directory:  companies/{company-slug}/projects/{project-slug}/
   Knowledge:  companies/{company-slug}/projects/{project-slug}/knowledge/INDEX.md
-  qmd:        collection "{project-slug}" {created | skipped}
 
 Next steps:
   /create-task {description}    (create tasks under this project)
