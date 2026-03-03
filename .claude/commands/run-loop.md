@@ -161,6 +161,18 @@ BATCHES=$(scripts/dep-graph.sh {task-id})
 | Closed dependency | Treated as resolved (does not block) |
 | Cycle detected | All remaining subtasks dumped in final batch (fallback) |
 
+**Generate batch_id for each batch:**
+
+Each batch gets a unique `batch_id` following the schema from `loops/README.md`:
+
+```
+batch_id = "{task-id}-b{batch_number}-{epoch_seconds}"
+```
+
+Example: `ghq-abc123-b1-1709312400`, `ghq-abc123-b2-1709312410`
+
+The `batch_id` is generated once when the batch starts and passed to ALL sub-agents in that batch so their state.jsonl entries can be correlated.
+
 **Display the batch plan:**
 
 ```
@@ -283,10 +295,19 @@ for each batch in BATCHES:
         }
         ```
 
+        Generate batch_id for this batch:
+        ```javascript
+        const batch_id = `${task_id}-b${batch_number}-${Math.floor(Date.now()/1000)}`
+        // Example: "ghq-abc123-b2-1709312410"
+        // This batch_id is passed to every sub-agent in this batch
+        // so all their state.jsonl entries can be correlated.
+        ```
+
         Report:
         ```
         ────────────────────────────────────
         Batch {N}/{total_batches}: {batch.length} subtasks
+        batch_id: {batch_id}
         Sub-batches: {sub_batch_count} (after overlap detection)
         Concurrency: min({sub_batch.length}, {MAX_CONCURRENCY})
         Subtasks: {id1}, {id2}, ...
@@ -320,6 +341,9 @@ for each batch in BATCHES:
 
                            The working directory for all file changes is: {workdir}
 
+                           This subtask is part of batch_id: {batch_id}
+                           Include this batch_id in all state.jsonl entries you write.
+
                            Execute /execute-task IMMEDIATELY -- it handles all planning,
                            classification, skill selection, and execution internally.
 
@@ -332,6 +356,7 @@ for each batch in BATCHES:
                              \"summary\": \"1-sentence summary\",
                              \"workers_used\": [\"list\"],
                              \"models_used\": {},
+                             \"batch_id\": \"{batch_id}\",
                              \"back_pressure\": {
                                \"tests\": \"pass|fail|skipped\",
                                \"lint\": \"pass|fail|skipped\",
@@ -369,12 +394,12 @@ for each batch in BATCHES:
 
             i. If status == "completed":
                - Append to loops/state.jsonl:
-                 {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","data":{"skills_run":[...]}}
+                 {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","batch_id":"{batch_id}","data":{"skills_run":[...]}}
                - Increment completed count
 
             ii. If status == "failed" or "blocked":
                 - Append to loops/state.jsonl:
-                  {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","data":{"reason":"{summary}"}}
+                  {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","batch_id":"{batch_id}","data":{"reason":"{summary}"}}
                 - Mark subtask as blocked (do NOT stop the batch -- other subtasks may have succeeded)
                 - Collect failed subtask IDs for post-batch user prompt
         ```
@@ -386,7 +411,8 @@ for each batch in BATCHES:
         - If ANY subtasks failed in the batch, prompt user ONCE after the batch:
 
         ```
-        Batch {N} completed with failures:
+        Batch {N} ({batch_id}) completed with failures:
+          [{parallel_count} subtasks ran in parallel]
           Completed: {id1}, {id2} (N succeeded)
           Failed: {id3} -- {summary}
 
@@ -404,7 +430,8 @@ for each batch in BATCHES:
         LOOP: {task-id} ({parent.title})
         PROGRESS: {completed}/{total} ({percentage}%)
 
-        Batch {N}/{total_batches} complete:
+        Batch {N}/{total_batches} complete ({batch_id}):
+          [{parallel_count} subtasks ran in parallel]
           {id}: {summary} [completed]
           {id}: {summary} [completed]
           {id}: {summary} [failed]
@@ -442,6 +469,7 @@ for each batch in BATCHES:
 | No parallel file conflicts | Overlap detection splits conflicting tasks into sequential sub-batches (step 4c) |
 | Batch ordering respects dependencies | Dependency graph from step 4b |
 | Failed sub-agent does not block peers | Post-batch collection in step 5c |
+| Parallel execution audit trail | `batch_id` in state.jsonl entries (step 5a, 5c) per schema in `loops/README.md` |
 
 ### 6. Handle Subtask Failure
 
@@ -484,6 +512,7 @@ bd epic close-eligible
 LOOP COMPLETE: {task-id} ({parent.title})
 
 Subtasks: {completed}/{total}
+Batches: {batch_count} ({max_parallel_in_any_batch} max parallel)
 Skills used: {aggregated from session}
 ════════════════════════════════════
 ```
@@ -538,6 +567,7 @@ COMPLETED:
 - **If worktree: ask merge or PR on completion** -- never assume one or the other.
 - **Zero accumulation** -- receives only structured JSON back from sub-agents. Discards everything else.
 - **Reanchor between batches** -- rebuild dependency graph and re-run overlap detection after each batch (closed tasks may unlock new paths and change file scopes).
+- **batch_id tracks concurrency** -- every batch generates a `batch_id` (`{task-id}-b{N}-{epoch}`). All sub-agents in the batch include this `batch_id` in their state.jsonl entries. Entries sharing a `batch_id` ran concurrently.
 
 ## Integration
 
