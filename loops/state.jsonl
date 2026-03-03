@@ -64,3 +64,5 @@
 {"ts":"2026-03-03T16:28:01Z","type":"story_complete","story_id":"ghq-53s.1.1.3","data":{"skills_run":["implementation","code-reviewer","qa"]}}
 {"ts":"2026-03-03T16:26:00Z","type":"story_complete","story_id":"ghq-53s.1.1.3","data":{"skills_run":["implementation","code-reviewer","qa"]}}
 {"ts":"2026-03-03T16:30:37Z","type":"skill_start","story_id":"ghq-53s.1.1.4","skill_id":"enhancement","data":{}}
+{"ts":"2026-03-03T16:40:07Z","type":"skill_complete","story_id":"ghq-53s.1.1.4","skill_id":"enhancement","data":{"summary":"Cloned chatterbox-finetuning repo, installed deps, segmented 27min narrator audio into 247 LJSpeech training chunks","files_created":["assets/voice-clone/prepare_training_data.py","MyTTSDataset/metadata.csv","MyTTSDataset/wavs/narrator_*.wav","speaker_reference/narrator_ref.wav"],"files_modified":["chatterbox-finetuning/src/config.py"]}}
+{"ts":"2026-03-03T16:40:07Z","type":"story_complete","story_id":"ghq-53s.1.1.4","data":{"skills_run":["enhancement"]}}
