@@ -7,16 +7,17 @@ visibility: public
 
 # /run-loop - Task Orchestrator Loop
 
-Ultra-lean state machine with fresh context per subtask. Delegates each subtask entirely to a sub-agent via `/execute-task`, receiving only a structured JSON summary back. Each subtask gets clean context; nothing accumulates.
+Ultra-lean state machine with batch-parallel execution. Builds a dependency graph, groups subtasks into parallel batches, and spawns up to 5 concurrent sub-agents per batch via `/execute-task`. Each sub-agent gets fresh context; nothing accumulates. Only structured JSON summaries cross the boundary.
 
 **Arguments:** $ARGUMENTS
 
-## Core Pattern (Fresh-Context)
+## Core Pattern (Batch-Parallel, Fresh-Context)
 
-The orchestrator is an **ultra-lean state machine**. It picks subtasks and delegates each one entirely to a sub-agent via `/execute-task`. The orchestrator:
-- Fetches open subtasks from beads via `bd children {task-id} --json`
-- Spawns ONE sub-agent per subtask (fresh context per subtask)
-- Receives only a structured JSON summary back
+The orchestrator is an **ultra-lean state machine**. It builds a dependency graph, groups subtasks into parallel batches, and spawns up to 5 sub-agents concurrently per batch via `/execute-task`. The orchestrator:
+- Builds dependency DAG and groups subtasks into execution batches via `scripts/dep-graph.sh`
+- Spawns up to 5 sub-agents in parallel per batch (fresh context per sub-agent)
+- Waits for ALL sub-agents in a batch to complete before proceeding to the next batch
+- Receives only a structured JSON summary from each sub-agent
 - Appends state transitions to `loops/state.jsonl`
 - Never accumulates worker outputs, handoff blobs, or implementation details
 
@@ -170,110 +171,183 @@ Batch Plan for {task-id}:
 Total: {N} batches, {M} subtasks
 ```
 
-### 5. The Loop
+### 5. The Loop (Batch-Parallel)
 
-The orchestrator is an **ultra-lean state machine**. It picks subtasks and delegates everything to sub-agents. Classification, skill selection, skill chains, and learning capture all happen inside the sub-agent via `/execute-task`. The orchestrator NEVER accumulates implementation context.
+The orchestrator is an **ultra-lean state machine** that processes batches from the dependency graph (step 4b). Within each batch, independent subtasks are spawned as **parallel sub-agents** (up to max 5 concurrency). The orchestrator waits for all sub-agents in a batch to complete before proceeding to the next batch.
+
+**Constants:**
 
 ```
-while (open subtasks remain):
+MAX_CONCURRENCY = 5   # Max sub-agents running simultaneously
+```
 
-    5a. SELECT next subtask
-        - Priority order from beads (sorted by priority field)
-        - Respect dependencies: `bd dep list {subtask-id}` -- skip if deps are open
-        - First open + unblocked subtask
+```
+for each batch in BATCHES:
+
+    5a. SELECT batch and chunk for concurrency
+
+        The current batch is an array of independent subtask IDs from the
+        dependency graph. If the batch has more than MAX_CONCURRENCY subtasks,
+        split it into chunks of MAX_CONCURRENCY.
+
+        ```javascript
+        // batch = ["task-a", "task-b", "task-c", "task-d", "task-e", "task-f", "task-g"]
+        // chunks = [["task-a","task-b","task-c","task-d","task-e"], ["task-f","task-g"]]
+        const chunks = []
+        for (let i = 0; i < batch.length; i += MAX_CONCURRENCY) {
+          chunks.push(batch.slice(i, i + MAX_CONCURRENCY))
+        }
+        ```
 
         Report:
         ```
         ────────────────────────────────────
-        Next: {subtask.id} - {subtask.title}
+        Batch {N}/{total_batches}: {batch.length} subtasks
+        Concurrency: min({batch.length}, {MAX_CONCURRENCY})
+        Subtasks: {id1}, {id2}, ...
         Progress: {completed}/{total} ({percentage}%)
         ────────────────────────────────────
         ```
 
-    5b. EXECUTE subtask via sub-agent
+    5b. SPAWN parallel sub-agents for each chunk
 
-        Spawn a SINGLE sub-agent for the entire subtask.
-        The sub-agent handles classification, skill selection,
-        the full skill chain, task closure, execution state,
-        and learning capture -- all via /execute-task.
+        For each chunk within the batch, spawn ALL sub-agents
+        concurrently using Task tool with run_in_background.
 
-        Task({
-          description: "Execute {subtask.id}: {subtask.title}",
-          prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
-                   Execute /execute-task IMMEDIATELY -- it handles all planning,
-                   classification, skill selection, and execution internally.
+        ```
+        for each chunk in chunks:
 
-                   Run /execute-task {subtask.id}
+            // Spawn all sub-agents in this chunk simultaneously
+            for each subtask in chunk:
 
-                   After completion, output ONLY this structured JSON:
-                   {
-                     \"task_id\": \"{subtask.id}\",
-                     \"status\": \"completed|failed|blocked\",
-                     \"summary\": \"1-sentence summary\",
-                     \"workers_used\": [\"list\"],
-                     \"models_used\": {},
-                     \"back_pressure\": {
-                       \"tests\": \"pass|fail|skipped\",
-                       \"lint\": \"pass|fail|skipped\",
-                       \"typecheck\": \"pass|fail|skipped\",
-                       \"build\": \"pass|fail|skipped\"
-                     }
-                   }"
-        })
+                Task({
+                  description: "Execute {subtask.id}: {subtask.title}",
+                  run_in_background: true,
+                  prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
 
-        The sub-agent's full context (skill outputs, handoff blobs,
-        file diffs, error traces) is freed when it returns.
-        Only the structured JSON crosses the boundary.
+                           The working directory for all file changes is: {workdir}
 
-    5c. POST-SUBTASK (orchestrator side -- minimal)
+                           Execute /execute-task IMMEDIATELY -- it handles all planning,
+                           classification, skill selection, and execution internally.
 
-        Parse the sub-agent's JSON output.
+                           Run /execute-task {subtask.id}
 
-        i. If status == "completed":
-           - Append to loops/state.jsonl:
-             {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","data":{"skills_run":[...]}}
-           - Increment completed count
+                           After completion, output ONLY this structured JSON:
+                           {
+                             \"task_id\": \"{subtask.id}\",
+                             \"status\": \"completed|failed|blocked\",
+                             \"summary\": \"1-sentence summary\",
+                             \"workers_used\": [\"list\"],
+                             \"models_used\": {},
+                             \"back_pressure\": {
+                               \"tests\": \"pass|fail|skipped\",
+                               \"lint\": \"pass|fail|skipped\",
+                               \"typecheck\": \"pass|fail|skipped\",
+                               \"build\": \"pass|fail|skipped\"
+                             }
+                           }"
+                })
 
-        ii. If status == "failed" or "blocked":
-            - Append to loops/state.jsonl:
-              {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","data":{"reason":"{summary}"}}
-            - Ask user:
-              1. Retry this subtask
-              2. Skip and continue
-              3. Pause loop (run /run-loop --resume {task-id})
+            // IMPORTANT: All Task() calls in the chunk are made in
+            // the SAME message so they run concurrently.
+            // The orchestrator then waits for ALL to complete.
+
+            // Wait for all sub-agents in this chunk to return.
+            // Each sub-agent's full context (skill outputs, handoff blobs,
+            // file diffs, error traces) is freed when it returns.
+            // Only the structured JSON crosses the boundary.
+
+            // If chunk had fewer tasks than MAX_CONCURRENCY,
+            // proceed immediately when all return.
+        ```
+
+        **Spawning rules:**
+        - All Task() calls for a chunk MUST be in the same message (parallel dispatch)
+        - Each sub-agent is fully independent -- no shared state between parallel agents
+        - The orchestrator does NOT read any files between spawn and completion
+        - Max 5 sub-agents active at any time (chunk size enforces this)
+
+    5c. POST-BATCH (orchestrator side -- minimal)
+
+        After ALL sub-agents in the chunk return, process results:
+
+        ```
+        for each result in chunk_results:
+
+            i. If status == "completed":
+               - Append to loops/state.jsonl:
+                 {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","data":{"skills_run":[...]}}
+               - Increment completed count
+
+            ii. If status == "failed" or "blocked":
+                - Append to loops/state.jsonl:
+                  {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","data":{"reason":"{summary}"}}
+                - Mark subtask as blocked (do NOT stop the batch -- other subtasks may have succeeded)
+                - Collect failed subtask IDs for post-batch user prompt
+        ```
+
+        **Failure handling within a batch:**
+        - A failed sub-agent does NOT block other sub-agents in the same chunk
+        - All sub-agents in the chunk run to completion regardless of peer failures
+        - Failed subtasks are collected and reported AFTER the entire chunk completes
+        - If ANY subtasks failed in the batch, prompt user ONCE after the batch:
+
+        ```
+        Batch {N} completed with failures:
+          Completed: {id1}, {id2} (N succeeded)
+          Failed: {id3} -- {summary}
+
+        Options for failed subtasks:
+        1. Retry failed subtasks (spawns new batch of just the failures)
+        2. Skip and continue to next batch
+        3. Pause loop (/run-loop --resume {task-id})
+        ```
 
     5d. PROGRESS DISPLAY
 
-        After each subtask completes, show progress:
+        After each BATCH completes (not after each subtask), show progress:
         ```
         ════════════════════════════════════
         LOOP: {task-id} ({parent.title})
         PROGRESS: {completed}/{total} ({percentage}%)
 
-        Completed this session:
-          {id}: {summary}
-          {id}: {summary}
+        Batch {N}/{total_batches} complete:
+          {id}: {summary} [completed]
+          {id}: {summary} [completed]
+          {id}: {summary} [failed]
 
-        Remaining:
-          {id}: {title}
-          {id}: {title}
+        Remaining batches: {remaining_count}
+        Next batch: {next_batch_ids}
         ════════════════════════════════════
         ```
 
-    5e. AUTO-REANCHOR (between subtasks, silent)
+    5e. AUTO-REANCHOR (between batches, silent)
 
-        After processing each subtask result, refresh context:
+        After processing each batch (not each subtask), refresh context:
         1. Re-fetch subtasks from beads: `bd children {task-id} --json`
-        2. Refresh git state: `git log --oneline -3`
-        3. If subtask failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
+        2. Rebuild dependency graph: `scripts/dep-graph.sh {task-id}`
+           (closed tasks may unlock new batches)
+        3. Refresh git state: `git log --oneline -5`
+        4. If any subtask failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
 
     5f. CONTEXT SAFETY NET
 
-        If > 8 subtasks completed this session OR context heavy:
+        Count BATCHES (not individual subtasks) for context budget:
+        If > 5 batches completed this session OR context heavy:
           - Append state to loops/state.jsonl
           - Print: "Context boundary reached. Run: /run-loop --resume {task-id}"
           - STOP
 ```
+
+**Parallel execution constraints:**
+
+| Constraint | Enforced by |
+|-----------|-------------|
+| Max 5 concurrent sub-agents | Chunk splitting in step 5a |
+| No nested run-loops | Each sub-agent runs /execute-task, not /run-loop |
+| No shared file state between parallel agents | Each sub-agent operates independently |
+| Batch ordering respects dependencies | Dependency graph from step 4b |
+| Failed sub-agent does not block peers | Post-batch collection in step 5c |
 
 ### 6. Handle Subtask Failure
 
@@ -351,18 +425,24 @@ COMPLETED:
 
 ## Rules
 
-- **ONE loop at a time**
+- **ONE loop at a time** -- no nested run-loops. Sub-agents run /execute-task, never /run-loop.
+- **Max 5 concurrent sub-agents** -- batches larger than 5 are chunked. Never exceed 5 parallel Task() calls.
+- **Batch-parallel execution** -- independent subtasks within a batch run concurrently. Dependent subtasks wait for their batch.
+- **All-in-one-message dispatch** -- all Task() calls for a chunk MUST be in the same message to enable parallel execution.
+- **Wait for full batch** -- never start the next batch until ALL sub-agents in the current batch have returned.
 - **Sub-agent per subtask** -- each subtask runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes skill phases directly.
 - **Context discipline** -- the orchestrator stores ONLY task_id, status, and 1-sentence summary per subtask. No skill outputs, no handoff blobs, no file lists.
 - **Fresh context per subtask** -- sub-agent context is freed when it returns.
+- **Graceful failure** -- a failed sub-agent does NOT stop other sub-agents in the same batch. Failures are collected and reported after the batch completes.
 - **Resume is first-class** -- `--resume` is how multi-session loops continue. Not a fallback -- the expected path for large loops.
 - **Back pressure is mandatory** -- enforced inside `/execute-task`, not by the orchestrator.
-- **Fail fast** -- pause on errors, surface to user.
+- **Fail fast at batch boundary** -- surface failures to user after batch completes, not mid-batch.
 - **Beads is the source of truth** -- tasks and state come from `bd`, not files.
 - **Sub-agents must NOT use EnterPlanMode** -- /execute-task is the planning pipeline.
 - **Work mode: main or worktree only** -- NEVER create feature branches. Always ask the user which mode before starting.
 - **If worktree: ask merge or PR on completion** -- never assume one or the other.
 - **Zero accumulation** -- receives only structured JSON back from sub-agents. Discards everything else.
+- **Reanchor between batches** -- rebuild dependency graph after each batch (closed tasks may unlock new paths).
 
 ## Integration
 
