@@ -8,24 +8,32 @@
 {"ts":"2026-03-03T02:16:15Z","type":"skill_start","story_id":"ghq-uik.1.1.3","skill_id":"direct-execution","data":{}}
 {"ts":"2026-03-03T02:16:19Z","type":"skill_complete","story_id":"ghq-uik.1.1.3","skill_id":"direct-execution","data":{"summary":"Company isolation audit completed. All boundaries sound except one stale cross-company reference in video-gen skill."}}
 {"ts":"2026-03-03T02:16:26Z","type":"story_complete","story_id":"ghq-uik.1.1.3","data":{"skills_run":["direct-execution"]}}
-{"ts":"2026-03-03T02:22:00Z","type":"story_complete","story_id":"ghq-uik.1.1.3","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-03T02:17:34Z","type":"skill_start","story_id":"ghq-uik.1.1.4","skill_id":"direct-execution","data":{}}
 {"ts":"2026-03-03T02:17:53Z","type":"skill_start","story_id":"ghq-uik.1.1.5","skill_id":"direct-content","data":{}}
 {"ts":"2026-03-03T02:19:24Z","type":"loop_start","data":{"task_id":"ghq-uik.1.2","stories_total":3,"stories_pending":3}}
+{"ts":"2026-03-03T02:20:16Z","type":"skill_start","story_id":"ghq-uik.1.2.1","skill_id":"content-direct","data":{"task_type":"content","chain":"direct"}}
 {"ts":"2026-03-03T02:20:52Z","type":"skill_complete","story_id":"ghq-uik.1.1.5","skill_id":"direct-content","data":{"summary":"Directory structure audit complete. 3 major, 5 minor issues found. Report saved to knowledge/ghq-core/audit-directory-structure.md"}}
 {"ts":"2026-03-03T02:20:52Z","type":"story_complete","story_id":"ghq-uik.1.1.5","data":{"skills_run":["direct-content"]}}
+{"ts":"2026-03-03T02:22:00Z","type":"story_complete","story_id":"ghq-uik.1.1.3","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-03T02:23:04Z","type":"skill_complete","story_id":"ghq-uik.1.1.4","skill_id":"direct-execution","data":{"summary":"Audited knowledge base and QMD index. Found critical path mismatch (hq collection points to ~/hq instead of ~/repos/ghq), 373 orphaned files, 17 unindexed files, 34 duplicate pairs, 40% embedding coverage."}}
 {"ts":"2026-03-03T02:23:05Z","type":"story_complete","story_id":"ghq-uik.1.1.4","data":{"skills_run":["direct-execution"]}}
-{"ts":"2026-03-03T02:28:00Z","type":"story_complete","story_id":"ghq-uik.1.1.4","data":{"skills_run":["direct-execution"]}}
-{"ts":"2026-03-03T02:28:00Z","type":"story_complete","story_id":"ghq-uik.1.1.5","data":{"skills_run":["direct-content"]}}
+{"ts":"2026-03-03T02:23:54Z","type":"skill_complete","story_id":"ghq-uik.1.2.1","skill_id":"content-direct","data":{"summary":"Designed deep-research skill architecture with 5-phase workflow, report template, iteration strategy, and output path handling","files_created":[".claude/skills/deep-research/DESIGN.md"],"files_modified":["loops/state.jsonl"],"key_decisions":["Single-agent architecture over multi-agent","Footnote citations over inline links","Fixed iteration budget with diminishing returns heuristic","WebSearch+WebFetch only, no external APIs"]}}
+{"ts":"2026-03-03T02:23:59Z","type":"story_complete","story_id":"ghq-uik.1.2.1","data":{"skills_run":["content-direct"]}}
 {"ts":"2026-03-03T02:24:17Z","type":"story_complete","story_id":"ghq-uik.1.2.1","data":{"skills_run":["content-direct"]}}
 {"ts":"2026-03-03T02:24:51Z","type":"skill_start","story_id":"ghq-uik.1.1.6","skill_id":"direct-content","data":{}}
+{"ts":"2026-03-03T02:25:40Z","type":"skill_start","story_id":"ghq-uik.1.2.2","skill_id":"content-direct","data":{}}
 {"ts":"2026-03-03T02:26:46Z","type":"skill_complete","story_id":"ghq-uik.1.1.6","skill_id":"direct-content","data":{"summary":"Consolidated all 5 audit subtask findings into unified report with severity classification (1 critical, 7 major, 12 minor), baseline metrics, and 15 prioritized recommendations."}}
 {"ts":"2026-03-03T02:26:46Z","type":"story_complete","story_id":"ghq-uik.1.1.6","data":{"skills_run":["direct-content"]}}
-{"ts":"2026-03-03T02:35:00Z","type":"story_complete","story_id":"ghq-uik.1.1.6","data":{"skills_run":["direct-content"]}}
-{"ts":"2026-03-03T02:35:00Z","type":"loop_end","data":{"task_id":"ghq-uik.1.1","stories_completed":6,"stories_blocked":0}}
+{"ts":"2026-03-03T02:27:12Z","type":"story_complete","story_id":"ghq-uik.1.2.2","data":{"skills_run":["content-direct"]}}
 {"ts":"2026-03-03T02:27:39Z","type":"story_complete","story_id":"ghq-uik.1.2.2","data":{"skills_run":["content-direct"]}}
+{"ts":"2026-03-03T02:28:00Z","type":"story_complete","story_id":"ghq-uik.1.1.4","data":{"skills_run":["direct-execution"]}}
+{"ts":"2026-03-03T02:28:00Z","type":"story_complete","story_id":"ghq-uik.1.1.5","data":{"skills_run":["direct-content"]}}
+{"ts":"2026-03-03T02:28:49Z","type":"skill_start","story_id":"ghq-uik.1.2.3","skill_id":"enhancement","data":{}}
 {"ts":"2026-03-03T02:32:30Z","type":"loop_start","data":{"task_id":"ghq-uik.1.3","stories_total":5,"stories_pending":5}}
+{"ts":"2026-03-03T02:33:01Z","type":"skill_complete","story_id":"ghq-uik.1.2.3","skill_id":"enhancement","data":{"summary":"Added Phase 5 link validation to deep-research SKILL.md and validated E2E"}}
+{"ts":"2026-03-03T02:33:01Z","type":"story_complete","story_id":"ghq-uik.1.2.3","data":{"skills_run":["enhancement"]}}
 {"ts":"2026-03-03T02:33:27Z","type":"story_complete","story_id":"ghq-uik.1.2.3","data":{"skills_run":["enhancement"]}}
 {"ts":"2026-03-03T02:33:27Z","type":"loop_end","data":{"task_id":"ghq-uik.1.2","stories_completed":3,"stories_blocked":0}}
+{"ts":"2026-03-03T02:35:00Z","type":"story_complete","story_id":"ghq-uik.1.1.6","data":{"skills_run":["direct-content"]}}
+{"ts":"2026-03-03T02:35:00Z","type":"loop_end","data":{"task_id":"ghq-uik.1.1","stories_completed":6,"stories_blocked":0}}
 {"ts":"2026-03-03T02:37:56Z","type":"story_complete","story_id":"ghq-uik.1.3.1","data":{"skills_run":["direct-execution"]}}
