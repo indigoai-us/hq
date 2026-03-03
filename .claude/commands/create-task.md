@@ -174,7 +174,15 @@ bd dep add {subtask-id} {depends-on-id}
 qmd update 2>/dev/null || true
 ```
 
-## Step 7: Confirm & STOP
+## Step 7: Lint
+
+```bash
+bd lint
+```
+
+Fix any issues reported before proceeding.
+
+## Step 8: Confirm & STOP
 
 Tell user:
 ```
