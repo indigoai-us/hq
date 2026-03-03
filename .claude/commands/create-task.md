@@ -36,7 +36,7 @@ If empty, ask: "Describe what you want to build or accomplish."
 Before asking questions, explore GHQ:
 
 **Skills:**
-- Read `.claude/skills/registry.yaml`
+- Scan `.claude/skills/*/SKILL.md` frontmatter for available skills
 
 **Companies & Context:**
 - Read `companies/manifest.yaml` (which companies exist, their repos/knowledge)
@@ -214,7 +214,7 @@ To view:
 - **Beads is the source of truth** -- all tasks managed via `bd` CLI
 - **Do NOT use EnterPlanMode** -- this skill IS planning
 - **Do NOT use TodoWrite** -- beads subtasks track tasks
-- **Skills, not workers** -- reference skill IDs from registry.yaml, not worker names
+- **Skills, not workers** -- reference skill IDs from `.claude/skills/`, not worker names
 - **Work mode: main or worktree only** -- GHQ never uses feature branches. Ask user to choose in interview
 - **Company context** -- if the task relates to a company, apply the appropriate company label
 - **HARD BLOCK: Do NOT implement** -- ONLY create beads tasks. NEVER edit target repo files during a /create-task session

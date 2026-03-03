@@ -24,22 +24,21 @@ Run all checks sequentially (do NOT parallelise — one bash failure kills sibli
 
 ### 1. Skills Registration
 
-**Policy**: Every skill directory in `.claude/skills/` must be indexed in `.claude/skills/registry.yaml`.
+**Policy**: Every skill directory in `.claude/skills/` must contain a `SKILL.md` file.
 
 ```bash
 cd /path/to/ghq
 
-# Find skill dirs that are not registered (zsh-safe)
+# Find skill dirs missing SKILL.md (zsh-safe)
 for dir in .claude/skills/*/; do
   skill=$(basename "$dir")
   [[ "$skill" == "_template" ]] && continue
-  [[ -f "${dir}skill.yaml" ]] || continue
-  grep -q "id: $skill" .claude/skills/registry.yaml || echo "UNREGISTERED: $skill"
+  [[ -f "${dir}SKILL.md" ]] || echo "MISSING SKILL.md: $skill"
 done
 ```
 
 **Violations**:
-- Skill directory with `skill.yaml` not in `registry.yaml` → flag UNREGISTERED
+- Skill directory without `SKILL.md` → flag MISSING
 
 ### 2. INDEX.md Currency
 
@@ -69,12 +68,6 @@ actual_count=$(ls -d knowledge/*/ 2>/dev/null | grep -v "INDEX" | wc -l | tr -d 
 **Policy**: No dangling references to non-existent files or skills.
 
 ```bash
-# Check registry.yaml paths actually exist
-grep "path:" .claude/skills/registry.yaml | while read -r line; do
-  path=$(echo "$line" | sed 's/.*path: *//')
-  [[ -d "$path" ]] || echo "BROKEN_REF: registry.yaml → $path does not exist"
-done
-
 # Check manifest.yaml paths exist (settings, knowledge)
 grep -E "^\s+(settings|knowledge):" companies/manifest.yaml | while read -r line; do
   path=$(echo "$line" | sed 's/.*: *//')

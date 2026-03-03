@@ -79,7 +79,7 @@ Knowledge:
   1. [0.92] ghq: knowledge/ralph/02-core-concepts.md
      "Ralph methodology emphasizes small loops with human checkpoints..."
 
-  2. [0.84] ghq: .claude/skills/architect/skill.yaml
+  2. [0.84] ghq: .claude/skills/architect/SKILL.md
      "System design, API design, and architecture decisions..."
 
   3. [0.71] ghq: knowledge/ghq-core/task-schema.md

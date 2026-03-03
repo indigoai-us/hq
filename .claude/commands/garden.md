@@ -41,7 +41,7 @@ bd list --type epic --json 2>/dev/null || true
 
 # Skills
 find .claude/skills/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort
-find .claude/skills/ -name "skill.yaml" 2>/dev/null | sort
+find .claude/skills/ -name "SKILL.md" 2>/dev/null | sort
 
 # Commands
 find .claude/commands/ -name "*.md" 2>/dev/null | sort
@@ -115,19 +115,21 @@ Flag epics with no children or all children closed but epic still open.
 
 ### 3c: Skill orphans
 
-Compare skill directories against `registry.yaml`:
+Check skill directories have `SKILL.md`:
 
 ```bash
 # Dirs that exist
 ls -1 .claude/skills/ 2>/dev/null
 
-# Dirs registered in registry
-grep "  - id:" .claude/skills/registry.yaml 2>/dev/null
-grep "path:" .claude/skills/registry.yaml 2>/dev/null
+# Check each dir for SKILL.md
+for dir in .claude/skills/*/; do
+  skill=$(basename "$dir")
+  [[ "$skill" == "_template" ]] && continue
+  [[ -f "${dir}SKILL.md" ]] || echo "MISSING SKILL.md: $skill"
+done
 ```
 
-Flag: dirs in `.claude/skills/` that are NOT in registry (and are not `_template`).
-Flag: registry entries whose `path:` directory does NOT exist on disk.
+Flag: dirs in `.claude/skills/` that have no `SKILL.md` (and are not `_template`).
 
 Collect: `orphan_knowledge[]`, `stale_tasks[]`, `skill_registry_drift[]`
 
@@ -257,8 +259,8 @@ Fixable issues found:
     → Update "Updated: {date}" lines to today (2026-02-28)
     Files: {list}
 
-[2] Register {N} untracked skills in registry.yaml
-    → Add missing skill entries to .claude/skills/registry.yaml
+[2] Create {N} missing SKILL.md files
+    → Scaffold SKILL.md for skill directories missing one
     Skills: {list}
 
 [3] Remove {N} broken links from INDEX files

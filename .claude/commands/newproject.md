@@ -66,7 +66,7 @@ Ask (batch):
 1. Project name (human-readable)?
 2. Brief description (1-2 sentences)?
 3. Associated repos? (paths or "none")
-4. Skills this project will use? Show relevant skills from `.claude/skills/registry.yaml` (or "none")
+4. Skills this project will use? Show relevant skills from `.claude/skills/*/SKILL.md` (or "none")
 
 ### 5. Create Project Epic in Beads
 
@@ -177,4 +177,4 @@ Next steps:
 - Validate slug: lowercase, hyphens only, no spaces
 - Never create a project under a company that doesn't exist in manifest.yaml
 - Check for duplicate projects before creating
-- Skills, not workers — reference skill IDs from registry.yaml
+- Skills, not workers — reference skill IDs from `.claude/skills/`

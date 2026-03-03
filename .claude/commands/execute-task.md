@@ -106,32 +106,27 @@ Based on classified type, resolve the skill chain from composition skills or bui
 
 | Type | Primary Skill |
 |------|--------------|
-| `full-stack` | `.claude/skills/full-stack/skill.yaml` |
-| `schema` | `.claude/skills/database/skill.yaml` |
-| `api` | `.claude/skills/backend/skill.yaml` |
-| `ui` | `.claude/skills/frontend/skill.yaml` |
-| `enhancement` | `.claude/skills/enhancement/skill.yaml` |
+| `full-stack` | `.claude/skills/full-stack/SKILL.md` |
+| `schema` | `.claude/skills/database/SKILL.md` |
+| `api` | `.claude/skills/backend/SKILL.md` |
+| `ui` | `.claude/skills/frontend/SKILL.md` |
+| `enhancement` | `.claude/skills/enhancement/SKILL.md` |
 | `content` | Direct execution (no skill chain) |
 
 **Step 4b: Resolve depends_on chain**
 
-For composition skills (full-stack, enhancement), read `skill.yaml` and resolve `depends_on`:
+For composition skills (full-stack, enhancement), read `SKILL.md` and parse the `## Skill Chain` table:
 
-```yaml
-# Example: full-stack/skill.yaml
-depends_on:
-  - skill: architect
-    when: always
-  - skill: database
-    when: "task involves schema changes or migrations"
-  - skill: backend
-    when: "task involves API or server-side logic"
-  - skill: frontend
-    when: "task involves UI or client-side code"
-  - skill: code-reviewer
-    when: always
-  - skill: qa
-    when: always
+```markdown
+## Skill Chain
+| Order | Skill | Condition |
+|-------|-------|-----------|
+| 1 | architect | always |
+| 2 | database | task involves schema changes or migrations |
+| 3 | backend | task involves API or server-side logic |
+| 4 | frontend | task involves UI or client-side code |
+| 5 | code-reviewer | always |
+| 6 | qa | always |
 ```
 
 Evaluate each `when` condition against the task description:
@@ -151,14 +146,14 @@ For `content` type (no chain):
 Direct execution -- no skill chain needed.
 ```
 
-**Step 4d: Load each skill's skill.yaml**
+**Step 4d: Load each skill's SKILL.md**
 
 For each skill in the resolved chain:
 ```
-Read .claude/skills/{skill-id}/skill.yaml
+Read .claude/skills/{skill-id}/SKILL.md
 ```
 
-Extract: `instructions`, `context.base`, `context.dynamic`
+Extract: frontmatter (`name`, `description`) and markdown body (instructions)
 
 Present the execution plan:
 ```
@@ -197,10 +192,9 @@ For each skill in the resolved chain:
 
 #### 6a. Load Skill Config
 
-Read `.claude/skills/{skill-id}/skill.yaml`:
-- `instructions` -- Skill's role and process
-- `context.base` -- Files skill always needs
-- `context.dynamic` -- Files loaded conditionally
+Read `.claude/skills/{skill-id}/SKILL.md`:
+- Frontmatter -- Skill's name and description
+- Markdown body -- Skill's instructions, role, and process
 
 #### 6b. Build Skill Prompt
 
@@ -221,7 +215,7 @@ Read `.claude/skills/{skill-id}/skill.yaml`:
 {policies loaded in step 5.5, if any}
 
 ### Your Instructions
-{skill.instructions from skill.yaml}
+{instructions from SKILL.md body}
 
 ### Back Pressure (Run Before Completing)
 After completing your work:
@@ -445,4 +439,4 @@ Options:
 - **Sub-agents MUST commit** -- each sub-agent commits its own work before completing
 - **Do NOT use EnterPlanMode or TodoWrite** -- the task classification and skill sequencing replace ad-hoc planning. Follow the steps in order
 - **Always reindex after task completion** -- `qmd update` after every completed task (step 7d)
-- **Skill chains replace workers** -- resolve depends_on from skill.yaml, not worker.yaml
+- **Skill chains replace workers** -- resolve skill chain from SKILL.md, not worker.yaml

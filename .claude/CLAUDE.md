@@ -14,7 +14,7 @@ loops/            execution state (state.jsonl, history.jsonl)
 ## Rules
 
 - **Context diet**: Never pre-load. Read only what the current task requires.
-- **Skill-first**: Load `skill.yaml` before specialized tasks. Load command `.md` before running commands. Never pre-load.
+- **Skill-first**: Load `SKILL.md` before specialized tasks. Load command `.md` before running commands. Never pre-load.
 - **Git workflow**: Work on `main` or worktrees only -- never feature branches.
 - **Company isolation**: `companies/manifest.yaml` maps ownership. Never cross-contaminate credentials, knowledge, or deploy targets.
 - **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
@@ -23,8 +23,8 @@ loops/            execution state (state.jsonl, history.jsonl)
 
 ## Skills
 
-Skills load on demand via `.claude/skills/`. Registry: `.claude/skills/registry.yaml`.
-Skill docs: `knowledge/skills/README.md`. Template: `.claude/skills/_template/skill.yaml`.
+Skills load on demand via `.claude/skills/*/SKILL.md`. Auto-discovered (no registry needed).
+Skill docs: `knowledge/skills/README.md`.
 
 ## Search (qmd)
 

@@ -19,7 +19,7 @@ No separate learnings files. Rules go into the files they pertain to:
 
 | Scope | Target file | Section |
 |-------|------------|---------|
-| `skill:{id}` | `.claude/skills/{id}/skill.yaml` | `instructions:` → `## Learnings` subsection |
+| `skill:{id}` | `.claude/skills/{id}/SKILL.md` | `## Learnings` section |
 | `command:{name}` | `.claude/commands/{name}.md` | `## Rules` section |
 | `knowledge:{path}` | The relevant knowledge file | Append as rule/note |
 | `task:{id}` | Related knowledge or beads task metadata | Context-dependent |
@@ -69,14 +69,14 @@ For each extracted rule, determine scope (most specific wins):
 
 | Signal | Scope | Target |
 |--------|-------|--------|
-| Failure in specific skill | `skill:{id}` | `.claude/skills/{id}/skill.yaml` |
+| Failure in specific skill | `skill:{id}` | `.claude/skills/{id}/SKILL.md` |
 | Error in specific command | `command:{name}` | `.claude/commands/{name}.md` |
 | Relevant to specific knowledge | `knowledge:{path}` | The knowledge file |
 | Universal pattern | `global` | `.claude/CLAUDE.md` |
 | User correction via /remember | From context, default global | Detected target or CLAUDE.md |
 
 **Resolve the target file path:**
-- For skills: `.claude/skills/{id}/skill.yaml`
+- For skills: `.claude/skills/{id}/SKILL.md`
 - For commands: `.claude/commands/{name}.md`
 - For knowledge: the specific knowledge file mentioned in context
 - For global: `.claude/CLAUDE.md`
@@ -98,18 +98,15 @@ Report dedup action taken.
 
 ## Step 5: Inject Rule into Target File
 
-### For skill.yaml (`instructions:` block)
+### For SKILL.md (markdown body)
 
-Read the file, find `instructions: |` block. Look for `## Learnings` subsection:
+Read the file. Look for `## Learnings` section:
 - If exists: append rule under it
-- If not: create `## Learnings` subsection at end of instructions block
+- If not: create `## Learnings` section at end of the markdown body
 
-```yaml
-instructions: |
-  ...existing instructions...
-
-  ## Learnings
-  - NEVER: {new rule}
+```markdown
+## Learnings
+- NEVER: {new rule}
 ```
 
 ### For command .md (`## Rules` section)
@@ -198,7 +195,7 @@ Write `workspace/learnings/learn-{YYYYMMDD-HHMMSS}.json`:
     {
       "rule": "NEVER: ...",
       "scope": "skill:full-stack",
-      "target_file": ".claude/skills/full-stack/skill.yaml",
+      "target_file": ".claude/skills/full-stack/SKILL.md",
       "severity": "high",
       "policy_file": ".claude/policies/{slug}.md"
     }
