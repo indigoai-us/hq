@@ -50,3 +50,5 @@
 {"ts":"2026-03-03T10:24:30Z","type":"skill_start","story_id":"ghq-uik.1.4.5","skill_id":"direct-verification","data":{}}
 {"ts":"2026-03-03T10:28:36Z","type":"skill_complete","story_id":"ghq-uik.1.4.5","skill_id":"direct-verification","data":{"summary":"Re-audit verified all 20 findings resolved. bd doctor: 0 errors. bd lint: 0 warnings. qmd search functional. Baseline metrics captured.","back_pressure":{"tests":"pass","lint":"pass","typecheck":"skipped","build":"skipped"}}}
 {"ts":"2026-03-03T10:28:36Z","type":"story_complete","story_id":"ghq-uik.1.4.5","data":{"skills_run":["direct-verification"]}}
+{"ts":"2026-03-03T10:00:00Z","type":"story_complete","story_id":"ghq-uik.1.4.5","data":{"skills_run":["direct-verification"],"summary":"Verified all 20 audit findings resolved: bd doctor 0 errors, bd lint 0 warnings, qmd search functional"}}
+{"ts":"2026-03-03T10:00:00Z","type":"loop_end","data":{"task_id":"ghq-uik.1.4","stories_completed":5,"stories_blocked":0}}
