@@ -81,3 +81,5 @@
 {"ts":"2026-03-03T23:46:07Z","type":"story_complete","story_id":"ghq-uik.1.5.1","batch_id":"ghq-uik.1.5-b1-1772581567","data":{"skills_run":["enhancement"]}}
 {"ts":"2026-03-03T23:46:07Z","type":"story_complete","story_id":"ghq-uik.1.5.2","batch_id":"ghq-uik.1.5-b1-1772581567","data":{"skills_run":["direct"]}}
 {"ts":"2026-03-03T23:47:28Z","type":"skill_start","story_id":"ghq-uik.1.5.3","skill_id":"backend","data":{}}
+{"ts":"2026-03-03T23:51:04Z","type":"skill_complete","story_id":"ghq-uik.1.5.3","skill_id":"backend","data":{"files_changed":["loops/scripts/check-escalation.sh","loops/scripts/test-escalation.sh","companies/launch-grid/policies/escalation.yaml","companies/production-house/policies/escalation.yaml"],"back_pressure":{"tests":"pass","lint":"skipped"}}}
+{"ts":"2026-03-03T23:51:08Z","type":"story_complete","story_id":"ghq-uik.1.5.3","data":{"skills_run":["backend","code-reviewer","qa"]}}
