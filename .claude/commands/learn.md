@@ -9,7 +9,7 @@ visibility: public
 
 Capture a learning, classify it, and inject the rule directly into the file it governs.
 
-Called programmatically by `/execute-task` and `/run-project` after task completion or failure. Also callable manually. `/remember` delegates here.
+Called programmatically by `/execute-task` and `/run-loop` after task completion or failure. Also callable manually. `/remember` delegates here.
 
 **Input:** $ARGUMENTS
 
@@ -22,7 +22,7 @@ No separate learnings files. Rules go into the files they pertain to:
 | `skill:{id}` | `.claude/skills/{id}/skill.yaml` | `instructions:` → `## Learnings` subsection |
 | `command:{name}` | `.claude/commands/{name}.md` | `## Rules` section |
 | `knowledge:{path}` | The relevant knowledge file | Append as rule/note |
-| `project:{slug}` | Related knowledge or prd.json metadata | Context-dependent |
+| `task:{id}` | Related knowledge or beads task metadata | Context-dependent |
 | `global` | `.claude/CLAUDE.md` | `## Learned Rules` section |
 
 ## Step 1: Parse Input
@@ -31,10 +31,10 @@ No separate learnings files. Rules go into the files they pertain to:
 ```json
 {
   "task_id": "TASK-001",
-  "project": "my-project",
+  "parent_task_id": "ghq-abc123",
   "source": "back-pressure-failure|user-correction|success-pattern|task-completion|build-activity",
   "severity": "critical|high|medium|low",
-  "scope": "global|skill:{id}|command:{name}|knowledge:{path}|project:{slug}",
+  "scope": "global|skill:{id}|command:{name}|knowledge:{path}|task:{id}",
   "skills_used": ["full-stack"],
   "back_pressure_failures": [{"skill": "code-reviewer", "check": "lint", "error": "..."}],
   "retries": 0,
@@ -205,7 +205,7 @@ Write `workspace/learnings/learn-{YYYYMMDD-HHMMSS}.json`:
   ],
   "source": "back-pressure-failure",
   "task_id": "TASK-001",
-  "project": "my-project",
+  "parent_task_id": "ghq-abc123",
   "dedup_action": "new|merged|skipped",
   "promoted_to_global": true,
   "created_at": "{ISO8601}"

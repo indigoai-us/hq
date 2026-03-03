@@ -24,7 +24,6 @@ GHQ/
 ├── loops/
 │   ├── state.jsonl         # Append-only execution state
 │   └── history.jsonl       # Completed loop records
-├── projects/               # Project PRDs (beads-managed)
 └── repos/                  # Cloned repos (targets of skill execution)
 ```
 
@@ -52,22 +51,24 @@ Each skill is a `SKILL.md` file in `.claude/skills/{skill-id}/SKILL.md`. See [Sk
 | `composition` | Chains other skills; orchestrator resolves the chain |
 | `library` | Shared context loaded by other skills |
 
-## Projects and PRDs
+## Tasks
 
-Projects are managed with `bd` (beads CLI) for issue tracking:
+Tasks are managed with `bd` (beads CLI):
 
 ```bash
-bd list                    # List all stories
-bd show US-001             # Show story details
-bd close US-001            # Mark story complete
-bd create "title"          # Create new story
+bd list                    # List all tasks
+bd show ghq-abc123         # Show task details
+bd children ghq-abc123     # List subtasks
+bd close ghq-abc123        # Mark task complete
+bd create "title"          # Create new task
+bd create "title" --parent ghq-abc123 --type task  # Create subtask
 ```
 
-PRD files live in `projects/{project-name}/` and are tracked by beads.
+Epic tasks contain subtasks that are executed by `/run-loop`.
 
 ## Loops (Execution State)
 
-The `loops/` directory replaces the v1 `workspace/` directory:
+The `loops/` directory stores execution state:
 
 | File | Purpose |
 |------|---------|
@@ -86,6 +87,7 @@ companies/ -> ~/Documents/GHQ/companies/
     settings/    # Credentials, API keys (gitignored via symlink)
     knowledge/   # Company-specific knowledge
     data/        # Company-specific data
+    projects/    # Company long-running projects
 ```
 
 The symlink keeps sensitive data out of the git repo. See [Company Isolation](../policies/company-isolation.md).
@@ -104,26 +106,27 @@ The symlink keeps sensitive data out of the git repo. See [Company Isolation](..
 
 | Schema | File |
 |--------|------|
-| PRD / beads workflow | [prd-schema.md](prd-schema.md) |
+| Task / beads workflow | [task-schema.md](task-schema.md) |
 | Skill (SKILL.md) | [skill-schema.md](skill-schema.md) |
 | Loops state | [loops-schema.md](loops-schema.md) |
 | INDEX.md format | [index-md-spec.md](index-md-spec.md) |
 
 ## Ralph Loop
 
-GHQ runs the Ralph methodology for autonomous project execution:
+GHQ runs the Ralph methodology for autonomous task execution:
 
 ```
-/run-project
-  -> for each story in PRD (by priority, respecting dependsOn)
-    -> /execute-task
+/run-loop {task-id}
+  -> bd children {task-id} --json (get subtasks by priority)
+  -> for each open subtask (respecting dependencies)
+    -> /execute-task {subtask-id}
       -> classify task type
       -> resolve skill chain
       -> spawn sub-agent per skill
       -> pass handoff JSON between skills
       -> run back-pressure checks after each skill
       -> append result to loops/state.jsonl
-      -> mark story complete on success
+      -> bd close {subtask-id} on success
 ```
 
 Full methodology: `knowledge/ralph/`
@@ -134,16 +137,16 @@ After each skill completes, the orchestrator runs:
 
 | Check | Command |
 |-------|---------|
-| Tests | Configured in project PRD |
-| Typecheck | Configured in project PRD |
-| Lint | Configured in project PRD |
-| Build | Configured in project PRD |
+| Tests | Configured in task metadata |
+| Typecheck | Configured in task metadata |
+| Lint | Configured in task metadata |
+| Build | Configured in task metadata |
 
-If checks fail, the skill gets one retry. If the retry fails, the story is blocked.
+If checks fail, the skill gets one retry. If the retry fails, the task is blocked.
 
 ## Conventions
 
-- Story IDs: `US-XXX` format
+- Task IDs: beads format (e.g. `ghq-abc123`)
 - Work on `main` or worktrees only -- never feature branches
 - Skill IDs: lowercase with hyphens (e.g., `code-reviewer`)
 - All times: ISO8601 UTC

@@ -27,25 +27,15 @@ Optional 1-2 line notes section at bottom for usage hints (e.g., "Run skills via
 
 Max 80 chars per description. If no metadata extractable, use filename.
 
-## Variants
-
-- `projects/INDEX.md` — add `Status` column (active/completed/archived)
-- `workspace/orchestrator/INDEX.md` — add `Progress` column (e.g. "5/11 45%")
-- `workspace/reports/INDEX.md` — add `Date` column
-
 ## Locations
 
 ### Core Directories
 
-1. `projects/`
-2. `knowledge/`
-3. `knowledge/ghq-core/`
-4. `knowledge/skills/`
-5. `knowledge/ralph/`
-6. `.claude/skills/`
-7. `workspace/orchestrator/`
-8. `workspace/reports/`
-9. `workspace/threads/`
+1. `knowledge/`
+2. `knowledge/ghq-core/`
+3. `knowledge/skills/`
+4. `knowledge/ralph/`
+5. `.claude/skills/`
 
 Root `INDEX.md` also exists but follows its own format.
 
@@ -63,9 +53,8 @@ Root `INDEX.md` also exists but follows its own format.
 | `/checkpoint` | Root, threads/, + touched knowledge dirs |
 | `/handoff` | Root, threads/, orchestrator/, + touched knowledge dirs |
 | `/cleanup --reindex` | ALL INDEX.md files (full rebuild) |
-| `/prd` | `projects/` |
-| `/run-project` | `projects/`, `workspace/orchestrator/` |
-| Report generation | `workspace/reports/` |
+| `/create-task` | N/A (tasks in beads, not filesystem) |
+| `/run-loop` | N/A (state in loops/state.jsonl) |
 
 ## qmd
 

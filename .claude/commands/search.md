@@ -68,8 +68,8 @@ Results:
   2. [0.84] ghq: .claude/skills/architect/skill.yaml
      "System design, API design, and architecture decisions..."
 
-  3. [0.71] ghq: projects/ghq/prd.json
-     "GHQ Personal OS for orchestrating work across companies and AI..."
+  3. [0.71] ghq: knowledge/ghq-core/task-schema.md
+     "Tasks in GHQ are managed through beads..."
 
 {n} results. Use --full to show top result content.
 ```

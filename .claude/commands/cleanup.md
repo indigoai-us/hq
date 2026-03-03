@@ -46,15 +46,11 @@ done
 **Policy**: INDEX.md files must exist at all required locations (per `knowledge/ghq-core/index-md-spec.md`).
 
 Required locations:
-- `projects/INDEX.md`
 - `knowledge/INDEX.md`
 - `knowledge/ghq-core/INDEX.md`
 - `knowledge/skills/INDEX.md`
 - `knowledge/ralph/INDEX.md`
 - `.claude/skills/INDEX.md`
-- `workspace/orchestrator/INDEX.md`
-- `workspace/reports/INDEX.md`
-- `workspace/threads/INDEX.md`
 - All `companies/*/knowledge/INDEX.md` (for each company with a knowledge dir)
 
 For each expected location:
@@ -62,10 +58,10 @@ For each expected location:
 2. Check if entry count in table matches actual directory contents → flag STALE if mismatch
 
 ```bash
-# Example: count entries in projects/INDEX.md vs actual dirs
-table_count=$(grep -c "^\|" projects/INDEX.md 2>/dev/null || echo 0)
-actual_count=$(ls -d projects/*/ 2>/dev/null | grep -v "INDEX" | wc -l | tr -d ' ')
-[[ "$table_count" != "$actual_count" ]] && echo "STALE: projects/INDEX.md ($table_count entries vs $actual_count actual)"
+# Example: count entries in knowledge/INDEX.md vs actual dirs
+table_count=$(grep -c "^\|" knowledge/INDEX.md 2>/dev/null || echo 0)
+actual_count=$(ls -d knowledge/*/ 2>/dev/null | grep -v "INDEX" | wc -l | tr -d ' ')
+[[ "$table_count" != "$actual_count" ]] && echo "STALE: knowledge/INDEX.md ($table_count entries vs $actual_count actual)"
 ```
 
 ### 3. Broken References
@@ -143,9 +139,8 @@ GHQ Cleanup Audit
 =================
 
 ✓ Skills registry: 8 skills indexed
-✗ INDEX.md: 2 issues
-  - workspace/threads/INDEX.md: missing
-  - projects/INDEX.md: 12 entries vs 14 actual (stale)
+✗ INDEX.md: 1 issue
+  - knowledge/ghq-core/INDEX.md: 5 entries vs 6 actual (stale)
 ✓ Broken references: none
 ✓ Manifest: consistent
 ✓ Git: clean
@@ -205,11 +200,6 @@ For each required location (see Audit Check #2 list):
 | `file.md` | Description |
 ```
 
-Special variants:
-- `projects/INDEX.md` → add `Status` column (derive from prd.json `metadata.status` or default `active`)
-- `workspace/orchestrator/INDEX.md` → add `Progress` column (derive from state.json if present)
-- `workspace/reports/INDEX.md` → add `Date` column (from file mtime)
-
 For company knowledge dirs (`companies/*/knowledge/INDEX.md`): rebuild each one that exists.
 
 ### Step 3: Run qmd update
@@ -224,16 +214,12 @@ qmd update 2>/dev/null || true
 INDEX.md Rebuild
 ================
 
-Rebuilt 9 INDEX.md files:
-  ✓ projects/INDEX.md (14 entries)
+Rebuilt 5 INDEX.md files:
   ✓ knowledge/INDEX.md (3 entries)
   ✓ knowledge/ghq-core/INDEX.md (6 entries)
   ✓ knowledge/skills/INDEX.md (2 entries)
   ✓ knowledge/ralph/INDEX.md (10 entries)
   ✓ .claude/skills/INDEX.md (8 entries)
-  ✓ workspace/orchestrator/INDEX.md (2 entries)
-  ✓ workspace/reports/INDEX.md (0 entries)
-  ✓ workspace/threads/INDEX.md (4 entries)
 
 qmd: reindexed
 ```

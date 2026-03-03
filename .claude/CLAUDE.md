@@ -6,10 +6,9 @@ Personal OS for orchestrating work across companies and AI.
 
 ```
 .claude/          commands/, skills/, hooks/, policies/
-companies/        {slug}/settings/, knowledge/, data/
+companies/        {slug}/settings/, knowledge/, data/, projects/
 knowledge/        shared knowledge (skills framework, etc.)
-projects/         PRDs and project state
-workspace/        runtime state, threads, checkpoints
+loops/            execution state (state.jsonl, history.jsonl)
 ```
 
 ## Rules

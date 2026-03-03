@@ -1,13 +1,13 @@
 ---
-description: Execute a single story through coordinated skill phases
+description: Execute a single task through coordinated skill phases
 allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash
-argument-hint: [project/task-id]
+argument-hint: [task-id]
 visibility: public
 ---
 
 # /execute-task - Skill-Chain Task Execution
 
-Execute a single user story through coordinated skill phases. Each skill handles its domain, passes structured handoff context to the next.
+Execute a single beads task through coordinated skill phases. Each skill handles its domain, passes structured handoff context to the next.
 
 **Arguments:** $ARGUMENTS
 
@@ -25,61 +25,59 @@ Execute a single user story through coordinated skill phases. Each skill handles
 
 ### 1. Parse Arguments
 
-Extract `{project}/{task-id}` from arguments.
+Extract `{task-id}` from arguments.
 
 If no arguments:
 ```
-Usage: /execute-task {project}/{task-id}
+Usage: /execute-task {task-id}
 
-Example: /execute-task my-app/US-003
+Example: /execute-task ghq-abc123
 ```
 
 ### 2. Load Task Spec
 
-Resolve project location -- search `projects/{project}/prd.json` first, then `companies/*/projects/{project}/prd.json`:
+Fetch the task from beads:
+
+```bash
+bd show {task-id} --json
+```
+
+Parse the JSON output:
 
 ```javascript
-const prdPath = glob(`projects/${project}/prd.json`)[0]
-  || glob(`companies/*/projects/${project}/prd.json`)[0]
-if (!prdPath || !fileExists(prdPath)) {
-  STOP: `ERROR: prd.json not found for ${project}. Run /prd ${project} first.`
+const task = JSON.parse(bdOutput)
+
+if (!task || task.status === "closed") {
+  STOP: `Task ${taskId} not found or already closed.`
 }
-
-const prd = JSON.parse(read(prdPath))
-
-// Strict: userStories required
-const stories = prd.userStories
-if (!stories || !Array.isArray(stories)) {
-  STOP: "prd.json missing userStories array."
-}
-
-// Validate required fields
-for (const story of stories) {
-  const required = ['id', 'title', 'description', 'passes']
-  const missing = required.filter(f => !(f in story))
-  if (missing.length > 0) {
-    STOP: `Story ${story.id || '?'} missing fields: ${missing.join(', ')}`
-  }
-}
-
-const task = stories.find(s => s.id === taskId)
 ```
 
 Extract:
 - `id`, `title`, `description`
-- `acceptance_criteria`
-- `files` (if specified)
-- `dependsOn` (check these are complete)
+- `metadata.acceptanceCriteria` (from metadata JSON)
+- `metadata.e2eTests` (from metadata JSON)
 
-If task not found or already `passes: true`:
-```
-Task {taskId} not found or already complete.
+Check dependencies:
+```bash
+bd dep list {task-id} --json
 ```
 
-If `dependsOn` references incomplete stories:
+If any dependency is still open:
 ```
-Blocked: {taskId} depends on incomplete stories: {list}
+Blocked: {task-id} depends on open tasks: {list}
 ```
+
+Load parent task metadata for quality gates and repo path:
+
+```bash
+# Get parent ID from task data (parent field)
+bd show {parent-id} --json
+```
+
+Extract from parent metadata:
+- `qualityGates` -- commands to run after each skill
+- `repoPath` -- target repository path
+- `relatedSkills` -- skill IDs from registry
 
 ### 3. Classify Task Type
 
@@ -177,46 +175,13 @@ Proceed? [Y/n]
 
 ### 5. Initialize Execution State
 
-Create execution tracking:
+Append to `loops/state.jsonl`:
 
-```bash
-mkdir -p workspace/executions/{project}
+```jsonl
+{"ts":"{ISO8601}","type":"skill_start","story_id":"{task.id}","skill_id":"{first-skill}","data":{}}
 ```
 
-Write `workspace/executions/{project}/{task-id}.json`:
-```json
-{
-  "task_id": "{task.id}",
-  "project": "{project}",
-  "started_at": "{ISO8601}",
-  "status": "in_progress",
-  "current_phase": 1,
-  "skill_chain": ["architect", "backend", "code-reviewer", "qa"],
-  "phases": [
-    {"skill": "architect", "status": "pending"},
-    {"skill": "backend", "status": "pending"},
-    {"skill": "code-reviewer", "status": "pending"},
-    {"skill": "qa", "status": "pending"}
-  ],
-  "handoffs": []
-}
-```
-
-### 5.5 Acquire File Locks
-
-If the story has a non-empty `files` array and prd metadata has `repoPath`:
-
-1. Read `{repoPath}/.file-locks.json` (create if missing: `{"version":1,"locks":[]}`)
-2. **Stale lock cleanup**: For each existing lock, check if owner PID is running (`kill -0 {pid} 2>/dev/null`). If not running AND lock is older than 30 minutes, remove it
-3. **Conflict check**: For each file in `task.files`, check if already locked by another story:
-   - If conflicts found: STOP with `{"status":"blocked","blocked_by":[...]}`
-4. **Acquire locks**: For each file, append:
-   ```json
-   {"file": "{path}", "owner": {"project": "{project}", "story": "{task.id}", "pid": {$$}}, "acquired_at": "{ISO8601}"}
-   ```
-5. Report: `File locks acquired: {N} files for {task.id}`
-
-### 5.6 Load Applicable Policies
+### 5.5 Load Applicable Policies
 
 Load policies from available directories:
 
@@ -247,23 +212,20 @@ Read `.claude/skills/{skill-id}/skill.yaml`:
 {task.description}
 
 ### Acceptance Criteria
-{task.acceptance_criteria as checklist}
-
-### Files to Focus On
-{task.files or inferred from description}
+{task.metadata.acceptanceCriteria as checklist}
 
 ### Context from Previous Phase
 {handoff_context from previous skill, if any}
 
 ### Applicable Policies
-{policies loaded in step 5.6, if any}
+{policies loaded in step 5.5, if any}
 
 ### Your Instructions
 {skill.instructions from skill.yaml}
 
 ### Back Pressure (Run Before Completing)
 After completing your work:
-1. Run the project's test suite (if one exists)
+1. Run the task's test suite (if one exists)
 2. Run typecheck (if TypeScript project)
 3. Run linter (if configured)
 4. Commit your changes with a descriptive message
@@ -320,15 +282,8 @@ Parse skill's JSON output.
 
 **If success:**
 - Store handoff context
-- Update execution state
+- Append to loops/state.jsonl: `{"ts":"...","type":"skill_complete","story_id":"{task.id}","skill_id":"{skill}","data":{...}}`
 - Continue to next phase
-
-#### 6d.5 Expand File Locks (Dynamic)
-
-If file locking is enabled and skill output contains `files_created` or `files_modified`:
-1. Compute new files not already locked for this story
-2. Acquire locks for them (same as step 5.5)
-3. Update story's `files` array in prd.json with new paths
 
 #### 6e. Build Handoff JSON
 
@@ -355,60 +310,35 @@ After each phase, construct handoff for the next skill:
 }
 ```
 
-#### 6f. Update Execution State
-
-After each phase:
-```json
-{
-  "phases": [
-    {"skill": "architect", "status": "completed", "completed_at": "..."},
-    {"skill": "backend", "status": "in_progress"},
-    ...
-  ],
-  "handoffs": [
-    {
-      "from_skill": "architect",
-      "to_skill": "backend",
-      "context": {...skill output...}
-    }
-  ]
-}
-```
-
 ### 7. Complete Task
 
 When all phases complete:
 
-#### 7.0 Release File Locks
+#### 7a. Close Task in Beads
 
-If file locking was active:
-1. Read `{repoPath}/.file-locks.json`
-2. Remove all entries where `owner.project === "{project}" && owner.story === "{task.id}"`
-3. Write updated `.file-locks.json`
-
-This runs BEFORE PRD update so locks are released even if later steps fail.
-
-#### 7a. Update PRD
-
-```javascript
-task.passes = true
-// Write updated prd.json
+```bash
+bd close {task-id}
 ```
 
-#### 7b. Capture Learnings via /learn
+#### 7b. Append Completion to State
+
+```jsonl
+{"ts":"{ISO8601}","type":"story_complete","story_id":"{task.id}","data":{"skills_run":["{list}"]}}
+```
+
+#### 7c. Capture Learnings via /learn
 
 Run `/learn` with structured input from execution:
 
 ```json
 {
   "task_id": "{task.id}",
-  "project": "{project}",
   "source": "task-completion",
   "severity": "medium",
   "scope": "auto",
   "skills_used": ["list of skills that ran"],
   "back_pressure_failures": [{"skill": "...", "check": "...", "error": "..."}],
-  "retries": N,
+  "retries": 0,
   "key_decisions": ["aggregated from skill outputs"],
   "issues_encountered": ["from skill outputs"],
   "patterns_discovered": ["success patterns worth preserving"]
@@ -417,13 +347,13 @@ Run `/learn` with structured input from execution:
 
 If task completed cleanly with no failures/retries/notable patterns, `/learn` logs the event only (no rule created).
 
-#### 7c. Reindex
+#### 7d. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-#### 7d. Report Completion
+#### 7e. Report Completion
 
 ```
 Task Complete: {task.id} - {task.title}
@@ -436,12 +366,12 @@ Key decisions:
 - {decision 1}
 - {decision 2}
 
-PRD updated: passes: true
+Task closed in beads.
 ```
 
-#### 7e. Structured Output for Orchestrator
+#### 7f. Structured Output for Orchestrator
 
-When invoked as a sub-agent by `/run-project`, end with this JSON so the orchestrator can parse results:
+When invoked as a sub-agent by `/run-loop`, end with this JSON so the orchestrator can parse results:
 
 ```json
 {
@@ -463,8 +393,6 @@ When invoked as a sub-agent by `/run-project`, end with this JSON so the orchest
 
 If any phase fails after retry:
 
-**8.0 Release file locks** -- same as step 7.0. Never orphan locks on failure.
-
 **8.1 Auto-capture failure as learning:**
 
 Run `/learn` with:
@@ -474,12 +402,11 @@ Run `/learn` with:
   "severity": "high",
   "scope": "skill:{failed-skill-id}",
   "back_pressure_failures": [{"skill": "...", "check": "...", "error": "..."}],
-  "task_id": "{task.id}",
-  "project": "{project}"
+  "task_id": "{task.id}"
 }
 ```
 
-**8.2 Update execution state:** `status: "paused"`
+**8.2 Append to state.jsonl:** `{"ts":"...","type":"skill_error","story_id":"{task.id}","skill_id":"{skill}","data":{"error":"...","retry":true}}`
 
 **8.3 Present options:**
 
@@ -487,7 +414,7 @@ Run `/learn` with:
 Phase {N} ({skill}) failed: {error}
 
 Options:
-1. Fix manually and resume: /execute-task {project}/{task-id} --resume
+1. Fix manually and resume: /execute-task {task-id} --resume
 2. Skip this skill and continue
 3. Abort execution
 ```
@@ -513,11 +440,9 @@ Options:
 - **Capture learnings** -- Every task generates a learning entry
 - **Handoffs preserve context** -- Next skill knows what happened
 - **Fail fast, fail loud** -- Stop on errors, don't hide them
-- **prd.json is required** -- never read or fall back to README.md
-- **Validate prd.json on load** -- fail loudly on missing/malformed fields
-- **Orchestrator-compatible output** -- always end with structured JSON block (step 7e)
+- **Beads is the source of truth** -- task state comes from `bd show`, not files
+- **Orchestrator-compatible output** -- always end with structured JSON block (step 7f)
 - **Sub-agents MUST commit** -- each sub-agent commits its own work before completing
-- **Never rewrite the PRD** -- sub-agents may only update the current story's `passes`, `notes`, and fields. Never restructure, rename, add, or remove stories
-- **Do NOT use EnterPlanMode or TodoWrite** -- the PRD, task classification, and skill sequencing replace ad-hoc planning. Follow the steps in order
-- **Always reindex after task completion** -- `qmd update` after every completed task (step 7c)
+- **Do NOT use EnterPlanMode or TodoWrite** -- the task classification and skill sequencing replace ad-hoc planning. Follow the steps in order
+- **Always reindex after task completion** -- `qmd update` after every completed task (step 7d)
 - **Skill chains replace workers** -- resolve depends_on from skill.yaml, not worker.yaml

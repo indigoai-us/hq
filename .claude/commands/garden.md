@@ -1,26 +1,24 @@
 ---
 description: Content audit — detect stale, orphaned, duplicate, and broken content across GHQ
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit
-argument-hint: [--fix | --archive <project>]
+argument-hint: [--fix]
 visibility: public
 ---
 
 # /garden - Content Audit & Curation
 
-Single-pass content health check for GHQ. Scans knowledge, projects, and skills for issues, reports findings clearly, and asks before taking any action.
+Single-pass content health check for GHQ. Scans knowledge, skills, and beads tasks for issues, reports findings clearly, and asks before taking any action.
 
 **Arguments:** $ARGUMENTS
 
 - No args — audit only, report findings
 - `--fix` — audit then offer to apply safe fixes (stale dates, registry drift)
-- `--archive <project>` — archive a specific completed project by slug
 
 ---
 
 ## Step 0: Parse Arguments
 
 Check $ARGUMENTS:
-- If `--archive <project>`: jump to [Archive Flow](#archive-flow) with that project slug
 - If `--fix`: run full audit (Steps 1–5), then offer fix options in Step 6
 - Otherwise: run full audit (Steps 1–5) and report only
 
@@ -38,9 +36,8 @@ find companies/*/knowledge/ -name "*.md" 2>/dev/null | sort
 # INDEX.md files (all levels)
 find . -name "INDEX.md" -not -path "./.git/*" -not -path "./repos/*" -not -path "./workspace/*" 2>/dev/null | sort
 
-# Project PRDs
-find projects/ -name "prd.json" -not -path "*/archive/*" 2>/dev/null | sort
-find projects/archive/ -name "prd.json" 2>/dev/null | sort
+# Beads tasks (epics)
+bd list --type epic --json 2>/dev/null || true
 
 # Skills
 find .claude/skills/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort
@@ -105,15 +102,16 @@ grep -oP '\[.*?\]\((.*?)\)' knowledge/*/INDEX.md 2>/dev/null | grep -oP '\((.*?)
 
 Any file in `knowledge/` or `companies/*/knowledge/` not linked from any INDEX = orphan candidate.
 
-### 3b: Project orphans
+### 3b: Task health (beads)
 
-Check `workspace/orchestrator/state.json` for registered projects:
+Check for stale or orphaned beads tasks:
 
 ```bash
-cat workspace/orchestrator/state.json 2>/dev/null | grep '"name"'
+bd stale --json 2>/dev/null || true
+bd list --type epic --json 2>/dev/null || true
 ```
 
-Compare against actual `projects/*/prd.json`. Projects on disk but absent from state.json are unregistered.
+Flag epics with no children or all children closed but epic still open.
 
 ### 3c: Skill orphans
 
@@ -131,7 +129,7 @@ grep "path:" .claude/skills/registry.yaml 2>/dev/null
 Flag: dirs in `.claude/skills/` that are NOT in registry (and are not `_template`).
 Flag: registry entries whose `path:` directory does NOT exist on disk.
 
-Collect: `orphan_knowledge[]`, `unregistered_projects[]`, `skill_registry_drift[]`
+Collect: `orphan_knowledge[]`, `stale_tasks[]`, `skill_registry_drift[]`
 
 ---
 
@@ -172,18 +170,7 @@ qmd vsearch "skill framework documentation" --json -n 5 2>/dev/null || true
 
 Flag pairs with similarity > 0.85 that are in different files as potential duplicates.
 
-### 5b: Duplicate project names
-
-Compare active project names against archive:
-
-```bash
-ls projects/ 2>/dev/null | grep -v "INDEX.md" | grep -v "archive"
-ls projects/archive/ 2>/dev/null
-```
-
-Flag any name collision (same slug active and in archive).
-
-### 5c: Duplicate commands
+### 5b: Duplicate commands
 
 Check for commands that describe overlapping functionality:
 
@@ -205,7 +192,7 @@ Date: 2026-02-28
 Scanned:
   knowledge/           {N} files
   companies/*/knowledge/  {N} files
-  projects/            {N} active PRDs, {N} archived
+  beads tasks          {N} epics, {N} open subtasks
   .claude/skills/      {N} skills
   .claude/commands/    {N} commands
   INDEX.md files       {N} found
@@ -231,8 +218,8 @@ Scanned:
   Registry entries with missing directories ({count}):
     - {id}  declared path: {path}
 
-  Projects on disk not in orchestrator state ({count}):
-    - {name}
+  Stale beads tasks ({count}):
+    - {id}: {title}  (not updated in {N} days)
 
 --- BROKEN LINKS ---
 {if none}  No broken links found.
@@ -246,9 +233,6 @@ Scanned:
   Potential duplicate knowledge topics ({count}):
     - {file_a} ↔ {file_b}  (similarity: {score})
 
-  Active+archived name collision ({count}):
-    - {slug}  (exists in both projects/ and projects/archive/)
-
 --- SUMMARY ---
   {total_issues} issues found.
   {0 issues: "GHQ content is healthy." | else: "Review findings above."}
@@ -258,7 +242,6 @@ If `--fix` was NOT passed and issues were found, print:
 
 ```
 Run `/garden --fix` to apply safe automated fixes.
-Run `/garden --archive <project>` to archive a completed project.
 ```
 
 ---
@@ -307,95 +290,11 @@ Fixes applied:
 Reindex: done
 ```
 
----
-
-## Archive Flow
-
-Triggered by `--archive <project>` argument.
-
-### A1: Locate project
-
-```bash
-ls projects/{slug}/ 2>/dev/null
-cat projects/{slug}/prd.json 2>/dev/null
-```
-
-If not found: "Project '{slug}' not found in projects/. Check spelling or run /garden to see active projects."
-
-### A2: Verify completion
-
-Read `projects/{slug}/prd.json`. Check all stories for `"passes": true`.
-
-If any story has `"passes": false`:
-
-```
-Cannot archive '{slug}' — {N} stories are not yet passing:
-  - US-{id}: {title}  [passes: false]
-
-Archive is for completed projects only. Mark stories complete first, or run /garden without --archive to see project status.
-```
-
-Stop.
-
-### A3: Confirm with user
-
-```
-Archive '{slug}'?
-
-  Active stories: {N} (all passing)
-  Move: projects/{slug}/ → projects/archive/{slug}/
-
-This will:
-  1. git mv projects/{slug}/ projects/archive/{slug}/
-  2. Update projects/INDEX.md (move from Active to Archive section)
-  3. Run qmd update
-
-Proceed? (yes/no)
-```
-
-Wait for explicit confirmation.
-
-### A4: Execute archive (only after "yes")
-
-```bash
-git mv projects/{slug}/ projects/archive/{slug}/
-```
-
-Update `projects/INDEX.md`:
-- Remove the project row from the `## Active Projects` table
-- Add a note under `## Archive` or confirm archive directory reference is accurate
-
-Commit:
-
-```bash
-git add projects/INDEX.md
-git commit -m "archive: move {slug} to projects/archive/"
-```
-
-Reindex:
-
-```bash
-qmd update 2>/dev/null || true
-```
-
-Report:
-
-```
-Archived: projects/{slug}/ → projects/archive/{slug}/
-Committed: archive: move {slug} to projects/archive/
-Reindex: done
-```
-
----
-
 ## Rules
 
 - **Never take action without asking first** — audit is always read-only unless `--fix` or `--archive` is passed, and even then user confirmation is required before any write
-- **Never archive an incomplete project** — all stories must have `"passes": true` before archiving
 - **Minimal edits only** — fix only what is flagged; do not reformulate, rewrite, or reorganize content that is not an identified issue
 - **qmd update after every change** — always reindex after applying fixes or archiving
-- **git mv for archive moves** — never use plain `mv`; always use `git mv` to preserve history
-- **Commit archive moves** — archive operations must be committed immediately with a clear message
 - **Report first, act second** — always print the full audit report before offering fixes
 - **Stale threshold: INDEX.md = 90 days, knowledge files = 180 days** — these are guidance thresholds, not hard deletes
 - **Skills _template is not a skill** — never flag `.claude/skills/_template/` as an orphan or registry gap
