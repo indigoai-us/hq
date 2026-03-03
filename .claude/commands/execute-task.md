@@ -57,6 +57,12 @@ Extract:
 - `metadata.acceptanceCriteria` (from metadata JSON)
 - `metadata.e2eTests` (from metadata JSON)
 
+Mark the task as in-progress:
+
+```bash
+bd update {task-id} --status in_progress
+```
+
 Check dependencies:
 ```bash
 bd dep list {task-id} --json

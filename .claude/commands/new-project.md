@@ -83,7 +83,11 @@ bd create "{Project Name}" \
   --json
 ```
 
-Capture the epic ID from the JSON output.
+Capture the epic ID from the JSON output. Immediately close the epic — project epics are containers, not actionable work. Closing them keeps `bd ready` clean. Tasks can still be created under closed epics.
+
+```bash
+bd close {epic-id}
+```
 
 ### 6. Scaffold Project Directory
 

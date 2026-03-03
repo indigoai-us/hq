@@ -139,7 +139,13 @@ bd create "{Name}" --type epic --description "Root epic for {Name} — {brief de
 {success criteria bullet points from step 2}" --labels "company,{slug}" --json
 ```
 
-Capture the epic ID from the JSON output. Add it to the manifest entry:
+Capture the epic ID from the JSON output. Immediately close the epic — company epics are containers, not actionable work. Closing them keeps `bd ready` clean. Tasks can still be created under closed epics.
+
+```bash
+bd close {epic-id}
+```
+
+Add the epic ID to the manifest entry:
 
 ```yaml
 {slug}:

@@ -119,6 +119,12 @@ If main:
 
 ### 4. Initialize State
 
+Mark the parent task as in-progress:
+
+```bash
+bd update {task-id} --status in_progress
+```
+
 Append a `loop_start` entry to `loops/state.jsonl`:
 
 ```jsonl
@@ -260,7 +266,12 @@ When all subtasks are closed:
 {"ts":"{ISO8601}","task_id":"{task-id}","duration_s":{elapsed},"stories_completed":{N},"stories_blocked":{N},"skills_invoked":{N},"blocked_stories":[]}
 ```
 
-**Close the parent task if all children are done:**
+**Close the parent task:**
+```bash
+bd close {task-id}
+```
+
+**Close any eligible ancestor epics:**
 ```bash
 bd epic close-eligible
 ```
