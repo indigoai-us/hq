@@ -74,3 +74,4 @@
 {"ts":"2026-03-04T03:10:02Z","type":"story_complete","story_id":"ghq-53s.1.1.5","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-03T23:25:33Z","type":"loop_start","data":{"task_id":"ghq-uik.1.5","stories_total":9,"stories_pending":9}}
 {"ts":"2026-03-03T23:26:10Z","type":"skill_start","story_id":"ghq-uik.1.5.2","skill_id":"direct","data":{}}
+{"ts":"2026-03-03T23:27:57Z","type":"story_complete","story_id":"ghq-uik.1.5.2","data":{"skills_run":["direct"]}}
