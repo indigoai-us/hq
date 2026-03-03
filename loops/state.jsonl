@@ -1,3 +1,10 @@
 {"ts":"2026-03-03T02:10:00Z","type":"loop_start","data":{"task_id":"ghq-uik.1.1","stories_total":6,"stories_pending":6}}
 {"ts":"2026-03-03T02:07:45Z","type":"skill_start","story_id":"ghq-uik.1.1.1","skill_id":"direct-execution","data":{}}
 {"ts":"2026-03-03T02:10:15Z","type":"story_complete","story_id":"ghq-uik.1.1.1","data":{"skills_run":["direct-execution"]}}
+{"ts":"2026-03-03T02:14:00Z","type":"story_complete","story_id":"ghq-uik.1.1.1","data":{"skills_run":["direct-execution"]}}
+{"ts":"2026-03-03T02:11:21Z","type":"skill_start","story_id":"ghq-uik.1.1.2","skill_id":"direct-execution","data":{}}
+{"ts":"2026-03-03T02:13:32Z","type":"story_complete","story_id":"ghq-uik.1.1.2","data":{"skills_run":["direct-execution"]}}
+{"ts":"2026-03-03T02:18:00Z","type":"story_complete","story_id":"ghq-uik.1.1.2","data":{"skills_run":["direct-execution"]}}
+{"ts":"2026-03-03T02:16:15Z","type":"skill_start","story_id":"ghq-uik.1.1.3","skill_id":"direct-execution","data":{}}
+{"ts":"2026-03-03T02:16:19Z","type":"skill_complete","story_id":"ghq-uik.1.1.3","skill_id":"direct-execution","data":{"summary":"Company isolation audit completed. All boundaries sound except one stale cross-company reference in video-gen skill."}}
+{"ts":"2026-03-03T02:16:26Z","type":"story_complete","story_id":"ghq-uik.1.1.3","data":{"skills_run":["direct-execution"]}}
