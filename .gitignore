@@ -12,3 +12,4 @@ companies/*
 .beads/dolt-server.activity
 .beads/dolt-monitor.pid
 .beads/dolt-server.port
+/.claude/worktrees
