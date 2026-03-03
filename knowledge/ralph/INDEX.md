@@ -1,6 +1,6 @@
 # Ralph — Index
 
-> Auto-generated. Updated: 2026-02-28
+> Auto-generated. Updated: 2026-03-03
 
 | Name | Description |
 |------|-------------|
