@@ -171,6 +171,81 @@ Batch Plan for {task-id}:
 Total: {N} batches, {M} subtasks
 ```
 
+### 4c. File Overlap Detection
+
+Before spawning parallel sub-agents for a batch, detect whether any subtasks in the batch might modify the same files. If overlap is found, split the batch into sequential sub-batches to prevent parallel write conflicts.
+
+**Apply overlap detection to each batch:**
+
+```bash
+# For each batch, build input JSON with subtask metadata and pass to file-overlap.sh
+# The script estimates file scope from each subtask's title, description, and acceptanceCriteria
+# and splits overlapping subtasks into separate sub-batches.
+
+SUBTASKS_JSON=$(bd children {task-id} --json)
+
+for each batch in BATCHES:
+    # Build input for file-overlap.sh
+    OVERLAP_INPUT=$(echo "$SUBTASKS_JSON" | jq -c --argjson batch "$batch" '
+      {
+        batch: $batch,
+        subtasks: (
+          [.[] | select(.id as $id | $batch | index($id) != null)] |
+          reduce .[] as $t ({}; . + { ($t.id): $t })
+        )
+      }
+    ')
+
+    # Detect overlaps and get sub-batches
+    SUB_BATCHES=$(echo "$OVERLAP_INPUT" | scripts/file-overlap.sh --stdin)
+    # Output: [["taskA","taskC"], ["taskB"]]
+    # If no overlap: [["taskA","taskB","taskC"]] (unchanged)
+    # Overlap logs appear on stderr (e.g., "file-overlap: serialized taskB after taskA due to overlap on: SKILL.md")
+
+    # Replace the original batch with the sub-batches
+    # Each sub-batch is processed sequentially; tasks within a sub-batch run in parallel
+```
+
+**How file scope is estimated:**
+
+The overlap detector extracts file paths from each subtask's combined text (title + description + acceptanceCriteria) using two heuristics:
+1. **Directory paths**: Patterns like `.claude/skills/deep-research/SKILL.md`, `src/models/user.ts`
+2. **Standalone filenames**: Patterns like `SKILL.md`, `run-loop.md` (uppercase-starting filenames with extensions)
+
+Two subtasks conflict if they share any extracted file path (case-insensitive comparison).
+
+**Conflict resolution (greedy first-fit):**
+
+Tasks are processed in their original batch order. Each task is assigned to the first sub-batch where it has no conflict with any already-assigned task. If no existing sub-batch works, a new sub-batch is created. This produces the minimum number of sub-batches while preserving task ordering.
+
+**Example:**
+
+```
+Original batch from dep-graph:  ["task-a", "task-b", "task-c"]
+
+task-a: targets .claude/skills/deep-research/SKILL.md
+task-b: targets .claude/skills/deep-research/SKILL.md  (overlaps with task-a!)
+task-c: targets knowledge/ghq-core/loops-schema.md      (no overlap)
+
+After overlap detection:
+  Sub-batch 1: ["task-a", "task-c"]  (parallel -- no file overlap)
+  Sub-batch 2: ["task-b"]            (serialized after task-a due to SKILL.md overlap)
+
+Log output (stderr):
+  file-overlap: serialized task-b after task-a due to overlap on: .claude/skills/deep-research/skill.md
+```
+
+**Integration with the loop (step 5):**
+
+The sub-batches from overlap detection are treated as the actual execution units. Each sub-batch within a dependency batch is processed sequentially (to avoid file conflicts), but tasks within each sub-batch still run in parallel. This means the execution order is:
+
+```
+for each dependency_batch in BATCHES:           # from dep-graph (step 4b)
+    for each sub_batch in overlap_split(dependency_batch):  # from file-overlap (step 4c)
+        spawn sub_batch tasks in parallel        # step 5b
+        wait for all to complete                 # step 5c
+```
+
 ### 5. The Loop (Batch-Parallel)
 
 The orchestrator is an **ultra-lean state machine** that processes batches from the dependency graph (step 4b). Within each batch, independent subtasks are spawned as **parallel sub-agents** (up to max 5 concurrency). The orchestrator waits for all sub-agents in a batch to complete before proceeding to the next batch.
@@ -184,18 +259,27 @@ MAX_CONCURRENCY = 5   # Max sub-agents running simultaneously
 ```
 for each batch in BATCHES:
 
-    5a. SELECT batch and chunk for concurrency
+    5a. APPLY OVERLAP DETECTION AND CHUNK FOR CONCURRENCY
 
-        The current batch is an array of independent subtask IDs from the
-        dependency graph. If the batch has more than MAX_CONCURRENCY subtasks,
-        split it into chunks of MAX_CONCURRENCY.
+        First, run file overlap detection (step 4c) on the current batch
+        to split it into sub-batches that avoid file conflicts:
+
+        ```bash
+        SUB_BATCHES=$(echo "$OVERLAP_INPUT" | scripts/file-overlap.sh --stdin)
+        # If overlap detected: [["task-a","task-c"], ["task-b"]]
+        # If no overlap:       [["task-a","task-b","task-c"]]
+        ```
+
+        Then, for each sub-batch, if it has more than MAX_CONCURRENCY subtasks,
+        split it into chunks of MAX_CONCURRENCY:
 
         ```javascript
-        // batch = ["task-a", "task-b", "task-c", "task-d", "task-e", "task-f", "task-g"]
-        // chunks = [["task-a","task-b","task-c","task-d","task-e"], ["task-f","task-g"]]
-        const chunks = []
-        for (let i = 0; i < batch.length; i += MAX_CONCURRENCY) {
-          chunks.push(batch.slice(i, i + MAX_CONCURRENCY))
+        for (const sub_batch of sub_batches) {
+          const chunks = []
+          for (let i = 0; i < sub_batch.length; i += MAX_CONCURRENCY) {
+            chunks.push(sub_batch.slice(i, i + MAX_CONCURRENCY))
+          }
+          // Process chunks sequentially; tasks within chunk run in parallel
         }
         ```
 
@@ -203,19 +287,28 @@ for each batch in BATCHES:
         ```
         ────────────────────────────────────
         Batch {N}/{total_batches}: {batch.length} subtasks
-        Concurrency: min({batch.length}, {MAX_CONCURRENCY})
+        Sub-batches: {sub_batch_count} (after overlap detection)
+        Concurrency: min({sub_batch.length}, {MAX_CONCURRENCY})
         Subtasks: {id1}, {id2}, ...
         Progress: {completed}/{total} ({percentage}%)
         ────────────────────────────────────
         ```
 
+        If overlap was detected, also report:
+        ```
+        ⚠ File overlap detected:
+          {task-b} serialized after {task-a} (shared: SKILL.md)
+        ```
+
     5b. SPAWN parallel sub-agents for each chunk
 
-        For each chunk within the batch, spawn ALL sub-agents
-        concurrently using Task tool with run_in_background.
+        For each sub-batch (from overlap detection), then for each chunk
+        within the sub-batch, spawn ALL sub-agents concurrently using
+        Task tool with run_in_background.
 
         ```
-        for each chunk in chunks:
+        for each sub_batch in sub_batches:       // sequential (overlap-safe)
+          for each chunk in chunks(sub_batch):   // sequential (concurrency-limited)
 
             // Spawn all sub-agents in this chunk simultaneously
             for each subtask in chunk:
@@ -345,7 +438,8 @@ for each batch in BATCHES:
 |-----------|-------------|
 | Max 5 concurrent sub-agents | Chunk splitting in step 5a |
 | No nested run-loops | Each sub-agent runs /execute-task, not /run-loop |
-| No shared file state between parallel agents | Each sub-agent operates independently |
+| No shared file state between parallel agents | File overlap detection in step 4c via `scripts/file-overlap.sh` |
+| No parallel file conflicts | Overlap detection splits conflicting tasks into sequential sub-batches (step 4c) |
 | Batch ordering respects dependencies | Dependency graph from step 4b |
 | Failed sub-agent does not block peers | Post-batch collection in step 5c |
 
@@ -428,8 +522,9 @@ COMPLETED:
 - **ONE loop at a time** -- no nested run-loops. Sub-agents run /execute-task, never /run-loop.
 - **Max 5 concurrent sub-agents** -- batches larger than 5 are chunked. Never exceed 5 parallel Task() calls.
 - **Batch-parallel execution** -- independent subtasks within a batch run concurrently. Dependent subtasks wait for their batch.
+- **Overlap-safe parallelism** -- before spawning, each batch is checked for file overlap via `scripts/file-overlap.sh`. Overlapping subtasks are serialized into sequential sub-batches. Logs indicate when serialization occurs.
 - **All-in-one-message dispatch** -- all Task() calls for a chunk MUST be in the same message to enable parallel execution.
-- **Wait for full batch** -- never start the next batch until ALL sub-agents in the current batch have returned.
+- **Wait for full batch** -- never start the next batch (or sub-batch) until ALL sub-agents in the current chunk have returned.
 - **Sub-agent per subtask** -- each subtask runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes skill phases directly.
 - **Context discipline** -- the orchestrator stores ONLY task_id, status, and 1-sentence summary per subtask. No skill outputs, no handoff blobs, no file lists.
 - **Fresh context per subtask** -- sub-agent context is freed when it returns.
@@ -442,7 +537,7 @@ COMPLETED:
 - **Work mode: main or worktree only** -- NEVER create feature branches. Always ask the user which mode before starting.
 - **If worktree: ask merge or PR on completion** -- never assume one or the other.
 - **Zero accumulation** -- receives only structured JSON back from sub-agents. Discards everything else.
-- **Reanchor between batches** -- rebuild dependency graph after each batch (closed tasks may unlock new paths).
+- **Reanchor between batches** -- rebuild dependency graph and re-run overlap detection after each batch (closed tasks may unlock new paths and change file scopes).
 
 ## Integration
 
