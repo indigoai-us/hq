@@ -78,9 +78,6 @@ setup_test_env() {
 
   # Create scheduler.yaml
   cat > "$test_root/.claude/scheduler.yaml" <<'YAML'
-max_concurrent_agents: 2
-cooldown_after_failure: 900
-daily_budget: 50.00
 blocked_hours:
   - 2
   - 3
@@ -267,9 +264,6 @@ create_fake_bd "$TEST_ROOT" "$TASK_JSON"
 # Override scheduler.yaml to block the current hour
 CURRENT_HOUR=$(date -u +%-H)
 cat > "$TEST_ROOT/.claude/scheduler.yaml" <<YAML
-max_concurrent_agents: 2
-cooldown_after_failure: 900
-daily_budget: 50.00
 blocked_hours:
   - $CURRENT_HOUR
 YAML
@@ -287,54 +281,27 @@ fi
 # Test 7: Respects max_concurrent_agents from scheduler.yaml
 # ═════════════════════════════════════════════════
 echo ""
-echo "Test 7: Respects max_concurrent_agents from scheduler.yaml"
+echo "Test 7: Respects per-company max_agents from manifest"
 
 TEST_ROOT=$(setup_test_env)
 
-# Create manifest with 3 enabled companies
-cat > "$TEST_ROOT/companies/manifest.yaml" <<'YAML'
-co-a:
-  symlink: co-a
-  epic: ghq-a
-  scheduler:
-    enabled: true
-    max_agents: 1
-co-b:
-  symlink: co-b
-  epic: ghq-b
-  scheduler:
-    enabled: true
-    max_agents: 1
-co-c:
-  symlink: co-c
-  epic: ghq-c
-  scheduler:
-    enabled: true
-    max_agents: 1
-YAML
-
-# Set max_concurrent_agents to 2
 cat > "$TEST_ROOT/.claude/scheduler.yaml" <<'YAML'
-max_concurrent_agents: 2
-cooldown_after_failure: 900
-daily_budget: 50.00
 blocked_hours: []
 YAML
 
-TASK_JSON='[{"id":"ghq-a.1","title":"Task A","status":"open","priority":1,"labels":[],"metadata":{}}]'
+TASK_JSON='[{"id":"ghq-alpha.1","title":"Alpha task","status":"open","priority":1,"labels":[],"metadata":{}}]'
 create_fake_bd "$TEST_ROOT" "$TASK_JSON"
 
-# Create pid file for co-a and co-b (both "running") to hit the limit
-echo $$ > "$TEST_ROOT/loops/agents/co-a.pid"
-echo $$ > "$TEST_ROOT/loops/agents/co-b.pid"
+# Create pid file for alpha-co (already running 1 agent, max_agents=1)
+echo $$ > "$TEST_ROOT/loops/agents/alpha-co.pid"
 
 OUTPUT=$(GHQ_ROOT="$TEST_ROOT" PATH="$TEST_ROOT:$PATH" BD_CMD="$TEST_ROOT/fake-bd" \
   "$TEST_ROOT/loops/scripts/scheduler.sh" --dry-run 2>&1) || true
 
-if echo "$OUTPUT" | grep -qi "max.*concurrent\|concurrent.*limit\|agent.*limit\|limit.*reached\|at capacity"; then
-  pass "Respects max_concurrent_agents limit"
+if echo "$OUTPUT" | grep -qi "alpha-co.*skip\|skip.*alpha-co\|alpha-co.*running\|alpha-co.*agent"; then
+  pass "Respects per-company max_agents limit"
 else
-  fail "Respects max_concurrent_agents limit" "output: $OUTPUT"
+  fail "Respects per-company max_agents limit" "output: $OUTPUT"
 fi
 
 # ═════════════════════════════════════════════════

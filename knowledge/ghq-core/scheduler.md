@@ -11,10 +11,11 @@ Cron / launchd (every 15 min)
 scheduler.sh
   |
   +-- Phase 1: Parse config (scheduler.yaml + manifest.yaml)
-  +-- Phase 2: Check constraints (blocked hours, max concurrent)
-  +-- Phase 3: Recover dead agents (pid check -> retry or escalate)
-  +-- Phase 4: Dispatch new agents (one per enabled company)
-  +-- Phase 5: Digest (at configured digest_hour)
+  +-- Phase 2: Check constraints (blocked hours)
+  +-- Phase 3: Digest (at configured digest_hour)
+  +-- Phase 4: Strategy planner (generate draft tasks for cadence gaps)
+  +-- Phase 5: Recover dead agents (pid check -> retry or escalate)
+  +-- Phase 6: Dispatch new agents (per-company max_agents)
 ```
 
 ## Components
@@ -31,9 +32,9 @@ The main entry point. Designed to run via cron/launchd every 15 minutes.
 2. Reads `.claude/scheduler.yaml` for global config
 3. Checks blocked hours (exits with code 3 if blocked)
 4. Generates daily digest at the configured hour
-5. Detects dead agents via pid files, triggers recovery
-6. Counts running agents, respects `max_concurrent_agents`
-7. For each enabled company without a running agent:
+5. Runs strategy planner for all enabled companies
+6. Detects dead agents via pid files, triggers recovery
+7. For each enabled company under its `max_agents` limit:
    - Queries bd for the top-ranked open unblocked task
    - Writes a lockfile (`loops/agents/{company}.lock`) with the task ID
    - Spawns a Claude Code agent running `/run-loop {task-id}`
@@ -123,15 +124,14 @@ Read and write user preferences for the ask_once_then_remember and ask_until_con
 ### .claude/scheduler.yaml (global)
 
 ```yaml
-max_concurrent_agents: 2      # Max agents across all companies
-cooldown_after_failure: 900    # Seconds before retrying after failure
-daily_budget: 50.00            # USD spend cap per day
 blocked_hours:                 # UTC hours when scheduler must not dispatch
   - 2
   - 3
   - 4
 digest_hour: 23                # UTC hour for daily digest (-1 to disable)
 ```
+
+Per-company concurrency is controlled via `scheduler.max_agents` in `manifest.yaml`.
 
 ### companies/manifest.yaml (per-company)
 
@@ -216,6 +216,8 @@ loops/
     test-strategy-planner.sh  # Unit tests for strategy planner
     test-digest.sh            # Unit tests for digest
     test-escalation.sh        # Unit tests for escalation
+    test-bd-extensions.sh     # Tests for draft status and decision type
+    test-preferences.sh       # Tests for preference memory system
     test-integration.sh       # End-to-end integration test
 ```
 
@@ -235,13 +237,13 @@ When the scheduler detects a dead agent (pid file exists but process is gone):
 
 ## Scheduling (launchd)
 
-The scheduler runs on macOS via launchd. The plist is at the repo root:
+The scheduler runs on macOS via launchd. The plist template is at:
 
-**File:** `com.ghq.scheduler.plist`
+**File:** `loops/com.ghq.scheduler.plist`
 
 **Install:**
 ```bash
-cp com.ghq.scheduler.plist ~/Library/LaunchAgents/
+cp loops/com.ghq.scheduler.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.ghq.scheduler.plist
 ```
 
@@ -278,6 +280,8 @@ The plist runs scheduler.sh every 15 minutes (900 seconds) as a background proce
 ./loops/scripts/test-strategy-planner.sh   # Planner cadence gap tests
 ./loops/scripts/test-digest.sh             # Digest generation tests
 ./loops/scripts/test-escalation.sh         # Escalation policy tests
+./loops/scripts/test-bd-extensions.sh      # Draft status and decision type tests
+./loops/scripts/test-preferences.sh        # Preference memory system tests
 ```
 
 ### Integration test (full cycle)
@@ -301,19 +305,16 @@ The integration test exercises the complete scheduler lifecycle in an isolated t
 ## Data Flow
 
 ```
-strategy.yaml -> strategy-planner.sh -> bd (draft tasks)
-                                            |
-manifest.yaml -> scheduler.sh --------> bd (rank open tasks)
-                     |                      |
-                     v                      v
-              check constraints      spawn claude /run-loop
-                     |                      |
-                     v                      v
-              dead agent check        loops/agents/{co}.pid
-                     |                loops/agents/{co}.lock
-                     v
-              retry or escalate
+manifest.yaml -> scheduler.sh
                      |
-                     v
-              digest.sh -> loops/digests/YYYY-MM-DD.md
+                     +-- check constraints (blocked hours)
+                     +-- digest.sh -> loops/digests/YYYY-MM-DD.md
+                     +-- strategy-planner.sh -> bd (draft tasks)
+                     |       reads strategy.yaml per company
+                     +-- recover dead agents -> retry or escalate
+                     +-- dispatch loop:
+                           per company (respecting max_agents):
+                             bd (rank open tasks) -> spawn claude /run-loop
+                                                      -> loops/agents/{co}.pid
+                                                      -> loops/agents/{co}.lock
 ```

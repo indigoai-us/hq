@@ -5,8 +5,11 @@
 
   Runs scheduler.sh every 15 minutes via launchd on macOS.
 
+  IMPORTANT: Before installing, replace YOUR_GHQ_PATH below with your actual
+  GHQ repo path (e.g., /Users/you/repos/ghq).
+
   Installation:
-    cp com.ghq.scheduler.plist ~/Library/LaunchAgents/
+    cp loops/com.ghq.scheduler.plist ~/Library/LaunchAgents/
     launchctl load ~/Library/LaunchAgents/com.ghq.scheduler.plist
 
   Uninstall:
@@ -34,7 +37,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"; exec "$HOME/repos/ghq/loops/scripts/scheduler.sh" 2>&amp;1</string>
+        <string>export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"; exec "${GHQ_ROOT}/loops/scripts/scheduler.sh" 2>&amp;1</string>
     </array>
 
     <!-- Run every 15 minutes (900 seconds) -->
@@ -45,7 +48,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>GHQ_ROOT</key>
-        <string>/Users/hassaansaleemmacbook2026/repos/ghq</string>
+        <string>YOUR_GHQ_PATH</string>
     </dict>
 
     <!-- Log output -->
@@ -56,7 +59,7 @@
 
     <!-- Working directory -->
     <key>WorkingDirectory</key>
-    <string>/Users/hassaansaleemmacbook2026/repos/ghq</string>
+    <string>YOUR_GHQ_PATH</string>
 
     <!-- Keep alive: restart if it crashes, but not if it exits cleanly -->
     <key>KeepAlive</key>

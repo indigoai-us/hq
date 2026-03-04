@@ -118,16 +118,12 @@ with open(sys.argv[1]) as f:
     config = yaml.safe_load(f)
 
 result = {
-    'max_concurrent_agents': config.get('max_concurrent_agents', 2),
-    'cooldown_after_failure': config.get('cooldown_after_failure', 900),
-    'daily_budget': config.get('daily_budget', 50.0),
     'blocked_hours': config.get('blocked_hours', []),
     'digest_hour': config.get('digest_hour', -1)
 }
 print(json.dumps(result))
 " "$SCHEDULER_YAML") || { err "Failed to parse scheduler.yaml"; exit 2; }
 
-MAX_CONCURRENT=$(echo "$SCHEDULER_CONFIG" | jq -r '.max_concurrent_agents')
 BLOCKED_HOURS=$(echo "$SCHEDULER_CONFIG" | jq -r '.blocked_hours[]' 2>/dev/null || true)
 DIGEST_HOUR=$(echo "$SCHEDULER_CONFIG" | jq -r '.digest_hour')
 
@@ -156,6 +152,19 @@ if [[ "$DIGEST_HOUR" != "-1" && "$CURRENT_HOUR" -eq "$DIGEST_HOUR" ]]; then
     else
       "$DIGEST_SCRIPT" --date "$TODAY" 2>&1 | while IFS= read -r line; do log "  $line"; done || warn "Digest generation failed"
     fi
+  fi
+fi
+
+# ─────────────────────────────────────────────────
+# Run strategy planner for enabled companies
+# ─────────────────────────────────────────────────
+PLANNER_SCRIPT="$GHQ/loops/scripts/strategy-planner.sh"
+if [[ -x "$PLANNER_SCRIPT" ]]; then
+  log "Running strategy planner for enabled companies..."
+  if $DRY_RUN; then
+    log "[dry-run] Would run: $PLANNER_SCRIPT --all --dry-run"
+  else
+    "$PLANNER_SCRIPT" --all 2>&1 | while IFS= read -r line; do log "  [planner] $line"; done || warn "Strategy planner failed"
   fi
 fi
 
@@ -288,57 +297,41 @@ handle_dead_agent() {
 }
 
 # ─────────────────────────────────────────────────
-# Count currently running agents
+# Recover dead agents across all companies
 # ─────────────────────────────────────────────────
-count_running_agents() {
-  local count=0
+recover_dead_agents() {
   for pid_file in "$AGENTS_DIR"/*.pid; do
     [[ -f "$pid_file" ]] || continue
     local pid
     pid=$(cat "$pid_file")
-    if kill -0 "$pid" 2>/dev/null; then
-      ((count++))
-    else
-      # Dead process -- trigger recovery
+    if ! kill -0 "$pid" 2>/dev/null; then
       local company
       company=$(basename "$pid_file" .pid)
       handle_dead_agent "$company" "$pid"
     fi
   done
-  echo "$count"
 }
 
-# Check if a specific company has a running agent
-company_has_running_agent() {
+# Count running agents for a specific company
+count_company_agents() {
   local company="$1"
+  local count=0
   local pid_file="$AGENTS_DIR/${company}.pid"
   if [[ -f "$pid_file" ]]; then
     local pid
     pid=$(cat "$pid_file")
     if kill -0 "$pid" 2>/dev/null; then
-      return 0  # running
+      ((count++))
     fi
-    # Stale pid file -- process is dead, trigger recovery
-    handle_dead_agent "$company" "$pid"
-    return 1
   fi
-  return 1  # no pid file
+  echo "$count"
 }
 
 # ─────────────────────────────────────────────────
-# Check max concurrent agents
+# Recover any dead agents before dispatching
 # ─────────────────────────────────────────────────
-RUNNING=$(count_running_agents)
-if [[ "$RUNNING" -ge "$MAX_CONCURRENT" ]]; then
-  log "At capacity: $RUNNING/$MAX_CONCURRENT concurrent agents running. Not dispatching new agents."
-  if $DRY_RUN; then
-    log "[dry-run] Max concurrent agents limit reached ($RUNNING/$MAX_CONCURRENT)"
-  fi
-  exit 0
-fi
-
-SLOTS_AVAILABLE=$((MAX_CONCURRENT - RUNNING))
-log "Running agents: $RUNNING/$MAX_CONCURRENT (${SLOTS_AVAILABLE} slots available)"
+recover_dead_agents
+log "Dead agent recovery complete."
 
 # ─────────────────────────────────────────────────
 # Get the top-ranked open unblocked task for a company
@@ -417,17 +410,12 @@ while IFS= read -r company_entry; do
     continue
   fi
 
-  # Check if company already has a running agent
-  if company_has_running_agent "$slug"; then
-    log "Skipping $slug (agent already running)"
+  # Check per-company agent limit
+  max_agents=$(echo "$company_entry" | jq -r '.max_agents')
+  running_for_company=$(count_company_agents "$slug")
+  if [[ "$running_for_company" -ge "$max_agents" ]]; then
+    log "Skipping $slug ($running_for_company/$max_agents agents running)"
     continue
-  fi
-
-  # Check global slot availability
-  CURRENT_RUNNING=$(count_running_agents)
-  if [[ "$CURRENT_RUNNING" -ge "$MAX_CONCURRENT" ]]; then
-    log "Max concurrent agents limit reached ($CURRENT_RUNNING/$MAX_CONCURRENT). Stopping dispatch."
-    break
   fi
 
   # Find top-ranked task for this company

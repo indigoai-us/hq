@@ -1,20 +1,9 @@
 # Global Scheduler Configuration
 # Controls how the autonomous scheduler dispatches agents across all companies.
 #
-# Per-company overrides (scheduler.enabled, scheduler.max_agents) live in
-# companies/manifest.yaml under each company entry.
-
-# Maximum number of concurrent Claude Code agents across ALL companies.
-# The scheduler will not spawn a new agent if this limit is reached.
-max_concurrent_agents: 2
-
-# Seconds to wait before retrying a company after an agent failure.
-# Prevents tight failure loops that burn budget.
-cooldown_after_failure: 900   # 15 minutes
-
-# Maximum USD spend per calendar day (all companies combined).
-# When the daily budget is exhausted the scheduler stops dispatching until midnight UTC.
-daily_budget: 50.00
+# Per-company settings (scheduler.enabled, scheduler.max_agents) live in
+# companies/manifest.yaml under each company entry. The total concurrent
+# agent count is the sum of all enabled companies' max_agents values.
 
 # Hours (24h format, UTC) during which the scheduler must NOT dispatch agents.
 # Useful for avoiding noisy overnight runs or aligning with working hours.

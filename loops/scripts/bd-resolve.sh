@@ -24,6 +24,8 @@
 
 set -euo pipefail
 
+BD="${BD_CMD:-bd}"
+
 # ─────────────────────────────────────────────────
 # Usage
 # ─────────────────────────────────────────────────
@@ -99,7 +101,7 @@ fi
 # ─────────────────────────────────────────────────
 # Validate issue
 # ─────────────────────────────────────────────────
-ISSUE_JSON=$(bd show "$ISSUE_ID" --json 2>&1) || {
+ISSUE_JSON=$($BD show "$ISSUE_ID" --json 2>&1) || {
   echo "Error: issue '$ISSUE_ID' not found" >&2
   exit 1
 }
@@ -138,13 +140,13 @@ print(json.dumps({
 " "$ANSWER" "$RESOLVED_AT" "$RESOLVED_BY")
 
 # Update metadata with resolution details
-bd update "$ISSUE_ID" --metadata "$METADATA_JSON" --quiet 2>/dev/null || true
+$BD update "$ISSUE_ID" --metadata "$METADATA_JSON" --quiet 2>/dev/null || true
 
 # Add a comment documenting the resolution
-bd comments "$ISSUE_ID" add "Decision resolved: $ANSWER" --quiet 2>/dev/null || true
+$BD comments "$ISSUE_ID" add "Decision resolved: $ANSWER" --quiet 2>/dev/null || true
 
 # Close the issue
-bd close "$ISSUE_ID" --reason "resolved" --quiet 2>/dev/null || true
+$BD close "$ISSUE_ID" --reason "resolved" --quiet 2>/dev/null || true
 
 # ─────────────────────────────────────────────────
 # Write preference (if company/action context exists)
