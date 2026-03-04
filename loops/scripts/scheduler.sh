@@ -43,6 +43,7 @@ AGENTS_DIR="$GHQ/loops/agents"
 LOG_PREFIX="[scheduler]"
 BD="${BD_CMD:-bd}"
 DRY_RUN=false
+MAX_RETRIES=3
 
 # ─────────────────────────────────────────────────
 # Usage
@@ -162,6 +163,112 @@ print(json.dumps(companies))
 " "$MANIFEST") || { err "Failed to parse manifest.yaml"; exit 2; }
 
 # ─────────────────────────────────────────────────
+# Handle a dead agent: read lockfile, check task
+# status, retry or escalate
+# ─────────────────────────────────────────────────
+handle_dead_agent() {
+  local company="$1"
+  local dead_pid="$2"
+  local pid_file="$AGENTS_DIR/${company}.pid"
+  local lock_file="$AGENTS_DIR/${company}.lock"
+
+  # Read lockfile to identify the task
+  local task_id=""
+  if [[ -f "$lock_file" ]]; then
+    task_id=$(cat "$lock_file")
+  fi
+
+  if [[ -z "$task_id" ]]; then
+    warn "Dead agent for $company (pid $dead_pid) but no lockfile found. Cleaning up."
+    rm -f "$pid_file"
+    return
+  fi
+
+  log "Dead agent detected: company=$company pid=$dead_pid task=$task_id"
+
+  # Check task status in bd
+  local task_json
+  task_json=$($BD show "$task_id" --json 2>/dev/null) || {
+    warn "Failed to query task $task_id. Cleaning up stale files."
+    rm -f "$pid_file" "$lock_file"
+    return
+  }
+
+  local task_status
+  task_status=$(echo "$task_json" | jq -r '.[0].status // .status // "unknown"')
+
+  if [[ "$task_status" == "closed" ]]; then
+    # Clean exit: task was completed before the process died
+    log "Task $task_id is closed (clean exit). Cleaning up files."
+    rm -f "$pid_file" "$lock_file"
+    return
+  fi
+
+  if [[ "$task_status" != "in_progress" ]]; then
+    # Task is in some other state (open, blocked, etc.) -- just clean up
+    log "Task $task_id status is '$task_status' (not in_progress). Cleaning up files."
+    rm -f "$pid_file" "$lock_file"
+    return
+  fi
+
+  # Task is still in_progress -- agent crashed
+  # Get current retry count from task metadata
+  local retry_count
+  retry_count=$(echo "$task_json" | jq -r '.[0].metadata.retryCount // .metadata.retryCount // "0"')
+  # Ensure it's a number
+  retry_count=$((retry_count + 0))
+
+  local new_retry_count=$((retry_count + 1))
+
+  log "Agent crashed: task=$task_id retries=$retry_count/$MAX_RETRIES"
+
+  if [[ "$new_retry_count" -le "$MAX_RETRIES" ]]; then
+    # Increment retry count and move task back to open for retry
+    log "Retrying task $task_id (attempt $new_retry_count/$MAX_RETRIES)"
+
+    # Update retry count in task metadata
+    $BD update "$task_id" --metadata "{\"retryCount\": $new_retry_count, \"lastCrash\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"crashPid\": $dead_pid}" 2>/dev/null || {
+      warn "Failed to update retry metadata for $task_id"
+    }
+
+    # Move task back to open
+    $BD update "$task_id" --status open 2>/dev/null || {
+      warn "Failed to reopen task $task_id"
+    }
+
+    log "Task $task_id moved back to open (retry $new_retry_count/$MAX_RETRIES)"
+  else
+    # Max retries exceeded -- block task and create a decision for the user
+    log "Max retries ($MAX_RETRIES) exceeded for task $task_id. Escalating to user."
+
+    # Update metadata with failure info
+    $BD update "$task_id" --metadata "{\"retryCount\": $new_retry_count, \"lastCrash\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"crashPid\": $dead_pid, \"blocked_reason\": \"max_retries_exceeded\"}" 2>/dev/null || {
+      warn "Failed to update failure metadata for $task_id"
+    }
+
+    # Block the task
+    $BD update "$task_id" --status blocked 2>/dev/null || {
+      warn "Failed to block task $task_id"
+    }
+
+    # Create a decision task for the user
+    $BD create \
+      --title "DECISION: Task $task_id failed after $MAX_RETRIES retries" \
+      -d "Task '$task_id' has crashed $MAX_RETRIES times. Last crash: pid $dead_pid, company: $company. Please investigate the agent log at $AGENTS_DIR/${company}.log and decide: retry, reassign, or close the task." \
+      --type decision \
+      --priority 0 \
+      --labels "scheduler,escalation,$company" 2>/dev/null || {
+      warn "Failed to create decision task for $task_id"
+    }
+
+    log "Decision task created for user review of $task_id"
+  fi
+
+  # Clean up stale pid and lock files
+  rm -f "$pid_file" "$lock_file"
+}
+
+# ─────────────────────────────────────────────────
 # Count currently running agents
 # ─────────────────────────────────────────────────
 count_running_agents() {
@@ -172,6 +279,11 @@ count_running_agents() {
     pid=$(cat "$pid_file")
     if kill -0 "$pid" 2>/dev/null; then
       ((count++))
+    else
+      # Dead process -- trigger recovery
+      local company
+      company=$(basename "$pid_file" .pid)
+      handle_dead_agent "$company" "$pid"
     fi
   done
   echo "$count"
@@ -187,9 +299,8 @@ company_has_running_agent() {
     if kill -0 "$pid" 2>/dev/null; then
       return 0  # running
     fi
-    # Stale pid file -- process is dead, clean up
-    log "Cleaning stale pid file for $company (pid $pid)"
-    rm -f "$pid_file"
+    # Stale pid file -- process is dead, trigger recovery
+    handle_dead_agent "$company" "$pid"
     return 1
   fi
   return 1  # no pid file
