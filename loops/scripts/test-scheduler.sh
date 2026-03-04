@@ -10,7 +10,7 @@
 #   4. Skips companies with existing pid file for running process
 #   5. Spawned agent prompt uses /run-loop not /execute-task
 #   6. Respects blocked_hours from scheduler.yaml
-#   7. Respects max_concurrent_agents from scheduler.yaml
+#   7. Respects per-company max_agents from manifest
 #   8. Creates loops/agents/ directory structure
 #   9. Writes lockfile with task ID before spawning
 #  10. Ranks tasks by priority (lower number = higher priority)
@@ -278,7 +278,7 @@ else
 fi
 
 # ═════════════════════════════════════════════════
-# Test 7: Respects max_concurrent_agents from scheduler.yaml
+# Test 7: Respects per-company max_agents from manifest
 # ═════════════════════════════════════════════════
 echo ""
 echo "Test 7: Respects per-company max_agents from manifest"

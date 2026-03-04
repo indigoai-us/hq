@@ -10,12 +10,13 @@ Cron / launchd (every 15 min)
   v
 scheduler.sh
   |
-  +-- Phase 1: Parse config (scheduler.yaml + manifest.yaml)
+  +-- Phase 1: Parse scheduler.yaml (blocked hours, digest hour)
   +-- Phase 2: Check constraints (blocked hours)
   +-- Phase 3: Digest (at configured digest_hour)
-  +-- Phase 4: Strategy planner (generate draft tasks for cadence gaps)
-  +-- Phase 5: Recover dead agents (pid check -> retry or escalate)
-  +-- Phase 6: Dispatch new agents (per-company max_agents)
+  +-- Phase 4: Parse manifest.yaml (enabled companies, max_agents)
+  +-- Phase 5: Strategy planner (generate draft tasks for cadence gaps)
+  +-- Phase 6: Recover dead agents (pid check -> retry or escalate)
+  +-- Phase 7: Dispatch new agents (per-company max_agents)
 ```
 
 ## Components
@@ -28,10 +29,10 @@ The main entry point. Designed to run via cron/launchd every 15 minutes.
 
 **What it does:**
 
-1. Reads `companies/manifest.yaml` for enabled companies
-2. Reads `.claude/scheduler.yaml` for global config
-3. Checks blocked hours (exits with code 3 if blocked)
-4. Generates daily digest at the configured hour
+1. Reads `.claude/scheduler.yaml` for global config (blocked hours, digest hour)
+2. Checks blocked hours (exits with code 3 if blocked)
+3. Generates daily digest at the configured hour
+4. Reads `companies/manifest.yaml` for enabled companies
 5. Runs strategy planner for all enabled companies
 6. Detects dead agents via pid files, triggers recovery
 7. For each enabled company under its `max_agents` limit:
@@ -112,6 +113,9 @@ Checks a company's escalation policy before an agent takes action.
 **Location:** `loops/scripts/bd-resolve.sh`
 
 Resolves a decision task with a user answer. Closes the decision, records the answer in metadata, writes to preferences.yaml for learning.
+
+**Environment:**
+- `BD_CMD` -- Override bd command path (default: `bd`)
 
 ### read-preferences.sh / write-preference.sh
 
@@ -305,10 +309,13 @@ The integration test exercises the complete scheduler lifecycle in an isolated t
 ## Data Flow
 
 ```
-manifest.yaml -> scheduler.sh
+scheduler.yaml -> scheduler.sh
                      |
                      +-- check constraints (blocked hours)
                      +-- digest.sh -> loops/digests/YYYY-MM-DD.md
+                     |
+manifest.yaml -------+
+                     |
                      +-- strategy-planner.sh -> bd (draft tasks)
                      |       reads strategy.yaml per company
                      +-- recover dead agents -> retry or escalate
