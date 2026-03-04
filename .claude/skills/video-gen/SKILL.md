@@ -5,93 +5,208 @@ description: "Video production: script to voiceover, Remotion render, and ffmpeg
 
 # Video Generator
 
-End-to-end video production pipeline. Generates voiceover audio, renders
-React-based video with Remotion, and post-processes with ffmpeg.
+End-to-end video production pipeline. Writes a script, generates voiceover
+audio in small chunks, renders matching Remotion video chunks sized to each
+audio chunk, and assembles the final video.
 
 ## Pipeline
 
 ```
-1. Script       -> structured text with timing cues
-2. Voiceover    -> ElevenLabs TTS API -> .mp3
-3. Composition  -> Remotion React components -> silent .mp4
-4. Post-process -> ffmpeg merge audio+video, watermark, encode -> final .mp4
+1. Script     -> structured chunks (1-2 sentences each, with visual cues)
+2. TTS        -> Chatterbox generates one .wav per chunk (small = fewer errors)
+3. Video      -> Remotion renders one silent .mp4 per chunk (duration = audio length)
+4. Assembly   -> ffmpeg merges each audio+video pair, concatenates all, encodes final
 ```
 
-## Responsibilities
+**Key principle:** Audio drives video length. Each video chunk's
+`durationInFrames` is calculated from its audio chunk's duration.
+Never speed up or slow down audio — it degrades voice quality.
 
-1. Accept a script (text or structured JSON with sections/timing)
-2. Generate voiceover audio via ElevenLabs TTS API
-3. Create or modify Remotion compositions matching the script's visual needs
-4. Render the composition to silent video with `npx remotion render`
-5. Merge audio and video with ffmpeg, apply watermark, encode for YouTube
-6. Output the final .mp4 with a summary of what was produced
+## Step 1: Write Script
 
-## ElevenLabs Voiceover
+Structure the script as an array of chunks. Each chunk is 1-2 sentences
+(under 15 words per sentence for cleanest TTS output).
 
-The `@elevenlabs/cli` manages conversational agents, NOT TTS.
-Use the REST API directly via curl for speech generation.
+```json
+[
+  {
+    "id": "intro",
+    "text": "Welcome to Ship It Code.",
+    "visual": "Title card with logo, fade in"
+  },
+  {
+    "id": "problem",
+    "text": "Most developers spend years building projects that never see the light of day.",
+    "visual": "Code editor with unfinished projects, tabs piling up"
+  },
+  {
+    "id": "hook",
+    "text": "Today we are going to break that cycle.",
+    "visual": "Transition: shatter effect, clean workspace appears"
+  }
+]
+```
+
+### Chunk guidelines
+
+- **1-2 sentences per chunk** — keeps TTS errors isolated and predictable
+- **Under 15 words per sentence** — avoids `long_tail` warnings
+- **Visual cue per chunk** — describes what the Remotion scene should show
+- **Unique ID per chunk** — used for filenames (`intro.wav`, `intro.mp4`)
+
+## Step 2: Generate TTS (Per Chunk)
+
+Uses a locally fine-tuned Chatterbox TTS model. No API keys needed.
+
+**Repo:** `~/repos/chatterbox-finetuning/`
+
+### Generate one chunk at a time
+
+For each chunk, edit `inference.py` and run:
+
+```python
+TEXT_TO_SAY = "Welcome to Ship It Code."
+AUDIO_PROMPT = "./speaker_reference/narrator_ref.wav"
+OUTPUT_FILE = "./out/chunks/intro.wav"
+```
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Your script text here",
-    "model_id": "eleven_multilingual_v2",
-    "voice_settings": {
-      "stability": 0.5,
-      "similarity_boost": 0.75,
-      "style": 0.0,
-      "use_speaker_boost": true
-    }
-  }' \
-  --output voiceover.mp3
+cd ~/repos/chatterbox-finetuning
+python inference.py
 ```
 
-- Read API key from `$ELEVENLABS_API_KEY` env var (never hardcode)
-- For long scripts, split into sections and concatenate with ffmpeg
-- Get audio duration: `ffprobe -v error -show_entries format=duration -of csv=p=0 voiceover.mp3`
-- See `knowledge/video-gen/pipeline-reference.md` for voice listing, models, and output formats
+Or generate all chunks in a loop by modifying `inference.py` to accept
+a JSON chunk list and output one `.wav` per chunk.
 
-## Remotion Composition
+### Why small chunks
 
-Project structure (see `scratch/code-typing-video/` for reference):
+- **Fewer errors**: Short text = less chance of garbled output or cutoff
+- **Exact timing**: You know exactly which words map to which audio
+- **Easy retakes**: If one chunk sounds wrong, regenerate just that one
+- **Visual sync**: Each video segment matches its audio perfectly
+
+### Parameters
+
+Edit the `PARAMS` dict in `inference.py`:
+
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `temperature` | 0.8 | Higher = more variation, lower = more monotone |
+| `exaggeration` | 0.5 | Controls emotional expressiveness (0-1) |
+| `cfg_weight` | 0.5 | Classifier-free guidance strength (Normal mode only) |
+| `repetition_penalty` | 1.2 | Penalizes repeating the same token |
+
+### Voice clone reference
+
+- Current clone: Charisma on Command narrator — see `ship-it-code/knowledge/voice-clone.md`
+- Full pipeline for cloning new voices: `production-house/knowledge/voice-cloning.md`
+- See `knowledge/video-gen/pipeline-reference.md` for parameter details
+
+## Step 3: Render Video Chunks (Remotion)
+
+Each chunk gets its own Remotion composition whose duration matches its
+audio chunk exactly.
+
+### Get audio duration per chunk
+
+```bash
+# Returns duration in seconds (e.g., 2.340)
+ffprobe -v error -show_entries format=duration -of csv=p=0 out/chunks/intro.wav
+```
+
+### Calculate frames
+
+```
+durationInFrames = Math.ceil(audioDurationSeconds * 30)   # 30 fps, 4K
+```
+
+**Never adjust audio speed to fit video length. Always adjust video
+`durationInFrames` to fit audio length.**
+
+### Project structure
 
 ```
 {project}/
   package.json          # remotion, @remotion/cli, @remotion/bundler, react, react-dom
   src/
     index.js            # registerRoot(RemotionRoot)
-    Root.jsx            # <Composition> declarations (id, fps, width, height, durationInFrames)
-    {Scene}.jsx         # Scene components using AbsoluteFill, useCurrentFrame, interpolate
+    Root.jsx            # <Composition> per chunk (id, fps=30, width=3840, height=2160)
+    scenes/
+      Intro.jsx         # Scene for "intro" chunk
+      Problem.jsx       # Scene for "problem" chunk
+      Hook.jsx          # Scene for "hook" chunk
 ```
 
-All compositions MUST be 4K: `width={3840} height={2160} fps={30}`
+### Register compositions (Root.jsx)
 
-Render command:
-```bash
-npx remotion render src/index.js {CompositionId} out/video.mp4 \
-  --codec h264 --image-format jpeg
+```jsx
+// Each chunk is a separate Composition with duration from its audio
+<Composition id="intro" component={Intro}
+  width={3840} height={2160} fps={30}
+  durationInFrames={71}   // 2.34s * 30fps = 71 frames
+/>
+<Composition id="problem" component={Problem}
+  width={3840} height={2160} fps={30}
+  durationInFrames={142}  // 4.72s * 30fps = 142 frames
+/>
 ```
 
-Match duration to audio: `durationInFrames = Math.ceil(audioDurationSeconds * fps)`
+### Render each chunk
 
-## ffmpeg Post-Processing
-
-**Merge audio + silent video:**
 ```bash
-ffmpeg -i out/video.mp4 -i voiceover.mp3 \
-  -c:v copy -c:a aac -b:a 192k -shortest out/merged.mp4
+npx remotion render src/index.js intro out/chunks/intro.mp4 --codec h264 --image-format jpeg
+npx remotion render src/index.js problem out/chunks/problem.mp4 --codec h264 --image-format jpeg
+npx remotion render src/index.js hook out/chunks/hook.mp4 --codec h264 --image-format jpeg
 ```
 
-**Add PNG watermark (bottom-right):**
+### Resolution formats
+
+| Format | Width | Height | Aspect | Use case |
+|--------|-------|--------|--------|----------|
+| **Landscape 4K** | 3840 | 2160 | 16:9 | YouTube videos (default) |
+| **Shorts 4K** | 2160 | 3840 | 9:16 | YouTube Shorts, TikTok, Reels |
+
+All compositions MUST be 4K at 30fps. Choose landscape or shorts based on
+the video format requested.
+
+## Step 4: Assemble Final Video
+
+### Merge audio + video per chunk
+
 ```bash
-ffmpeg -i out/merged.mp4 \
+ffmpeg -i out/chunks/intro.mp4 -i out/chunks/intro.wav \
+  -c:v copy -c:a aac -b:a 192k out/merged/intro.mp4
+
+ffmpeg -i out/chunks/problem.mp4 -i out/chunks/problem.wav \
+  -c:v copy -c:a aac -b:a 192k out/merged/problem.mp4
+
+ffmpeg -i out/chunks/hook.mp4 -i out/chunks/hook.wav \
+  -c:v copy -c:a aac -b:a 192k out/merged/hook.mp4
+```
+
+### Concatenate all chunks
+
+```bash
+# Create filelist.txt (in order)
+cat > out/filelist.txt << 'EOF'
+file 'merged/intro.mp4'
+file 'merged/problem.mp4'
+file 'merged/hook.mp4'
+EOF
+
+ffmpeg -f concat -safe 0 -i out/filelist.txt -c copy out/assembled.mp4
+```
+
+### Add watermark
+
+```bash
+ffmpeg -i out/assembled.mp4 \
   -i companies/{company}/assets/brand/{company}-watermark.png \
   -filter_complex "overlay=W-w-50:H-h-50" -c:a copy out/watermarked.mp4
 ```
 
-**YouTube-optimized encode (final output -> project assets/):**
+### YouTube-optimized encode (final output)
+
 ```bash
 ffmpeg -i out/watermarked.mp4 \
   -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p \
@@ -99,27 +214,33 @@ ffmpeg -i out/watermarked.mp4 \
   {project}/assets/{video-name}.mp4
 ```
 
-See `knowledge/video-gen/pipeline-reference.md` for more recipes.
+See `knowledge/video-gen/pipeline-reference.md` for more ffmpeg recipes.
 
 ## Rules
 
-- **4K only**: All compositions must be 3840x2160 at 30fps — no exceptions
+- **4K only**: All compositions must be 4K at 30fps — landscape (3840x2160) or
+  shorts (2160x3840) depending on the requested format
+- **Audio drives video length**: Calculate `durationInFrames` from audio duration.
+  Never speed up or slow down audio to match video — it degrades quality
+- **Small TTS chunks**: 1-2 sentences per chunk. Smaller = fewer errors and
+  easier to verify each chunk sounds correct before rendering video
 - **Final output goes to `{project}/assets/`**: The finished .mp4 is always
   placed in the project's `assets/` directory, never left in `out/`
-- Intermediates (silent render, voiceover) go to `out/` (gitignored)
+- Intermediates (chunks, merged segments) go to `out/` (gitignored)
 - Verify tools before starting: `which ffmpeg`, `which npx`
 - If ffmpeg missing, instruct user: `brew install ffmpeg`
-- Never hardcode API keys — read from env vars
-- Never commit intermediate binary files (mp3, wav) to git
+- Voice clone model lives at `~/repos/chatterbox-finetuning/`
+- Never commit intermediate binary files (mp3, wav, mp4) to git
 - Add `out/` to `.gitignore` in project directories
 - Always apply the watermark using the active company's brand assets
-- Present render plan (resolution, fps, duration, scenes) before rendering
+- Present render plan (chunk count, resolution, estimated duration) before rendering
 - Respect company isolation: only use brand assets for the matching company
 
 ## Output
 
-- Voiceover audio in `out/` (.mp3, intermediate)
-- Remotion composition source (JSX)
-- Rendered silent video in `out/` (.mp4, intermediate)
+- Script chunk list (JSON or structured text)
+- Per-chunk audio in `out/chunks/` (.wav)
+- Per-chunk silent video in `out/chunks/` (.mp4)
+- Per-chunk merged video in `out/merged/` (.mp4)
 - **Final video in `{project}/assets/`** (.mp4, 4K, with audio and watermark)
-- Summary: duration, resolution, file size, output path
+- Summary: chunk count, total duration, resolution, file size, output path

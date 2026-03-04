@@ -4,5 +4,5 @@
 
 | Name | Description |
 |------|-------------|
-| `pipeline-reference.md` | ElevenLabs TTS API, Remotion CLI flags, ffmpeg recipe cookbook |
+| `pipeline-reference.md` | Chatterbox TTS, Remotion CLI flags, ffmpeg recipe cookbook |
 | `remotion-patterns.md` | Remotion project structure and component patterns |

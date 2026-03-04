@@ -2,85 +2,77 @@
 
 Extended reference for the video-gen skill's three core tools.
 
-## ElevenLabs TTS API
+## Chatterbox TTS (Local Voice Clone)
 
-The `@elevenlabs/cli` is for managing conversational agents, not TTS.
-Use the REST API via curl for speech generation.
+Uses a locally fine-tuned Chatterbox model for voiceover generation.
+No API keys required — runs entirely on-device.
 
-### Text-to-Speech
+**Repo:** `~/repos/chatterbox-finetuning/`
+**Full pipeline guide:** `production-house/knowledge/voice-cloning.md`
+**Current voice clone:** `ship-it-code/knowledge/voice-clone.md`
 
-```
-POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}
-```
+### Generate Voiceover
 
-Headers:
-- `xi-api-key: $ELEVENLABS_API_KEY`
-- `Content-Type: application/json`
+1. Edit `inference.py`:
 
-Body:
-```json
-{
-  "text": "...",
-  "model_id": "eleven_multilingual_v2",
-  "voice_settings": {
-    "stability": 0.5,
-    "similarity_boost": 0.75,
-    "style": 0.0,
-    "use_speaker_boost": true
-  }
-}
+```python
+TEXT_TO_SAY = (
+    "First sentence of your script. "
+    "Second sentence continues here. "
+    "Keep sentences under 15 words for best results."
+)
+AUDIO_PROMPT = "./speaker_reference/narrator_ref.wav"
+OUTPUT_FILE = "./out/voiceover.wav"
 ```
 
-Response: binary audio (`application/octet-stream`). Pipe to `--output file.mp3`.
-
-### Query Parameters
-
-| Param | Description |
-|-------|-------------|
-| `output_format` | `mp3_44100_128` (default), `mp3_22050_32`, `pcm_16000`, `pcm_24000`, `ulaw_8000` |
-| `optimize_streaming_latency` | 0-4 (0=disabled, 4=max optimization) |
-
-### Models
-
-| Model ID | Notes |
-|----------|-------|
-| `eleven_multilingual_v2` | Best quality, 29 languages |
-| `eleven_turbo_v2` | Low latency, English-optimized |
-| `eleven_turbo_v2_5` | Low latency, multilingual |
-
-### Voice Settings Ranges
-
-| Setting | Range | Default | Effect |
-|---------|-------|---------|--------|
-| `stability` | 0.0–1.0 | 0.5 | Higher = more consistent, lower = more expressive |
-| `similarity_boost` | 0.0–1.0 | 0.75 | Higher = closer to original voice |
-| `style` | 0.0–1.0 | 0.0 | Higher = more expressive (increases latency) |
-| `speed` | 0.7–1.2 | 1.0 | Speech speed multiplier |
-
-### List Voices
+2. Run:
 
 ```bash
-curl -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  "https://api.elevenlabs.io/v1/voices" | jq '.voices[] | {voice_id, name}'
+cd ~/repos/chatterbox-finetuning
+python inference.py
 ```
 
-### Streaming Variant
+Output: 24kHz mono WAV. The script handles sentence splitting, per-sentence
+generation, VAD silence trimming, and concatenation with 200ms pauses.
 
-For long-form content, use the streaming endpoint:
+### Parameters
 
-```
-POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream
-```
+Edit the `PARAMS` dict in `inference.py`:
 
-Same body. Response is chunked audio — pipe directly to file.
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `temperature` | 0.8 | 0.1–1.5 | Higher = more variation, lower = more monotone |
+| `exaggeration` | 0.5 | 0.0–1.0 | Controls emotional expressiveness |
+| `cfg_weight` | 0.5 | 0.0–1.0 | Classifier-free guidance strength (Normal mode only) |
+| `repetition_penalty` | 1.2 | 1.0–2.0 | Penalizes repeating the same token |
+
+### Speaker Reference
+
+The `AUDIO_PROMPT` wav determines voice characteristics. Requirements:
+- 5-10 seconds of clean speech
+- 24kHz mono WAV
+- No background noise or music
+- Representative of speaker's natural tone
+
+Different reference clips produce subtly different voice qualities from the
+same fine-tuned model.
 
 ### Long Script Strategy
 
-For scripts > 5000 chars, split into sections and generate per-section:
-1. Split script at natural paragraph breaks
-2. Generate audio per section
-3. Concatenate with ffmpeg (see below)
-4. Use `previous_request_ids` for voice continuity across chunks
+Chatterbox handles sentence splitting automatically:
+1. Text is split on `.?!` boundaries
+2. Each sentence is generated independently
+3. Silence is trimmed per sentence via Silero VAD
+4. Sentences are concatenated with 200ms pauses
+
+For very long scripts (multiple paragraphs), consider generating in batches
+and concatenating with ffmpeg to avoid memory issues on MPS.
+
+### Cloning a New Voice
+
+See `production-house/knowledge/voice-cloning.md` for the complete pipeline:
+download source audio → AssemblyAI transcription → speaker extraction →
+dataset creation → preprocessing → fine-tuning → inference
 
 ---
 
