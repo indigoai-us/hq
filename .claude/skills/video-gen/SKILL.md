@@ -15,6 +15,7 @@ audio chunk, and assembles the final video.
 1. Script     -> structured chunks (1-2 sentences each, with visual cues)
 2. TTS        -> Chatterbox generates one .wav per chunk (small = fewer errors)
 2b. Denoise   -> Demucs isolates vocals, removing TTS artifacts and background noise
+2c. Verify    -> Whisper transcribes each chunk, flags mismatches against script
 3. Video      -> Remotion renders one silent .mp4 per chunk (duration = audio length)
 4. Assembly   -> ffmpeg merges each audio+video pair, concatenates all, encodes final
 ```
@@ -150,6 +151,75 @@ significantly, something went wrong — fall back to the raw audio.
 
 - If TTS output is already clean (no audible noise), denoising is optional
 - Demucs adds ~10-20s per chunk on Apple Silicon (MPS) — budget accordingly
+
+## Step 2c: Verify Audio (Whisper)
+
+After denoising, transcribe each chunk with Whisper and compare against the
+script text. This catches garbled output, repeated words, or cutoff audio
+before video rendering begins.
+
+### Transcribe all chunks
+
+```bash
+cd <video-dir>
+
+for wav in audio/*.wav; do
+  insanely-fast-whisper \
+    --file-name "$wav" \
+    --model-name openai/whisper-large-v3 \
+    --transcript-path "audio/$(basename "$wav" .wav).json" \
+    --device-id mps
+done
+```
+
+**Fallback** (if `insanely-fast-whisper` has MPS issues):
+
+```bash
+for wav in audio/*.wav; do
+  python3 -m whisper "$wav" --model large-v3 --language en \
+    --output_format json --output_dir audio/
+done
+```
+
+### Compare against script
+
+For each chunk, compare the Whisper transcript against `script.json`:
+
+```bash
+# Quick visual check
+for wav in audio/*.wav; do
+  name=$(basename "$wav" .wav)
+  transcript=$(python3 -c "import json; print(json.load(open('audio/${name}.json'))['text'].strip())")
+  echo "--- $name ---"
+  echo "  SCRIPT:     $(python3 -c "import json; chunks=json.load(open('script.json')); print(next(c['text'] for c in chunks if '${name#*-}' in c['id']), 'NOT FOUND')")"
+  echo "  TRANSCRIPT: $transcript"
+done
+```
+
+Review the output. Transcription won't be letter-perfect — Whisper may
+differ on punctuation, casing, or technical terms (e.g., "TypeScript" →
+"Typescript"). Focus on whether the **words and meaning** match.
+
+### When to regenerate
+
+- Missing or extra words → regenerate with `regen_chunk.py --seed <new>`
+- Truncated audio (text cuts off mid-sentence) → regenerate
+- Hallucinated words not in script → regenerate
+- Minor punctuation/casing differences → safe to proceed
+
+### Output format
+
+`insanely-fast-whisper` produces:
+```json
+{"speakers": [], "chunks": [{"timestamp": [0.0, 3.08], "text": "..."}], "text": "..."}
+```
+
+`python3 -m whisper` produces:
+```json
+{"text": "...", "segments": [{"start": 0.0, "end": 3.08, "text": "..."}], "language": "en"}
+```
+
+Both include the full transcript in the top-level `text` field.
 
 ## Step 3: Render Video Chunks (Remotion)
 

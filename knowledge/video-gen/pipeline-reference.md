@@ -151,6 +151,90 @@ isolated vocal stem.
 
 ---
 
+## Whisper TTS Verification
+
+Transcribes each audio chunk with Whisper and compares against the script
+to catch TTS errors (garbled words, repetitions, cutoffs) before rendering.
+
+### Install
+
+```bash
+pipx install insanely-fast-whisper   # preferred (fast, GPU-accelerated)
+pip install openai-whisper            # fallback (CPU, reliable)
+```
+
+### Transcribe with insanely-fast-whisper
+
+```bash
+insanely-fast-whisper \
+  --file-name audio/1-hook.wav \
+  --model-name openai/whisper-large-v3 \
+  --transcript-path audio/1-hook.json \
+  --device-id mps
+```
+
+Output format:
+```json
+{
+  "speakers": [],
+  "chunks": [{"timestamp": [0.0, 3.08], "text": "Stop using as const."}],
+  "text": "Stop using as const. TypeScript has a smarter way."
+}
+```
+
+### Transcribe with openai-whisper (fallback)
+
+`insanely-fast-whisper` may have MPS compatibility issues on some
+Python/PyTorch versions. Use `python3 -m whisper` as a reliable fallback:
+
+```bash
+python3 -m whisper audio/1-hook.wav \
+  --model large-v3 --language en \
+  --output_format json --output_dir audio/
+```
+
+Output format:
+```json
+{
+  "text": " Stop using as const. TypeScript has a smarter way.",
+  "segments": [{"start": 0.0, "end": 3.08, "text": "..."}],
+  "language": "en"
+}
+```
+
+### Batch Verification
+
+```bash
+for wav in audio/*.wav; do
+  insanely-fast-whisper \
+    --file-name "$wav" \
+    --model-name openai/whisper-large-v3 \
+    --transcript-path "audio/$(basename "$wav" .wav).json" \
+    --device-id mps
+done
+```
+
+### Model Selection
+
+| Model | Size | Speed (MPS) | Accuracy | Use case |
+|-------|------|-------------|----------|----------|
+| `openai/whisper-large-v3` | 1.5GB | ~13s/chunk | Best | Default for verification |
+| `openai/whisper-medium` | 769MB | ~5s/chunk | Good | Faster iteration |
+| `openai/whisper-small` | 244MB | ~2s/chunk | Fair | Quick checks (may miss technical terms) |
+
+Use `large-v3` for verification — accuracy matters more than speed here.
+
+### Comparison Tips
+
+- Whisper won't match punctuation or casing exactly — focus on **words**
+- Technical terms (TypeScript, useState, etc.) may be misspelled by
+  smaller models — use `large-v3` for best results
+- Both tools output the full transcript in the top-level `text` field
+- If a chunk is completely wrong (hallucinated words, truncated), regenerate
+  with `regen_chunk.py --seed <new-seed>`
+
+---
+
 ## Remotion CLI
 
 ### Render

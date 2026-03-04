@@ -4,5 +4,5 @@
 
 | Name | Description |
 |------|-------------|
-| `pipeline-reference.md` | Chatterbox TTS, Remotion CLI flags, ffmpeg recipe cookbook |
+| `pipeline-reference.md` | Chatterbox TTS, Demucs denoising, Whisper verification, Remotion CLI, ffmpeg cookbook |
 | `remotion-patterns.md` | Remotion project structure and component patterns |
