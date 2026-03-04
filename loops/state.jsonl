@@ -147,3 +147,5 @@
 {"ts":"2026-03-04T12:09:56Z","type":"skill_start","story_id":"ghq-53s.1.3.3","skill_id":"video-gen","data":{}}
 {"ts":"2026-03-04T12:14:18Z","type":"skill_complete","story_id":"ghq-53s.1.3.3","skill_id":"video-gen","data":{"summary":"Created assemble.sh with silent pauses between audio chunks. 1s gaps between 9 chunks + 1s end silence. Total duration 41.27s (target 40-45s).","files_created":["assemble.sh"],"back_pressure":{"tests":"skipped","lint":"skipped","typecheck":"skipped"}}}
 {"ts":"2026-03-04T12:14:18Z","type":"story_complete","story_id":"ghq-53s.1.3.3","data":{"skills_run":["video-gen"]}}
+{"ts":"2026-03-04T12:14:40Z","type":"story_complete","story_id":"ghq-53s.1.3.3","data":{"skills_run":["video-gen"]}}
+{"ts":"2026-03-04T12:16:38Z","type":"skill_start","story_id":"ghq-53s.1.3.4","skill_id":"video-gen","data":{}}
