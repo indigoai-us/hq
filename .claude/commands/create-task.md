@@ -138,7 +138,13 @@ For each subtask targeting a deployable repo, specify E2E tests:
 bd create "{task title}" \
   --parent {project-epic-id} \
   --type task \
-  --description "{1-sentence goal}" \
+  --description "{1-sentence goal}
+
+## Acceptance Criteria
+
+- {criterion 1}
+- {criterion 2}
+- ..." \
   --metadata '{"qualityGates":["{commands}"],"repoPath":"{path}","relatedSkills":["{ids}"],"goal":"{goal}","successCriteria":"{criteria}","workMode":"{main|worktree}"}' \
   --labels "{company-label},{category}" \
   --silent
@@ -154,7 +160,13 @@ For each subtask, create a child under the task:
 bd create "{subtask title}" \
   --parent {task-id} \
   --type task \
-  --description "{As a [user], I want [feature] so that [benefit]}" \
+  --description "{As a [user], I want [feature] so that [benefit]}
+
+## Acceptance Criteria
+
+- {criterion 1}
+- {criterion 2}
+- ..." \
   --priority {1-4} \
   --metadata '{"acceptanceCriteria":["{criteria}"],"e2eTests":["{tests}"]}' \
   --silent
