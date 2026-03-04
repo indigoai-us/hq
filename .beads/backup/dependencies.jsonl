@@ -12,6 +12,13 @@
 {"created_at":"2026-03-03T21:14:04Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.1","issue_id":"ghq-53s.1.1.6","type":"parent-child"}
 {"created_at":"2026-03-03T21:14:10Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.1.5","issue_id":"ghq-53s.1.1.6","type":"blocks"}
 {"created_at":"2026-03-04T15:48:21Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1","issue_id":"ghq-53s.1.2","type":"parent-child"}
+{"created_at":"2026-03-04T15:48:34Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2","issue_id":"ghq-53s.1.2.1","type":"parent-child"}
+{"created_at":"2026-03-04T15:48:44Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2","issue_id":"ghq-53s.1.2.2","type":"parent-child"}
+{"created_at":"2026-03-04T15:49:08Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2.1","issue_id":"ghq-53s.1.2.2","type":"blocks"}
+{"created_at":"2026-03-04T15:48:53Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2","issue_id":"ghq-53s.1.2.3","type":"parent-child"}
+{"created_at":"2026-03-04T15:49:08Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2.2","issue_id":"ghq-53s.1.2.3","type":"blocks"}
+{"created_at":"2026-03-04T15:49:02Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2","issue_id":"ghq-53s.1.2.4","type":"parent-child"}
+{"created_at":"2026-03-04T15:49:08Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-53s.1.2.3","issue_id":"ghq-53s.1.2.4","type":"blocks"}
 {"created_at":"2026-03-03T06:52:36Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik","issue_id":"ghq-uik.1","type":"parent-child"}
 {"created_at":"2026-03-03T07:04:28Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.1","issue_id":"ghq-uik.1.1","type":"parent-child"}
 {"created_at":"2026-03-03T07:04:57Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.1.1","issue_id":"ghq-uik.1.1.1","type":"parent-child"}
