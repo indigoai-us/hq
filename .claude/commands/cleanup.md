@@ -51,6 +51,7 @@ Required locations:
 - `knowledge/ralph/INDEX.md`
 - `.claude/skills/INDEX.md`
 - All `companies/*/knowledge/INDEX.md` (for each company with a knowledge dir)
+- All `companies/*/projects/*/knowledge/INDEX.md` (for each project with a knowledge dir)
 
 For each expected location:
 1. Check if file exists → flag MISSING if not
@@ -142,7 +143,7 @@ done
 
 ```bash
 # MD5 hash all .md files in knowledge dirs, flag duplicates (macOS-compatible)
-find knowledge/ -L companies/*/knowledge/ -name "*.md" -not -name "INDEX.md" -exec md5 -r {} \; 2>/dev/null | sort | awk '{h=$1; if(seen[h]) print "DUPLICATE: " seen[h] " = " $2; else seen[h]=$2}'
+find knowledge/ -L companies/*/knowledge/ companies/*/projects/*/knowledge/ -name "*.md" -not -name "INDEX.md" -exec md5 -r {} \; 2>/dev/null | sort | awk '{h=$1; if(seen[h]) print "DUPLICATE: " seen[h] " = " $2; else seen[h]=$2}'
 ```
 
 If duplicates found, show the duplicate pairs (hash + paths).
@@ -341,7 +342,7 @@ For each required location (see Audit Check #2 list):
 | `file.md` | Description |
 ```
 
-For company knowledge dirs (`companies/*/knowledge/INDEX.md`): rebuild each one that exists.
+For company knowledge dirs (`companies/*/knowledge/INDEX.md`) and project knowledge dirs (`companies/*/projects/*/knowledge/INDEX.md`): rebuild each one that exists.
 
 ### Step 3: Run qmd update
 

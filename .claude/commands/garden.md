@@ -31,7 +31,7 @@ Collect the raw file list from all scanned directories.
 ```bash
 # Knowledge files
 find knowledge/ -name "*.md" 2>/dev/null | sort
-find -L companies/*/knowledge/ -name "*.md" 2>/dev/null | sort
+find -L companies/*/knowledge/ companies/*/projects/*/knowledge/ -name "*.md" 2>/dev/null | sort
 
 # INDEX.md files (all levels)
 find . -name "INDEX.md" -not -path "./.git/*" -not -path "./repos/*" -not -path "./workspace/*" 2>/dev/null | sort
@@ -58,14 +58,14 @@ Store counts for the report header.
 For each `INDEX.md` found in Step 1, check the `Updated:` line:
 
 ```bash
-grep -r "Updated:" knowledge/ companies/*/knowledge/ --include="INDEX.md" -l 2>/dev/null
+grep -r "Updated:" knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ --include="INDEX.md" -l 2>/dev/null
 grep -r "> Auto-generated. Updated:" . --include="INDEX.md" 2>/dev/null
 ```
 
 For each knowledge file, look for embedded dates:
 
 ```bash
-grep -rn "20[0-9][0-9]-[0-1][0-9]-[0-3][0-9]" knowledge/ companies/*/knowledge/ --include="*.md" -l 2>/dev/null
+grep -rn "20[0-9][0-9]-[0-1][0-9]-[0-3][0-9]" knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ --include="*.md" -l 2>/dev/null
 ```
 
 Flag any INDEX.md whose `Updated:` date is more than 90 days before today (2026-02-28).
@@ -73,7 +73,7 @@ Flag any knowledge file last modified (git log) more than 180 days ago with no r
 
 ```bash
 git log --pretty=format:"%ad %s" --date=short -- knowledge/ 2>/dev/null | head -30
-git log --diff-filter=M --name-only --pretty=format:"%ad" --date=short -- knowledge/ companies/*/knowledge/ 2>/dev/null | head -40
+git log --diff-filter=M --name-only --pretty=format:"%ad" --date=short -- knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ 2>/dev/null | head -40
 ```
 
 Collect: `stale_indexes[]`, `stale_knowledge[]`
@@ -91,7 +91,7 @@ For each knowledge subdirectory, read its `INDEX.md` (if any). Extract linked fi
 ```bash
 # List actual knowledge dirs and files
 ls -1 knowledge/ 2>/dev/null
-ls -1L companies/*/knowledge/ 2>/dev/null
+ls -1L companies/*/knowledge/ companies/*/projects/*/knowledge/ 2>/dev/null
 ```
 
 For each `knowledge/{dir}/INDEX.md`, extract markdown links:
@@ -100,7 +100,7 @@ For each `knowledge/{dir}/INDEX.md`, extract markdown links:
 grep -oP '\[.*?\]\((.*?)\)' knowledge/*/INDEX.md 2>/dev/null | grep -oP '\((.*?)\)' | tr -d '()'
 ```
 
-Any file in `knowledge/` or `companies/*/knowledge/` not linked from any INDEX = orphan candidate.
+Any file in `knowledge/`, `companies/*/knowledge/`, or `companies/*/projects/*/knowledge/` not linked from any INDEX = orphan candidate.
 
 ### 3b: Task health (beads)
 
@@ -192,8 +192,9 @@ Print a clear, structured audit report:
 === GHQ Garden Audit ===
 Date: 2026-02-28
 Scanned:
-  knowledge/           {N} files
-  companies/*/knowledge/  {N} files
+  knowledge/                        {N} files
+  companies/*/knowledge/             {N} files
+  companies/*/projects/*/knowledge/  {N} files
   beads tasks          {N} epics, {N} open subtasks
   .claude/skills/      {N} skills
   .claude/commands/    {N} commands
