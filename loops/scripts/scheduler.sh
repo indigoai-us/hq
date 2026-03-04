@@ -121,13 +121,15 @@ result = {
     'max_concurrent_agents': config.get('max_concurrent_agents', 2),
     'cooldown_after_failure': config.get('cooldown_after_failure', 900),
     'daily_budget': config.get('daily_budget', 50.0),
-    'blocked_hours': config.get('blocked_hours', [])
+    'blocked_hours': config.get('blocked_hours', []),
+    'digest_hour': config.get('digest_hour', -1)
 }
 print(json.dumps(result))
 " "$SCHEDULER_YAML") || { err "Failed to parse scheduler.yaml"; exit 2; }
 
 MAX_CONCURRENT=$(echo "$SCHEDULER_CONFIG" | jq -r '.max_concurrent_agents')
 BLOCKED_HOURS=$(echo "$SCHEDULER_CONFIG" | jq -r '.blocked_hours[]' 2>/dev/null || true)
+DIGEST_HOUR=$(echo "$SCHEDULER_CONFIG" | jq -r '.digest_hour')
 
 # ─────────────────────────────────────────────────
 # Check blocked hours
@@ -139,6 +141,23 @@ for blocked_hour in $BLOCKED_HOURS; do
     exit 3
   fi
 done
+
+# ─────────────────────────────────────────────────
+# Run daily digest if it's digest_hour
+# ─────────────────────────────────────────────────
+if [[ "$DIGEST_HOUR" != "-1" && "$CURRENT_HOUR" -eq "$DIGEST_HOUR" ]]; then
+  TODAY=$(date +%Y-%m-%d)
+  DIGEST_FILE="$GHQ/loops/digests/$TODAY.md"
+  DIGEST_SCRIPT="$GHQ/loops/scripts/digest.sh"
+  if [[ ! -f "$DIGEST_FILE" && -x "$DIGEST_SCRIPT" ]]; then
+    log "Digest hour: generating daily digest for $TODAY"
+    if $DRY_RUN; then
+      log "[dry-run] Would run: $DIGEST_SCRIPT --date $TODAY"
+    else
+      "$DIGEST_SCRIPT" --date "$TODAY" 2>&1 | while IFS= read -r line; do log "  $line"; done || warn "Digest generation failed"
+    fi
+  fi
+fi
 
 # ─────────────────────────────────────────────────
 # Parse manifest.yaml for enabled companies

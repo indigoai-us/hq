@@ -95,3 +95,6 @@
 {"ts":"2026-03-04T00:04:46Z","type":"skill_start","story_id":"ghq-uik.1.5.7","skill_id":"enhancement","data":{}}
 {"ts":"2026-03-04T00:05:18Z","type":"skill_start","story_id":"ghq-uik.1.5.6","skill_id":"backend","data":{}}
 {"ts":"2026-03-04T00:06:00Z","type":"skill_start","story_id":"ghq-uik.1.5.8","skill_id":"backend","data":{}}
+{"ts":"2026-03-04T00:07:12Z","type":"skill_complete","story_id":"ghq-uik.1.5.7","skill_id":"enhancement","data":{"summary":"Added handle_dead_agent() function with retry logic and decision escalation","files_modified":["loops/scripts/scheduler.sh"]}}
+{"ts":"2026-03-04T00:07:16Z","type":"story_complete","story_id":"ghq-uik.1.5.7","data":{"skills_run":["enhancement"]}}
+{"ts":"2026-03-04T00:09:09Z","type":"skill_complete","story_id":"ghq-uik.1.5.8","skill_id":"backend","data":{"summary":"Built digest.sh and test-digest.sh with 12 passing tests"}}

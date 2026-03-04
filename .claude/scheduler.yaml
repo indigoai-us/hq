@@ -22,3 +22,7 @@ blocked_hours:
   - 2    # 2 AM UTC
   - 3    # 3 AM UTC
   - 4    # 4 AM UTC
+
+# Hour (24h format, UTC) at which the scheduler runs the daily digest.
+# The scheduler checks this on each cron tick and generates the digest once per day.
+digest_hour: 23   # 11 PM UTC
