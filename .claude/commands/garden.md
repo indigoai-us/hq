@@ -31,7 +31,7 @@ Collect the raw file list from all scanned directories.
 ```bash
 # Knowledge files
 find knowledge/ -name "*.md" 2>/dev/null | sort
-find companies/*/knowledge/ -name "*.md" 2>/dev/null | sort
+find -L companies/*/knowledge/ -name "*.md" 2>/dev/null | sort
 
 # INDEX.md files (all levels)
 find . -name "INDEX.md" -not -path "./.git/*" -not -path "./repos/*" -not -path "./workspace/*" 2>/dev/null | sort
@@ -91,7 +91,7 @@ For each knowledge subdirectory, read its `INDEX.md` (if any). Extract linked fi
 ```bash
 # List actual knowledge dirs and files
 ls -1 knowledge/ 2>/dev/null
-ls -1 companies/*/knowledge/ 2>/dev/null
+ls -1L companies/*/knowledge/ 2>/dev/null
 ```
 
 For each `knowledge/{dir}/INDEX.md`, extract markdown links:
