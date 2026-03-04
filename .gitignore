@@ -14,3 +14,8 @@ companies/*
 .beads/dolt-server.port
 /.claude/worktrees
 loops/state.jsonl
+
+# Scheduler runtime files (pid, lock, logs)
+loops/agents/*.pid
+loops/agents/*.lock
+loops/agents/*.log
