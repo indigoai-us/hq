@@ -10,6 +10,3 @@
 {"key":"issue_prefix","value":"ghq"}
 {"key":"schema_version","value":"6"}
 {"key":"status.custom","value":"draft"}
-{"key":"status.symbols.draft","value":"◇"}
-{"key":"statuses.custom","value":"draft"}
-{"key":"types.custom","value":"decision"}
