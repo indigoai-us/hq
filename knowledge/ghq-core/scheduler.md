@@ -116,6 +116,7 @@ Resolves a decision task with a user answer. Closes the decision, records the an
 
 **Environment:**
 - `BD_CMD` -- Override bd command path (default: `bd`)
+- `GHQ_ROOT` -- Override GHQ root directory (default: auto-detected)
 
 ### read-preferences.sh / write-preference.sh
 
