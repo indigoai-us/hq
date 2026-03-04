@@ -16,7 +16,7 @@ audio chunk, and assembles the final video.
 2. TTS        -> Chatterbox generates one .wav per chunk (small = fewer errors)
 2b. Denoise   -> Demucs isolates vocals, removing TTS artifacts and background noise
 2c. Verify    -> Whisper transcribes each chunk, flags mismatches against script
-3. Video      -> Remotion renders one silent .mp4 per chunk (duration = audio length)
+3. Video      -> Remotion renders one silent .mp4 per chunk (or merged group)
 4. Assembly   -> ffmpeg merges each audio+video pair, concatenates all, encodes final
 ```
 
@@ -329,10 +329,15 @@ See `knowledge/video-gen/pipeline-reference.md` for more ffmpeg recipes.
   shorts (2160x3840) depending on the requested format
 - **Audio drives video length**: Calculate `durationInFrames` from audio duration.
   Never speed up or slow down audio to match video — it degrades quality
+- **Whisper verification is mandatory**: Never skip Step 2c. Every chunk
+  must be transcribed and verified against the script before rendering
 - **Zero tolerance on verification**: If Whisper transcript doesn't match
   the script, regenerate the chunk. Never proceed with mismatched audio
 - **Always denoise**: Assembly must use demucs-denoised audio, never raw
   TTS output. Raw files are kept in `audio/raw/` as backup only
+- **Merged compositions**: One Remotion composition can span multiple audio
+  chunks when a smooth transition requires it (e.g., TransitionSolution).
+  Concatenate the audio files and use the combined duration for frames
 - **Small TTS chunks**: 1-2 sentences per chunk. Smaller = fewer errors and
   easier to verify each chunk sounds correct before rendering video
 - **Final output goes to `{project}/assets/`**: The finished .mp4 is always
