@@ -31,6 +31,10 @@
 {"issue_id":"ghq-53s.1.1.6","label":"production-house"}
 {"issue_id":"ghq-53s.1.1.6","label":"ship-it-code"}
 {"issue_id":"ghq-53s.1.1.6","label":"voice-clone"}
+{"issue_id":"ghq-53s.1.2","label":"company"}
+{"issue_id":"ghq-53s.1.2","label":"production-house"}
+{"issue_id":"ghq-53s.1.2","label":"ship-it-code"}
+{"issue_id":"ghq-53s.1.2","label":"video"}
 {"issue_id":"ghq-uik","label":"company"}
 {"issue_id":"ghq-uik","label":"launch-grid"}
 {"issue_id":"ghq-uik.1","label":"company"}
