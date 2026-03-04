@@ -1,6 +1,6 @@
 # GHQ Core — Index
 
-> Auto-generated. Updated: 2026-03-03
+> Auto-generated. Updated: 2026-03-04
 
 | Name | Description |
 |------|-------------|
@@ -8,5 +8,6 @@
 | `loops-schema.md` | Loops Schema |
 | `project-template.md` | Project Template |
 | `quick-reference.md` | GHQ Quick Reference |
+| `scheduler.md` | GHQ Autonomous Scheduler |
 | `skill-schema.md` | Skill Schema (SKILL.md) |
 | `task-schema.md` | Task Schema |
