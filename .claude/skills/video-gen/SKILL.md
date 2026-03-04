@@ -184,16 +184,22 @@ for wav in audio/*.wav; do
 done
 ```
 
-Review the output. Transcription won't be letter-perfect — Whisper may
-differ on punctuation, casing, or technical terms (e.g., "TypeScript" →
-"Typescript"). Focus on whether the **words and meaning** match.
+Review the output. **Any mismatch means regenerate** — do not proceed
+with chunks that differ from the script.
 
 ### When to regenerate
 
-- Missing or extra words → regenerate with `regen_chunk.py --seed <new>`
-- Truncated audio (text cuts off mid-sentence) → regenerate
-- Hallucinated words not in script → regenerate
-- Minor punctuation/casing differences → safe to proceed
+**Always regenerate if the Whisper transcript doesn't match the script.**
+This includes:
+
+- Missing or extra words
+- Wrong words (e.g., "Tidescript" instead of "TypeScript")
+- Truncated audio (text cuts off mid-sentence)
+- Hallucinated words not in script
+- Merged words (e.g., "ShipIt" instead of "Ship It")
+
+Regenerate with `regen_chunk.py --seed <new>`, then re-run denoise
+and verify. Repeat until Whisper output matches.
 
 ### Output format
 
@@ -323,6 +329,10 @@ See `knowledge/video-gen/pipeline-reference.md` for more ffmpeg recipes.
   shorts (2160x3840) depending on the requested format
 - **Audio drives video length**: Calculate `durationInFrames` from audio duration.
   Never speed up or slow down audio to match video — it degrades quality
+- **Zero tolerance on verification**: If Whisper transcript doesn't match
+  the script, regenerate the chunk. Never proceed with mismatched audio
+- **Always denoise**: Assembly must use demucs-denoised audio, never raw
+  TTS output. Raw files are kept in `audio/raw/` as backup only
 - **Small TTS chunks**: 1-2 sentences per chunk. Smaller = fewer errors and
   easier to verify each chunk sounds correct before rendering video
 - **Final output goes to `{project}/assets/`**: The finished .mp4 is always
