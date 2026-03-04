@@ -1,10 +1,9 @@
 # Ralph — Index
 
-> Auto-generated. Updated: 2026-03-03
+> Auto-generated. Updated: 2026-03-05
 
 | Name | Description |
 |------|-------------|
-| `README.md` | Ralph Knowledge Repository |
 | `01-overview.md` | Overview: What is Ralph? |
 | `02-core-concepts.md` | Core Concepts |
 | `03-how-ralph-works.md` | How Ralph Works |
@@ -16,3 +15,4 @@
 | `09-resources.md` | Resources |
 | `10-claude-code-workflow.md` | Claude Code Workflow for Real Engineering |
 | `11-team-training-guide.md` | Ralph & Building AGI: Team Training Guide |
+| `README.md` | Ralph Knowledge Repository |

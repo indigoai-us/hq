@@ -1,6 +1,6 @@
 # GHQ Core — Index
 
-> Auto-generated. Updated: 2026-03-04
+> Auto-generated. Updated: 2026-03-05
 
 | Name | Description |
 |------|-------------|
