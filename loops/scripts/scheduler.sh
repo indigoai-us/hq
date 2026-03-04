@@ -285,7 +285,8 @@ handle_dead_agent() {
       -d "Task '$task_id' has crashed $MAX_RETRIES times. Last crash: pid $dead_pid, company: $company. Please investigate the agent log at $AGENTS_DIR/${company}.log and decide: retry, reassign, or close the task." \
       --type decision \
       --priority 0 \
-      --labels "scheduler,escalation,$company" 2>/dev/null || {
+      --labels "scheduler,escalation,$company" \
+      --metadata "{\"company\": \"$company\", \"action\": \"retry_decision\", \"failed_task\": \"$task_id\"}" 2>/dev/null || {
       warn "Failed to create decision task for $task_id"
     }
 

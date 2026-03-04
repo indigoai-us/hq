@@ -13,6 +13,8 @@
 | `bd-resolve.sh` | Resolves decision tasks with structured answer + preference capture |
 | `read-preferences.sh` | Reads user preferences by company and action |
 | `write-preference.sh` | Writes a preference entry to company preferences.yaml |
+| `dep-graph.sh` | Builds dependency graph for parallel task execution |
+| `file-overlap.sh` | Detects file overlap between parallel tasks |
 
 ## Test Scripts
 
@@ -25,3 +27,6 @@
 | `test-bd-extensions.sh` | Tests for draft status and decision type |
 | `test-preferences.sh` | Tests for preference memory system |
 | `test-integration.sh` | End-to-end integration test (full cycle) |
+| `test-dep-graph.sh` | Tests for dependency graph builder |
+| `test-file-overlap.sh` | Tests for file overlap detector |
+| `test-parallel-spawn.sh` | Tests for parallel task spawning |

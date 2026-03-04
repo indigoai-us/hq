@@ -82,9 +82,6 @@ setup_test_env() {
 
   # Create scheduler.yaml with digest_hour
   cat > "$test_root/.claude/scheduler.yaml" <<'YAML'
-max_concurrent_agents: 2
-cooldown_after_failure: 900
-daily_budget: 50.00
 blocked_hours: []
 digest_hour: 18
 YAML
@@ -93,45 +90,21 @@ YAML
   cat > "$test_root/companies/manifest.yaml" <<'YAML'
 acme-corp:
   symlink: acme-corp
-  repos: []
-  settings: companies/acme-corp/settings/
-  skills: []
-  knowledge: companies/acme-corp/knowledge/
-  deploy: []
-  vercel_projects: []
   epic: acme-1
-  qmd_collections:
-    - acme-corp
   scheduler:
     enabled: true
     max_agents: 1
 
 beta-inc:
   symlink: beta-inc
-  repos: []
-  settings: companies/beta-inc/settings/
-  skills: []
-  knowledge: companies/beta-inc/knowledge/
-  deploy: []
-  vercel_projects: []
   epic: beta-1
-  qmd_collections:
-    - beta-inc
   scheduler:
     enabled: true
     max_agents: 1
 
 disabled-co:
   symlink: disabled-co
-  repos: []
-  settings: companies/disabled-co/settings/
-  skills: []
-  knowledge: companies/disabled-co/knowledge/
-  deploy: []
-  vercel_projects: []
   epic: dis-1
-  qmd_collections:
-    - disabled-co
   scheduler:
     enabled: false
     max_agents: 1

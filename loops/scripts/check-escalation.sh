@@ -196,15 +196,21 @@ elif policy_type == 'ask_once_then_remember':
     else:
         print('ask')
 elif policy_type == 'ask_until_confident':
-    # Count consistent answers for this action
-    count = 0
+    # Check for N consecutive consistent answers for this action
     if os.path.exists(prefs_file):
         with open(prefs_file) as f:
             prefs = yaml.safe_load(f) or {}
         pref_list = prefs.get('preferences', [])
-        count = sum(1 for p in pref_list if isinstance(p, dict) and p.get('action') == action)
-    if count >= confidence_threshold:
-        print('autonomous')
+        answers = [p.get('answer', '') for p in pref_list if isinstance(p, dict) and p.get('action') == action]
+        # Check if last N answers are all the same
+        if len(answers) >= confidence_threshold:
+            recent = answers[-confidence_threshold:]
+            if len(set(recent)) == 1:
+                print('autonomous')
+            else:
+                print('ask')
+        else:
+            print('ask')
     else:
         print('ask')
 else:

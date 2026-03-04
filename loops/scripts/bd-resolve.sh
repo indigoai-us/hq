@@ -101,7 +101,7 @@ fi
 # ─────────────────────────────────────────────────
 # Validate issue
 # ─────────────────────────────────────────────────
-ISSUE_JSON=$($BD show "$ISSUE_ID" --json 2>&1) || {
+ISSUE_JSON=$($BD show "$ISSUE_ID" --json 2>/dev/null) || {
   echo "Error: issue '$ISSUE_ID' not found" >&2
   exit 1
 }
@@ -124,7 +124,7 @@ fi
 # Resolve the decision
 # ─────────────────────────────────────────────────
 RESOLVED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-RESOLVED_BY="${BD_ACTOR:-${USER:-unknown}}"
+RESOLVED_BY="${USER:-unknown}"
 
 # Build metadata JSON -- escape the answer for JSON safety
 METADATA_JSON=$(python3 -c "
@@ -143,7 +143,7 @@ print(json.dumps({
 $BD update "$ISSUE_ID" --metadata "$METADATA_JSON" --quiet 2>/dev/null || true
 
 # Add a comment documenting the resolution
-$BD comments "$ISSUE_ID" add "Decision resolved: $ANSWER" --quiet 2>/dev/null || true
+$BD comments add "$ISSUE_ID" "Decision resolved: $ANSWER" --quiet 2>/dev/null || true
 
 # Close the issue
 $BD close "$ISSUE_ID" --reason "resolved" --quiet 2>/dev/null || true
@@ -156,19 +156,30 @@ WRITE_PREF="$SCRIPT_DIR/write-preference.sh"
 
 if [[ -x "$WRITE_PREF" ]]; then
   # Extract company and action from issue metadata or labels
+  # Resolve GHQ root for manifest lookup
+  if [[ -n "${GHQ_ROOT:-}" ]]; then
+    _GHQ="$GHQ_ROOT"
+  else
+    _GHQ="$(cd "$SCRIPT_DIR/../.." && pwd)"
+  fi
+  _MANIFEST="$_GHQ/companies/manifest.yaml"
+
   PREF_INFO=$(echo "$ISSUE_JSON" | python3 -c "
-import sys, json
+import sys, json, yaml, os
 data = json.load(sys.stdin)
 issue = data[0] if isinstance(data, list) else data
 meta = issue.get('metadata', {})
 labels = issue.get('labels', [])
+manifest_path = sys.argv[1]
 
-# Company: from metadata.company or first company-like label
+# Company: from metadata.company or first label that matches a manifest slug
 company = meta.get('company', '')
-if not company:
-    # Try to find company from labels
+if not company and os.path.exists(manifest_path):
+    with open(manifest_path) as f:
+        manifest = yaml.safe_load(f) or {}
+    slugs = set(manifest.keys())
     for label in labels:
-        if label in ('launch-grid', 'production-house'):
+        if label in slugs:
             company = label
             break
 
@@ -185,7 +196,7 @@ if company and action:
     print(f'{company}|{action}|{question}|{applies_to}')
 else:
     print('')
-" 2>/dev/null) || true
+" "$_MANIFEST" 2>/dev/null) || true
 
   if [[ -n "$PREF_INFO" ]]; then
     IFS='|' read -r PREF_COMPANY PREF_ACTION PREF_QUESTION PREF_APPLIES_TO <<< "$PREF_INFO"

@@ -13,8 +13,8 @@ scheduler.sh
   +-- Phase 1: Parse scheduler.yaml (blocked hours, digest hour)
   +-- Phase 2: Check constraints (blocked hours)
   +-- Phase 3: Digest (at configured digest_hour)
-  +-- Phase 4: Parse manifest.yaml (enabled companies, max_agents)
-  +-- Phase 5: Strategy planner (generate draft tasks for cadence gaps)
+  +-- Phase 4: Strategy planner (reads manifest internally, fills cadence gaps)
+  +-- Phase 5: Parse manifest.yaml (enabled companies, max_agents)
   +-- Phase 6: Recover dead agents (pid check -> retry or escalate)
   +-- Phase 7: Dispatch new agents (per-company max_agents)
 ```
@@ -32,8 +32,8 @@ The main entry point. Designed to run via cron/launchd every 15 minutes.
 1. Reads `.claude/scheduler.yaml` for global config (blocked hours, digest hour)
 2. Checks blocked hours (exits with code 3 if blocked)
 3. Generates daily digest at the configured hour
-4. Reads `companies/manifest.yaml` for enabled companies
-5. Runs strategy planner for all enabled companies
+4. Runs strategy planner for all enabled companies (reads manifest internally)
+5. Reads `companies/manifest.yaml` for enabled companies (dispatch loop)
 6. Detects dead agents via pid files, triggers recovery
 7. For each enabled company under its `max_agents` limit:
    - Queries bd for the top-ranked open unblocked task
@@ -122,6 +122,9 @@ Resolves a decision task with a user answer. Closes the decision, records the an
 **Location:** `loops/scripts/read-preferences.sh`, `loops/scripts/write-preference.sh`
 
 Read and write user preferences for the ask_once_then_remember and ask_until_confident escalation policies.
+
+**Environment:**
+- `GHQ_ROOT` -- Override GHQ root directory (default: auto-detected)
 
 ## Configuration
 
@@ -314,10 +317,11 @@ scheduler.yaml -> scheduler.sh
                      +-- check constraints (blocked hours)
                      +-- digest.sh -> loops/digests/YYYY-MM-DD.md
                      |
-manifest.yaml -------+
+                     +-- strategy-planner.sh (reads manifest.yaml internally)
+                     |       reads strategy.yaml per company -> bd (draft tasks)
                      |
-                     +-- strategy-planner.sh -> bd (draft tasks)
-                     |       reads strategy.yaml per company
+manifest.yaml -------+-- parse for dispatch loop
+                     |
                      +-- recover dead agents -> retry or escalate
                      +-- dispatch loop:
                            per company (respecting max_agents):

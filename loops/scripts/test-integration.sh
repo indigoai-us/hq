@@ -139,9 +139,6 @@ setup_test_env() {
 
   # scheduler.yaml -- permissive config for testing
   cat > "$test_root/.claude/scheduler.yaml" <<'YAML'
-max_concurrent_agents: 3
-cooldown_after_failure: 0
-daily_budget: 100.00
 blocked_hours: []
 digest_hour: -1
 YAML
