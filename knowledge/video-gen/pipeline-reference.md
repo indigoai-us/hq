@@ -76,6 +76,81 @@ dataset creation → preprocessing → fine-tuning → inference
 
 ---
 
+## Demucs Audio Denoising
+
+Uses Meta's Demucs source separation model to isolate vocals from TTS output,
+removing background noise and artifacts.
+
+### Install
+
+```bash
+pip install demucs
+# or
+pipx install demucs
+```
+
+First run downloads the `htdemucs` model (~80MB).
+
+### Denoise a Single File
+
+```bash
+demucs --two-stems vocals -o out/demucs audio/1-hook.wav
+```
+
+Output: `out/demucs/htdemucs/1-hook/vocals.wav`
+
+### Custom Output Filename
+
+```bash
+demucs --two-stems vocals -o out/demucs --filename "{stem}.{ext}" audio/1-hook.wav
+```
+
+Output: `out/demucs/htdemucs/vocals.wav`
+
+### Batch Denoise All Chunks
+
+```bash
+# Process all audio chunks
+for wav in audio/*.wav; do
+  demucs --two-stems vocals -o out/demucs "$wav"
+done
+
+# Copy denoised vocals back to audio/
+for wav in audio/*.wav; do
+  name=$(basename "$wav" .wav)
+  cp "out/demucs/htdemucs/${name}/vocals.wav" "audio/${name}.wav"
+done
+```
+
+### Output Path Pattern
+
+```
+demucs --two-stems vocals -o <output-dir> <input.wav>
+  -> <output-dir>/htdemucs/<input-basename>/vocals.wav
+```
+
+The `htdemucs` subdirectory is the model name. The `<input-basename>` directory
+is created from the input filename without extension. `vocals.wav` is the
+isolated vocal stem.
+
+### Performance
+
+| Device | Per-chunk time | Notes |
+|--------|---------------|-------|
+| Apple Silicon (MPS) | ~10-20s | Automatic GPU detection |
+| CPU only | ~30-60s | Fallback if no GPU |
+
+### Tips
+
+- Always back up raw TTS files to `audio/raw/` before overwriting
+- Demucs preserves duration — verify with `ffprobe` if in doubt
+- `--two-stems vocals` is all you need for TTS denoising (skips
+  drums/bass/other separation, faster than full 4-stem mode)
+- The `no_vocals` stem (background noise) is also saved — useful for
+  diagnosing what was removed
+
+---
+
 ## Remotion CLI
 
 ### Render

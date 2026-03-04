@@ -14,6 +14,7 @@ audio chunk, and assembles the final video.
 ```
 1. Script     -> structured chunks (1-2 sentences each, with visual cues)
 2. TTS        -> Chatterbox generates one .wav per chunk (small = fewer errors)
+2b. Denoise   -> Demucs isolates vocals, removing TTS artifacts and background noise
 3. Video      -> Remotion renders one silent .mp4 per chunk (duration = audio length)
 4. Assembly   -> ffmpeg merges each audio+video pair, concatenates all, encodes final
 ```
@@ -101,6 +102,54 @@ Edit the `PARAMS` dict in `inference.py`:
 - Current clone: Charisma on Command narrator — see `ship-it-code/knowledge/voice-clone.md`
 - Full pipeline for cloning new voices: `production-house/knowledge/voice-cloning.md`
 - See `knowledge/video-gen/pipeline-reference.md` for parameter details
+
+## Step 2b: Denoise Audio (Demucs)
+
+After TTS generation, run Demucs to isolate the vocal stem and remove any
+background noise or TTS artifacts. This produces cleaner audio without
+changing duration.
+
+### Denoise all chunks
+
+```bash
+cd <video-dir>
+
+# Back up raw TTS audio
+mkdir -p audio/raw
+cp audio/*.wav audio/raw/
+
+# Run demucs on each chunk
+for wav in audio/*.wav; do
+  demucs --two-stems vocals -o out/demucs "$wav"
+done
+
+# Replace originals with denoised vocals
+for wav in audio/raw/*.wav; do
+  name=$(basename "$wav" .wav)
+  cp "out/demucs/htdemucs/${name}/vocals.wav" "audio/${name}.wav"
+done
+```
+
+Output path: `out/demucs/htdemucs/<input-basename>/vocals.wav`
+
+### Verify duration unchanged
+
+```bash
+for wav in audio/*.wav; do
+  name=$(basename "$wav")
+  raw_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "audio/raw/$name")
+  new_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$wav")
+  echo "$name: raw=${raw_dur}s denoised=${new_dur}s"
+done
+```
+
+Durations should match within a few milliseconds. If they differ
+significantly, something went wrong — fall back to the raw audio.
+
+### When to skip
+
+- If TTS output is already clean (no audible noise), denoising is optional
+- Demucs adds ~10-20s per chunk on Apple Silicon (MPS) — budget accordingly
 
 ## Step 3: Render Video Chunks (Remotion)
 
