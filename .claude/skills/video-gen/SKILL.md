@@ -164,18 +164,6 @@ before video rendering begins.
 cd <video-dir>
 
 for wav in audio/*.wav; do
-  insanely-fast-whisper \
-    --file-name "$wav" \
-    --model-name openai/whisper-large-v3 \
-    --transcript-path "audio/$(basename "$wav" .wav).json" \
-    --device-id mps
-done
-```
-
-**Fallback** (if `insanely-fast-whisper` has MPS issues):
-
-```bash
-for wav in audio/*.wav; do
   python3 -m whisper "$wav" --model large-v3 --language en \
     --output_format json --output_dir audio/
 done
@@ -209,17 +197,11 @@ differ on punctuation, casing, or technical terms (e.g., "TypeScript" →
 
 ### Output format
 
-`insanely-fast-whisper` produces:
-```json
-{"speakers": [], "chunks": [{"timestamp": [0.0, 3.08], "text": "..."}], "text": "..."}
-```
-
-`python3 -m whisper` produces:
 ```json
 {"text": "...", "segments": [{"start": 0.0, "end": 3.08, "text": "..."}], "language": "en"}
 ```
 
-Both include the full transcript in the top-level `text` field.
+The full transcript is in the top-level `text` field.
 
 ## Step 3: Render Video Chunks (Remotion)
 
