@@ -286,7 +286,7 @@ handle_dead_agent() {
       --type decision \
       --priority 0 \
       --labels "scheduler,escalation,$company" \
-      --metadata "{\"company\": \"$company\", \"action\": \"retry_decision\", \"failed_task\": \"$task_id\"}" 2>/dev/null || {
+      --metadata "{\"company\": \"$company\", \"action\": \"retry_decision\", \"failed_task\": \"$task_id\"}" >/dev/null 2>/dev/null || {
       warn "Failed to create decision task for $task_id"
     }
 

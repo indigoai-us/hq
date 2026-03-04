@@ -16,6 +16,10 @@
 #   4. Closes the issue with reason="resolved"
 #   5. Writes to preferences.yaml if the decision has company/action context
 #
+# Environment:
+#   BD_CMD      Override bd command path (default: "bd")
+#   GHQ_ROOT    Override GHQ root directory (default: auto-detected)
+#
 # Exit codes:
 #   0  Success
 #   1  Invalid arguments or issue not found

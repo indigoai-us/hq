@@ -158,7 +158,7 @@ GHQ_ROOT="$TEMP_DIR" "$WRITE_PREF" \
   --company test-co \
   --action refactor \
   --question "Should I refactor the payment module?" \
-  --answer "Yes, go ahead" \
+  --answer "Yes" \
   --applies-to backend 2>/dev/null
 
 VALID=$(python3 -c "

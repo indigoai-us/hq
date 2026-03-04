@@ -117,7 +117,9 @@ done
 # Validate required fields
 for field_name in COMPANY ACTION QUESTION ANSWER APPLIES_TO; do
   if [[ -z "${!field_name}" ]]; then
-    echo "Error: --${field_name,,} is required" >&2
+    flag="${field_name,,}"
+    flag="${flag//_/-}"
+    echo "Error: --${flag} is required" >&2
     usage 1
   fi
 done

@@ -37,7 +37,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"; exec "${GHQ_ROOT}/loops/scripts/scheduler.sh" 2>&amp;1</string>
+        <string>export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"; exec "${GHQ_ROOT}/loops/scripts/scheduler.sh"</string>
     </array>
 
     <!-- Run every 15 minutes (900 seconds) -->
