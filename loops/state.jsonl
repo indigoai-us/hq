@@ -117,3 +117,11 @@
 {"ts":"2026-03-04T02:37:25Z","type":"story_complete","story_id":"ghq-53s.1.1.6","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-04T06:52:00Z","type":"story_complete","story_id":"ghq-53s.1.1.6","data":{"skills_run":["direct-execution"]}}
 {"ts":"2026-03-04T06:52:01Z","type":"loop_end","data":{"task_id":"ghq-53s.1.1","stories_completed":6,"stories_blocked":0}}
+{"ts":"2026-03-04T10:53:50Z","type":"loop_start","data":{"task_id":"ghq-53s.1.2","stories_total":4,"stories_pending":4}}
+{"ts":"2026-03-04T10:54:57Z","type":"skill_start","story_id":"ghq-53s.1.2.1","skill_id":"content","data":{}}
+{"ts":"2026-03-04T10:56:09Z","type":"skill_complete","story_id":"ghq-53s.1.2.1","skill_id":"content","data":{"summary":"Wrote 9-chunk TTS script for object-map YouTube Short","files_created":["companies/production-house/projects/ship-it-code/workspace/object-map-short/script.json"],"total_words":92,"estimated_duration_sec":"31-37","chunks":9}}
+{"ts":"2026-03-04T10:56:10Z","type":"story_complete","story_id":"ghq-53s.1.2.1","data":{"skills_run":["content"]}}
+{"ts":"2026-03-04T10:56:32Z","type":"story_complete","story_id":"ghq-53s.1.2.1","data":{"skills_run":["content"]}}
+{"ts":"2026-03-04T11:11:25Z","type":"skill_start","story_id":"ghq-53s.1.2.2","skill_id":"video-gen","data":{}}
+{"ts":"2026-03-04T11:11:25Z","type":"skill_complete","story_id":"ghq-53s.1.2.2","skill_id":"video-gen","data":{"summary":"Generated 9 TTS audio chunks via Chatterbox, regenerated 1 problematic chunk, total 31.68s","chunks":9,"total_duration":31.68}}
+{"ts":"2026-03-04T11:11:25Z","type":"story_complete","story_id":"ghq-53s.1.2.2","data":{"skills_run":["video-gen"]}}
