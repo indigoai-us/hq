@@ -136,3 +136,16 @@
 {"created_at":"2026-03-05T04:55:59Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.1","issue_id":"ghq-uik.2.1.8","type":"parent-child"}
 {"created_at":"2026-03-05T04:56:07Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.1.6","issue_id":"ghq-uik.2.1.8","type":"blocks"}
 {"created_at":"2026-03-05T04:56:07Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.1.7","issue_id":"ghq-uik.2.1.8","type":"blocks"}
+{"created_at":"2026-03-05T22:51:06Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2","issue_id":"ghq-uik.2.2","type":"parent-child"}
+{"created_at":"2026-03-05T22:51:17Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.1","type":"parent-child"}
+{"created_at":"2026-03-05T22:51:24Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.2","type":"parent-child"}
+{"created_at":"2026-03-05T22:52:05Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2.1","issue_id":"ghq-uik.2.2.2","type":"blocks"}
+{"created_at":"2026-03-05T22:51:30Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.3","type":"parent-child"}
+{"created_at":"2026-03-05T22:52:06Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2.1","issue_id":"ghq-uik.2.2.3","type":"blocks"}
+{"created_at":"2026-03-05T22:51:33Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.4","type":"parent-child"}
+{"created_at":"2026-03-05T22:52:06Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2.1","issue_id":"ghq-uik.2.2.4","type":"blocks"}
+{"created_at":"2026-03-05T22:51:42Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.5","type":"parent-child"}
+{"created_at":"2026-03-05T22:51:51Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.6","type":"parent-child"}
+{"created_at":"2026-03-05T22:52:06Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2.2","issue_id":"ghq-uik.2.2.6","type":"blocks"}
+{"created_at":"2026-03-05T22:52:06Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2.3","issue_id":"ghq-uik.2.2.6","type":"blocks"}
+{"created_at":"2026-03-05T22:51:59Z","created_by":"Chaudhry Hassaan Saleem","depends_on_id":"ghq-uik.2.2","issue_id":"ghq-uik.2.2.7","type":"parent-child"}
