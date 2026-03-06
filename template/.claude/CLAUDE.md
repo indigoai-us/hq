@@ -48,19 +48,31 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Company Isolation
 
-Manifest: `companies/manifest.yaml` — maps each company → repos, settings, workers, knowledge, deploy targets.
+Manifest: `companies/manifest.yaml` — maps each company → repos, workers, knowledge, deploy targets, infrastructure.
 
-**Rules:**
-- Infer active company from context: cwd, worker being run, files being accessed, project repo
-- Before accessing company-scoped resources (settings/, knowledge/, repos/), verify ownership per manifest
+**Manifest fields for infrastructure routing:**
+- `services` — which credential types the company has (aws, linear, slack, etc.)
+- `vercel_team` — Vercel scope ID for deploys (`--scope {team}`)
+- `aws_profile` — AWS CLI profile name (`AWS_PROFILE={profile}`)
+- `dns_zones` — domain → Route 53 hosted zone ID mapping
+
+**Before any company-scoped operation:**
+1. Identify active company from context (cwd, repo → manifest lookup, domain, worker)
+2. Read `companies/{co}/policies/` — company policies have service-specific instructions
+3. Use manifest infrastructure fields — don't guess Vercel scopes, AWS profiles, or zone IDs
+
+**Hard rules:**
 - NEVER read/use credentials from a different company's settings
-- NEVER mix company knowledge in outputs (e.g. {Company-2} brand guidelines in a {Company-1} report)
+- NEVER try another company's credentials as "fallback" — if the right company's creds fail, stop and ask
+- NEVER paste secrets inline in bash commands — use `AWS_PROFILE=`, env files, or config refs
 - NEVER deploy to a company's Vercel project / GitHub repo from a different company's context
-- When task spans multiple companies (rare), explicitly acknowledge cross-company scope and handle each separately
-- Public workers (dev-team, content-team, qa) are company-agnostic — inherit active company from invocation context
-- All private workers declare `company:` in worker.yaml and registry.yaml
+- NEVER mix company knowledge in outputs
 - NEVER use Linear credentials from a different company's settings
 - Before any Linear API call, validate: config.json `workspace` field matches expected company
+- If prd.json `linearCredentials` path doesn't match active company per manifest, ABORT and warn
+- When task spans multiple companies (rare), explicitly acknowledge cross-company scope
+
+**Credential access:** See policy `credential-access-protocol.md`. Always: manifest lookup → company policies → company settings. Never guess.
 
 ## Policies
 
@@ -76,6 +88,15 @@ Hard enforcement policies block on violation; soft enforcement policies note dev
 **Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + `## Rule` + `## Rationale`
 **Precedence:** company > repo > command > global
 
+## Skills
+
+`.claude/skills/` is the canonical HQ skill tree. Do not duplicate skill definitions for Codex.
+
+To expose HQ skills to Codex, install a single symlink bridge:
+- `scripts/codex-skill-bridge.sh install` → creates `~/.codex/skills/hq` pointing at `.claude/skills/`
+- New skills created under `.claude/skills/` become available to Codex without a sync step
+- Inference: Codex may need a fresh session to notice a brand-new skill, but the filesystem bridge stays current
+
 ## Infrastructure-First
 
 When work implies new infrastructure, scaffold it BEFORE doing the work:
@@ -85,7 +106,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 | New company | `/newcompany {slug}` — creates dir, manifest, knowledge repo, qmd collection |
 | New worker needed | `/newworker` — scaffolds worker.yaml, auto-registers in registry + manifest |
 | New knowledge base | Create repo in `repos/{pub|priv}/knowledge-{name}` → symlink → add to `modules/modules.yaml` |
-| New project | `/prd` — creates `projects/{name}/` with prd.json + README |
+| New project | `/prd` — creates `companies/{co}/projects/{name}/` with prd.json + README |
 | New repo | Clone to `repos/{pub|priv}/` → add to `manifest.yaml` → add qmd collection |
 
 **Post-infrastructure checklist (mandatory after ANY creation):**
@@ -102,7 +123,8 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-Public: frontend-designer, qa-tester, security-scanner + dev-team (16) + content-team (5). Private: cfo-{company}, {company}-analyst, cmo-{company}, cmo-{company}, x-{your-handle}, invoices. Full list: `knowledge/public/hq-core/quick-reference.md` or `workers/registry.yaml`.
+**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid + dev-team (16) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
+**Company** (`companies/{co}/workers/`): company-scoped workers. Full list: `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
 
@@ -116,11 +138,11 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-24 commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+35+ commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
-Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
+Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework, testing, agent-browser, curious-minds, gemini-cli, pr, context-needs, project-context. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Repos
 
@@ -132,9 +154,9 @@ Every knowledge folder is its own git repo with independent versioning.
 
 **Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
 
-**Repo inventory:** See `knowledge/public/hq-core/quick-reference.md`
+**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
 
-**Adding new knowledge:** Create repo in `repos/{public|private}/knowledge-{name}`, symlink into the appropriate knowledge path, add to `modules/modules.yaml`.
+**Adding new knowledge:** Company: `git init` in `companies/{co}/knowledge/`. Shared: create repo in `repos/public/knowledge-{name}`, symlink to `knowledge/public/`. Register in `modules/modules.yaml`.
 
 ## Search (qmd)
 
@@ -158,7 +180,10 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 |------|------|---------|
 | Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about Stripe integration" |
 | Find code by concept | `qmd vsearch -c {product}` | "where auth middleware is defined" |
-| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*/prd.json" path="projects/"` |
+| Find project PRD | `qmd search` or direct `Read` | `qmd search "project-name prd.json" --json -n 5` |
+| Find worker yaml | `Read workers/registry.yaml` → path | Never Glob — registry has all paths |
+| Find companies | `Read companies/manifest.yaml` | Never Glob — manifest lists all companies |
+| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{product}/apps/"` |
 | Exact pattern match in code | `Grep` (works from HQ root) | `import.*AuthService` with `glob: "*.ts"` |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
@@ -166,12 +191,48 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 **`.ignore` file protects Grep** — HQ has a `.ignore` (ripgrep ignore) that blocks `repos/`, `node_modules/`, `**/.git/`. Grep from HQ root is safe. Glob from HQ root still times out — always pass a scoped `path:` to Glob.
 
+**Never use Glob for prd.json or worker.yaml discovery.** Use `qmd search` or read index files directly (`manifest.yaml`, `registry.yaml`). Hook enforced — Glob with these patterns is blocked.
+
 **Glob rules:**
-- ALWAYS pass `path:` scoped to a subdirectory (`projects/`, `workers/`, `workspace/`)
+- NEVER Glob for `prd.json` or `worker.yaml` — blocked by hook, use qmd or direct Read
+- ALWAYS pass `path:` scoped to a subdirectory (`companies/`, `workers/`, `workspace/`)
 - NEVER Glob from HQ root — `.ignore` does NOT protect Glob (only Grep)
 - Parallel Glob calls: if one times out, ALL sibling tool calls in the same message die ("Sibling tool call errored")
 
 **When in doubt:** `qmd search "project name"` finds files by topic without any timeout risk
+
+## Policies (Learned Rules)
+
+Rules are stored as policy files — structured markdown with YAML frontmatter. Migrated from inline `## Learned Rules`.
+
+**Directories (check before executing tasks):**
+- `companies/{co}/policies/` — company-scoped rules
+- `repos/{pub|priv}/{repo}/.claude/policies/` — repo-scoped rules
+- `.claude/policies/` — cross-cutting + command-scoped rules
+
+**Precedence:** company > repo > command > global. Hard enforcement blocks on violation; soft notes deviations.
+
+**Spec:** `knowledge/public/hq-core/policies-spec.md`
+**Template:** `companies/_template/policies/example-policy.md`
+
+## Core Principles
+
+1. **Infrastructure scales, effort doesn't** - Build reusable systems
+2. **Workers should grow smarter** - Capture learnings in knowledge bases
+3. **Context is precious** - Checkpoint often, don't let work evaporate
+4. **Test before ship** - If you can't verify it works, you can't ship it
+5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
+
+## E2E Testing Standards
+
+For deployable projects (web, API, CLI):
+- E2E tests verify the product works, not just the code
+- Tests are back-pressure in the Ralph loop (fail = task incomplete)
+- Knowledge base: `knowledge/public/testing/` (templates, infra guides, agent-browser)
+- PRDs include optional `e2eTests` per story
+- Workers use `e2e-testing` skill for writing/running tests
+
+**Full guide:** `knowledge/public/testing/e2e-cloud.md`
 
 ## Learned Rules
 
@@ -207,6 +268,11 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - **pre-deploy domain check**: Before ANY Vercel deploy to a custom domain, ALWAYS (1) `curl -s` the live URL to see what's currently there, (2) check which Vercel project owns the domain (`GET /v6/domains/{domain}`), (3) read the relevant infra knowledge for domain registry. NEVER remove a domain from one project to assign it to another — add new routes within the existing project instead. <!-- 2026-02-20 -->
 - **EAS build env vars**: EAS production builds do NOT inherit local `.env` files — `EXPO_PUBLIC_*` vars must be set on expo.dev or via CLI before building or the app crashes on launch. Set with: `eas env:create production --name KEY --value VALUE --visibility sensitive --scope project --non-interactive`. Use `sensitive` (NOT `secret`) for `EXPO_PUBLIC_*` vars — EAS rejects `secret` visibility for public-prefixed vars. Verify with `eas env:list production` before triggering build. <!-- 2026-02-21 -->
 - **Vercel env var trailing newlines**: When piping values to `vercel env add`, ALWAYS use `printf` (no trailing newline) — NOT `echo`. `echo` appends `\n` to the value, causing API calls with those credentials to fail with 400 Bad Request. Diagnose with `vercel env pull` and inspect for `\n` in values. <!-- 2026-02-21 -->
+- **E2E tests cover real user flows**: Write E2E tests that exercise the actual user flow — run the CLI, open the URL in Playwright, verify the page renders. Unit tests passing ≠ product works. <!-- e2e-cloud-testing -->
+- **Test before marking complete**: Never mark a task `passes: true` without running tests AND verifying the feature works. <!-- e2e-cloud-testing -->
+- **PRD test-first structure**: PRDs should include E2E tests per story, verification commands, and Phase 0 test infrastructure. <!-- e2e-cloud-testing -->
+- **PRD baseBranch**: Include `metadata.baseBranch` so Pure Ralph creates feature branches from the correct base. <!-- e2e-cloud-testing -->
+- **Script/schema compatibility**: When updating PRD schema (e.g. `features` → `userStories`), also update all scripts that consume PRDs. <!-- e2e-cloud-testing -->
 
 ## Learning System
 

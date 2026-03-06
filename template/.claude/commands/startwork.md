@@ -22,7 +22,7 @@ Beginning of every session. Replaces ad-hoc orientation. Much lighter than `/rea
 Determine mode from arg (first match wins):
 
 - **No arg / empty** → Resume mode
-- **Arg matches company slug** in `companies/manifest.yaml` (liverecover, abacus, indigo, personal, golden-thread, haven-slay, holler-mgmt, ridgeline, brandstage, estate-manager) → Company mode
+- **Arg matches company slug** in `companies/manifest.yaml` (e.g. `{company-1}`, `{company-2}`, `personal`) → Company mode
 - **Arg matches a directory** in `projects/` (not `_archive/`) → Project mode
 - **Arg matches a directory** in `repos/private/` or `repos/public/` → Repo mode
 - **Partial match** → arg is a substring of any company slug, project dir, or repo name (exclude `knowledge-*` repos). 1 match → use that mode. 2-5 matches → present list via AskUserQuestion, ask user to pick. >5 → ask user to be more specific
@@ -35,13 +35,13 @@ Determine mode from arg (first match wins):
 1. Read `workspace/threads/handoff.json`
 2. Read the thread file it points to → extract: `conversation_summary`, `next_steps`, `git.branch`, `git.current_commit`, `git.dirty`, `files_touched`
 3. Run `git log --oneline -3` for recent HQ commits
-4. Quick scan: Glob `projects/*/prd.json` (skip `_archive`). For each (max 5), read only `name` and count stories where `passes !== true`. Collect projects with remaining work.
+4. Quick scan: `qmd search "prd.json" --json -n 10` → filter results for `projects/` paths (skip `_archive`). For each (max 5), Read the prd.json and extract `name` + count stories where `passes !== true`. Collect projects with remaining work.
 
 #### Company Mode (arg = company slug)
 
 1. Read `companies/manifest.yaml` → extract the company's entry (repos, workers, knowledge, qmd_collections)
 2. Read `workspace/threads/handoff.json` → if last thread relates to this company, note it
-3. Glob `projects/*/prd.json` (skip `_archive`). For each, read `metadata.repoPath` and `name`. Filter to projects whose repoPath matches any of the company's repos. Count incomplete stories per project.
+3. `qmd search "prd.json" --json -n 10` → filter results for `projects/` paths (skip `_archive`). For each, Read the prd.json and extract `metadata.repoPath` and `name`. Filter to projects whose repoPath matches any of the company's repos. Count incomplete stories per project.
 4. If company has repos, run `git -C {first-repo} log --oneline -3` and `git -C {first-repo} branch --show-current`
 5. List the company's workers from manifest (names only, don't read worker.yaml files)
 
@@ -56,7 +56,7 @@ Determine mode from arg (first match wins):
 1. Resolve full path: check `repos/private/{arg}` then `repos/public/{arg}`
 2. Git state: `git -C {repoPath} branch --show-current`, `git -C {repoPath} log --oneline -5`, `git -C {repoPath} status --short`
 3. Owning company: scan `companies/manifest.yaml` for a company whose `repos:` list contains this path. If not found, infer from repo name prefix or note as untracked
-4. Related projects: Grep all `projects/*/prd.json` (skip `_archive`) for repoPath containing the repo name. For each match (max 5), read `name` and count incomplete stories (where `passes !== true`)
+4. Related projects: `qmd search "{repo-name} prd.json" --json -n 10` → filter for projects matching this repo. For each match (max 5), Read the prd.json and extract `name` + count incomplete stories (where `passes !== true`)
 
 ### 3. Present & Ask
 
@@ -97,3 +97,4 @@ After user picks, proceed directly into the work. If they picked a project story
 - Always verify git branch with `git branch --show-current` before displaying git state
 - Context diet: every read must serve the orientation summary. No speculative loading
 - If handoff.json doesn't exist, skip resume context — go straight to asking what to work on
+- **ALWAYS** (Company + Repo mode): also load company knowledge essentials — read `companies/{co}/knowledge/INDEX.md` (if exists) for a summary of available docs, and note deployed Vercel projects from `companies/manifest.yaml` so user has context on what's live

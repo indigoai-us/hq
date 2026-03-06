@@ -4,6 +4,54 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.5.0 (from v6.4.0)
+
+### New Workers
+Copy these directories from starter-kit to your HQ `workers/public/`:
+- `workers/gemini-coder/` — Gemini CLI code generation
+- `workers/gemini-reviewer/` — Gemini CLI code review
+- `workers/gemini-frontend/` — Gemini CLI frontend generation
+- `workers/knowledge-tagger/` — Knowledge document classification
+- `workers/site-builder/` — Local business website builder
+
+Update `workers/registry.yaml` to include the new entries.
+
+### New Knowledge Bases
+Copy from starter-kit to your HQ `knowledge/public/`:
+- `knowledge/gemini-cli/` — Gemini CLI integration docs
+
+### Updated Commands
+Review and merge changes to:
+- `.claude/commands/execute-task.md` — Refined codex-reviewer, back-pressure handling
+- `.claude/commands/prd.md` — Company Anchor (Step 0), Beads sync (Step 7)
+- `.claude/commands/run-project.md` — Externalized to bash script, CLI flags
+- `.claude/commands/handoff.md` — Knowledge update step (0b)
+- `.claude/commands/learn.md` — Target-file injection, cap enforcement, global promotion
+- `.claude/commands/startwork.md` — Company knowledge loading, Vercel context
+- `.claude/commands/checkemail.md` — Email-triage app integration
+- `.claude/commands/email.md` — 4-phase triage, Linear/PRD creation
+- `.claude/commands/bootcamp-student.md` — Audience language rules, deck format options
+
+### CLAUDE.md Updates
+
+**New sections to add:**
+1. **Skills** (after Company Isolation) — `.claude/skills/` tree with Codex bridge
+2. **Policies (Learned Rules)** (before Core Principles) — Policy file directories and precedence
+
+**Sections to update:**
+- **Company Isolation** — Add manifest infrastructure routing fields, 3-step operation protocol, credential access reference
+- **Workers** — Update counts for social-team (5), pr-team (6), gardener-team (3), gemini-team (3), knowledge-tagger, site-builder
+- **Search rules** — Add PRD/worker/company discovery rows, Glob blocking rule
+- **Knowledge Repos** — Add embedded git repo pattern, `Reading/searching` note
+- **Knowledge Bases** — Add: agent-browser, curious-minds, gemini-cli, pr, context-needs, project-context
+- **Infrastructure-First** — Update `/prd` path to company-scoped
+- **Commands count** — Update to 35+
+
+### Breaking Changes
+- `/run-project` now delegates to `scripts/run-project.sh`. If you don't have this script, the command falls back to in-session execution.
+
+---
+
 ## Migrating to v6.4.0 (from v6.3.0)
 
 ### New Commands

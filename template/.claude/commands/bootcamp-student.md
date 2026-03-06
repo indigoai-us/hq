@@ -28,13 +28,13 @@ Use AskUserQuestion to collect (batch into 1-2 questions):
 - **Full name** (first + last)
 - **Email address**
 - **Company** (or "Independent")
-- **Role/context** — 1 sentence describing who they are and what they do (e.g. "CX executive at Abacus", "VC building AI practice", "artist selling on Saatchi Art")
+- **Role/context** — 1 sentence describing who they are and what they do (e.g. "CX executive at {company}", "VC building AI practice", "artist selling on Saatchi Art")
 - **Deck format**: 1 condensed deck (~25-30 slides) or 3 separate session decks
 - **Audience type**: technical / non-technical executive / creative / generalist
 
 **Derive automatically:**
-- `slug` = first-last lowercased, hyphenated (e.g. `nick-harazim`)
-- `password` = slug with hyphens removed (e.g. `nickharazim`)
+- `slug` = first-last lowercased, hyphenated (e.g. `{example-student}`)
+- `password` = slug with hyphens removed (e.g. `{examplestudent}`)
 - `portalUrl` = `{SITE}/client/{slug}`
 
 ## Step 2: Create Client in Vercel Blob DB
@@ -54,7 +54,7 @@ If the API call fails, STOP and report the error. Do NOT proceed without a clien
 
 ## Step 3: Draft Kickoff Email
 
-Use `gmail-local` MCP `draft_email` tool. **NEVER use `reply_email`** — it sends immediately.
+Use `gmail` MCP `draft_email` tool (advanced-gmail-mcp). **NEVER use `reply_email`** — it sends immediately. **NEVER fall back to a different account if auth fails.**
 
 Load the tool via ToolSearch first: `ToolSearch query: "+gmail draft"`
 
@@ -92,7 +92,7 @@ Password: {password}
 
 If you have questions, just reply to this email.
 
-— Corey
+— {your-name}
 ```
 
 **{folderName}** varies by audience type:
@@ -234,7 +234,7 @@ Write `projects/{slug}-bootcamp/prd.json`:
       "passes": false,
       "labels": ["content", "deck"],
       "dependsOn": ["US-001"],
-      "notes": "Reference: public/decks/nick-harazim/nick-harazim-bootcamp.html for HTML pattern. Style from agi.{your-username}.com."
+      "notes": "Reference: public/decks/{example-student}/{example-student}-bootcamp.html for HTML pattern. Style from agi.{your-username}.com."
     },
     {
       "id": "US-003",
@@ -262,7 +262,7 @@ Write `projects/{slug}-bootcamp/prd.json`:
     "qualityGates": ["npm run build"],
     "repoPath": "repos/private/ralph-method-bootcamp-site",
     "relatedWorkers": [],
-    "knowledge": ["projects/nick-harazim-bootcamp/", "projects/kristina-bootcamp/"],
+    "knowledge": ["projects/{example-student}-bootcamp/", "projects/{example-student-2}-bootcamp/"],
     "intakeResponses": "PENDING — populate after student completes intake at {intakeUrl}",
     "clientId": "{clientId}",
     "languageRules": { ... }
@@ -351,7 +351,7 @@ Also write `projects/{slug}-bootcamp/readme.md`:
 
 ## Step 5: Add Portal Config to page.tsx
 
-Read `{PORTAL_PAGE}` and find the closing `}` of the `clients` object (the line before `'aiden-campbell'` or the last entry). Insert the new client config.
+Read `{PORTAL_PAGE}` and find the closing `}` of the `clients` object (the line before `'{example-student-3}'` or the last entry). Insert the new client config.
 
 ### Config for Condensed Deck
 
@@ -435,7 +435,7 @@ Write HTML skeleton file(s) with the proven deck pattern:
 **For condensed deck:** 1 file `{slug}-bootcamp.html` with ~25 placeholder slides
 **For 3 sessions:** 4 files: `{slug}-kickoff.html`, `session-1-foundation.html`, `session-2-method.html`, `session-3-golive.html`
 
-Use the actual CSS/JS from an existing deck (e.g. `nick-harazim-bootcamp.html`) as the template — copy the exact styles and navigation code. Only placeholder the slide content.
+Use the actual CSS/JS from an existing deck (e.g. `{example-student}-bootcamp.html`) as the template — copy the exact styles and navigation code. Only placeholder the slide content.
 
 ## Step 7: Verify & Report
 
