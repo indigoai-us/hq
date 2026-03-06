@@ -76,7 +76,7 @@ For each extracted rule, determine scope (most specific wins):
 | User correction via /remember | From context, default global | Detected target or CLAUDE.md |
 
 **Resolve the target file path:**
-- For workers: Glob `workers/*/{id}/worker.yaml` or `workers/public/dev-team/{id}/worker.yaml`
+- For workers: Read `workers/registry.yaml` → find worker path → Read `{path}/worker.yaml` directly
 - For commands: `.claude/commands/{name}.md`
 - For knowledge: the specific knowledge file mentioned in context
 - For global: `.claude/CLAUDE.md`

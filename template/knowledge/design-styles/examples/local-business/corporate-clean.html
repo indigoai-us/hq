@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elm Street Coffee — Craft Coffee, Roasted In-House</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white: #FFFFFF;
+    --bg-alt: #F8F9FA;
+    --text: #0F172A;
+    --text-muted: #64748B;
+    --cta: #4F46E5;
+    --cta-hover: #4338CA;
+    --border: #E2E8F0;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 20px 60px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.05);
+    --radius: 12px;
+    --font: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: var(--white);
+    color: var(--text);
+    font-family: var(--font);
+    font-weight: 400;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .nav-logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--cta);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .nav-logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .nav-links a:hover { background: var(--bg-alt); color: var(--text); }
+
+  .nav-cta {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--cta);
+    text-decoration: none;
+    padding: 9px 20px;
+    border-radius: 50px;
+    transition: background 0.15s, transform 0.1s;
+    margin-left: 8px;
+  }
+
+  .nav-cta:hover { background: var(--cta-hover); transform: translateY(-1px); }
+
+  /* HERO */
+  #hero {
+    padding-top: 64px;
+    background: linear-gradient(160deg, #EEF2FF 0%, #FFFFFF 55%);
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+  }
+
+  .hero-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 40px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .hero-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22C55E;
+  }
+
+  .hero-headline {
+    font-size: clamp(40px, 7vw, 80px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    max-width: 800px;
+    margin: 0 auto 20px;
+  }
+
+  .hero-headline span {
+    background: linear-gradient(135deg, var(--cta), #818CF8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    color: var(--text-muted);
+    max-width: 480px;
+    margin: 0 auto 40px;
+    font-weight: 400;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--cta);
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+
+  .btn-primary:hover {
+    background: var(--cta-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79,70,229,0.4);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    background: #fff;
+    border: 1.5px solid var(--border);
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s, transform 0.1s;
+  }
+
+  .btn-ghost:hover { border-color: var(--cta); transform: translateY(-2px); }
+
+  /* METRICS BANNER */
+  .metrics-banner {
+    background: var(--bg-alt);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .metrics-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+  }
+
+  .metric-item {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .metric-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    display: block;
+  }
+
+  .metric-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  /* ABOUT */
+  #about {
+    background: var(--white);
+  }
+
+  .about-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 100px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .about-visual {
+    background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+    border-radius: var(--radius);
+    aspect-ratio: 4/3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .about-visual-inner {
+    text-align: center;
+  }
+
+  .coffee-icon {
+    font-size: 80px;
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .about-visual-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .about-tag {
+    display: inline-block;
+    background: #EEF2FF;
+    color: var(--cta);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 50px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .about-content h2 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .about-content p {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.75;
+    margin-bottom: 16px;
+  }
+
+  .feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .feature-check {
+    width: 20px;
+    height: 20px;
+    background: #DCFCE7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #16A34A;
+    font-weight: 700;
+  }
+
+  /* MENU */
+  #menu {
+    background: var(--bg-alt);
+    padding: 100px 0;
+  }
+
+  .section-header-center {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 60px;
+    padding: 0 40px;
+  }
+
+  .section-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cta);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .section-subtitle {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .menu-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .menu-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+
+  .menu-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+  }
+
+  .menu-card-icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .menu-card-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .menu-card-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  .menu-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  .menu-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cta);
+    letter-spacing: -0.01em;
+  }
+
+  .menu-pill {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-alt);
+    padding: 4px 10px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+  }
+
+  /* HOURS */
+  #hours {
+    background: var(--white);
+    padding: 100px 0;
+  }
+
+  .hours-layout {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 0;
+  }
+
+  .hours-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 36px;
+  }
+
+  .hours-card h3 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cta);
+    margin-bottom: 24px;
+  }
+
+  .hours-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
+
+  .hours-row:last-child { border-bottom: none; }
+
+  .hours-day { font-weight: 500; color: var(--text); }
+  .hours-time {
+    font-weight: 600;
+    color: var(--text);
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 13px;
+  }
+
+  .location-card {
+    background: linear-gradient(135deg, #4F46E5, #6366F1);
+    border-radius: var(--radius);
+    padding: 36px;
+    color: #fff;
+  }
+
+  .location-card h3 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 24px;
+  }
+
+  .location-address {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 20px;
+    letter-spacing: -0.01em;
+  }
+
+  .location-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .location-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 400;
+  }
+
+  .location-detail-icon {
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .amenity-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+  }
+
+  .amenity-chip {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.15);
+    padding: 5px 12px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* REVIEWS */
+  #reviews {
+    background: var(--bg-alt);
+    padding: 100px 0;
+  }
+
+  .rating-hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 56px;
+  }
+
+  .rating-number {
+    font-size: 72px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .rating-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stars {
+    display: flex;
+    gap: 4px;
+  }
+
+  .star {
+    color: #F59E0B;
+    font-size: 20px;
+  }
+
+  .rating-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .reviews-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .review-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .review-stars {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 16px;
+  }
+
+  .review-stars .star { font-size: 14px; }
+
+  .review-text {
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .review-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  .review-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cta), #818CF8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .review-author {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .review-source {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* CTA SECTION */
+  #contact {
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+    padding: 100px 0;
+  }
+
+  .cta-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 40px;
+    text-align: center;
+  }
+
+  .cta-inner h2 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.15;
+  }
+
+  .cta-inner p {
+    font-size: 17px;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+
+  .cta-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-white {
+    display: inline-flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cta);
+    background: #fff;
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+
+  .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+
+  .btn-outline-white {
+    display: inline-flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.35);
+    text-decoration: none;
+    padding: 13px 28px;
+    border-radius: 50px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .btn-outline-white:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08); }
+
+  /* FOOTER */
+  footer {
+    background: #0F0D2A;
+    padding: 40px 0;
+  }
+
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .footer-logo {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    .nav-inner { padding: 0 20px; }
+    .nav-links { display: none; }
+
+    .hero-inner { padding: 60px 20px; }
+
+    .metrics-inner { grid-template-columns: 1fr 1fr; padding: 32px 20px; }
+
+    .about-inner { grid-template-columns: 1fr; gap: 40px; padding: 60px 20px; }
+    .about-visual { display: none; }
+
+    .section-header-center { padding: 0 20px; }
+
+    .menu-grid { grid-template-columns: 1fr; padding: 0 20px; }
+
+    .hours-layout { grid-template-columns: 1fr; padding: 0 20px; }
+
+    .reviews-grid { grid-template-columns: 1fr; padding: 0 20px; }
+
+    .rating-hero { flex-direction: column; gap: 12px; }
+
+    .cta-inner { padding: 0 20px; }
+
+    .footer-inner { flex-direction: column; gap: 8px; text-align: center; padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#hero" class="nav-logo">
+      <div class="nav-logo-icon">☕</div>
+      <span class="nav-logo-text">Elm Street Coffee</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#menu">Menu</a></li>
+      <li><a href="#hours">Visit</a></li>
+      <li><a href="#reviews">Reviews</a></li>
+    </ul>
+    <a href="tel:+15035550142" class="nav-cta">Call Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Open Today — 6am to 6pm
+    </div>
+    <h1 class="hero-headline">
+      Portland's favorite<br><span>craft coffee</span> shop.
+    </h1>
+    <p class="hero-sub">Single-origin beans, roasted in-house daily. A cozy workspace at 142 Elm Street since 2019.</p>
+    <div class="hero-actions">
+      <a href="#menu" class="btn-primary">View our menu</a>
+      <a href="#hours" class="btn-ghost">Get directions</a>
+    </div>
+  </div>
+</section>
+
+<!-- METRICS BANNER -->
+<div class="metrics-banner">
+  <div class="metrics-inner">
+    <div class="metric-item">
+      <span class="metric-value">4.8★</span>
+      <div class="metric-label">Average rating</div>
+    </div>
+    <div class="metric-item">
+      <span class="metric-value">340+</span>
+      <div class="metric-label">Happy customers</div>
+    </div>
+    <div class="metric-item">
+      <span class="metric-value">2019</span>
+      <div class="metric-label">Founded in Portland</div>
+    </div>
+    <div class="metric-item">
+      <span class="metric-value">100%</span>
+      <div class="metric-label">In-house roasted</div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-inner">
+    <div class="about-visual">
+      <div class="about-visual-inner">
+        <span class="coffee-icon">☕</span>
+        <div class="about-visual-label">Roasted in-house daily</div>
+      </div>
+    </div>
+    <div class="about-content">
+      <span class="about-tag">Our Story</span>
+      <h2>Craft coffee begins with the right bean — and everything after.</h2>
+      <p>Elm Street Coffee opened in 2019 with a focus on transparency: we wanted Portlanders to know exactly where their coffee came from, how it was roasted, and why it tasted the way it did.</p>
+      <p>Our small-batch in-house roaster runs every morning. We partner with local bakeries for our pastry program, and we keep the room quiet enough to do your best work.</p>
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-check">✓</div>
+          Single-origin beans, sourced direct
+        </div>
+        <div class="feature-item">
+          <div class="feature-check">✓</div>
+          In-house small-batch roasting
+        </div>
+        <div class="feature-item">
+          <div class="feature-check">✓</div>
+          Free WiFi and cozy workspace seating
+        </div>
+        <div class="feature-item">
+          <div class="feature-check">✓</div>
+          Local pastry partners, rotating weekly
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu">
+  <div class="section-header-center">
+    <div class="section-tag">Menu Highlights</div>
+    <h2 class="section-title">Simple. Seasonal. Excellent.</h2>
+    <p class="section-subtitle">A focused menu built around what we do best — exceptional espresso, clean filter coffee, and pastries from local bakers we trust.</p>
+  </div>
+  <div class="menu-grid">
+    <div class="menu-card">
+      <span class="menu-card-icon">☕</span>
+      <div class="menu-card-name">Pour Over</div>
+      <div class="menu-card-desc">Single-origin, brewed to order with precise temperature control. Ask about today's origin.</div>
+      <div class="menu-card-footer">
+        <div class="menu-price">$5.00</div>
+        <div class="menu-pill">Filter</div>
+      </div>
+    </div>
+    <div class="menu-card">
+      <span class="menu-card-icon">🥛</span>
+      <div class="menu-card-name">Cortado</div>
+      <div class="menu-card-desc">Equal parts ristretto espresso and lightly steamed whole milk. Clean, focused, direct.</div>
+      <div class="menu-card-footer">
+        <div class="menu-price">$4.50</div>
+        <div class="menu-pill">Espresso</div>
+      </div>
+    </div>
+    <div class="menu-card">
+      <span class="menu-card-icon">🧊</span>
+      <div class="menu-card-name">Cold Brew</div>
+      <div class="menu-card-desc">18-hour steep, served over ice. Order it black, or with oat milk and a touch of vanilla.</div>
+      <div class="menu-card-footer">
+        <div class="menu-price">$5.50</div>
+        <div class="menu-pill">Cold</div>
+      </div>
+    </div>
+    <div class="menu-card">
+      <span class="menu-card-icon">🥑</span>
+      <div class="menu-card-name">Avocado Toast</div>
+      <div class="menu-card-desc">Local sourdough, smashed avocado, house seasoning, lemon oil, and chili flake.</div>
+      <div class="menu-card-footer">
+        <div class="menu-price">$12.00</div>
+        <div class="menu-pill">Food</div>
+      </div>
+    </div>
+    <div class="menu-card">
+      <span class="menu-card-icon">🥐</span>
+      <div class="menu-card-name">Seasonal Pastry</div>
+      <div class="menu-card-desc">From our local bakery partners. Changes every week. Always worth asking what's fresh.</div>
+      <div class="menu-card-footer">
+        <div class="menu-price">$4.00</div>
+        <div class="menu-pill">Seasonal</div>
+      </div>
+    </div>
+    <div class="menu-card" style="background: linear-gradient(135deg, #EEF2FF, #E0E7FF); border-color: #C7D2FE;">
+      <span class="menu-card-icon">✨</span>
+      <div class="menu-card-name" style="color: var(--cta);">Daily Specials</div>
+      <div class="menu-card-desc" style="color: #4338CA;">Ask your barista about today's single-origin feature and seasonal drink additions.</div>
+      <div class="menu-card-footer" style="border-color: #C7D2FE;">
+        <div class="menu-price">Varies</div>
+        <div class="menu-pill" style="background: white;">Ask us</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOURS & LOCATION -->
+<section id="hours">
+  <div class="section-header-center">
+    <div class="section-tag">Hours &amp; Location</div>
+    <h2 class="section-title">We're easy to find.</h2>
+    <p class="section-subtitle">142 Elm Street, right in the heart of Portland. Walk-ins always welcome.</p>
+  </div>
+  <div class="hours-layout">
+    <div class="hours-card">
+      <h3>Hours of Operation</h3>
+      <div class="hours-row">
+        <span class="hours-day">Monday – Friday</span>
+        <span class="hours-time">6:00 AM – 6:00 PM</span>
+      </div>
+      <div class="hours-row">
+        <span class="hours-day">Saturday</span>
+        <span class="hours-time">7:00 AM – 5:00 PM</span>
+      </div>
+      <div class="hours-row">
+        <span class="hours-day">Sunday</span>
+        <span class="hours-time">7:00 AM – 5:00 PM</span>
+      </div>
+      <div class="hours-row" style="border-bottom: none;">
+        <span class="hours-day" style="color: var(--text-muted); font-size: 13px;">Holiday hours may vary — call ahead</span>
+      </div>
+    </div>
+    <div class="location-card">
+      <h3>Find Us</h3>
+      <div class="location-address">142 Elm Street<br>Portland, OR 97201</div>
+      <div class="location-details">
+        <div class="location-detail-item">
+          <div class="location-detail-icon">📞</div>
+          (503) 555-0142
+        </div>
+        <div class="location-detail-item">
+          <div class="location-detail-icon">📍</div>
+          Corner of Elm St. and 2nd Ave
+        </div>
+      </div>
+      <div class="amenity-chips">
+        <div class="amenity-chip">Free WiFi</div>
+        <div class="amenity-chip">Workspace seating</div>
+        <div class="amenity-chip">In-house roasting</div>
+        <div class="amenity-chip">Local pastries</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="section-header-center">
+    <div class="section-tag">Reviews</div>
+    <h2 class="section-title">Portlanders love it.</h2>
+  </div>
+  <div class="rating-hero">
+    <div class="rating-number">4.8</div>
+    <div class="rating-details">
+      <div class="stars">
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+      </div>
+      <div class="rating-sub">Based on 340+ verified reviews</div>
+    </div>
+  </div>
+  <div class="reviews-grid">
+    <div class="review-card">
+      <div class="review-stars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+      </div>
+      <p class="review-text">"The pour over here is genuinely exceptional. You can taste the care in every step — from the bean selection to the water temp. My go-to spot in Portland."</p>
+      <div class="review-footer">
+        <div class="review-avatar">M</div>
+        <div>
+          <div class="review-author">Marcus T.</div>
+          <div class="review-source">Google Review</div>
+        </div>
+      </div>
+    </div>
+    <div class="review-card">
+      <div class="review-stars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+      </div>
+      <p class="review-text">"I work from here three days a week. Fast WiFi, perfect cortados, and never too loud to think. The avocado toast is worth the trip alone."</p>
+      <div class="review-footer">
+        <div class="review-avatar" style="background: linear-gradient(135deg, #7C3AED, #A78BFA);">P</div>
+        <div>
+          <div class="review-author">Priya K.</div>
+          <div class="review-source">Yelp Review</div>
+        </div>
+      </div>
+    </div>
+    <div class="review-card">
+      <div class="review-stars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+      </div>
+      <p class="review-text">"Best cold brew in PDX. Not an exaggeration. I've tried them all. The in-house roasting makes a difference you can taste immediately."</p>
+      <div class="review-footer">
+        <div class="review-avatar" style="background: linear-gradient(135deg, #0EA5E9, #38BDF8);">D</div>
+        <div>
+          <div class="review-author">Daniel R.</div>
+          <div class="review-source">Google Review</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact">
+  <div class="cta-inner">
+    <h2>Ready for your best cup of coffee?</h2>
+    <p>Come find us at 142 Elm Street. Walk in, sit down, and let us make something great for you.</p>
+    <div class="cta-buttons">
+      <a href="tel:+15035550142" class="btn-white">📞 Call (503) 555-0142</a>
+      <a href="#hours" class="btn-outline-white">View hours & directions</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">Elm Street Coffee</span>
+    <span>142 Elm Street, Portland OR 97201</span>
+    <span>&copy; 2024 All rights reserved</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,21 +1,23 @@
 ---
-description: Manage email across all 4 Gmail accounts via gmail-local MCP
-allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion, ToolSearch, mcp__gmail-local__*
+description: Manage email across Gmail accounts via advanced-gmail-mcp
+allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion, ToolSearch, mcp__gmail__*
 argument-hint: [action] [account] [args]
 visibility: public
 ---
 
 # /email - Gmail Management
 
-Manage email across 4 Gmail accounts using the `gmail-local` MCP tools.
+Manage email across Gmail accounts using the `advanced-gmail-mcp` tools.
 
-**Accounts:** {product} (corey@{product}.ai), {company} (corey@get{company}.ai), personal (me@{your-username}.com), {company} (corey.epstein@go{company}.co)
+**Accounts:** {account-1} ({email-1}), {account-2} ({email-2})
 
 **User's input:** $ARGUMENTS
 
-## MCP Tools (gmail-local)
+## MCP Tools (advanced-gmail-mcp)
 
-Before using any tool, run `ToolSearch` with query `+gmail-local` to load them.
+Before using any tool, run `ToolSearch` with query `+gmail` to load them.
+
+**CRITICAL: NEVER send from the wrong account.** If the requested account's auth fails, STOP and report the error. Do NOT fall back to another account. See policy: `email-send-safety.md`.
 
 | Tool | Purpose |
 |------|---------|

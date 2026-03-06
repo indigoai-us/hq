@@ -13,6 +13,22 @@ Create execution-ready PRDs with full HQ context awareness.
 
 **Important:** Do NOT implement. Just create the PRD.
 
+## Step 0: Company Anchor (from arguments)
+
+Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies/manifest.yaml`.
+
+**How to check:** Read `companies/manifest.yaml`. Extract top-level keys (company slugs). If the first word of `$ARGUMENTS` exactly matches one of those slugs:
+
+1. **Set `{co}`** = matched slug for the entire flow. Strip the slug from `$ARGUMENTS` — the remaining text is the project description
+2. **Announce:** "Anchored on **{co}**"
+3. **Load policies** — Read all files in `companies/{co}/policies/` (skip `example-policy.md`). Apply these as constraints throughout the PRD
+4. **Scope qmd searches** — If company has `qmd_collections` in manifest, use `-c {collection}` for all `qmd` calls
+5. **Pre-load repos** — Extract `{co}.repos[]` from manifest. Present as repo options in Batch 3 Q10
+6. **Scope workers** — Filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
+7. **Scope projects** — Only search `companies/{co}/projects/` for existing project collision check
+
+**If no match** (first word is not a company slug) → proceed normally. The full `$ARGUMENTS` text is the project description.
+
 ## Step 1: Get Project Description
 
 If $ARGUMENTS provided, use as starting point.
@@ -20,32 +36,41 @@ If empty, ask: "Describe what you want to build or accomplish."
 
 ## Step 2: Scan HQ Context
 
-Before asking questions, explore HQ:
+Before asking questions, explore HQ. If company is anchored (Step 0), scope all searches to that company.
 
 **Companies & Context:**
 - Read `agents.md` (roles, priorities)
-- Glob `companies/*/knowledge/` (which companies exist)
+- Read `companies/manifest.yaml` (companies already listed there — never Glob for company discovery)
 
 **Workers:**
-- Read `workers/registry.yaml`
-- Glob `workers/public/*/worker.yaml`, `workers/public/dev-team/*/worker.yaml`, `companies/*/workers/*/worker.yaml`
+- Read `workers/registry.yaml` (workers already indexed there — never Glob for worker discovery)
+- If anchored: filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
 
 **Existing Projects:**
-- Glob `companies/*/projects/*/prd.json` + `projects/*/prd.json` (check overlap)
+- If anchored: `qmd search "prd.json" --json -n 20 -c {co}` (scoped) or search `companies/{co}/projects/` directly
+- If not anchored: `qmd search "prd.json" --json -n 20` → existing projects across all companies and personal
 
 **Knowledge (use qmd, not Grep):**
-- `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
+- If anchored + company has `qmd_collections`: `qmd vsearch "<description keywords>" -c {collection} --json -n 10`
+- If not anchored: `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
+
+**Company Policies (anchored only):**
+- Read all files in `companies/{co}/policies/` (skip `example-policy.md`). These constrain the PRD
 
 **Target Repo (if repo specified or discovered):**
+- If anchored: company repos already pre-loaded from manifest. Present as options
 - If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
+
 
 Present:
 ```
 Scanned HQ:
+- Company: {co} (anchored) | TBD
 - Workers: {relevant list}
 - Existing projects: {list or "none matching"}
 - Relevant knowledge: {if any}
+- Policies: {count loaded, or "none"}
 - Category: [company-specific | cross-company | personal | HQ infrastructure]
 ```
 
@@ -64,12 +89,14 @@ Fix any gaps before proceeding.
 ## Step 3: Get + Validate Project Name
 
 Ask for project slug (or infer from description). Then:
-1. Determine company from context (infer from description, repo, or ask)
+1. If `{co}` already set by Step 0: use it directly (skip company detection)
+   If NOT set: determine company from context (infer from description, repo, or ask)
 2. Check if `companies/{co}/projects/{name}/` exists (also check root `projects/{name}/` for personal/HQ)
    - If exists: "Project exists. Continue editing or choose different name?"
 3. Validate slug format (lowercase, hyphens only)
 
 ## Step 4: Discovery Interview
+
 
 Ask questions in batches. Users respond: "1A, 2C"
 
@@ -93,6 +120,17 @@ Ask questions in batches. Users respond: "1A, 2C"
 9. Does this need a new worker or skill?
 10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 11. Branch name? (default: `feature/{project-name}`)
+12. Base branch? (default: `main`, or `staging` for {company}-nx, etc.) — Pure Ralph creates feature branch from this
+
+**Batch 4: E2E Testing (recommended for deployable projects)**
+For each user story targeting a deployable repo, specify E2E tests:
+
+13. What E2E tests should verify this story works?
+    - For UI: "Page loads", "User can complete [action]", "Form shows validation errors"
+    - For API: "Endpoint returns expected response", "Error cases handled"
+    - For CLI: "Command runs successfully", "Opens correct URL"
+    - For integration: "Full flow from [A] to [B] works"
+    - Leave empty for non-deployable projects (knowledge, content, data)
 
 ## Step 5: Generate PRD
 
@@ -101,6 +139,7 @@ Create `companies/{co}/projects/{name}/` folder with two files. Use root `projec
 ### Primary: companies/{co}/projects/{name}/prd.json
 
 This is the **source of truth**. `/run-project` and `/execute-task` consume this file.
+
 
 ```json
 {
@@ -113,6 +152,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
       "title": "{Story title}",
       "description": "{As a [user], I want [feature] so that [benefit]}",
       "acceptanceCriteria": ["{Specific verifiable criterion}"],
+      "e2eTests": [],
       "priority": 1,
       "passes": false,
       "files": [],
@@ -128,6 +168,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
     "successCriteria": "{Measurable outcome}",
     "qualityGates": ["{commands from Batch 3}"],
     "repoPath": "{repos/private/repo-name or empty}",
+    "baseBranch": "{main or staging or master}",
     "relatedWorkers": ["{worker-ids from scan}"],
     "knowledge": ["{relevant knowledge paths}"]
   }
@@ -137,6 +178,7 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
 **Populating `files`:** For each story, infer file paths from the description + acceptance criteria + target repo structure. If `repoPath` is set, search the repo (via qmd or Glob) to find existing files the story will modify, and predict new files it will create. Paths are repo-relative (e.g. `src/middleware/auth.ts`, not absolute). Best-effort — empty is fine for stories with unclear scope.
 
 ### Derived: companies/{co}/projects/{name}/README.md
+
 
 Generate FROM the prd.json data. Human-friendly view.
 
@@ -164,6 +206,10 @@ Generate FROM the prd.json data. Human-friendly view.
 **Acceptance Criteria:**
 - [ ] {criterion 1}
 - [ ] {criterion 2}
+
+**E2E Tests:** (if non-empty)
+- [ ] {e2eTest 1}
+- [ ] {e2eTest 2}
 
 ## Non-Goals
 {What's out of scope}
@@ -199,6 +245,7 @@ If `board_path` exists, read `companies/{co}/board.json` and upsert a project en
   ```
 - Write updated `board.json` back to `board_path`
 - If no `metadata.company` in prd.json or no board_path, skip silently
+
 
 ## Step 6: Register with Orchestrator
 
@@ -260,6 +307,7 @@ To execute, start a new session and run:
 
 **Then run `/handoff` and end the session.** Do NOT proceed to execution.
 
+
 ## Story Guidelines
 
 - Each story completable in one AI session
@@ -269,6 +317,8 @@ To execute, start a new session and run:
 - Every story starts with `passes: false`
 - `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
 - `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
+- `e2eTests` (recommended for deployable projects): list of E2E test descriptions. Leave `[]` for non-code projects. Used by back-pressure in `/execute-task`
+- For deployable projects, include at least one story dedicated to E2E test infrastructure (Phase 0 pattern)
 
 ## Rules
 
@@ -282,3 +332,5 @@ To execute, start a new session and run:
 - **STOP after PRD creation** — After Step 8 confirmation, run `/handoff` and end session. NEVER start executing stories, running workers, or writing implementation code in the same session as `/prd`. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation (Ralph pattern). prd.json tracks all work for humans and future agent runs — this separation is mandatory
 - **Infrastructure before planning** — never create a PRD that references infrastructure (company, repo, knowledge) that doesn't exist. Fix gaps first (Step 2.5)
 - **MANDATORY: Always create project files** — Every /prd invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for /run-project. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files
+- **Every story MUST have testable acceptance criteria** — "works correctly" is not acceptable
+- **Include testing stories** — For deployable projects, at least one story should be dedicated to E2E test infrastructure

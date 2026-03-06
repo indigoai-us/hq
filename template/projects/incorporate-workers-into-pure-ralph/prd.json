@@ -16,7 +16,9 @@
         "Lists available dev-team workers with their specialties",
         "Explains when each worker type applies"
       ],
-      "files": ["prompts/pure-ralph-base.md"],
+      "files": [
+        "prompts/pure-ralph-base.md"
+      ],
       "passes": true,
       "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added Worker Selection section with: selection criteria (PRD hints, target files, keywords), table of all 12 dev-team workers with specialties/keywords/file patterns, usage guidelines for when to use each worker, and 4-step selection process."
     },
@@ -30,7 +32,9 @@
         "If worker field absent, Claude selects based on criteria",
         "Example shown in prompt: worker: backend-dev"
       ],
-      "files": ["prompts/pure-ralph-base.md"],
+      "files": [
+        "prompts/pure-ralph-base.md"
+      ],
       "passes": true,
       "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added PRD Task Schema section with full JSON schema showing optional worker field. Documented override behavior (present=use it, absent=auto-select). Added use cases and example overrides including backend-dev."
     },
@@ -45,8 +49,12 @@
         "Instructions: apply worker's knowledge base if referenced",
         "Worker context is used for implementation, not just reference"
       ],
-      "files": ["prompts/pure-ralph-base.md"],
-      "dependsOn": ["US-001"],
+      "files": [
+        "prompts/pure-ralph-base.md"
+      ],
+      "dependsOn": [
+        "US-001"
+      ],
       "passes": true,
       "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added Worker Invocation section with: 4-step invocation process (load definition, load context, apply instructions, use skills), YAML examples showing context.base and instructions fields, checklist for pre-implementation verification, emphasis that worker context shapes HOW to implement."
     },
@@ -60,8 +68,12 @@
         "Notes must include: Selection reason: {brief explanation}",
         "Example provided in prompt"
       ],
-      "files": ["prompts/pure-ralph-base.md"],
-      "dependsOn": ["US-001"],
+      "files": [
+        "prompts/pure-ralph-base.md"
+      ],
+      "dependsOn": [
+        "US-001"
+      ],
       "passes": true,
       "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Notes Format (Required)' subsection to PRD Updates with: required format spec (Worker + Selection reason + summary), three concrete examples for different worker types (backend-dev, frontend-dev, knowledge-curator), and separated required vs optional note content."
     },
@@ -75,7 +87,9 @@
         "Covers all 12 dev-team workers",
         "Includes file extension hints (e.g., .tsx to frontend-dev, .sql to database-dev)"
       ],
-      "files": ["prompts/pure-ralph-base.md"],
+      "files": [
+        "prompts/pure-ralph-base.md"
+      ],
       "passes": true,
       "notes": "Worker: knowledge-curator. Selection reason: Documentation/prompt update task. Added 'Worker Quick Reference' section with three tables: (1) By File Extension - 17 extension patterns mapped to workers including .tsx to frontend-dev, .sql to database-dev, .test.ts to qa-tester, etc. (2) By Directory Pattern - 12 directory patterns mapped to workers. (3) By Keyword Pattern - 35 keyword patterns mapped to all 12 dev-team workers. Covers architect, backend-dev, frontend-dev, database-dev, qa-tester, infra-dev, motion-designer, code-reviewer, knowledge-curator, project-manager, task-executor, and product-planner."
     }
@@ -83,6 +97,7 @@
   "metadata": {
     "created_at": "2026-01-26T20:15:00Z",
     "created_by": "{team-member}",
-    "purpose": "Integrate dev-team workers into pure-ralph loop"
+    "purpose": "Integrate dev-team workers into pure-ralph loop",
+    "status": "active"
   }
 }
