@@ -30,7 +30,7 @@ Review and merge changes to:
 - `.claude/commands/startwork.md` — Company knowledge loading, Vercel context
 - `.claude/commands/checkemail.md` — Email-triage app integration
 - `.claude/commands/email.md` — 4-phase triage, Linear/PRD creation
-- `.claude/commands/bootcamp-student.md` — Audience language rules, deck format options
+
 
 ### CLAUDE.md Updates
 

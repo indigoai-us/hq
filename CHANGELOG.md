@@ -30,8 +30,6 @@ Enhanced company isolation, new worker teams, expanded knowledge, and command up
 - **/startwork** — Enhanced with company knowledge loading and Vercel project context.
 - **/checkemail** — Email-triage app integration with queue/response JSON schema and Tauri desktop UI.
 - **/email** — Expanded cleanup workflow with 4-phase triage, Linear ticket creation, and PRD creation for deferred items.
-- **/bootcamp-student** — Added audience-specific language rules, deck format options (condensed vs 3-session), portal config patterns.
-
 ---
 
 ## v6.4.0 (2026-02-23)
