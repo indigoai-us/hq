@@ -1,489 +1,145 @@
 ---
 description: Run a project through the Ralph loop - orchestrator for multi-task execution
-allowed-tools: Task, Read, Write, Glob, Grep, Bash, AskUserQuestion
-argument-hint: [project-name] or [--resume project] or [--status]
+allowed-tools: Bash, Read, Write, AskUserQuestion
+argument-hint: [project-name] or [--status] or [--help]
 visibility: public
 ---
 
-# /run-project - Project Orchestrator Loop
+# /run-project - Ralph Loop Project Orchestrator
 
-Ralph loop with fresh context per task. The orchestrator is an ultra-lean state machine — it delegates each task entirely to a sub-agent via `/execute-task`, receiving only a structured summary back. Each task gets clean context; nothing accumulates.
+Ralph loop with process-level isolation. Each story runs as an independent `claude -p` headless invocation via `scripts/run-project.sh`. No context ceiling. Fresh context per task.
 
 **Arguments:** $ARGUMENTS
 
-## Core Pattern (Ralph Fresh-Context)
+## Ralph Principle
 
-The orchestrator is an **ultra-lean state machine**. It picks tasks and delegates each one entirely to a sub-agent via `/execute-task`. The orchestrator:
-- Selects the next incomplete task from the PRD
-- Spawns ONE sub-agent per task (fresh context per task)
-- Receives only a structured JSON summary back
-- Updates state.json and progress.txt
-- Never accumulates worker outputs, handoff blobs, or implementation details
+"Pick a task, complete it, commit it."
 
-Classification, worker selection, worker pipelines, PRD updates, and learning capture all happen inside the sub-agent. This mirrors Pure Ralph's fresh-terminal-per-task model.
+- Fresh context per task (independent `claude -p` process)
+- Sub-agents do heavy lifting via `/execute-task`
+- Back pressure keeps code on rails
+- Handoffs preserve context between workers
 
 ## Usage
 
-```bash
-/run-project campaign-migration        # Start new
-/run-project --resume campaign-migration # Resume paused
-/run-project --status                   # Check all projects
-```
-
-## Process
-
-### 1. Parse Arguments
-
-**If `--status`:**
-- Scan `workspace/orchestrator/*/state.json`
-- Display all project statuses
-- Exit
-
-**If `--resume {project}` (first-class operation — not a fallback):**
-- Load state from `workspace/orchestrator/{project}/state.json`
-- Read PRD to find next incomplete task
-- Continue from next incomplete + unblocked task
-- The orchestrator starts with ZERO accumulated context — only state.json + PRD
-- If a task was mid-pipeline (has execution state with incomplete phases), `/execute-task` will resume from the incomplete phase inside its sub-agent
-
-**If `{project}`:**
-- Resolve project location: search `companies/*/projects/{project}/prd.json` first, then `projects/{project}/prd.json` (personal/HQ fallback)
-- If prd.json **MISSING** everywhere: STOP immediately. Do not fall back to README.md.
-  ```
-  ERROR: prd.json not found for {project}.
-
-  /run-project requires prd.json (not README.md).
-  Fix: Run /prd {project} to generate prd.json.
-  ```
-- If prd.json **EXISTS**: validate structure (see Step 2)
-- Check if state.json exists (offer resume or restart)
-- Initialize fresh state if new
-
-### 2. Load Project
-
-Resolve and read prd.json:
-```javascript
-const prdPath = glob(`companies/*/projects/${project}/prd.json`)[0]
-  || `projects/${project}/prd.json`
-const prd = JSON.parse(read(prdPath))
-
-// Strict: userStories required. No fallback.
-const stories = prd.userStories
-if (!stories || !Array.isArray(stories) || stories.length === 0) {
-  STOP: "prd.json has no userStories array (or it's empty). Migrate legacy 'features' key to 'userStories'."
-}
-
-// Validate each story has required fields
-for (const story of stories) {
-  const required = ['id', 'title', 'description', 'passes']
-  const missing = required.filter(f => !(f in story))
-  if (missing.length > 0) {
-    STOP: `Story ${story.id || '?'} missing fields: ${missing.join(', ')}`
-  }
-}
-
-const total = stories.length
-const completed = stories.filter(s => s.passes).length
-const remaining = stories.filter(s => !s.passes)
-```
-
-### 3. Display Status
-
-```
-Project: {project}
-Progress: {completed}/{total} ({percentage}%)
-
-Remaining:
-  1. {id}: {title} (next)
-  2. {id}: {title}
-
-Continue? [Y/n]
-```
-
-### 4. Initialize/Load State
+Launch the bash orchestrator:
 
 ```bash
-mkdir -p workspace/orchestrator/{project}/executions
+# Start or resume (auto-detected)
+bash scripts/run-project.sh {project} --no-permissions
+
+# Explicit resume
+bash scripts/run-project.sh --resume {project} --no-permissions
+
+# Dry run — show story order without executing
+bash scripts/run-project.sh --dry-run {project}
+
+# With options
+bash scripts/run-project.sh {project} --max-budget 10 --model sonnet --no-permissions --verbose
+
+# Check all project statuses
+bash scripts/run-project.sh --status
 ```
 
-Write `workspace/orchestrator/{project}/state.json`:
-```json
-{
-  "project": "{project}",
-  "prd_path": "{resolved prdPath}",
-  "status": "in_progress",
-  "started_at": "{ISO8601}",
-  "updated_at": "{ISO8601}",
-  "progress": { "total": 0, "completed": 0, "failed": 0, "in_progress": 0 },
-  "current_task": null,
-  "completed_tasks": [],
-  "retries": 0
-}
-```
+## Flags
 
-### 4.5 Sync Board Status → in_progress
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--resume` | auto-detected | Resume from next incomplete story |
+| `--status` | — | Show all project statuses, exit |
+| `--dry-run` | — | Show story order without executing |
+| `--max-budget N` | 5 | Per-story cost cap in USD |
+| `--model MODEL` | (worker default) | Override model for all stories |
+| `--no-permissions` | off | Pass `--dangerously-skip-permissions` to claude |
+| `--retry-failed` | off | Re-run previously failed stories only |
+| `--timeout N` | none | Per-story wall-clock timeout in minutes |
+| `--verbose` | off | Show full claude output |
 
-Read resolved prd.json → `metadata.company`.
-If company exists, read `companies/manifest.yaml` → `{company}.board_path`.
-If board_path exists, read `companies/{co}/board.json`, find project entry by `prd_path`.
-If found and `status !== "in_progress"`: set `status = "in_progress"`, update `updated_at`, write board.json back.
-Skip silently on any error — never block execution on board sync.
+## How It Works (Ralph Loop)
 
-### 5. The Loop
+### Task Selection (per iteration)
 
-The orchestrator is an **ultra-lean state machine**. It picks tasks and delegates everything to sub-agents. Classification, worker selection, worker pipelines, PRD updates, and learning capture all happen inside the sub-agent via `/execute-task`. The orchestrator NEVER accumulates implementation context.
+Selection order: **deps resolved → no file lock conflicts → lowest priority → array order**
 
-```
-while (remaining tasks with passes: false):
+1. Re-read PRD (sub-agent may have updated `passes`)
+2. Filter: incomplete stories with all `dependsOn` satisfied
+3. Filter: no file lock conflicts (checks `{repo}/.file-locks.json`)
+4. Sort by `priority` field (lowest first)
+5. First match = next task
 
-    5a. SELECT next task
-        - Priority order from PRD
-        - Respect dependsOn (skip if deps incomplete)
-        - Check file lock conflicts (see 5a.1)
-        - First incomplete + unblocked + non-conflicting task
+### Per-Task Execution
 
-        Report:
-        ```
-        Next: {task.id} - {task.title}
-        Progress: {completed}/{total}
-        ```
+For each selected story:
 
-    5a.1 FILE LOCK CONFLICT CHECK
+1. **PRE-TASK**: Branch setup (create/checkout `branchName` from `baseBranch`)
+2. **PRE-TASK**: Linear sync → In Progress + comment (if `linearIssueId` configured)
+3. **PRE-TASK**: Update `state.json` current_task
+4. **EXECUTE**: `claude -p "/execute-task {project}/{story-id}"` as independent process
+   - Model resolution: `--model` CLI flag > story `model_hint` > default
+   - `/execute-task` handles: classification, worker selection, worker pipeline, PRD update, back pressure, learning capture
+5. **POST-TASK**: Validate git state (auto-commit if sub-agent forgot)
+6. **POST-TASK**: Codex CLI review safety net — `codex review` on latest changes (saved to `{story-id}.codex-review.md`). Flags critical issues. Best-effort, never blocks.
+7. **POST-TASK**: Check `prd.json` `passes` field (source of truth)
+8. **POST-TASK**: Linear sync → Done + comment (if configured)
+9. **POST-TASK**: Update `state.json` + `progress.txt`
+10. **POST-TASK**: `qmd update` reindex
 
-        Read `settings/orchestrator.yaml` → `file_locking`.
-        If `enabled: false`, skip this check.
+### Regression Gates
 
-        Read `{repoPath}/.file-locks.json` (if exists).
-        For each candidate story (incomplete + deps met):
-        - Compare story `files` against active locks
-        - If ANY overlap AND `conflict_mode: hard_block`:
-          skip this story, try next candidate
-        - If overlap AND `soft_block` or `read_only_fallback`:
-          allow selection (conflict handled by /execute-task)
+Every 3 completed stories: run `metadata.qualityGates` commands from prd.json.
+Interactive: retry/skip/pause/abort. Non-interactive: auto-pause on failure.
 
-        If ALL remaining stories conflict:
-        ```
-        All remaining stories have file conflicts.
-        Locked files: {list with owners}
-        Options:
-        1. Wait (locks may release when other sessions complete)
-        2. Force-clear stale locks (check PID liveness)
-        3. Abort
-        ```
+### Failure Handling
 
-    5a.5 SYNC LINEAR (if configured, best-effort)
+Interactive (terminal): retry / skip / pause / abort prompt.
+Non-interactive (headless): auto-retry once, then skip to retry queue.
+End-of-run: retry pass for all queued failures.
 
-        If the selected task has `linearIssueId` and prd.metadata has `linearCredentials`:
-        ```bash
-        LINEAR_KEY=$(cat {prd.metadata.linearCredentials} | python3 -c "import sys,json; print(json.load(sys.stdin)['apiKey'])")
-        IN_PROGRESS_STATE="{prd.metadata.linearInProgressStateId}"
-        curl -s -X POST https://api.linear.app/graphql \
-          -H "Content-Type: application/json" \
-          -H "Authorization: $LINEAR_KEY" \
-          -d "{\"query\": \"mutation { issueUpdate(id: \\\"{task.linearIssueId}\\\", input: { stateId: \\\"$IN_PROGRESS_STATE\\\" }) { success } }\"}"
-        ```
-        Skip silently if not configured. Never block execution on Linear sync.
-
-        **Cross-company guard**: Before using `linearCredentials`, verify the path matches the active company per `companies/manifest.yaml`. If it points to a different company's settings, ABORT Linear sync and warn.
-
-    5a.6 COMMENT ON LINEAR ISSUE (if configured, best-effort)
-
-        After state sync, comment on the issue:
-        ```bash
-        COMMENT="Started by HQ — task in progress."
-        curl -s -X POST https://api.linear.app/graphql \
-          -H "Content-Type: application/json" \
-          -H "Authorization: $LINEAR_KEY" \
-          -d "{\"query\": \"mutation { commentCreate(input: { issueId: \\\"{task.linearIssueId}\\\", body: \\\"$COMMENT\\\" }) { success } }\"}"
-        ```
-
-        When moving to In Review after completion, comment + @mention reviewer(s):
-        ```bash
-        COMMENT="Completed by HQ. Ready for review. cc @{reviewer_name}"
-        ```
-        Look up reviewer name from config.json `members` block. Fall back to display name if ID lookup fails.
-        Skip silently if not configured.
-
-    5b. EXECUTE task via sub-agent
-
-        Spawn a SINGLE sub-agent for the entire task.
-        The sub-agent handles classification, worker selection,
-        the full worker pipeline, PRD update, execution state,
-        and learning capture — all via /execute-task.
-
-        Task({
-          subagent_type: "general-purpose",
-          description: "Execute {task.id}: {task.title}",
-          prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
-                   Execute /execute-task IMMEDIATELY — it handles all planning,
-                   classification, worker selection, and execution internally.
-
-                   Run /execute-task {project}/{task.id}
-
-                   Model hint for this story: {task.model_hint || 'none — use worker defaults'}
-                   (If set, pass as model_hint override when resolving model in step 6a)
-
-                   After completion, output ONLY this structured JSON:
-                   {
-                     \"task_id\": \"{task.id}\",
-                     \"status\": \"completed|failed|blocked\",
-                     \"summary\": \"1-sentence summary\",
-                     \"workers_used\": [\"list\"],
-                     \"models_used\": {\"worker\": \"model\"},
-                     \"back_pressure\": {
-                       \"tests\": \"pass|fail|skipped\",
-                       \"lint\": \"pass|fail|skipped\",
-                       \"typecheck\": \"pass|fail|skipped\",
-                       \"build\": \"pass|fail|skipped\"
-                     }
-                   }"
-        })
-
-        The sub-agent's full context (worker outputs, handoff blobs,
-        file diffs, error traces) is freed when it returns.
-        Only the structured JSON crosses the boundary.
-
-    5c. POST-TASK (orchestrator side — minimal)
-
-        Parse the sub-agent's JSON output.
-
-        i. If status == "completed":
-           - Update state.json:
-             completed_tasks.push({id, completed_at, workers_used})
-             progress.completed++
-             current_task = null
-           - Log 1-line to progress.txt:
-             [{timestamp}] {task.id}: {summary} ({completed}/{total})
-
-        ii. If status == "failed" or "blocked":
-            - Log error
-            - AskUserQuestion:
-              1. Retry this task
-              2. Skip and continue
-              3. Pause project (run /run-project --resume {project})
-
-        iv. Update `workspace/orchestrator/INDEX.md` with new progress.
-
-        v. Reindex: `qmd update 2>/dev/null || true`
-
-        vi. DISCARD everything else.
-             The orchestrator MUST NOT store worker outputs,
-             handoff blobs, file lists, or error traces.
-             Only retain: task_id, status, 1-sentence summary.
-
-    5c.5 AUTO-REANCHOR (between tasks, silent)
-
-        After processing each task result, refresh context:
-        1. Re-read PRD from disk (sub-agent may have updated passes/notes)
-        2. Refresh git state: `git log --oneline -3`
-        3. If task failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
-           (searches across all knowledge, worker yamls, and command files)
-        4. Re-read applicable policies (company + repo + global `.claude/policies/`)
-           (another session may have added policies via /learn)
-
-        This is silent — no user interaction. Prevents stale context
-        between tasks, especially for multi-session projects.
-
-    5d. CONTEXT SAFETY NET
-
-        If > 10 tasks completed this session OR context heavy:
-          - Save state.json
-          - Print: "Context boundary reached. Run: /run-project --resume {project}"
-          - STOP
-
-        This rarely triggers because each task sub-agent releases
-        its context. But it provides a hard ceiling.
-```
-
-### 6. Handle Task Failure
-
-If any worker phase fails after retry:
-
-```
-Phase {N} ({worker}) failed for {task.id}
-
-Error: {details}
-Attempts: {count}
-
-Options:
-1. Retry this worker phase
-2. Skip worker, continue pipeline
-3. Pause project (/run-project --resume {project})
-4. Abort
-```
-
-Use AskUserQuestion.
-
-### 7. Complete Project
+### Completion Flow
 
 When all stories have `passes: true`:
 
-**Generate report:**
-```
-Project Complete: {project}
+1. **Board sync** → `done`
+2. **Summary report** → `workspace/reports/{project}-summary.md`
+3. **INDEX.md** — flag for rebuild (deferred to `/cleanup`)
+4. **Manifest verification** — check repos/workers registered
+5. **qmd reindex** — final search index update
+6. **State** → `status: "completed"`
 
-Tasks: {completed}/{total}
-Workers Used: {worker}: {N} tasks, ...
-Learnings: {count}
-```
+State: `workspace/orchestrator/{project}/state.json` + `progress.txt`
 
-**Generate usage report** (`workspace/reports/{project}-usage.md`):
+## --status (in-session)
 
-Read `workspace/metrics/model-usage.jsonl`, filter entries where `project == "{project}"`. If no entries found, skip with note: "No model usage data found for {project}. Skipping usage report."
+If $ARGUMENTS is `--status`:
+1. Run `bash scripts/run-project.sh --status`
+2. Display formatted output
 
-Otherwise, aggregate into this markdown template and write to `workspace/reports/{project}-usage.md`:
+## Direct Execution (in-session fallback)
 
-````markdown
-# {project} — Model Usage Report
+If running the bash script isn't possible (e.g., no `claude` CLI available), the command can still be invoked in-session. In that case, run:
 
-**Generated:** {ISO8601}
-**Total phases:** {count}
-
-## By Model Tier
-
-| Model | Phases | % of Total | Cost Tier |
-|-------|--------|------------|-----------|
-| opus  | {n}    | {pct}%     | $$$       |
-| sonnet| {n}    | {pct}%     | $$        |
-| haiku | {n}    | {pct}%     | $         |
-
-## Per-Task Breakdown
-
-| Task | Workers (model) | Phases |
-|------|-----------------|--------|
-| {task.id} | {worker1} ({model}), {worker2} ({model}), ... | {count} |
-| ... | | |
-
-## Per-Worker Summary
-
-| Worker | Total Runs | opus | sonnet | haiku |
-|--------|-----------|------|--------|-------|
-| {worker} | {total} | {n} | {n} | {n} |
-| ... | | | | |
-
-## Notes
-
-- Token counts unavailable (Task tool does not surface API token usage)
-- Model tier as cost proxy: opus (~$15/MTok) > sonnet (~$3/MTok) > haiku (~$0.25/MTok)
-- Phase count = number of worker sub-agent invocations, not API calls
-````
-
-**Aggregate learnings:**
-1. Scan Tier 3 logs: `workspace/learnings/learn-*.json` matching this project
-2. Identify repeated patterns (same rule triggered 3+ times across tasks)
-3. Promote repeated patterns to Tier 1 via `/learn` (severity: high, source: pattern-repetition)
-4. Write project retrospective to `workspace/reports/{project}-retro.md`
-
-**Audit project context (if context directory exists):**
-If `projects/{project}/context/` exists, spawn context-manager audit:
-```
-Task({ subagent_type: "general-purpose", prompt: "/run context-manager audit --project {project}", description: "audit context {project}" })
-```
-Report written to `workspace/context-audits/{project}-{date}.md`. If no context directory, log suggestion to progress.txt. Skip silently on error.
-
-**Update state:** `status: "completed"`, `completed_at: "{ISO8601}"`
-
-**Sync board status → done:**
-Read resolved prd.json → `metadata.company` → `board_path` from manifest.
-Find entry in board.json by `prd_path`.
-If found: set `status = "done"`, update `updated_at`, write board.json back.
-Skip silently on any error.
-
-**Update INDEX.md files:** Regenerate `companies/{co}/projects/INDEX.md` and `workspace/orchestrator/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
-
-**Post-project cleanup:**
-1. `qmd update 2>/dev/null || true` — reindex all changes from project
-2. Verify `manifest.yaml` — any repos/workers created during project are registered
-3. Verify `workers/registry.yaml` — any new workers are indexed
-4. Commit HQ changes if dirty: `git add -A && git commit -m "project-complete: {project}"`
-
-### 8. Status Display (--status)
-
-```
-Project Status
-
-ACTIVE:
-  campaign-migration — 5/11 (45%) — backend-dev phase on CAM-006
-
-PAUSED:
-  (none)
-
-COMPLETED:
-  user-auth (3d ago) — 8/8
+```bash
+bash scripts/run-project.sh $ARGUMENTS
 ```
 
-## Worker Pipeline Reference
-
-| Task Type | Worker Sequence |
-|-----------|----------------|
-| schema_change | database-dev → backend-dev → code-reviewer → codex-reviewer → dev-qa-tester |
-| api_development | backend-dev → [codex-coder] → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
-| ui_component | frontend-dev → [codex-coder] → motion-designer → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
-| full_stack | architect → database-dev → backend-dev → frontend-dev → [codex-coder] → code-reviewer → codex-reviewer → [codex-debugger] → dev-qa-tester |
-| codex_fullstack | architect → database-dev → codex-coder → codex-reviewer → dev-qa-tester |
-| content | content-brand → content-product → content-sales → content-legal |
-| enhancement | (relevant dev) → code-reviewer → codex-reviewer → [codex-debugger] |
-
-Prepend **product-planner** if task spec is unclear or acceptance criteria are vague.
-
-`[brackets]` = optional codex workers, included when `worker_hints` contain codex or task indicators match codex patterns. **codex-reviewer** is mandatory (no brackets) for all code task types — always runs after code-reviewer. **codex_fullstack** uses codex-coder instead of backend-dev/frontend-dev for Codex-native generation.
-
-## Handoff Context Format
-
-```json
-{
-  "from_worker": "backend-dev",
-  "to_worker": "code-reviewer",
-  "timestamp": "ISO8601",
-  "summary": "What was accomplished",
-  "files_created": ["src/services/foo.ts"],
-  "files_modified": ["src/index.ts"],
-  "key_decisions": ["Used strategy pattern"],
-  "context_for_next": "Focus review on cache invalidation",
-  "back_pressure": { "tests": "pass", "lint": "pass", "typecheck": "pass" }
-}
-```
-
-## State File Format
-
-`workspace/orchestrator/{project}/state.json`:
-```json
-{
-  "project": "campaign-migration",
-  "prd_path": "companies/{company}/projects/{project}/prd.json",
-  "status": "in_progress|paused|completed",
-  "started_at": "ISO8601",
-  "updated_at": "ISO8601",
-  "progress": { "total": 11, "completed": 5, "failed": 0, "in_progress": 1 },
-  "current_task": {
-    "id": "CAM-006",
-    "started_at": "ISO8601",
-    "phase": 2,
-    "worker": "backend-dev"
-  },
-  "completed_tasks": [
-    { "id": "CAM-001", "completed_at": "ISO8601", "workers_used": ["backend-dev", "code-reviewer"] }
-  ],
-  "retries": 0
-}
-```
+If that fails, fall back to the legacy pattern: spawn Task() sub-agents per story via `/execute-task`, with a 10-task context safety net.
 
 ## Rules
 
-- **ONE project at a time**
-- **Sub-agent per task** — each task runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes worker phases directly.
-- **Context discipline** — the orchestrator stores ONLY task_id, status, and 1-sentence summary per task. No worker outputs, no handoff blobs, no file lists.
-- **Fresh context per task** — sub-agent context is freed when it returns.
-- **Resume is first-class** — `--resume` is how multi-session projects continue. Not a fallback — the expected path for large projects.
-- **Back pressure is mandatory** — enforced inside `/execute-task`, not by the orchestrator
-- **Fail fast** — pause on errors, surface to user
-- **prd.json is required** — never read or fall back to README.md
-- **Validate prd.json on load** — fail loudly on missing/malformed fields
-- **Sub-agents must NOT use EnterPlanMode** — /execute-task is the planning pipeline; ad-hoc planning bypasses the PRD orchestrator
+- **prd.json required** — never fall back to README.md
+- **`passes` field is source of truth** — set by `/execute-task`, checked by orchestrator
+- **Git validation after every story** — catches sub-agent commit failures
+- **File lock awareness** — skip stories with locked files, try next candidate
+- **Model hints** — story-level `model_hint` respected (CLI `--model` overrides)
+- **Linear sync** — best-effort, never blocks execution
+- **Regression gates** — `metadata.qualityGates` run every 3 stories
+- **Resume is first-class** — auto-detected from state.json
+- **Codex CLI mandatory** — at least one codex step (review or exec) required per code task. Sub-agent prompt enforces it; orchestrator runs fallback `codex review` post-task
+- **Back pressure** — enforced inside `/execute-task`, not by orchestrator
 
 ## Integration
 
 - `/prd` → creates PRD → `/run-project {name}` executes it
-- `/execute-task {project}/{id}` → runs single task with same pipeline (standalone or as sub-agent)
-- `/run-project --resume` → continues from next incomplete task with fresh context
-- `/nexttask` → shows active projects from /run-project
+- `/execute-task {project}/{id}` → runs single task (standalone or headless)
+- `/run-project --resume` → continues from next incomplete story
+- `/nexttask` → shows active projects

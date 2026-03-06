@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "7.0"
-updated: "2026-02-19"
+version: "8.0"
+updated: "2026-03-06"
 
 workers:
   # ===================
@@ -26,7 +26,7 @@ workers:
     description: "Example worker — copy and customize for your own"
 
   # ===================
-  # Standalone Workers (4)
+  # Standalone Workers (6)
   # ===================
 
   - id: frontend-designer
@@ -52,6 +52,43 @@ workers:
     type: OpsWorker
     status: active
     description: "Mermaid diagram rendering — SVG/ASCII with 14 themes"
+
+  - id: knowledge-tagger
+    path: workers/knowledge-tagger/
+    type: OpsWorker
+    status: active
+    description: "Auto-classify knowledge docs against ontology and prepend YAML frontmatter"
+
+  - id: site-builder
+    path: workers/site-builder/
+    type: OpsWorker
+    status: active
+    description: "Config-driven local business website generation and deployment"
+
+  # ===================
+  # Gemini Team (3)
+  # ===================
+
+  - id: gemini-coder
+    path: workers/gemini-coder/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Code generation and implementation via Gemini CLI — scaffolding, features, refactoring with 1M token context"
+
+  - id: gemini-reviewer
+    path: workers/gemini-reviewer/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Code review and analysis via Gemini CLI — PR review, file review, security scanning, improvement suggestions"
+
+  - id: gemini-frontend
+    path: workers/gemini-frontend/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Frontend development via Gemini CLI — component building, styling, responsiveness, accessibility"
 
   # ===================
   # Dev Team (16)

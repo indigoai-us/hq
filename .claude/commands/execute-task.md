@@ -35,12 +35,14 @@ Example: /execute-task campaign-migration/CAM-003
 
 ### 2. Load Task Spec
 
-Resolve project location — search `companies/*/projects/{project}/prd.json` first, then `projects/{project}/prd.json` (personal/HQ fallback):
+Resolve project location — use `qmd search` (never Glob):
 
 ```javascript
-// Resolve: find prd.json across company dirs or root
-const prdPath = glob(`companies/*/projects/${project}/prd.json`)[0]
-  || `projects/${project}/prd.json`
+// Use qmd to discover prd.json location (never Glob)
+const results = qmdSearch(`${project} prd.json`, 5)
+const prdPath = results.find(r => r.file.includes(`/${project}/prd.json`))?.file
+  || `companies/{co}/projects/${project}/prd.json`  // direct Read fallback
+  || `projects/${project}/prd.json`                  // personal/HQ fallback
 if (!fileExists(prdPath)) {
   STOP: `ERROR: prd.json not found for ${project}. Run /prd ${project} first.`
 }
@@ -268,6 +270,34 @@ If the story has a non-empty `files` array and the target repo has a `repoPath` 
    Write state.json back
 
 Report: `File locks acquired: {N} files for {task.id}`
+
+### 5.5.5 Sync Linear Issue to In Progress (if configured, best-effort)
+
+If the story has `linearIssueId` and prd metadata has `linearCredentials`:
+
+```bash
+# Read API key from credentials path in prd metadata
+LINEAR_KEY=$(cat {prd.metadata.linearCredentials} | python3 -c "import sys,json; print(json.load(sys.stdin)['apiKey'])")
+ISSUE_ID="{task.linearIssueId}"
+IN_PROGRESS_STATE="{prd.metadata.linearInProgressStateId}"
+
+# Set issue to In Progress
+curl -s -X POST https://api.linear.app/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: $LINEAR_KEY" \
+  -d "{\"query\": \"mutation { issueUpdate(id: \\\"$ISSUE_ID\\\", input: { stateId: \\\"$IN_PROGRESS_STATE\\\" }) { success } }\"}"
+
+# Comment on issue
+COMMENT="Started by HQ — task in progress."
+curl -s -X POST https://api.linear.app/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: $LINEAR_KEY" \
+  -d "{\"query\": \"mutation { commentCreate(input: { issueId: \\\"$ISSUE_ID\\\", body: \\\"$COMMENT\\\" }) { success } }\"}"
+```
+
+Skip silently if no `linearIssueId` or no credentials configured. Never block execution on Linear sync.
+
+**Cross-company guard**: Before using `linearCredentials`, verify the path matches the active company per `companies/manifest.yaml`. If it points to a different company's settings, ABORT Linear sync and warn.
 
 ### 5.6 Load Applicable Policies
 

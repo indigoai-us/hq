@@ -1,5 +1,39 @@
 # Changelog
 
+## v6.5.0 (2026-03-06)
+
+Enhanced company isolation, new worker teams, expanded knowledge, and command updates.
+
+### Added
+
+- **Skills section** (CLAUDE.md) — `.claude/skills/` tree with Codex symlink bridge for cross-tool skill sharing.
+- **Policies (Learned Rules) section** (CLAUDE.md) — Standalone section documenting policy file directories and precedence for programmatic rule storage.
+- **Gemini workers** (3) — `gemini-coder`, `gemini-reviewer`, `gemini-frontend` for Gemini CLI-based code generation, review, and frontend work.
+- **knowledge-tagger worker** — Auto-classify and tag knowledge documents.
+- **site-builder worker** — Local business website builder.
+- **gemini-cli knowledge base** — Gemini CLI integration docs.
+- **New knowledge bases indexed** — agent-browser, curious-minds, pr, context-needs, project-context added to CLAUDE.md knowledge list.
+
+### Changed
+
+- **Company Isolation** (CLAUDE.md) — Expanded with manifest infrastructure routing fields (`services`, `vercel_team`, `aws_profile`, `dns_zones`), 3-step operation protocol, credential access policy reference, and stricter hard rules.
+- **Workers** (CLAUDE.md) — Updated counts to include social-team (5), pr-team (6), gardener-team (3), gemini-team (3), knowledge-tagger, site-builder.
+- **Knowledge Repos** (CLAUDE.md) — Clarified embedded git repo pattern for company knowledge. Added `Reading/searching` note.
+- **Search rules** (CLAUDE.md) — Added rows for PRD discovery, worker yaml lookup, and company manifest lookup. Added Glob blocking rule for `prd.json`/`worker.yaml` patterns.
+- **Infrastructure-First** (CLAUDE.md) — Updated `/prd` to reference company-scoped project paths.
+- **Commands count** (CLAUDE.md) — Updated from 24 to 35+.
+- **/execute-task** — Refined codex-reviewer inline pattern, improved back-pressure error handling.
+- **/prd** — Company Anchor (Step 0) for automatic company scoping from arguments. Beads sync (Step 7).
+- **/run-project** — Externalized to `scripts/run-project.sh` bash orchestrator with CLI flags (--max-budget, --model, --timeout, --retry-failed, --verbose). Process-level isolation via `claude -p`.
+- **/handoff** — Added knowledge update step (0b) for documenting domain knowledge in company knowledge bases.
+- **/learn** — Updated to inject rules into target files (worker.yaml, command .md, knowledge files, CLAUDE.md) with cap enforcement and global promotion.
+- **/startwork** — Enhanced with company knowledge loading and Vercel project context.
+- **/checkemail** — Email-triage app integration with queue/response JSON schema and Tauri desktop UI.
+- **/email** — Expanded cleanup workflow with 4-phase triage, Linear ticket creation, and PRD creation for deferred items.
+- **/bootcamp-student** — Added audience-specific language rules, deck format options (condensed vs 3-session), portal config patterns.
+
+---
+
 ## v6.4.0 (2026-02-23)
 
 Company-scoped projects, file lock acquisition, policy loading, and new commands.

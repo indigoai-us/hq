@@ -13,6 +13,22 @@ Create execution-ready PRDs with full HQ context awareness.
 
 **Important:** Do NOT implement. Just create the PRD.
 
+## Step 0: Company Anchor (from arguments)
+
+Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies/manifest.yaml`.
+
+**How to check:** Read `companies/manifest.yaml`. Extract top-level keys (company slugs). If the first word of `$ARGUMENTS` exactly matches one of those slugs:
+
+1. **Set `{co}`** = matched slug for the entire flow. Strip the slug from `$ARGUMENTS` — the remaining text is the project description
+2. **Announce:** "Anchored on **{co}**"
+3. **Load policies** — Read all files in `companies/{co}/policies/` (skip `example-policy.md`). Apply these as constraints throughout the PRD
+4. **Scope qmd searches** — If company has `qmd_collections` in manifest, use `-c {collection}` for all `qmd` calls
+5. **Pre-load repos** — Extract `{co}.repos[]` from manifest. Present as repo options in Batch 3 Q10
+6. **Scope workers** — Filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
+7. **Scope projects** — Only search `companies/{co}/projects/` for existing project collision check
+
+**If no match** (first word is not a company slug) → proceed normally. The full `$ARGUMENTS` text is the project description.
+
 ## Step 1: Get Project Description
 
 If $ARGUMENTS provided, use as starting point.
@@ -20,23 +36,29 @@ If empty, ask: "Describe what you want to build or accomplish."
 
 ## Step 2: Scan HQ Context
 
-Before asking questions, explore HQ:
+Before asking questions, explore HQ. If company is anchored (Step 0), scope all searches to that company.
 
 **Companies & Context:**
 - Read `agents.md` (roles, priorities)
-- Glob `companies/*/knowledge/` (which companies exist)
+- Read `companies/manifest.yaml` (companies already listed there — never Glob for company discovery)
 
 **Workers:**
-- Read `workers/registry.yaml`
-- Glob `workers/public/*/worker.yaml`, `workers/public/dev-team/*/worker.yaml`, `companies/*/workers/*/worker.yaml`
+- Read `workers/registry.yaml` (workers already indexed there — never Glob for worker discovery)
+- If anchored: filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
 
 **Existing Projects:**
-- Glob `companies/*/projects/*/prd.json` + `projects/*/prd.json` (check overlap)
+- If anchored: `qmd search "prd.json" --json -n 20 -c {co}` (scoped) or search `companies/{co}/projects/` directly
+- If not anchored: `qmd search "prd.json" --json -n 20` → existing projects across all companies and personal
 
 **Knowledge (use qmd, not Grep):**
-- `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
+- If anchored + company has `qmd_collections`: `qmd vsearch "<description keywords>" -c {collection} --json -n 10`
+- If not anchored: `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
+
+**Company Policies (anchored only):**
+- Read all files in `companies/{co}/policies/` (skip `example-policy.md`). These constrain the PRD
 
 **Target Repo (if repo specified or discovered):**
+- If anchored: company repos already pre-loaded from manifest. Present as options
 - If target repo has a qmd collection (e.g. `vyg`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
@@ -44,9 +66,11 @@ Before asking questions, explore HQ:
 Present:
 ```
 Scanned HQ:
+- Company: {co} (anchored) | TBD
 - Workers: {relevant list}
 - Existing projects: {list or "none matching"}
 - Relevant knowledge: {if any}
+- Policies: {count loaded, or "none"}
 - Category: [company-specific | cross-company | personal | HQ infrastructure]
 ```
 
@@ -65,7 +89,8 @@ Fix any gaps before proceeding.
 ## Step 3: Get + Validate Project Name
 
 Ask for project slug (or infer from description). Then:
-1. Determine company from context (infer from description, repo, or ask)
+1. If `{co}` already set by Step 0: use it directly (skip company detection)
+   If NOT set: determine company from context (infer from description, repo, or ask)
 2. Check if `companies/{co}/projects/{name}/` exists (also check root `projects/{name}/` for personal/HQ)
    - If exists: "Project exists. Continue editing or choose different name?"
 3. Validate slug format (lowercase, hyphens only)

@@ -1,6 +1,6 @@
 ---
 description: Quick inbox cleanup — archive junk, then triage what matters one at a time
-allowed-tools: Task, Read, Glob, Grep, Bash, Write, AskUserQuestion, ToolSearch, mcp__gmail-local__*
+allowed-tools: Task, Read, Glob, Grep, Bash, Write, AskUserQuestion, ToolSearch, mcp__gmail__*
 argument-hint: [account] (default: all)
 visibility: public
 ---
@@ -9,15 +9,17 @@ visibility: public
 
 Two-phase inbox sweep: (1) fetch + classify, (2) launch triage UI for archive review + email-by-email triage, (3) execute actions from responses.
 
-**Accounts:** vyg (corey@vyg.ai), indigo (corey@getindigo.ai), personal (me@{your-username}.com), abacus (corey.epstein@goabacus.co)
+**Accounts:** {account-1} ({email-1}), {account-2} ({email-2})
 
 **User's input:** $ARGUMENTS
 
 ## Setup
 
-Load gmail tools: `ToolSearch` with query `+gmail-local`.
+Load gmail tools: `ToolSearch` with query `+gmail`.
 
-Determine accounts: if user specified one, use it. Otherwise all 4.
+Determine accounts: if user specified one, use it. Otherwise all.
+
+**CRITICAL: NEVER send from the wrong account.** If the requested account's auth fails, STOP and report the error. Do NOT fall back to another account. See policy: `email-send-safety.md`.
 
 ## Phase 1 — Fetch + Classify
 
@@ -63,7 +65,7 @@ interface EmailTriageQueue {
 
 interface ArchiveProposal {
   id: string;              // unique (e.g. "arch-{index}")
-  account: string;         // "vyg" | "personal" | "indigo" | "abacus"
+  account: string;         // "{account-1}" | "{account-2}" | ...
   messageId: string;       // Gmail message ID
   threadId: string;
   from: string;

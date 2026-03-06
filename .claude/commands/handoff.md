@@ -1,6 +1,6 @@
 ---
 description: Hand off to fresh session, work continues from checkpoint
-allowed-tools: Write, Read, Bash
+allowed-tools: Write, Read, Bash, Edit
 argument-hint: [message]
 visibility: public
 ---
@@ -15,6 +15,51 @@ Prepare for a new session to continue this work.
 
 0. **Capture session learnings**
    Reflect on this session. If any reusable learnings exist (mistakes, patterns, gotchas, workflow improvements), call `/learn` for each before proceeding. Skip if nothing novel was learned. See CLAUDE.md `## Session Learnings` for guidance.
+
+0b. **Update knowledge (if applicable)**
+    Review session work for domain knowledge worth documenting in company knowledge bases or repo docs. Complements step 0 — learnings = operational rules (NEVER/ALWAYS), knowledge = factual domain docs (what was built, how it works).
+
+    **Quick gate — skip if trivial:**
+    If session was a config tweak, typo fix, or minor edit with no new domain knowledge, skip entirely.
+
+    **Detect context:**
+    - Active company: infer from `pwd`, files_touched (`companies/{co}/` paths), or repo→company via `companies/manifest.yaml`
+    - Active repos: from `pwd`, git remotes
+    - Work category: feature, integration, schema change, process, infra, content
+
+    **Scan existing knowledge:**
+    ```bash
+    # What docs exist
+    ls companies/{co}/knowledge/ 2>/dev/null
+    ls {repo}/README.md {repo}/docs/ {repo}/CLAUDE.md 2>/dev/null
+    # Is this topic already covered? (qmd for conceptual match, grep for exact)
+    qmd search "{topic}" -c {company} --json -n 3
+    ```
+    Also use Grep across `companies/{co}/knowledge/` for exact terms if needed — Grep works from HQ root (`.ignore` protects it).
+
+    **Decide:**
+    - Existing docs cover the work → skip
+    - Docs exist but need updating → propose specific edits with file path
+    - No docs for this topic → propose new file with suggested name
+
+    **Present to user** via AskUserQuestion:
+    - Show numbered list of concrete UPDATE/CREATE proposals
+    - Options: apply all, pick specific numbers, skip
+    - If unsure what to propose, ask open-ended: "This session involved significant {co} work. Any knowledge worth documenting?"
+
+    **Execute selected items:**
+    - UPDATES: read existing file, edit relevant section
+    - CREATES: write new file in `companies/{co}/knowledge/` or repo docs, following conventions of sibling files. Include: title heading, description, organized sections
+    - Do NOT regenerate INDEX.md here — step 4 handles it
+    - Do NOT commit here — step 3/3b handles it
+
+    **Repo docs** (README, CLAUDE.md, docs/): same logic — if session changed APIs, features, or setup, propose updates.
+
+    **Edge cases:**
+    - No company detected → ask user which company, or skip if purely HQ infra work
+    - Multi-company session → handle each company separately (company isolation)
+    - Knowledge dir has no `.git` → write files anyway, step 3b (HQ commit) catches them
+    - Session already updated knowledge files directly → scan for remaining coverage gaps only
 
 1. **Ensure thread exists**
    - Check `workspace/threads/` for recent thread

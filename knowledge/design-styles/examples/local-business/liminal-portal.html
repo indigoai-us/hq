@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elm Street Coffee — Through the Door</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --peach: #F5D5C8;
+    --warm: #E8A87C;
+    --cool-shadow: #3D5A5B;
+    --deep: #1A1A1E;
+    --mid: #5C7A7D;
+    --cormorant: 'Cormorant', Georgia, serif;
+    --inter: 'Inter', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--deep);
+    color: var(--peach);
+    font-family: var(--inter);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Film grain — persistent overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+    pointer-events: none;
+    z-index: 998;
+    mix-blend-mode: overlay;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 48px;
+    background: transparent;
+    mix-blend-mode: normal;
+  }
+  nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(26,26,30,0.9) 0%, rgba(26,26,30,0) 100%);
+    z-index: -1;
+  }
+  .nav-brand {
+    font-family: var(--cormorant);
+    font-size: 18px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    color: rgba(245,213,200,0.7);
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.35);
+    text-decoration: none;
+    transition: color 0.4s;
+  }
+  .nav-links a:hover { color: rgba(245,213,200,0.8); }
+
+  /* ─── HERO ─── */
+  #hero {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--deep);
+  }
+
+  /* The portal: warm radial glow at center */
+  .portal-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 45% 60% at 50% 52%,
+        rgba(245,213,200,0.22) 0%,
+        rgba(232,168,124,0.15) 20%,
+        rgba(92,122,125,0.06) 50%,
+        rgba(26,26,30,0) 70%
+      ),
+      radial-gradient(ellipse 25% 35% at 50% 50%,
+        rgba(245,213,200,0.35) 0%,
+        rgba(232,168,124,0.2) 35%,
+        transparent 70%
+      );
+  }
+  /* Deep shadow vignette */
+  .portal-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 100% 100% at 50% 50%,
+      transparent 0%,
+      transparent 40%,
+      rgba(26,26,30,0.5) 65%,
+      rgba(26,26,30,0.85) 80%,
+      rgba(26,26,30,0.97) 100%
+    );
+  }
+  /* Doorframe architectural element */
+  .door-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(360px, 55vw);
+    height: min(520px, 75vh);
+    border: 1px solid rgba(245,213,200,0.07);
+    box-shadow:
+      inset 0 0 80px rgba(245,213,200,0.03),
+      0 0 120px rgba(232,168,124,0.04);
+  }
+  .door-frame::before {
+    content: '';
+    position: absolute;
+    top: -20px; left: -20px; right: -20px; bottom: -20px;
+    border: 1px solid rgba(245,213,200,0.03);
+  }
+  /* arch top */
+  .door-arch {
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 60%;
+    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+    border: 1px solid rgba(245,213,200,0.07);
+    border-bottom: none;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 600px;
+    padding: 0 32px;
+  }
+  .hero-eyebrow {
+    font-family: var(--inter);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: rgba(232,168,124,0.5);
+    margin-bottom: 40px;
+  }
+  h1 {
+    font-family: var(--cormorant);
+    font-weight: 300;
+    font-size: clamp(56px, 10vw, 130px);
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+    color: var(--peach);
+    margin-bottom: 0;
+  }
+  h1 em {
+    display: block;
+    font-style: italic;
+    color: rgba(245,213,200,0.5);
+    font-size: 0.55em;
+    letter-spacing: 0.05em;
+    margin-top: 12px;
+  }
+  .hero-sub {
+    margin-top: 40px;
+    font-family: var(--inter);
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.25);
+  }
+  .hero-descend {
+    margin-top: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .descend-text {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 15px;
+    color: rgba(232,168,124,0.35);
+    letter-spacing: 0.05em;
+  }
+  .descend-line {
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(to bottom, rgba(232,168,124,0.3), transparent);
+  }
+
+  /* ─── SECTION COMMON ─── */
+  section { padding: 120px 0; position: relative; }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 48px; }
+  .section-center { text-align: center; }
+
+  .s-eyebrow {
+    font-family: var(--inter);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: rgba(232,168,124,0.4);
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-family: var(--cormorant);
+    font-weight: 300;
+    font-size: clamp(40px, 6vw, 80px);
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    color: var(--peach);
+    margin-bottom: 32px;
+  }
+  h2 em { font-style: italic; color: rgba(232,168,124,0.7); }
+
+  /* ─── ABOUT ─── */
+  #about {
+    background: linear-gradient(180deg, var(--deep) 0%, #1E1E24 100%);
+    position: relative;
+  }
+  /* warm glow from above */
+  #about::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 300px;
+    background: radial-gradient(ellipse at center top,
+      rgba(232,168,124,0.06) 0%,
+      transparent 70%
+    );
+  }
+  .about-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .about-text-col { }
+  .about-lead {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(22px, 3vw, 30px);
+    line-height: 1.55;
+    color: rgba(245,213,200,0.75);
+    margin-bottom: 28px;
+  }
+  .about-body {
+    font-family: var(--inter);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 2;
+    color: rgba(245,213,200,0.38);
+  }
+  .about-body + .about-body { margin-top: 16px; }
+
+  .about-facts-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: rgba(245,213,200,0.04);
+    border: 1px solid rgba(245,213,200,0.05);
+  }
+  .fact-row {
+    background: var(--deep);
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.4s;
+  }
+  .fact-row::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(232,168,124,0.15), transparent);
+  }
+  .fact-num {
+    font-family: var(--cormorant);
+    font-size: 52px;
+    font-weight: 300;
+    color: rgba(232,168,124,0.5);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .fact-label {
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.25);
+  }
+  /* warm glow on hover */
+  .fact-row:hover { background: rgba(232,168,124,0.03); }
+
+  /* ─── MENU ─── */
+  #menu {
+    background: #16161A;
+    position: relative;
+    overflow: hidden;
+  }
+  /* centered warm light source */
+  #menu::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 400px;
+    background: radial-gradient(ellipse at center top,
+      rgba(245,213,200,0.05) 0%,
+      transparent 65%
+    );
+    pointer-events: none;
+  }
+  #menu h2 { text-align: center; }
+  #menu .s-eyebrow { text-align: center; }
+  .menu-intro-text {
+    text-align: center;
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(245,213,200,0.28);
+    max-width: 440px;
+    margin: 0 auto 72px;
+    line-height: 1.7;
+  }
+
+  .menu-items {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .menu-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    padding: 32px 0;
+    position: relative;
+    cursor: default;
+    transition: all 0.4s;
+  }
+  .menu-row::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -48px; right: -48px;
+    height: 1px;
+    background: linear-gradient(to right,
+      transparent 0%,
+      rgba(245,213,200,0.06) 20%,
+      rgba(245,213,200,0.06) 80%,
+      transparent 100%
+    );
+  }
+  .menu-row:first-child::before { display: none; }
+  /* glow effect on hover */
+  .menu-row::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 50% 50%, rgba(232,168,124,0.04) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .menu-row:hover::after { opacity: 1; }
+
+  .menu-row-left {}
+  .menu-item-name {
+    font-family: var(--cormorant);
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 300;
+    color: rgba(245,213,200,0.8);
+    letter-spacing: -0.01em;
+    display: block;
+    transition: color 0.4s;
+  }
+  .menu-row:hover .menu-item-name { color: var(--peach); }
+  .menu-item-desc-text {
+    display: block;
+    font-family: var(--inter);
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    color: rgba(245,213,200,0.2);
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .menu-item-price-text {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 300;
+    color: rgba(232,168,124,0.45);
+    transition: color 0.4s;
+  }
+  .menu-row:hover .menu-item-price-text { color: var(--warm); }
+
+  /* ─── HOURS & LOCATION ─── */
+  #location {
+    background: var(--deep);
+    position: relative;
+    overflow: hidden;
+  }
+  /* portal glow effect */
+  #location::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(232,168,124,0.06) 0%,
+      transparent 65%
+    );
+  }
+  .location-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+  }
+  .loc-col { }
+  .hours-list { margin-top: 40px; }
+  .hour-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 20px 0;
+    position: relative;
+  }
+  .hour-entry::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right,
+      rgba(245,213,200,0.05) 0%,
+      rgba(245,213,200,0.08) 50%,
+      rgba(245,213,200,0.05) 100%
+    );
+  }
+  .hour-day {
+    font-family: var(--inter);
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.25);
+  }
+  .hour-time {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 300;
+    color: rgba(245,213,200,0.55);
+  }
+
+  .address-block { margin-top: 40px; }
+  .address-name-lim {
+    font-family: var(--cormorant);
+    font-size: 32px;
+    font-weight: 300;
+    color: rgba(245,213,200,0.7);
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+  .address-lines {
+    font-family: var(--inter);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 2.2;
+    color: rgba(245,213,200,0.3);
+  }
+  .address-lines a {
+    color: rgba(232,168,124,0.5);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  .address-lines a:hover { color: var(--warm); }
+
+  /* portal doorway visual */
+  .portal-visual {
+    margin-top: 40px;
+    height: 200px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #0d0d10;
+    border: 1px solid rgba(245,213,200,0.04);
+  }
+  .portal-visual::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 50% 50%,
+      rgba(232,168,124,0.12) 0%,
+      rgba(92,122,125,0.04) 40%,
+      transparent 70%
+    );
+  }
+  .portal-door {
+    position: relative;
+    z-index: 1;
+    width: 60px;
+    height: 100px;
+    border: 1px solid rgba(245,213,200,0.12);
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .portal-door::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 30px;
+    border: 1px solid rgba(245,213,200,0.12);
+    border-bottom: none;
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  }
+  .portal-door-text {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 11px;
+    color: rgba(232,168,124,0.3);
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding-top: 12px;
+  }
+
+  .features-pills {
+    margin-top: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .f-pill {
+    font-family: var(--inter);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.2);
+    border: 1px solid rgba(245,213,200,0.07);
+    padding: 5px 12px;
+  }
+
+  /* ─── REVIEWS ─── */
+  #reviews {
+    background: #16161A;
+    position: relative;
+    overflow: hidden;
+  }
+  #reviews::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle,
+      rgba(232,168,124,0.04) 0%,
+      transparent 60%
+    );
+  }
+  #reviews .s-eyebrow { text-align: center; }
+  #reviews h2 { text-align: center; }
+  .reviews-rating-display {
+    text-align: center;
+    margin-bottom: 80px;
+    position: relative;
+    z-index: 1;
+  }
+  .rating-glow {
+    font-family: var(--cormorant);
+    font-size: 120px;
+    font-weight: 300;
+    font-style: italic;
+    color: rgba(232,168,124,0.15);
+    line-height: 1;
+    text-shadow: 0 0 80px rgba(232,168,124,0.12);
+    letter-spacing: -0.02em;
+  }
+  .rating-label {
+    margin-top: -16px;
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.2);
+  }
+
+  .review-trio {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .review-card-lim {
+    padding: 40px 32px;
+    border: 1px solid rgba(245,213,200,0.04);
+    position: relative;
+    background: rgba(245,213,200,0.01);
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .review-card-lim:hover {
+    background: rgba(245,213,200,0.025);
+    border-color: rgba(245,213,200,0.07);
+  }
+  /* inner glow */
+  .review-card-lim::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(232,168,124,0.2), transparent);
+  }
+  .review-open-quote {
+    font-family: var(--cormorant);
+    font-size: 64px;
+    font-weight: 300;
+    font-style: italic;
+    color: rgba(232,168,124,0.15);
+    line-height: 0.8;
+    margin-bottom: 16px;
+  }
+  .review-text-lim {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 18px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: rgba(245,213,200,0.5);
+    margin-bottom: 28px;
+  }
+  .review-sep {
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(to right, rgba(232,168,124,0.2), transparent);
+    margin-bottom: 20px;
+  }
+  .review-by {
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.2);
+  }
+
+  /* ─── CTA ─── */
+  #contact {
+    background: var(--deep);
+    position: relative;
+    overflow: hidden;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+  }
+  /* The threshold: the main portal light */
+  #contact::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 50% 70% at 50% 50%,
+        rgba(245,213,200,0.12) 0%,
+        rgba(232,168,124,0.08) 25%,
+        rgba(92,122,125,0.04) 50%,
+        transparent 70%
+      );
+  }
+  #contact::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 100% 100% at 50% 50%,
+      transparent 30%,
+      rgba(26,26,30,0.7) 70%,
+      rgba(26,26,30,0.95) 100%
+    );
+  }
+  .cta-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    text-align: center;
+    padding: 0 48px;
+  }
+  .cta-sub-text {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 300;
+    color: rgba(245,213,200,0.3);
+    margin-bottom: 40px;
+    letter-spacing: 0.05em;
+  }
+  #contact h2 {
+    font-size: clamp(48px, 9vw, 120px);
+    margin-bottom: 16px;
+  }
+  .cta-address {
+    font-family: var(--inter);
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.2);
+    margin-bottom: 56px;
+  }
+  .cta-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .btn-lim-primary {
+    display: inline-block;
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--deep);
+    background: rgba(245,213,200,0.75);
+    padding: 16px 40px;
+    text-decoration: none;
+    transition: background 0.4s;
+    border: 1px solid transparent;
+  }
+  .btn-lim-primary:hover { background: var(--peach); }
+  .btn-lim-secondary {
+    display: inline-block;
+    font-family: var(--inter);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.35);
+    background: transparent;
+    padding: 16px 40px;
+    text-decoration: none;
+    border: 1px solid rgba(245,213,200,0.08);
+    transition: border-color 0.4s, color 0.4s;
+  }
+  .btn-lim-secondary:hover {
+    border-color: rgba(245,213,200,0.2);
+    color: rgba(245,213,200,0.6);
+  }
+  .cta-hours {
+    margin-top: 40px;
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 300;
+    color: rgba(245,213,200,0.18);
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: #0d0d10;
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid rgba(245,213,200,0.03);
+  }
+  footer .f-brand {
+    font-family: var(--cormorant);
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 300;
+    color: rgba(245,213,200,0.2);
+  }
+  footer .f-meta {
+    font-family: var(--inter);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(245,213,200,0.1);
+  }
+
+  /* ─── MOBILE ─── */
+  @media (max-width: 768px) {
+    nav { padding: 0 24px; }
+    .nav-links { display: none; }
+
+    section { padding: 80px 0; }
+    .container { padding: 0 24px; }
+
+    .about-content { grid-template-columns: 1fr; gap: 56px; }
+    .about-facts-col { grid-template-columns: 1fr 1fr; display: grid; }
+
+    .location-inner { grid-template-columns: 1fr; gap: 56px; }
+    .review-trio { grid-template-columns: 1fr; gap: 32px; }
+
+    .rating-glow { font-size: 72px; }
+
+    footer { flex-direction: column; gap: 12px; text-align: center; padding: 24px; }
+    .cta-content { padding: 0 24px; }
+
+    .door-frame { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Elm Street Coffee</div>
+  <ul class="nav-links">
+    <li><a href="#about">Story</a></li>
+    <li><a href="#menu">Menu</a></li>
+    <li><a href="#location">Visit</a></li>
+    <li><a href="#contact">Enter</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="portal-bg"></div>
+  <div class="door-frame">
+    <div class="door-arch"></div>
+  </div>
+  <div class="portal-vignette"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">142 Elm Street &nbsp;&middot;&nbsp; Portland, Oregon</p>
+    <h1>Elm Street<em>Coffee</em></h1>
+    <p class="hero-sub">Craft coffee &nbsp;&middot;&nbsp; Roasted in-house</p>
+    <div class="hero-descend">
+      <span class="descend-text">step through</span>
+      <div class="descend-line"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <div class="about-content">
+      <div class="about-text-col">
+        <p class="s-eyebrow">The story</p>
+        <h2>A threshold<br>you <em>return</em> to</h2>
+        <p class="about-lead">Some places exist between worlds. Elm Street Coffee is one of them &mdash; where the morning begins to shift into something else.</p>
+        <p class="about-body">We opened in 2019 with a single conviction: coffee should be an experience worth pausing for. Every bean we source is single-origin. Every roast happens here, on Elm Street, in small batches calibrated to the season.</p>
+        <p class="about-body">We work with local bakeries who understand what we&rsquo;re building. You can feel it when you walk in. Something in the quality of the air. The light. The particular stillness that only good coffee can produce.</p>
+      </div>
+      <div class="about-facts-col">
+        <div class="fact-row">
+          <div class="fact-num">4.8</div>
+          <div class="fact-label">Stars, 340+ voices</div>
+        </div>
+        <div class="fact-row">
+          <div class="fact-num">2019</div>
+          <div class="fact-label">Est. Portland, OR</div>
+        </div>
+        <div class="fact-row">
+          <div class="fact-num">100%</div>
+          <div class="fact-label">Single-origin</div>
+        </div>
+        <div class="fact-row">
+          <div class="fact-num">In-house</div>
+          <div class="fact-label">All roasting on-site</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu">
+  <div class="container">
+    <p class="s-eyebrow">What waits inside</p>
+    <h2>The <em>offerings</em></h2>
+    <p class="menu-intro-text">Each item is here because it belongs. Nothing more. Nothing other.</p>
+    <div class="menu-items">
+      <div class="menu-row">
+        <div class="menu-row-left">
+          <span class="menu-item-name">Pour Over</span>
+          <span class="menu-item-desc-text">Single-origin &nbsp;&middot;&nbsp; Hand-poured</span>
+        </div>
+        <span class="menu-item-price-text">$5</span>
+      </div>
+      <div class="menu-row">
+        <div class="menu-row-left">
+          <span class="menu-item-name">Cortado</span>
+          <span class="menu-item-desc-text">Equal parts &nbsp;&middot;&nbsp; Espresso &amp; milk</span>
+        </div>
+        <span class="menu-item-price-text">$4.50</span>
+      </div>
+      <div class="menu-row">
+        <div class="menu-row-left">
+          <span class="menu-item-name">Cold Brew</span>
+          <span class="menu-item-desc-text">18-hour steep &nbsp;&middot;&nbsp; Slow &amp; dark</span>
+        </div>
+        <span class="menu-item-price-text">$5.50</span>
+      </div>
+      <div class="menu-row">
+        <div class="menu-row-left">
+          <span class="menu-item-name">Avocado Toast</span>
+          <span class="menu-item-desc-text">Locally sourced &nbsp;&middot;&nbsp; Prepared fresh</span>
+        </div>
+        <span class="menu-item-price-text">$12</span>
+      </div>
+      <div class="menu-row">
+        <div class="menu-row-left">
+          <span class="menu-item-name">Seasonal Pastries</span>
+          <span class="menu-item-desc-text">Local bakery &nbsp;&middot;&nbsp; Rotating selection</span>
+        </div>
+        <span class="menu-item-price-text">$4</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOURS & LOCATION -->
+<section id="location">
+  <div class="container">
+    <div class="location-inner">
+      <div class="loc-col">
+        <p class="s-eyebrow">When to come</p>
+        <h2>The <em>hours</em></h2>
+        <div class="hours-list">
+          <div class="hour-entry">
+            <span class="hour-day">Monday &ndash; Friday</span>
+            <span class="hour-time">6am &ndash; 6pm</span>
+          </div>
+          <div class="hour-entry">
+            <span class="hour-day">Saturday &ndash; Sunday</span>
+            <span class="hour-time">7am &ndash; 5pm</span>
+          </div>
+        </div>
+        <div class="features-pills" style="margin-top:40px">
+          <span class="f-pill">Free WiFi</span>
+          <span class="f-pill">Workspace</span>
+          <span class="f-pill">In-house Roasting</span>
+          <span class="f-pill">Local Partners</span>
+        </div>
+      </div>
+      <div class="loc-col">
+        <p class="s-eyebrow">Where to find us</p>
+        <h2><em>142</em> Elm</h2>
+        <div class="address-block">
+          <div class="address-name-lim">Elm Street Coffee</div>
+          <div class="address-lines">
+            142 Elm Street<br>
+            Portland, OR 97201<br>
+            <a href="tel:5035550142">(503) 555-0142</a>
+          </div>
+        </div>
+        <div class="portal-visual">
+          <div class="portal-door">
+            <span class="portal-door-text">142<br>Elm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="container">
+    <p class="s-eyebrow">Those who have passed through</p>
+    <h2>What they <em>carry</em> back</h2>
+    <div class="reviews-rating-display">
+      <div class="rating-glow">4.8</div>
+      <div class="rating-label">340+ accounts &nbsp;&middot;&nbsp; All verified</div>
+    </div>
+    <div class="review-trio">
+      <div class="review-card-lim">
+        <div class="review-open-quote">&ldquo;</div>
+        <div class="review-text-lim">Best pour over in Portland. They actually care about the extraction. You can taste the attention.</div>
+        <div class="review-sep"></div>
+        <div class="review-by">M. Chen &nbsp;&middot;&nbsp; &#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      </div>
+      <div class="review-card-lim">
+        <div class="review-open-quote">&ldquo;</div>
+        <div class="review-text-lim">I come here to think. The cold brew, the wifi, the particular quiet of the place. It holds you.</div>
+        <div class="review-sep"></div>
+        <div class="review-by">J. Okonkwo &nbsp;&middot;&nbsp; &#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      </div>
+      <div class="review-card-lim">
+        <div class="review-open-quote">&ldquo;</div>
+        <div class="review-text-lim">The in-house roasting changes everything. The cortado is perfectly balanced, every single visit.</div>
+        <div class="review-sep"></div>
+        <div class="review-by">S. Park &nbsp;&middot;&nbsp; &#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact">
+  <div class="cta-content">
+    <p class="cta-sub-text">You know where it is. You&rsquo;ve been before.</p>
+    <h2>Come <em>in</em></h2>
+    <p class="cta-address">142 Elm Street &nbsp;&middot;&nbsp; Portland, Oregon &nbsp;&middot;&nbsp; (503) 555-0142</p>
+    <div class="cta-btn-group">
+      <a href="tel:5035550142" class="btn-lim-primary">Call Us</a>
+      <a href="#location" class="btn-lim-secondary">Hours &amp; Directions</a>
+    </div>
+    <p class="cta-hours">Monday &ndash; Friday &nbsp;6am &ndash; 6pm &nbsp;&nbsp;&middot;&nbsp;&nbsp; Saturday &ndash; Sunday &nbsp;7am &ndash; 5pm</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="f-brand">Elm Street Coffee</div>
+  <div class="f-meta">142 Elm St, Portland OR &nbsp;&middot;&nbsp; Est. 2019</div>
+  <div class="f-meta">&copy; 2025</div>
+</footer>
+
+</body>
+</html>

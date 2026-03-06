@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elm Street Coffee® — Field Operations HQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #000000;
+    --orange: #FF5200;
+    --dark: #1A1A1A;
+    --light: #F5F5F0;
+    --white: #FFFFFF;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ─── UTILITY ─── */
+  .mono { font-family: var(--mono); }
+  .orange { color: var(--orange); }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--orange);
+    border: 1px solid var(--orange);
+    padding: 2px 8px;
+  }
+  .tag.active { background: var(--orange); color: var(--black); }
+  .bracket-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .bracket-wrap::before { content: '['; color: var(--orange); margin-right: 4px; }
+  .bracket-wrap::after  { content: ']'; color: var(--orange); margin-left: 4px; }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--black);
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 56px;
+  }
+  .nav-logo {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .nav-logo span { color: var(--orange); }
+  .nav-status {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #666;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--orange);
+    margin-right: 6px;
+    animation: blink 2s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--orange); }
+
+  /* ─── HERO ─── */
+  #hero {
+    min-height: 100vh;
+    padding-top: 56px;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+  }
+
+  /* diagonal stripe */
+  #hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 42%;
+    width: 120px;
+    height: 100%;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      rgba(255,82,0,0.08) 6px,
+      rgba(255,82,0,0.08) 12px
+    );
+    z-index: 0;
+  }
+
+  .hero-left {
+    padding: 80px 64px 80px 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-serial {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: #444;
+    margin-bottom: 24px;
+  }
+  .hero-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .crosshair {
+    font-size: 18px;
+    color: var(--orange);
+    font-family: var(--mono);
+    line-height: 1;
+  }
+  h1 {
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 700;
+    line-height: 0.9;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--orange);
+    display: block;
+  }
+  .hero-tagline {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+  }
+  .hero-specs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: #222;
+    border: 1px solid #333;
+    margin-bottom: 40px;
+  }
+  .spec-cell {
+    background: var(--black);
+    padding: 14px 16px;
+  }
+  .spec-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: #555;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .spec-value {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--light);
+  }
+  .hero-cta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-block;
+    background: var(--orange);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #e64a00; }
+  .btn-secondary {
+    display: inline-block;
+    background: transparent;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    border: 1px solid #444;
+    text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+
+  .hero-right {
+    background: var(--dark);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .hero-visual {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* crosshair target graphic */
+  .target {
+    position: relative;
+    width: 300px;
+    height: 300px;
+  }
+  .target-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .target-ring:nth-child(1) { width: 280px; height: 280px; border-color: #222; }
+  .target-ring:nth-child(2) { width: 200px; height: 200px; border-color: #333; }
+  .target-ring:nth-child(3) { width: 120px; height: 120px; border-color: rgba(255,82,0,0.3); }
+  .target-ring:nth-child(4) { width: 60px; height: 60px; border-color: var(--orange); }
+  .target-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: var(--orange);
+    border-radius: 50%;
+  }
+  .target-line-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #333 20%, var(--orange) 40%, var(--orange) 60%, #333 80%, transparent);
+    transform: translateY(-50%);
+  }
+  .target-line-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, #333 20%, var(--orange) 40%, var(--orange) 60%, #333 80%, transparent);
+    transform: translateX(-50%);
+  }
+  .target-label {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--orange);
+  }
+  .target-label.top    { top: 10px; left: 50%; transform: translateX(-50%); }
+  .target-label.bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+  .target-label.left   { left: 10px; top: 50%; transform: translateY(-50%); }
+  .target-label.right  { right: 10px; top: 50%; transform: translateY(-50%); }
+
+  .hero-right-badge {
+    position: absolute;
+    bottom: 32px;
+    right: 32px;
+    border: 1px solid var(--orange);
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--orange);
+    text-align: center;
+  }
+  .hero-right-badge strong {
+    display: block;
+    font-size: 24px;
+    font-family: var(--sans);
+    color: var(--white);
+    letter-spacing: 0;
+  }
+
+  /* ─── SECTION BASE ─── */
+  section { padding: 100px 0; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 40px;
+    margin-bottom: 64px;
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--orange);
+    padding-top: 6px;
+    min-width: 48px;
+  }
+  .section-title {
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .section-title .sub {
+    font-size: 14px;
+    font-weight: 400;
+    color: #555;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    display: block;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: #222;
+    position: relative;
+    margin: 0 0 64px 0;
+  }
+  .divider::before {
+    content: '+';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--orange);
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--black);
+    padding-right: 8px;
+  }
+  .divider::after {
+    content: '+';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--orange);
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--black);
+    padding-left: 8px;
+  }
+
+  /* ─── ABOUT ─── */
+  #about { background: var(--black); }
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  .about-text p {
+    font-size: 17px;
+    line-height: 1.75;
+    color: #ccc;
+    margin-bottom: 20px;
+  }
+  .field-tested {
+    display: inline-block;
+    border: 2px solid var(--orange);
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-top: 12px;
+    position: relative;
+  }
+  .field-tested::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: -6px; right: -6px; bottom: -6px;
+    border: 1px solid #333;
+  }
+  .about-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: #222;
+    border: 1px solid #333;
+    align-self: start;
+  }
+  .stat-block {
+    background: var(--dark);
+    padding: 32px 24px;
+    position: relative;
+  }
+  .stat-block::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #444;
+  }
+  .stat-num {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--orange);
+    line-height: 1;
+    margin-top: 20px;
+  }
+  .stat-desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #666;
+    letter-spacing: 0.08em;
+    margin-top: 8px;
+  }
+  .corner-bracket {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--orange);
+    border-style: solid;
+  }
+  .corner-bracket.tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .corner-bracket.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+  /* ─── MENU ─── */
+  #menu { background: var(--dark); }
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: #333;
+    border: 1px solid #333;
+  }
+  .menu-item {
+    background: var(--black);
+    padding: 28px 24px;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .menu-item:hover { background: #111; }
+  .menu-item-code {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: #444;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .menu-item-name {
+    font-size: 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .menu-item-desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .menu-item-price {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--orange);
+  }
+  .menu-item-status {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+
+  /* ─── HOURS & LOCATION ─── */
+  #location { background: var(--black); }
+  .location-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: #222;
+    border: 1px solid #333;
+  }
+  .loc-block {
+    background: var(--black);
+    padding: 48px 40px;
+    position: relative;
+  }
+  .loc-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .loc-label::before { content: '//'; }
+  .hours-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 15px;
+  }
+  .hours-row:last-child { border-bottom: none; }
+  .hours-day {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #777;
+  }
+  .hours-time {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--light);
+  }
+  .address-line {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 2;
+    color: #aaa;
+  }
+  .address-line strong {
+    display: block;
+    color: var(--white);
+    font-size: 18px;
+    font-family: var(--sans);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .coords {
+    margin-top: 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #444;
+  }
+  .map-placeholder {
+    margin-top: 24px;
+    border: 1px solid #333;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-grid-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(#1a1a1a 1px, transparent 1px),
+      linear-gradient(90deg, #1a1a1a 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .map-pin {
+    position: relative;
+    z-index: 1;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--orange);
+    text-align: center;
+  }
+  .map-pin::before {
+    content: '+';
+    display: block;
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  /* ─── REVIEWS ─── */
+  #reviews { background: var(--dark); }
+  .reviews-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #333;
+    padding: 24px 32px;
+    margin-bottom: 1px;
+    background: var(--black);
+  }
+  .rating-display {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .rating-num {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--orange);
+    line-height: 1;
+    font-family: var(--mono);
+  }
+  .rating-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #555;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .rating-meta strong {
+    display: block;
+    color: #888;
+    font-size: 13px;
+  }
+  .review-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: #333;
+    border: 1px solid #333;
+    border-top: none;
+  }
+  .review-card {
+    background: var(--black);
+    padding: 28px 24px;
+    position: relative;
+  }
+  .review-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .reviewer-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+  }
+  .review-stars {
+    font-size: 12px;
+    color: var(--orange);
+    letter-spacing: 2px;
+  }
+  .review-text {
+    font-size: 14px;
+    color: #aaa;
+    line-height: 1.7;
+    font-style: italic;
+  }
+  .review-text::before { content: '"'; color: var(--orange); font-size: 24px; line-height: 0.5; display: block; margin-bottom: 8px; font-style: normal; }
+
+  /* ─── CTA ─── */
+  #contact {
+    background: var(--black);
+    border-top: 1px solid #1a1a1a;
+    position: relative;
+    overflow: hidden;
+  }
+  #contact::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 40px,
+      rgba(255,82,0,0.02) 40px,
+      rgba(255,82,0,0.02) 80px
+    );
+  }
+  .cta-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 64px;
+    align-items: center;
+  }
+  .cta-text h2 {
+    font-size: clamp(32px, 5vw, 72px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+  .cta-text h2 span { color: var(--orange); }
+  .cta-text p {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #555;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .cta-actions { display: flex; flex-direction: column; gap: 16px; align-items: flex-end; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--dark);
+    border-top: 1px solid #222;
+    padding: 24px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  footer .mono {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #444;
+  }
+  footer .mono a { color: var(--orange); text-decoration: none; }
+
+  /* ─── MOBILE ─── */
+  @media (max-width: 768px) {
+    nav { padding: 0 20px; }
+    .nav-status { display: none; }
+    .nav-links { display: none; }
+
+    #hero { grid-template-columns: 1fr; min-height: auto; }
+    .hero-left { padding: 48px 24px; }
+    .hero-right { min-height: 320px; }
+
+    .container { padding: 0 24px; }
+    section { padding: 64px 0; }
+
+    .section-header { flex-direction: column; gap: 16px; }
+
+    .about-grid { grid-template-columns: 1fr; gap: 40px; }
+    .menu-grid { grid-template-columns: 1fr; }
+    .location-grid { grid-template-columns: 1fr; }
+    .review-grid { grid-template-columns: 1fr; }
+
+    .cta-inner { grid-template-columns: 1fr; gap: 32px; }
+    .cta-actions { align-items: flex-start; }
+
+    footer { flex-direction: column; gap: 12px; text-align: center; }
+    .hero-specs { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">ESC<span>®</span> — <span style="color:#555;font-weight:400">Field Ops HQ</span></div>
+  <div class="nav-status">
+    <span><span class="status-dot"></span>ONLINE</span>
+    <span>PDX-142</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#about">Profile</a></li>
+    <li><a href="#menu">Inventory</a></li>
+    <li><a href="#location">Coordinates</a></li>
+    <li><a href="#contact">Deploy</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-left">
+    <div class="hero-serial mono" style="color:#333">SN-ESC-2019-001 // REV. 4.8 // PORTLAND, OR</div>
+    <div class="hero-eyebrow">
+      <span class="tag active">ACTIVE</span>
+      <span class="tag">FIELD TESTED</span>
+    </div>
+    <h1>ELM<em>STREET</em>COFFEE<span style="color:var(--orange);font-size:0.4em;vertical-align:super">®</span></h1>
+    <div class="hero-tagline">// Craft coffee, roasted in-house //</div>
+    <div class="hero-specs">
+      <div class="spec-cell">
+        <div class="spec-label">Est.</div>
+        <div class="spec-value">2019</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-label">Rating</div>
+        <div class="spec-value">4.8★</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-label">Reviews</div>
+        <div class="spec-value">340+</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-label">Status</div>
+        <div class="spec-value" style="color:var(--orange)">OPEN</div>
+      </div>
+    </div>
+    <div class="hero-cta">
+      <a href="#menu" class="btn-primary">// View Inventory</a>
+      <a href="#location" class="btn-secondary">Find Location</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-visual">
+      <div class="target">
+        <div class="target-ring"></div>
+        <div class="target-ring"></div>
+        <div class="target-ring"></div>
+        <div class="target-ring"></div>
+        <div class="target-line-h"></div>
+        <div class="target-line-v"></div>
+        <div class="target-center"></div>
+        <div class="target-label top mono" style="font-size:9px">N 45.5051°</div>
+        <div class="target-label bottom mono" style="font-size:9px">S 45.5051°</div>
+        <div class="target-label left mono" style="font-size:9px;white-space:nowrap">W 122°</div>
+        <div class="target-label right mono" style="font-size:9px;white-space:nowrap">PDX</div>
+      </div>
+    </div>
+    <div class="hero-right-badge">
+      <div>Operational Since</div>
+      <strong>2019</strong>
+      <div>Portland, OR</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-num">01.</div>
+      <div>
+        <h2 class="section-title">Unit Profile<span class="sub">// Operational Overview</span></h2>
+      </div>
+    </div>
+    <div class="about-grid">
+      <div class="about-text">
+        <p>Elm Street Coffee launched in 2019 as a precision-first specialty coffee operation embedded in Portland's lower west side. Every variable is controlled. Every bean is selected. Every roast is logged.</p>
+        <p>We source single-origin beans from verified farms, roast on-site in small batches, and calibrate every brew to spec. This is not ambiance. This is craft, executed with discipline.</p>
+        <p>Our workspace is engineered for focused operators: stable power, fast wifi, and a signal-to-noise ratio optimized for getting things done.</p>
+        <div class="field-tested">[ FIELD TESTED // PDX // 2019–PRESENT ]</div>
+      </div>
+      <div class="about-stats">
+        <div class="stat-block" data-label="METRIC // RATING">
+          <div class="corner-bracket tl"></div>
+          <div class="corner-bracket br"></div>
+          <div class="stat-num">4.8</div>
+          <div class="stat-desc">avg. verified score</div>
+        </div>
+        <div class="stat-block" data-label="METRIC // REVIEWS">
+          <div class="corner-bracket tl"></div>
+          <div class="corner-bracket br"></div>
+          <div class="stat-num">340+</div>
+          <div class="stat-desc">field reports filed</div>
+        </div>
+        <div class="stat-block" data-label="METRIC // ORIGIN">
+          <div class="corner-bracket tl"></div>
+          <div class="corner-bracket br"></div>
+          <div class="stat-num">100%</div>
+          <div class="stat-desc">single-origin beans</div>
+        </div>
+        <div class="stat-block" data-label="METRIC // UPTIME">
+          <div class="corner-bracket tl"></div>
+          <div class="corner-bracket br"></div>
+          <div class="stat-num">6yr</div>
+          <div class="stat-desc">continuous operation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu">
+  <div class="container">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-num">02.</div>
+      <div>
+        <h2 class="section-title">Item Inventory<span class="sub">// Current field menu</span></h2>
+      </div>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-item">
+        <div class="menu-item-code">SKU-001 // FILTER</div>
+        <div class="menu-item-status"><span class="tag active">STOCKED</span></div>
+        <div class="menu-item-name">Pour Over</div>
+        <div class="menu-item-desc">Single-origin. Hand-poured.<br>Precise. Clean. No compromise.</div>
+        <div class="menu-item-price">$5.00</div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-code">SKU-002 // ESPRESSO</div>
+        <div class="menu-item-status"><span class="tag active">STOCKED</span></div>
+        <div class="menu-item-name">Cortado</div>
+        <div class="menu-item-desc">Equal parts espresso and<br>steamed milk. Calibrated ratio.</div>
+        <div class="menu-item-price">$4.50</div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-code">SKU-003 // COLD</div>
+        <div class="menu-item-status"><span class="tag active">STOCKED</span></div>
+        <div class="menu-item-name">Cold Brew</div>
+        <div class="menu-item-desc">18-hour steep. Nitrogen<br>optional. Cold chain intact.</div>
+        <div class="menu-item-price">$5.50</div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-code">SKU-004 // FOOD</div>
+        <div class="menu-item-status"><span class="tag active">STOCKED</span></div>
+        <div class="menu-item-name">Avocado Toast</div>
+        <div class="menu-item-desc">Local sourced. Prepared fresh.<br>Calorie-dense. Mission-ready.</div>
+        <div class="menu-item-price">$12.00</div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-code">SKU-005 // BAKED</div>
+        <div class="menu-item-status"><span class="tag">SEASONAL</span></div>
+        <div class="menu-item-name">Seasonal Pastries</div>
+        <div class="menu-item-desc">Local bakery partners.<br>Inventory rotates. Ask unit.</div>
+        <div class="menu-item-price">$4.00</div>
+      </div>
+      <div class="menu-item" style="background:#0a0a0a;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:200px">
+        <div style="font-family:var(--mono);font-size:11px;color:#333;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">// All items</div>
+        <div style="font-family:var(--mono);font-size:11px;color:#444;letter-spacing:0.1em;text-transform:uppercase">Roasted in-house<br>Local sourced<br>No exceptions</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOURS & LOCATION -->
+<section id="location">
+  <div class="container">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-num">03.</div>
+      <div>
+        <h2 class="section-title">Field Coordinates<span class="sub">// Hours + Location data</span></h2>
+      </div>
+    </div>
+    <div class="location-grid">
+      <div class="loc-block">
+        <div class="loc-label">Operational Hours</div>
+        <div class="hours-row"><span class="hours-day">MON–FRI</span><span class="hours-time">06:00 – 18:00</span></div>
+        <div class="hours-row"><span class="hours-day">SAT–SUN</span><span class="hours-time">07:00 – 17:00</span></div>
+        <div class="hours-row" style="margin-top:16px;padding-top:16px;border-top:1px solid #222">
+          <span class="hours-day" style="color:var(--orange)">STATUS</span>
+          <span class="tag active">OPERATIONAL</span>
+        </div>
+      </div>
+      <div class="loc-block">
+        <div class="loc-label">Grid Reference</div>
+        <div class="address-line">
+          <strong>Elm Street Coffee®</strong>
+          142 Elm Street<br>
+          Portland, OR 97201<br>
+          (503) 555-0142
+        </div>
+        <div class="coords">LAT: 45.5051° N // LNG: 122.6750° W</div>
+        <div class="map-placeholder">
+          <div class="map-grid-lines"></div>
+          <div class="map-pin">142 ELM ST // PDX</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="container">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-num">04.</div>
+      <div>
+        <h2 class="section-title">Field Reports<span class="sub">// Verified user feedback</span></h2>
+      </div>
+    </div>
+    <div class="reviews-header-bar">
+      <div class="rating-display">
+        <div class="rating-num">4.8</div>
+        <div class="rating-meta">
+          <strong>340+ reports filed</strong>
+          Verified avg. score
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag active">4.8 / 5.0</span>
+        <span class="tag">HIGHLY RATED</span>
+      </div>
+    </div>
+    <div class="review-grid">
+      <div class="review-card">
+        <div class="review-header">
+          <span class="reviewer-name">M. Chen</span>
+          <span class="review-stars">★★★★★</span>
+        </div>
+        <div class="review-text">Best pour over in Portland. They actually care about the extraction. No shortcuts, no compromise. This is the real thing.</div>
+      </div>
+      <div class="review-card">
+        <div class="review-header">
+          <span class="reviewer-name">J. Okonkwo</span>
+          <span class="review-stars">★★★★★</span>
+        </div>
+        <div class="review-text">I work from here three days a week. Solid wifi, zero noise policy, and the cold brew keeps me in the zone. Infrastructure matters.</div>
+      </div>
+      <div class="review-card">
+        <div class="review-header">
+          <span class="reviewer-name">S. Park</span>
+          <span class="review-stars">★★★★★</span>
+        </div>
+        <div class="review-text">The in-house roasting is not a gimmick. You can taste the difference. Cortado is perfectly balanced, every single time.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact">
+  <div class="container">
+    <div class="cta-inner">
+      <div class="cta-text">
+        <div style="margin-bottom:16px"><span class="tag">DEPLOY NOW</span></div>
+        <h2>Report<span><br>to HQ</span></h2>
+        <p>// 142 Elm Street, Portland, OR // (503) 555-0142</p>
+      </div>
+      <div class="cta-actions">
+        <a href="tel:5035550142" class="btn-primary" style="white-space:nowrap">// Call: (503) 555-0142</a>
+        <a href="#location" class="btn-secondary" style="white-space:nowrap">View Coordinates</a>
+        <div class="mono" style="font-size:10px;color:#333;text-align:right;margin-top:8px">FREE WIFI // WORKSPACE // EST. 2019</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="mono">ESC® // SN-2019-001 // PDX-142 // <a href="tel:5035550142">(503) 555-0142</a></div>
+  <div class="mono">© 2025 Elm Street Coffee® — All specifications subject to change</div>
+  <div class="mono"><span style="color:#333">REV.4.8 // STATUS: </span><span style="color:var(--orange)">ACTIVE</span></div>
+</footer>
+
+</body>
+</html>
