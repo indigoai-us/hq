@@ -1,3 +1,19 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-24"
+sources: []
+related:
+  - "knowledge/hq-core/desktop-company-isolation.md"
+  - "knowledge/hq-core/hq-structure-detection.md"
+tags:
+  - hq-core
+  - desktop
+  - claude-code
+  - integration
+decay_rate: 0.02
+access_count: 0
+---
 # Desktop <-> Claude Code Integration
 
 > US-024: Analysis of how HQ Desktop and Claude Code coexist -- shared file access patterns, concurrent editing safety, MCP server potential, and Desktop-as-MCP-client architecture.
@@ -102,16 +118,16 @@ For Desktop to consume these:
 
 Desktop already has Claude session awareness via `list_claude_sessions` (Rust command in `files.rs`, lines 577-678):
 
-- **Data source**: Reads `.claude/projects/-Users-{your-username}-Documents-HQ/*.jsonl` files
+- **Data source**: Reads `.claude/projects/-Users-{username}-Documents-HQ/*.jsonl` files
 - **Extracted fields**: `session_id`, `slug`, `cwd`, `git_branch`, `first_message`, `timestamp`, `size_bytes`
 - **Display**: Shown in the Empire view as part of `EmpireData.claude_sessions`
-- **Limitation**: Only reads sessions for the HQ project directory. Does not discover sessions from other repos (e.g., {Product}, {company-2}-site)
+- **Limitation**: Only reads sessions for the HQ project directory. Does not discover sessions from other repos (e.g., {repo}, widgets-site)
 
 ### Gaps and Enhancements Needed
 
 | Gap | Current | Needed |
 |---|---|---|
-| Multi-repo session discovery | Only reads `~/.claude/projects/-Users-{your-username}-Documents-HQ/` | Scan all `~/.claude/projects/*/` directories, map to known repos via manifest |
+| Multi-repo session discovery | Only reads `~/.claude/projects/-Users-{username}-Documents-HQ/` | Scan all `~/.claude/projects/*/` directories, map to known repos via manifest |
 | Live session detection | No way to distinguish active vs. completed sessions | Check for PTY sessions running `claude` process; cross-reference with session JSONL timestamps |
 | Session content parsing | Reads first 10 lines only | Parse session JSONL fully for: tool usage, files modified, token consumption, error count |
 | Terminal ↔ Session linking | Desktop PTY sessions track `sessionId` but not Claude session ID | When Desktop spawns `claude` via PTY, capture the Claude session ID from stdout and link it in the session store |

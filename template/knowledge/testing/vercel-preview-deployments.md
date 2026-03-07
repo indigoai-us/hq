@@ -1,31 +1,43 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-07"
+sources: []
+related:
+  - "knowledge/testing/e2e-cloud.md"
+  - "knowledge/hq-core/vercel-multi-account.md"
+tags:
+  - testing
+  - vercel
+  - deployment
+decay_rate: 0.02
+access_count: 0
+---
 # Vercel Preview Deployments
 
 Guide for agents to deploy and test against Vercel preview environments.
 
 ## Overview
 
-The hq-installer landing page (`installer/docs/`) is deployed to Vercel with automatic preview deployments for E2E testing.
+Vercel preview deployments provide unique URLs for each branch, enabling E2E testing against isolated environments before merging to main.
 
-- **Project:** `hq-installer`
-- **Team:** `frog-bear` (ID: `team_sa0DwyP6xg1ysfLxDJaQbXnu`)
-- **Project ID:** `prj_N1DCW3NCbjdpJE3ePWJIYP8RXoxD`
-- **Production URL:** https://hq-installer.vercel.app
+- **Project:** Configure via `vercel.json` or Vercel Dashboard
+- **Team ID:** Set via `VERCEL_TEAM_ID` environment variable or `{VERCEL_TEAM_ID}`
+- **Project ID:** Set via `VERCEL_PROJECT_ID` environment variable or `{VERCEL_PROJECT_ID}`
 
 ## Deploying Previews
 
 ### Manual Preview Deployment (Recommended for Testing)
 
 ```bash
-cd C:/my-hq
 vercel deploy --yes --target=preview -m "branch=$(git branch --show-current)"
 ```
 
-This creates a unique preview URL like: `https://hq-installer-{hash}-frog-bear.vercel.app`
+This creates a unique preview URL like: `https://{project}-{hash}-{team}.vercel.app`
 
 ### Production Deployment
 
 ```bash
-cd C:/my-hq
 vercel deploy --yes --prod
 ```
 
@@ -35,7 +47,7 @@ vercel deploy --yes --prod
 
 List recent deployments:
 ```bash
-vercel ls hq-installer
+vercel ls {project-name}
 ```
 
 Inspect a specific deployment:
@@ -46,14 +58,14 @@ vercel inspect <deployment-url>
 ### Via Vercel MCP (When Available)
 
 The Vercel MCP tools require `projectId` and `teamId` parameters:
-- `projectId`: `prj_N1DCW3NCbjdpJE3ePWJIYP8RXoxD`
-- `teamId`: `team_sa0DwyP6xg1ysfLxDJaQbXnu`
+- `projectId`: Set via `VERCEL_PROJECT_ID` or retrieve from `.vercel/project.json`
+- `teamId`: Set via `VERCEL_TEAM_ID` or retrieve from `.vercel/project.json`
 
 ### URL Patterns
 
-- **Production:** `https://hq-installer.vercel.app`
-- **Preview (hash):** `https://hq-installer-{hash}-frog-bear.vercel.app`
-- **Branch alias:** `https://hq-installer-{username}-frog-bear.vercel.app`
+- **Production:** `https://{project}.vercel.app`
+- **Preview (hash):** `https://{project}-{hash}-{team}.vercel.app`
+- **Branch alias:** `https://{project}-{username}-{team}.vercel.app`
 
 ## Testing Against Preview Deployments
 
@@ -78,8 +90,8 @@ curl -s -o /dev/null -w "%{http_code}" https://<preview-url>
 
 Add via API:
 ```bash
-curl -X POST "https://api.vercel.com/v10/projects/<project-id>/env?teamId=<team-id>" \
-  -H "Authorization: Bearer <token>" \
+curl -X POST "https://api.vercel.com/v10/projects/{VERCEL_PROJECT_ID}/env?teamId={VERCEL_TEAM_ID}" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"key":"VAR_NAME","value":"value","type":"plain","target":["preview"]}'
 ```
@@ -108,8 +120,8 @@ Currently requires manual deployment via CLI.
 ### 401 Unauthorized on Preview URL
 SSO protection may be enabled. Disable via API:
 ```bash
-curl -X PATCH "https://api.vercel.com/v9/projects/<project-id>?teamId=<team-id>" \
-  -H "Authorization: Bearer <token>" \
+curl -X PATCH "https://api.vercel.com/v9/projects/{VERCEL_PROJECT_ID}?teamId={VERCEL_TEAM_ID}" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"ssoProtection": null}'
 ```

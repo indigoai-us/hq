@@ -1,3 +1,18 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-24"
+sources: []
+related:
+  - "knowledge/hq-core/starter-kit-compatibility-contract.md"
+  - "knowledge/hq-core/desktop-company-isolation.md"
+tags:
+  - hq-core
+  - desktop
+  - structure-detection
+decay_rate: 0.02
+access_count: 0
+---
 # HQ Structure Detection Requirements
 
 > US-001: Audit of required vs optional directories and files that constitute a valid HQ instance, with comparison of starter-kit to personal HQ and detection algorithm for Desktop.
@@ -62,7 +77,7 @@ Present in every fresh `hq-starter-kit` clone. Desktop should expect these and r
 
 ### Extended (Personal HQ Additions)
 
-Present in {your-name}'s production HQ but NOT in the starter-kit. These represent advanced/custom features:
+Present in the user's production HQ but NOT in the starter-kit. These represent advanced/custom features:
 
 | Path | Type | Purpose | Starter Equivalent |
 |------|------|---------|-------------------|
@@ -118,7 +133,7 @@ Present in {your-name}'s production HQ but NOT in the starter-kit. These represe
 | **Workers** | 1 (sample-worker) | 40+ (10 private, 30 public across dev-team, content-team, pr-team) | Full worker ecosystem |
 | **Worker Layout** | Flat `workers/` | Split `workers/public/` + `workers/private/` | Visibility separation |
 | **Knowledge** | Flat `knowledge/` (8 dirs) | Split `knowledge/public/` + `knowledge/private/`, symlinked to git repos | Repo-backed, visibility-split |
-| **Companies** | Not present (optional) | 5 companies ({company-1}, {company-2}, {company-3}, personal, {company-7}) + manifest.yaml | Multi-company isolation |
+| **Companies** | Not present (optional) | 5 companies (acme, widgets, designco, personal, side-project) + manifest.yaml | Multi-company isolation |
 | **Projects** | .gitkeep placeholder | 60+ projects with prd.json, README, orchestrator state | Full project lifecycle |
 | **Orchestrator** | .gitkeep | state.json + per-project dirs + checkouts.json | Active execution state |
 | **Threads** | .gitkeep | 170+ thread JSONs + handoff.json + INDEX.md + recent.md | Rich session history |
@@ -398,7 +413,7 @@ The current HQ Desktop Rust backend (`files.rs`, `orchestrator.rs`) hardcodes th
 | `list_checkpoints()` | `~/Documents/HQ/workspace/checkpoints` |
 | `list_companies()` | `~/Documents/HQ/companies` |
 | `list_projects()` | `~/Documents/HQ/projects` |
-| `list_claude_sessions()` | `~/.claude/projects/-Users-{your-username}-Documents-HQ` (user-specific!) |
+| `list_claude_sessions()` | `~/.claude/projects/-Users-{username}-Documents-HQ` (user-specific!) |
 | `get_hq_stats()` | `~/Documents/HQ` (multiple sub-paths) |
 | `get_worker_detail()` | `~/Documents/HQ/workers/{id}` (flat, not public/private split) |
 | `get_company_detail()` | `~/Documents/HQ/companies/{id}` |

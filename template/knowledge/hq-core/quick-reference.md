@@ -1,3 +1,18 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-07"
+sources: []
+related:
+  - "knowledge/hq-core/ephemeral-ui-protocol.md"
+  - "knowledge/hq-core/post-project-completion.md"
+tags:
+  - hq-core
+  - reference
+  - commands
+decay_rate: 0.02
+access_count: 0
+---
 # HQ Quick Reference
 
 ## Directory Structure
@@ -5,13 +20,13 @@
 ```
 HQ/
 ├── .claude/commands/   # Slash commands (22, visibility: public|private in frontmatter)
-├── agents.md           # {your-name}'s profile
+├── agents.md           # the user's profile
 ├── companies/          # Company-scoped resources
-│   ├── {company-1}/    # LR settings, data, knowledge
-│   ├── {company-2}/         # {Company-2} settings, data, knowledge
-│   ├── {company-3}/         # {Company-3} settings, data, knowledge
+│   ├── acme/    # LR settings, data, knowledge
+│   ├── widgets/         # Widgets Inc settings, data, knowledge
+│   ├── designco/         # Design Co settings, data, knowledge
 │   ├── personal/       # Personal settings, data, knowledge
-│   └── {company-7}/  # Band settings, data, knowledge
+│   └── band-tbd/       # Band brand, music, social
 ├── knowledge/
 │   ├── public/         # Symlinks → repos/public/knowledge-* (each folder = own git repo)
 │   └── private/        # Symlinks → repos/private/knowledge-* (each folder = own git repo)
@@ -22,7 +37,7 @@ HQ/
 ├── settings/           # Symlinks to companies/*/settings/
 ├── workers/
 │   ├── public/         # Shareable workers (dev-team, content-*, qa, etc.)
-│   └── private/        # Company/personal workers (cfo, cmo, x-{your-handle}, etc.)
+│   └── private/        # Company/personal workers (cfo, cmo, x-poster, etc.)
 └── workspace/
     ├── checkpoints/    # Session saves
     ├── orchestrator/   # Ralph loop workflow state
@@ -34,12 +49,11 @@ HQ/
 
 | Company | Contents |
 |---------|----------|
-| {company-1} | Stripe, Gusto, Deel, QB, Shopify creds; LR metrics/schema |
-| {company-2} | Figma, Linear, Drive, Clerk creds; brand/marketing/verticals/case-studies |
-| {company-3} | Brand, products, messaging, social calendar |
+| acme | Stripe, Gusto, Deel, QB, Shopify creds; LR metrics/schema |
+| widgets | Figma, Linear, Drive, Clerk creds; brand/marketing/verticals/case-studies |
+| designco | Brand, products, messaging, social calendar |
 | personal | Slack, X, LinkedIn creds; voice/style docs |
-| {company-7} | X, Instagram creds; brand, music, recording, social knowledge |
-| {company-4} | Artist management; artist-manager app |
+| band-tbd | Brand, music, recording, projects, social |
 
 ## Workers
 
@@ -61,11 +75,11 @@ content-brand (voice/tone), content-sales (conversion copy), content-product (fe
 
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {Company-1} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {Company-1} | Data analysis |
-| cmo-{company} | {Company-2} | Marketing ops (Drive, Figma, Linear) |
-| cmo-{company} | {Company-3} | Social/content (X, LinkedIn) |
-| x-{your-handle} | Personal | X/Twitter posting |
+| cfo-worker | Acme Corp | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| analyst-worker | Acme Corp | Data analysis |
+| cmo-worker | Widgets Inc | Marketing ops (Drive, Figma, Linear) |
+| cmo-worker-2 | Design Co | Social/content (X, LinkedIn) |
+| x-poster | Personal | X/Twitter posting |
 | invoices | Personal | Invoice generation |
 
 ## Commands
@@ -79,7 +93,7 @@ content-brand (voice/tone), content-sales (conversion copy), content-product (fe
 **Deploy:** `/publish-kit`
 
 *Moved to workers:* svg (frontend-designer), humanize (content-brand)
-*Moved to repos:* {product}-pr ({Product} repo), {company-2}-deploy ({company-2} knowledge), {company}-deploy ({company}-deploy worker)
+*Moved to repos:* {repo}-pr ({repo} repo), widgets-deploy (widgets knowledge), {repo}-deploy ({repo}-deploy worker)
 
 ## Knowledge Bases
 
@@ -97,11 +111,10 @@ Private (in `knowledge/private/`):
 - `linear/` - Linear integration knowledge
 
 Company-level (in `companies/{co}/knowledge/`):
-- `companies/{company-1}/knowledge/` - LR metrics, schema, integrations
-- `companies/{company-2}/knowledge/` - brand, products, verticals, case-studies, ontology
-- `companies/{company-3}/knowledge/` - brand, products, messaging
+- `companies/acme/knowledge/` - LR metrics, schema, integrations
+- `companies/widgets/knowledge/` - brand, products, verticals, case-studies, ontology
+- `companies/designco/knowledge/` - brand, products, messaging
 - `companies/personal/knowledge/` - voice, style
-- `companies/{company-7}/knowledge/` - brand, music, social, recording
 
 ## Knowledge Repo Inventory
 
@@ -116,8 +129,7 @@ Company-level (in `companies/{co}/knowledge/`):
 | `knowledge/public/workers` | `repos/public/knowledge-workers` | public |
 | `knowledge/public/projects` | `repos/public/knowledge-projects` | public |
 | `knowledge/private/linear` | `repos/private/knowledge-linear` | private |
-| `companies/{company-2}/knowledge` | `repos/private/knowledge-{company-2}` | private |
-| `companies/{company-1}/knowledge` | `repos/private/knowledge-{company-1}` | private |
-| `companies/{company-3}/knowledge` | `repos/private/knowledge-{company-3}` | private |
+| `companies/widgets/knowledge` | `repos/private/knowledge-widgets` | private |
+| `companies/acme/knowledge` | `repos/private/knowledge-acme` | private |
+| `companies/designco/knowledge` | `repos/private/knowledge-designco` | private |
 | `companies/personal/knowledge` | `repos/private/knowledge-personal` | private |
-| `companies/{company-7}/knowledge` | `repos/private/knowledge-{company-7}` | private |

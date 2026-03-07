@@ -1,3 +1,19 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-24"
+sources: []
+related:
+  - "knowledge/hq-core/desktop-claude-code-integration.md"
+  - "knowledge/hq-core/starter-kit-compatibility-contract.md"
+tags:
+  - hq-core
+  - desktop
+  - company-isolation
+  - security
+decay_rate: 0.02
+access_count: 0
+---
 # Company Isolation in HQ Desktop
 
 How `manifest.yaml` maps to Desktop routing, credential visibility rules, knowledge scoping per company, and company switching UX.
@@ -17,17 +33,17 @@ How `manifest.yaml` maps to Desktop routing, credential visibility rules, knowle
   qmd_collections: [list of names]       # Semantic search collections
 ```
 
-Nullable fields: `knowledge` ({company-7} has `null`), `settings` (can be empty array), `qmd_collections` (can be empty array).
+Nullable fields: `knowledge` (side-project has `null`), `settings` (can be empty array), `qmd_collections` (can be empty array).
 
 ### Current Companies
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company-1} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-{company}, {company}-analyst, {company}-deploy | yes | {company-1}, {product} |
-| {company-2} | {company-2}-site, {company-2}-cmohq | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company-2}-brand-writer, {company-2}-copy-auditor | yes | {company-2} |
-| {company-3} | {company-3}-advisory | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company-3} |
-| personal | (none) | slack + (on disk: gmail, linkedin, x) | x-{your-handle}, invoices | yes | personal |
-| {company-7} | {company-7}-portal | (none) | (none) | null | (none) |
+| acme | {repo}, {repo}-popup-builder, agent-ops-hq, {repo}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-worker, analyst-worker, {repo}-deploy | yes | acme, {repo} |
+| widgets | widgets-site, widgets-cmohq | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-worker, brand-writer, widgets-copy-auditor | yes | widgets |
+| designco | designco-advisory | (on disk: linkedin, loops, meta, x) | cmo-worker-2 | yes | designco |
+| personal | (none) | slack + (on disk: gmail, linkedin, x) | x-poster, invoices | yes | personal |
+| side-project | side-project-portal | (none) | (none) | null | (none) |
 
 Note: The manifest `settings` list does not always match the on-disk contents of `companies/{id}/settings/`. Desktop must discover settings from the filesystem, but the manifest defines which are "declared" vs which are incidental.
 
@@ -104,7 +120,7 @@ Settings files fall into three sensitivity tiers:
 |------|-------------|-----------------|----------|
 | **Secret** | API keys, tokens, OAuth credentials, service account JSON | NEVER display content. Show file name only, with a lock icon. Content masked as `[REDACTED]` | `stripe/*.json`, `google-cloud/*.json`, `gmail/credentials.json`, `linear/*.json` |
 | **Config** | Non-secret configuration (feature flags, org IDs, display names) | Display content read-only | `browser-state/*.json` (session state, not secrets), `analytics/config.yaml` |
-| **Reference** | Documentation, guides, READMEs within settings dirs | Display content freely | `{company-3}/settings/README.md` |
+| **Reference** | Documentation, guides, READMEs within settings dirs | Display content freely | `designco/settings/README.md` |
 
 ### Detection Heuristic
 
@@ -136,7 +152,7 @@ Desktop MUST NOT allow viewing Company A's settings when Company B is the active
 
 ### How Company Filter Maps to Knowledge Access
 
-Each company's knowledge is stored at `companies/{id}/knowledge/`, which is a symlink to an independent git repo (e.g., `repos/private/knowledge-{company-1}/`).
+Each company's knowledge is stored at `companies/{id}/knowledge/`, which is a symlink to an independent git repo (e.g., `repos/private/knowledge-acme/`).
 
 When `activeCompany` is set:
 
@@ -154,7 +170,7 @@ When searching via qmd, the active company determines the default collection:
 function getSearchCollections(activeCompany: string | null): string[] {
   if (!activeCompany) return ['hq']  // search everything
   const manifest = getManifest(activeCompany)
-  return manifest.qmd_collections  // e.g., ['{company-1}', '{product}'] for {Company-1}
+  return manifest.qmd_collections  // e.g., ['acme', '{repo}'] for Acme Corp
 }
 ```
 
@@ -179,9 +195,9 @@ Knowledge
 ├── {activeCompany} (when filtered)
 │   └── {company knowledge files}
 └── All Companies (when no filter)
-    ├── {company-1}/
-    ├── {company-2}/
-    ├── {company-3}/
+    ├── acme/
+    ├── widgets/
+    ├── designco/
     └── personal/
 ```
 
@@ -189,7 +205,7 @@ Knowledge
 
 ### How Changing Company Context Affects All Views
 
-When the user switches the active company (e.g., from "{company-1}" to "{company-2}"), every view must update:
+When the user switches the active company (e.g., from "acme" to "widgets"), every view must update:
 
 | View | Effect of Company Switch |
 |------|------------------------|
@@ -209,7 +225,7 @@ The company picker should appear in the top bar (`top-bar.tsx`) or left sidebar,
 1. **"All" option** -- No company filter, show everything (default state)
 2. **Company list** -- Each company from manifest, with visual indicator (color dot or icon)
 3. **Active indicator** -- Highlight the currently selected company
-4. **Keyboard shortcut** -- Quick switch via command palette (e.g., `/company {company-1}`)
+4. **Keyboard shortcut** -- Quick switch via command palette (e.g., `/company acme`)
 5. **Persistence** -- Remember last active company across app restarts (store in Tauri's app data or localStorage)
 
 ### Visual Differentiation
@@ -218,11 +234,11 @@ Each company should have a consistent color assignment for visual identification
 
 ```typescript
 const companyColors: Record<string, string> = {
-  {company-1}: '#00ff88',   // green (matches brand)
-  {company-2}: '#ffa500',        // orange (matches brand)
-  {company-3}: '#6366f1',        // {company-3} (matches brand name)
+  acme: '#00ff88',   // green (matches brand)
+  widgets: '#ffa500',        // orange (matches brand)
+  designco: '#6366f1',        // designco (matches brand name)
   personal: '#a855f7',      // purple
-  '{company-7}': '#ffd700' // gold (matches brand name)
+  'side-project': '#ffd700' // gold (matches brand name)
 }
 ```
 
@@ -233,7 +249,7 @@ When a company is active, the top bar or sidebar should show a subtle color acce
 1. **Resources owned by multiple companies** -- Not currently possible in manifest schema. Each resource belongs to exactly one company.
 2. **Public workers in company context** -- Always show public workers, but badge them as "Shared" to distinguish from company-owned workers.
 3. **Cross-company projects** -- If a project's `repoPath` is not in any company's manifest `repos`, show it only in "All" view.
-4. **Company with no resources** -- {company-7} has no workers, no settings, no knowledge. Show it in the company list but display an empty state: "No resources configured."
+4. **Company with no resources** -- side-project has no workers, no settings, no knowledge. Show it in the company list but display an empty state: "No resources configured."
 5. **Manifest out of sync** -- Desktop should reload manifest on file change (add `manifest.yaml` to file watcher). If manifest parse fails, fall back to no filtering with a warning toast.
 
 ## Implementation Priority

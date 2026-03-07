@@ -1,3 +1,19 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-24"
+sources: []
+related:
+  - "knowledge/hq-core/hq-structure-detection.md"
+  - "knowledge/hq-core/desktop-company-isolation.md"
+tags:
+  - hq-core
+  - starter-kit
+  - compatibility
+  - desktop
+decay_rate: 0.02
+access_count: 0
+---
 # Starter-Kit Compatibility Contract
 
 > US-023: Defines the minimum HQ structure Desktop requires, feature degradation behavior for simpler instances, and version detection strategy. Enables Desktop to work with any HQ instance from fresh starter-kit to fully evolved production setup.
@@ -51,7 +67,7 @@ Desktop classifies every valid HQ into one of three levels. The level determines
 
 **Definition:** Multi-company structure with extensive workers, projects, and orchestration state. Power user / production HQ.
 
-**Typical instance:** {your-name}'s personal HQ with 5 companies, 40+ workers, 60+ projects, 170+ threads.
+**Typical instance:** the user's personal HQ with 5 companies, 40+ workers, 60+ projects, 170+ threads.
 
 **Structural fingerprint (all of):**
 - `companies/` directory exists with >= 1 company subdirectory

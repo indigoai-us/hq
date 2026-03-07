@@ -1,3 +1,20 @@
+---
+confidence: 0.8
+last_validated: "2026-03-06"
+created_at: "2026-02-07"
+sources:
+  - "https://browserbase.com"
+related:
+  - "knowledge/testing/e2e-cloud.md"
+  - "knowledge/testing/agent-browser-setup.md"
+tags:
+  - testing
+  - e2e
+  - browserbase
+  - cloud-browser
+decay_rate: 0.02
+access_count: 0
+---
 # Browserbase Integration
 
 Cloud browser execution for E2E tests via [Browserbase](https://browserbase.com).
@@ -40,7 +57,7 @@ export BROWSERBASE_API_KEY=bb_...
 export BROWSERBASE_PROJECT_ID=prj_...
 
 # Run tests via Browserbase
-cd installer/tests/e2e
+cd tests/e2e
 npm run test:browserbase
 ```
 
@@ -73,10 +90,10 @@ The test suite supports two execution modes:
 ### Fallback Behavior
 
 If Browserbase connection fails:
-- SDK not installed → Falls back to local Playwright
-- API key invalid → Falls back to local Playwright
-- Session creation fails → Falls back to local Playwright
-- CDP connection fails → Falls back to local Playwright
+- SDK not installed -> Falls back to local Playwright
+- API key invalid -> Falls back to local Playwright
+- Session creation fails -> Falls back to local Playwright
+- CDP connection fails -> Falls back to local Playwright
 
 This ensures tests never break due to Browserbase issues.
 
@@ -175,8 +192,8 @@ Force local execution in workflow dispatch:
 
 | Path | Purpose |
 |------|---------|
-| `installer/tests/e2e/fixtures/browserbase.ts` | Custom fixture for Browserbase connection |
-| `installer/tests/e2e/playwright.config.ts` | Playwright config with Browserbase detection |
+| `tests/e2e/fixtures/browserbase.ts` | Custom fixture for Browserbase connection |
+| `tests/e2e/playwright.config.ts` | Playwright config with Browserbase detection |
 | `.github/workflows/e2e.yml` | GitHub Actions workflow |
 
 ## References
