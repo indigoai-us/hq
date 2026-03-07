@@ -1,0 +1,27 @@
+{
+  "thread_id": "T-20260308-033256-scheduler-e2e",
+  "title": "E2E tests for scheduler plugin (ghq-uik.3.2.6)",
+  "created_at": "2026-03-08T03:32:56Z",
+  "conversation_summary": "Completed task ghq-uik.3.2.6: wrote 5 E2E tests for the Cortex scheduler sidecar plugin (spawn, CRUD, script execution, per-project isolation, crash recovery). Fixed multiple issues along the way: corrupt test DB causing Playwright timeout, sidecar init race condition, SidecarManager signal-kill crash detection, and made DB migrations idempotent. All 5 tests pass, 260/260 unit tests pass, committed and pushed to cortex main. Task closed in beads.",
+  "status": "completed",
+  "task_id": "ghq-uik.3.2.6",
+  "git": {
+    "repo": "cortex",
+    "branch": "main",
+    "commit": "d8dc893",
+    "remote_url": "https://github.com/hassaans/cortex.git"
+  },
+  "files_touched": [
+    "e2e/scheduler.e2e.ts",
+    "packages/main/src/db/schema.ts",
+    "packages/main/src/index.ts",
+    "packages/main/src/sidecar-manager.ts"
+  ],
+  "key_decisions": [
+    "Made DB migrations v5-v7 idempotent with addColumnIfMissing helper to prevent duplicate column errors from partially-applied migrations",
+    "Added waitForSidecarReady pattern to handle async init race condition in sidecar protocol",
+    "Fixed SidecarManager crash detection: signal kills (SIGKILL) produce code=null which was not treated as a crash",
+    "Install message collectors BEFORE spawning/crashing sidecars to avoid missing events"
+  ],
+  "skills_run": ["qa"]
+}

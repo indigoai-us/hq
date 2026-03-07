@@ -8,3 +8,8 @@
 {"ts":"2026-03-04T23:53:00Z","task_id":"ghq-53s.1.5","stories_completed":4,"stories_blocked":0,"skills_invoked":4}
 {"ts":"2026-03-05T01:02:27Z","task_id":"ghq-uik.2.1","stories_completed":8,"stories_blocked":0,"skills_invoked":8,"blocked_stories":[]}
 {"ts":"2026-03-05T18:05:34Z","task_id":"ghq-uik.2.2","stories_completed":7,"stories_blocked":0,"skills_invoked":7}
+{"ts":"2026-03-06T03:22:17Z","task_id":"ghq-uik.2.3","stories_completed":7,"stories_blocked":0,"skills_invoked":["frontend","code-reviewer","qa"],"blocked_stories":[]}
+{"ts":"2026-03-06T04:45:23Z","task_id":"ghq-uik.2.4","stories_completed":5,"stories_blocked":0,"skills_invoked":5,"blocked_stories":[]}
+{"ts":"2026-03-06T05:10:30Z","task_id":"ghq-uik.2.4","stories_completed":5,"stories_blocked":0,"skills_invoked":5,"blocked_stories":[]}
+{"ts":"2026-03-06T14:24:36Z","task_id":"ghq-uik.2.5","stories_completed":6,"stories_blocked":0,"skills_invoked":14,"blocked_stories":[]}
+{"ts":"2026-03-07T18:05:18Z","task_id":"ghq-uik.3.1","stories_completed":5,"stories_blocked":0,"skills_invoked":14,"blocked_stories":[]}
