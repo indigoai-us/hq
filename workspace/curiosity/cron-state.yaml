@@ -1,0 +1,10 @@
+# Curiosity Cycle — Cron State
+# Tracks when the autonomous curiosity cycle last ran and when it's next due.
+# Read by /startwork (missed cycle detection) and /curiosity-cycle (scheduling).
+
+last_run: never
+next_scheduled: "2026-03-07T06:00:00Z"
+frequency: daily
+missed_runs: 0
+status: idle  # idle | running | error
+last_error: null
