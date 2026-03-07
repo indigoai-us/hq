@@ -1,7 +1,7 @@
 worker:
   id: curiosity-engine
   name: "Curiosity Engine"
-  description: "Scans observations, detects knowledge gaps, generates prioritized research questions, and investigates top gaps"
+  description: "Scans observations, detects knowledge gaps, generates prioritized research questions, investigates top gaps, and computes feedback for self-improvement"
   type: ResearchWorker
   version: "1.0"
 
@@ -36,6 +36,10 @@ skills:
   - id: investigate-gap
     file: skills/investigate-gap.md
     description: "Pull top open question from queue, research it, write/update knowledge, mark resolved"
+
+  - id: compute-feedback
+    file: skills/compute-feedback.md
+    description: "Measure knowledge delta, write cycle report, update cumulative metrics, recalibrate observation weights"
 
 verification:
   post_execute:
@@ -77,8 +81,15 @@ instructions: |
   qmd search (existing knowledge first), then web search if needed, write or update a knowledge
   file with findings, set the question status to resolved, and update the knowledge tree.
 
+  ## compute-feedback
+  After a cycle (scan + investigate), measure knowledge delta: count observations processed,
+  questions generated/resolved/wont_fix, knowledge entries created, confidence changes. Write a
+  cycle report to workspace/curiosity/cycles/{date}.yaml, update cumulative metrics, and recalibrate
+  observation weights — reducing priority for observation types that consistently produce low-value
+  (wont_fix) questions. This is the self-improving feedback loop.
+
   ## Rules
-  - Keep skills strictly separated: scan does not research, investigate does not scan
+  - Keep skills strictly separated: scan does not research, investigate does not scan, feedback does not modify queue or knowledge
   - Queue is append-only for questions; only status fields may be edited
   - Deduplicate: merge observations into existing open questions rather than creating duplicates
   - All timestamps in ISO 8601 format

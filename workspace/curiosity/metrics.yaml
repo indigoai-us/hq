@@ -1,0 +1,36 @@
+# Curiosity Engine — Cumulative Metrics
+# Updated by: curiosity-engine worker (compute-feedback skill)
+# Do not edit manually — regenerated after each cycle
+
+total_cycles: 0
+total_questions_resolved: 0
+avg_questions_per_cycle: 0.0
+knowledge_growth_rate: 0.0  # entries per cycle
+
+top_gap_domains: []
+# Ranked list of domains with the most unresolved gaps
+# Format:
+#   - domain: "domain-name"
+#     gap_count: N
+
+observation_type_distribution:
+  knowledge_gap: 0
+  stale_revalidation: 0
+  coverage_gap: 0
+  pattern_gap: 0
+
+# Sensor recalibration weights (default 1.0, reduced for low-value observation types)
+observation_weights:
+  knowledge_gap: 1.0
+  stale_revalidation: 1.0
+  coverage_gap: 1.0
+  pattern_gap: 1.0
+
+# Recalibration history
+recalibration_log: []
+# Format:
+#   - date: "YYYY-MM-DD"
+#     type: "observation_type"
+#     old_weight: 1.0
+#     new_weight: 0.8
+#     reason: "wont_fix rate 55% exceeds 50% threshold"
