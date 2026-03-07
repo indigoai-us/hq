@@ -1,0 +1,85 @@
+worker:
+  id: curiosity-engine
+  name: "Curiosity Engine"
+  description: "Scans observations, detects knowledge gaps, generates prioritized research questions, and investigates top gaps"
+  type: ResearchWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 15m
+  retry_attempts: 1
+  spawn_method: task_tool
+  model: sonnet
+
+context:
+  base:
+    - workers/curiosity-engine/skills/
+    - knowledge/knowledge-tree.yaml
+    - workspace/curiosity/
+  dynamic:
+    - pattern: "knowledge/"
+      when: "skill == 'investigate-gap'"
+    - pattern: "companies/"
+      when: "skill == 'investigate-gap'"
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+    - repos/
+
+skills:
+  - id: scan-and-prioritize
+    file: skills/scan-and-prioritize.md
+    description: "Scan observations, diff against knowledge tree, generate prioritized research questions"
+
+  - id: investigate-gap
+    file: skills/investigate-gap.md
+    description: "Pull top open question from queue, research it, write/update knowledge, mark resolved"
+
+verification:
+  post_execute:
+    - check: queue_yaml_valid
+      command: "node -e \"require('js-yaml').load(require('fs').readFileSync('workspace/curiosity/queue.yaml','utf8'))\""
+  approval_required: false
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+
+reporting:
+  on_complete:
+    - log_questions_generated
+  metrics:
+    - observations_scanned
+    - questions_generated
+    - questions_merged
+    - gaps_investigated
+
+instructions: |
+  # Curiosity Engine
+
+  You are a knowledge gap detection and research worker. You have two distinct modes:
+
+  ## scan-and-prioritize
+  Read observation files from workspace/curiosity/observations/, compare signals against the
+  knowledge tree (knowledge/knowledge-tree.yaml), and generate prioritized research questions
+  in workspace/curiosity/queue.yaml. You do NOT research — you only identify gaps and score them.
+
+  ## investigate-gap
+  Pull the highest-priority open question from workspace/curiosity/queue.yaml, research it using
+  qmd search (existing knowledge first), then web search if needed, write or update a knowledge
+  file with findings, set the question status to resolved, and update the knowledge tree.
+
+  ## Rules
+  - Keep skills strictly separated: scan does not research, investigate does not scan
+  - Queue is append-only for questions; only status fields may be edited
+  - Deduplicate: merge observations into existing open questions rather than creating duplicates
+  - All timestamps in ISO 8601 format
+  - Use qmd vsearch before web search — prefer existing knowledge

@@ -1,0 +1,26 @@
+# Curiosity Engine — Research Question Queue
+# Generated and maintained by: curiosity-engine worker (scan-and-prioritize skill)
+# Schema version: 1.0
+#
+# Question schema:
+#   id: "Q-YYYYMMDD-HHMMSS-NNN"
+#   question: "Clear, specific research question"
+#   type: knowledge_gap | stale_revalidation | coverage_gap | pattern_gap
+#   domain: "knowledge domain"
+#   priority_score: 0-100
+#   source_observations:
+#     - "observations/filename.yaml"
+#   created_at: "ISO 8601"
+#   updated_at: "ISO 8601"
+#   status: open | in_progress | resolved | wont_fix
+#   # Fields added on resolution:
+#   # resolved_at: "ISO 8601"
+#   # resolution_note: "Brief description"
+#   # knowledge_file: "path/to/file.md"
+#
+# Rules:
+# - Append-only for new questions
+# - Status changes are edits, not deletions
+# - Sorted by priority_score descending
+
+questions: []

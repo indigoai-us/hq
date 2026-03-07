@@ -1,0 +1,414 @@
+# Workers Registry
+# Index of all workers in this HQ
+
+# Worker Types:
+# - CodeWorker: Implements features, fixes bugs, refactors
+# - ContentWorker: Drafts content, maintains voice consistency
+# - SocialWorker: Social media posting, engagement
+# - ResearchWorker: Analysis, market research, competitive intel
+# - OpsWorker: Reports, monitoring, automation
+# - Library: Shared utilities (not executable)
+
+version: "8.0"
+updated: "2026-03-06"
+
+workers:
+  # ===================
+  # Example Worker
+  # ===================
+  # Copy workers/sample-worker/ and customize for your own workers.
+  # Run /newworker for guided creation.
+
+  - id: sample-worker
+    path: workers/sample-worker/
+    type: CodeWorker
+    status: active
+    description: "Example worker — copy and customize for your own"
+
+  # ===================
+  # Standalone Workers (6)
+  # ===================
+
+  - id: frontend-designer
+    path: workers/frontend-designer/
+    type: OpsWorker
+    status: active
+    description: "Bold UI generation using Anthropic skill"
+
+  - id: qa-tester
+    path: workers/qa-tester/
+    type: OpsWorker
+    status: active
+    description: "Automated website testing with Playwright + agent-browser smoke tests"
+
+  - id: security-scanner
+    path: workers/security-scanner/
+    type: OpsWorker
+    status: active
+    description: "Security scanning and vulnerability detection"
+
+  - id: pretty-mermaid
+    path: workers/pretty-mermaid/
+    type: OpsWorker
+    status: active
+    description: "Mermaid diagram rendering — SVG/ASCII with 14 themes"
+
+  - id: knowledge-tagger
+    path: workers/knowledge-tagger/
+    type: OpsWorker
+    status: active
+    description: "Auto-classify knowledge docs against ontology and prepend YAML frontmatter"
+
+  - id: site-builder
+    path: workers/site-builder/
+    type: OpsWorker
+    status: active
+    description: "Config-driven local business website generation and deployment"
+
+  # ===================
+  # Gemini Team (3)
+  # ===================
+
+  - id: gemini-coder
+    path: workers/gemini-coder/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Code generation and implementation via Gemini CLI — scaffolding, features, refactoring with 1M token context"
+
+  - id: gemini-reviewer
+    path: workers/gemini-reviewer/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Code review and analysis via Gemini CLI — PR review, file review, security scanning, improvement suggestions"
+
+  - id: gemini-frontend
+    path: workers/gemini-frontend/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Frontend development via Gemini CLI — component building, styling, responsiveness, accessibility"
+
+  # ===================
+  # Dev Team (16)
+  # ===================
+
+  - id: project-manager
+    path: workers/dev-team/project-manager/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PRD lifecycle, issue selection, learning aggregation"
+
+  - id: task-executor
+    path: workers/dev-team/task-executor/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Analyze issue, route to workers, validate completion"
+
+  - id: architect
+    path: workers/dev-team/architect/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "System design, API design, architecture decisions"
+
+  - id: backend-dev
+    path: workers/dev-team/backend-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "API endpoints, business logic, backend implementation"
+
+  - id: database-dev
+    path: workers/dev-team/database-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Schema design, migrations, query optimization"
+
+  - id: frontend-dev
+    path: workers/dev-team/frontend-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "React/Next components, pages, UI implementation"
+
+  - id: dev-qa-tester
+    path: workers/dev-team/qa-tester/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Testing, browser automation, accessibility, demo accounts"
+
+  - id: motion-designer
+    path: workers/dev-team/motion-designer/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Animations, transitions, visual polish, image generation"
+
+  - id: infra-dev
+    path: workers/dev-team/infra-dev/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "CI/CD pipelines, deployment, monitoring"
+
+  - id: code-reviewer
+    path: workers/dev-team/code-reviewer/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PR review, merge management, code quality gating"
+
+  - id: knowledge-curator
+    path: workers/dev-team/knowledge-curator/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Process learnings, update knowledge bases, documentation"
+
+  - id: product-planner
+    path: workers/dev-team/product-planner/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "PRD creation, technical specs, API contracts"
+
+  - id: codex-engine
+    path: workers/dev-team/codex-engine/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "MCP server wrapping @openai/codex-sdk — shared by codex-coder, codex-reviewer, codex-debugger"
+
+  - id: codex-coder
+    path: workers/dev-team/codex-coder/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Code generation via Codex SDK — scaffolding, features, components"
+
+  - id: codex-reviewer
+    path: workers/dev-team/codex-reviewer/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Code review and improvement via Codex SDK — second-opinion after Claude reviewer"
+
+  - id: codex-debugger
+    path: workers/dev-team/codex-debugger/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Debugging and root-cause analysis via Codex SDK — auto-escalation on back-pressure failure"
+
+  - id: context-manager
+    path: workers/dev-team/context-manager/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Discover, maintain, and audit project context"
+
+  # ===================
+  # Content Team (5)
+  # ===================
+
+  - id: content-brand
+    path: workers/content-brand/
+    type: ContentWorker
+    team: content-team
+    status: active
+    description: "Brand voice, messaging, tone analysis"
+
+  - id: content-sales
+    path: workers/content-sales/
+    type: ContentWorker
+    team: content-team
+    status: active
+    description: "Conversion copy, CTAs, value props"
+
+  - id: content-product
+    path: workers/content-product/
+    type: ContentWorker
+    team: content-team
+    status: active
+    description: "Feature accuracy, technical claims verification"
+
+  - id: content-legal
+    path: workers/content-legal/
+    type: ContentWorker
+    team: content-team
+    status: active
+    description: "Regulatory compliance, claim verification"
+
+  - id: content-shared
+    path: workers/content-shared/
+    type: Library
+    team: content-team
+    status: active
+    description: "Shared utilities for content analysis workers (types, parser, scorer, reporter)"
+
+  # ===================
+  # Social Team (5)
+  # ===================
+
+  - id: social-shared
+    path: workers/social-shared/
+    type: Library
+    team: social-team
+    status: active
+    description: "Shared utilities for social team (safety checks, queue ops, Post-Bridge client, verification)"
+
+  - id: social-strategist
+    path: workers/social-strategist/
+    type: ContentWorker
+    team: social-team
+    status: active
+    description: "Content planning and draft creation with profile awareness"
+
+  - id: social-reviewer
+    path: workers/social-reviewer/
+    type: ContentWorker
+    team: social-team
+    status: active
+    description: "Quality gate — reviews drafts, validates safety, only worker that can set status to approved"
+
+  - id: social-publisher
+    path: workers/social-publisher/
+    type: OpsWorker
+    team: social-team
+    status: active
+    description: "Posts approved content via Post-Bridge API — only worker authorized to call posting API"
+
+  - id: social-verifier
+    path: workers/social-verifier/
+    type: OpsWorker
+    team: social-team
+    status: active
+    description: "Delivery verification — confirms posts are live via agent-browser and Post-Bridge API"
+
+  # ===================
+  # Stefan's Workers
+  # ===================
+
+  - id: email-digest
+    path: workers/assistant/email/
+    type: AssistantWorker
+    status: active
+    description: "Morning email digest - Presidential Daily Brief format"
+
+  - id: x-stefan
+    path: workers/social/x-stefan/
+    type: SocialWorker
+    status: active
+    description: "X content drafting - Indigo, AI, experiences, future"
+
+  - id: protofit-coder
+    path: workers/code/protofit/
+    type: CodeWorker
+    status: active
+    description: "Ralph loop for protofit project"
+
+  # ===================
+  # PR Team (6)
+  # ===================
+
+  - id: pr-shared
+    path: workers/pr-shared/
+    type: Library
+    team: pr-team
+    status: active
+    description: "Shared utilities for PR team (types, media DB, pitch/coverage tracking, templates)"
+
+  - id: pr-strategist
+    path: workers/pr-strategist/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "PR strategy, campaign planning, messaging frameworks, competitive intel"
+
+  - id: pr-writer
+    path: workers/pr-writer/
+    type: ContentWorker
+    team: pr-team
+    status: active
+    description: "Press releases, pitches, talking points, op-eds, media alerts, crisis statements"
+
+  - id: pr-outreach
+    path: workers/pr-outreach/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "Journalist research, media list building, pitch personalization, outreach"
+
+  - id: pr-monitor
+    path: workers/pr-monitor/
+    type: ResearchWorker
+    team: pr-team
+    status: active
+    description: "Media monitoring, coverage tracking, sentiment analysis, competitive PR intel"
+
+  - id: pr-coordinator
+    path: workers/pr-coordinator/
+    type: OpsWorker
+    team: pr-team
+    status: active
+    description: "End-to-end PR campaign orchestration, dashboard, content team coordination"
+
+  # ===================
+  # Gardener Team (3)
+  # ===================
+
+  - id: garden-scout
+    path: workers/gardener-team/garden-scout/
+    type: ResearchWorker
+    team: gardener-team
+    status: active
+    description: "Fast scan — detect stale content, orphans, broken links, duplicates, INDEX drift"
+
+  - id: garden-auditor
+    path: workers/gardener-team/garden-auditor/
+    type: ResearchWorker
+    team: gardener-team
+    status: active
+    description: "Deep validation — cross-reference content accuracy, confirm findings, flag conflicts"
+
+  - id: garden-curator
+    path: workers/gardener-team/garden-curator/
+    type: OpsWorker
+    team: gardener-team
+    status: active
+    description: "Execute approved actions — archive, deduplicate, update INDEX, create escalation PRDs"
+
+  # ===================
+  # Custom Workers
+  # ===================
+
+  - id: crm-manager
+    path: workers/crm-manager/
+    type: OpsWorker
+    status: active
+    description: "Contact intelligence: enrich, deduplicate, lookup, and manage CRM contacts"
+
+  - id: blog-writer
+    path: workers/blog-writer/
+    type: ContentWorker
+    team: content-team
+    status: active
+    description: "Research topics and write blog articles for the Indigo blog (getindigo.ai/blog)"
+
+  - id: e2e-guardian
+    path: workers/e2e-guardian/
+    type: OpsWorker
+    status: active
+    description: "Autonomous E2E testing agent — journey knowledge, test generation, video capture, coverage, regression detection"
+
+  - id: curiosity-engine
+    path: workers/curiosity-engine/
+    type: ResearchWorker
+    status: active
+    description: "Knowledge gap detection and research — scans observations, generates prioritized questions, investigates top gaps"
