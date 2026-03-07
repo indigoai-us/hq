@@ -1,0 +1,11 @@
+# Observation: Holler production DB is Neon, not Snoopgres
+# Source: MEMORY.md Holler Database Access section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: companies/hollermgmt
+signal: "Holler production DB is Neon PostgreSQL, not Snoopgres (which is commented out in .env). Uses @neondatabase/serverless with tagged template literals. Running from wrong dir or using function calls causes errors."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-03-05T00:00:00Z"
+frequency: 2
+impact: high

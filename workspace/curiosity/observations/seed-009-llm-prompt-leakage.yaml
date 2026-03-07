@@ -1,0 +1,11 @@
+# Observation: LLM prompt leakage when context data is in user message
+# Source: learning learn-20260301-223000.json
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: patterns
+signal: "LLM prompts for user-facing output must put context data in system message, not user message. User messages should contain only instructions. Prevents the LLM from echoing back raw data as preamble (prompt leakage)."
+source_file: workspace/learnings/learn-20260301-223000.json
+detected_at: "2026-03-01T22:30:00Z"
+frequency: 1
+impact: high

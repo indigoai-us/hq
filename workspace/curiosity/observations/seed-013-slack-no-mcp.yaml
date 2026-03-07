@@ -1,0 +1,11 @@
+# Observation: No Slack MCP exists — must use curl against Web API
+# Source: MEMORY.md Slack Messaging Protocol
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: integrations
+signal: "Slack messaging has no MCP integration — must use curl against Slack Web API with USER token. Sessions repeatedly searched for non-existent Slack MCP tools."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-20T00:00:00Z"
+frequency: 3
+impact: medium

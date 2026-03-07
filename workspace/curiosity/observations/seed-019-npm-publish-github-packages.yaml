@@ -1,0 +1,11 @@
+# Observation: npm publish to GitHub Packages requires specific workflow config
+# Source: thread T-20260307-040000-goclaw-conversational-onboarding-prd
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: integrations
+signal: "npm publish pipeline required fixing: pnpm workflow, .npmrc corruption, GitHub Packages auth. No documented pattern for GitHub Packages publish from pnpm workspaces."
+source_file: workspace/threads/T-20260307-040000-goclaw-conversational-onboarding-prd.json
+detected_at: "2026-03-07T04:00:00Z"
+frequency: 1
+impact: medium

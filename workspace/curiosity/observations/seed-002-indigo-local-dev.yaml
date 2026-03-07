@@ -1,0 +1,11 @@
+# Observation: Indigo local dev stack knowledge was missing
+# Source: thread T-20260306-200000-indigo-insights-toggle
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: indigo
+signal: "Had to discover and document full Indigo local dev stack (5 services) from scratch — knowledge/indigo/local-dev.md created during session"
+source_file: workspace/threads/T-20260306-200000-indigo-insights-toggle.json
+detected_at: "2026-03-06T20:00:00Z"
+frequency: 1
+impact: high

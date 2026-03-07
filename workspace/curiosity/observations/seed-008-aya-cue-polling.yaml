@@ -1,0 +1,11 @@
+# Observation: AYA cue polling must happen immediately after request
+# Source: learning learn-20260301-024200.json
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: integrations
+signal: "After calling aya_request_cue, must immediately poll with aya_check_cue — leaving it pending without auto-polling is a bug"
+source_file: workspace/learnings/learn-20260301-024200.json
+detected_at: "2026-03-01T02:42:00Z"
+frequency: 1
+impact: medium

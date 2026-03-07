@@ -1,0 +1,11 @@
+# Observation: Vercel org/team confusion between companies
+# Source: CLAUDE.md Vercel Deployments + Holler Management sections
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: integrations
+signal: "Holler's Vercel projects are under Indigo's Vercel team, not FrogBear's. Must verify vercel whoami before deploying. Confusion led to incorrect deploys."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-22T00:00:00Z"
+frequency: 2
+impact: high

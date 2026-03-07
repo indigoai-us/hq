@@ -1,0 +1,11 @@
+# Observation: Holler comms EC2 deployment requires SSM workarounds
+# Source: MEMORY.md Holler Comms EC2 Deployment section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: companies/hollermgmt
+signal: "EC2 deployment via SSM requires export HOME=/root and git safe.directory config. Caddy is an orphan container that loses DNS after docker compose recreate — needs manual network reconnect."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-23T00:00:00Z"
+frequency: 2
+impact: high

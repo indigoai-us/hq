@@ -1,0 +1,11 @@
+# Observation: Company credential isolation was violated historically
+# Source: CLAUDE.md Company Isolation section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: hq-core
+signal: "The extensive company isolation rules exist because cross-company credential usage occurred. Never use another company's credentials as fallback. Each company has its own Vercel team, AWS profile, and Linear workspace."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-15T00:00:00Z"
+frequency: 2
+impact: critical

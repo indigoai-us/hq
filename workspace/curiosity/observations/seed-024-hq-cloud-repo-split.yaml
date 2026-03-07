@@ -1,0 +1,11 @@
+# Observation: hq-cloud split from hq repo — legacy code still exists
+# Source: MEMORY.md hq-cloud Architecture section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: hq-core
+signal: "hq-cloud is now its own repo at C:\\repos\\hq-cloud — packages/hq-cloud/ in repos/hq is LEGACY/STALE. The repo split is not documented in knowledge files, only in MEMORY.md."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-26T00:00:00Z"
+frequency: 1
+impact: medium

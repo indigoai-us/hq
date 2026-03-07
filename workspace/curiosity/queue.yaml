@@ -23,4 +23,135 @@
 # - Status changes are edits, not deletions
 # - Sorted by priority_score descending
 
-questions: []
+questions:
+  - id: "Q-20260306-220000-001"
+    question: "What are the different Claude/Anthropic auth methods used across HQ deployments (API key vs OAuth vs Clerk), and when should each be used?"
+    type: knowledge_gap
+    domain: integrations
+    priority_score: 85
+    source_observations:
+      - "observations/seed-023-anthropic-api-key-vs-oauth.yaml"
+      - "observations/seed-021-supabase-auth-not-clerk.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:30:00Z"
+    status: resolved
+    resolved_at: "2026-03-06T22:30:00Z"
+    resolution_note: "Created comprehensive knowledge file covering API key, OAuth, Clerk, and Supabase Auth with decision tree"
+    knowledge_file: "knowledge/integrations/claude-auth-methods.md"
+
+  - id: "Q-20260306-220000-002"
+    question: "How should agent-browser handle Clerk's multi-step sign-in flow for E2E testing, and what is the documented pattern?"
+    type: knowledge_gap
+    domain: testing
+    priority_score: 80
+    source_observations:
+      - "observations/seed-001-clerk-agent-browser-auth.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:30:00Z"
+    status: resolved
+    resolved_at: "2026-03-06T22:30:00Z"
+    resolution_note: "Created Clerk auth E2E testing pattern with agent-browser and Playwright examples, covering multi-step flow and Google OAuth"
+    knowledge_file: "knowledge/testing/clerk-auth-e2e-pattern.md"
+
+  - id: "Q-20260306-220000-003"
+    question: "What is the LLM prompt architecture pattern that prevents output leakage, and how should it be applied across HQ products?"
+    type: pattern_gap
+    domain: patterns
+    priority_score: 78
+    source_observations:
+      - "observations/seed-009-llm-prompt-leakage.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:30:00Z"
+    status: resolved
+    resolved_at: "2026-03-06T22:30:00Z"
+    resolution_note: "Created LLM prompt architecture pattern with system/user message separation, anti-leakage instructions, and post-processing guard"
+    knowledge_file: "knowledge/patterns/llm-prompt-architecture.md"
+
+  - id: "Q-20260306-220000-004"
+    question: "What are the Windows-specific pitfalls when using CLI tools (Vercel, npm, git) that inject carriage returns or path issues?"
+    type: coverage_gap
+    domain: integrations
+    priority_score: 75
+    source_observations:
+      - "observations/seed-007-vercel-env-windows-cr.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-005"
+    question: "What is the complete Vercel multi-org deployment map for all HQ companies (which team owns which projects)?"
+    type: knowledge_gap
+    domain: integrations
+    priority_score: 72
+    source_observations:
+      - "observations/seed-014-vercel-org-confusion.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-006"
+    question: "What is the EC2 SSM deployment pattern for holler-comms, including the Caddy DNS orphan container fix?"
+    type: knowledge_gap
+    domain: companies/hollermgmt
+    priority_score: 70
+    source_observations:
+      - "observations/seed-015-holler-ec2-ssm-deploy.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-007"
+    question: "How does the conversational onboarding pattern (Claude Code as engine, file-based IPC, ephemeral UI) work, and can it be generalized?"
+    type: pattern_gap
+    domain: patterns
+    priority_score: 65
+    source_observations:
+      - "observations/seed-006-goclaw-onboarding-pattern.yaml"
+      - "observations/seed-018-virtuous-cycle-pattern.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-008"
+    question: "What is the correct GitHub Packages npm publish workflow for pnpm monorepos?"
+    type: knowledge_gap
+    domain: integrations
+    priority_score: 60
+    source_observations:
+      - "observations/seed-019-npm-publish-github-packages.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-009"
+    question: "What is the Indigo platform integrations architecture (3 parallel agents) and how does the insights system work?"
+    type: knowledge_gap
+    domain: indigo
+    priority_score: 58
+    source_observations:
+      - "observations/seed-003-indigo-integrations-architecture.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-010"
+    question: "What Tauri CI build issues are common and how should they be resolved (icons, CLI install, runner)?"
+    type: knowledge_gap
+    domain: integrations
+    priority_score: 55
+    source_observations:
+      - "observations/seed-020-tauri-ci-build-issues.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open
+
+  - id: "Q-20260306-220000-011"
+    question: "What is the current hq-cloud repo architecture (split from hq) and what code is legacy/stale?"
+    type: knowledge_gap
+    domain: hq-core
+    priority_score: 52
+    source_observations:
+      - "observations/seed-024-hq-cloud-repo-split.yaml"
+    created_at: "2026-03-06T22:00:00Z"
+    updated_at: "2026-03-06T22:00:00Z"
+    status: open

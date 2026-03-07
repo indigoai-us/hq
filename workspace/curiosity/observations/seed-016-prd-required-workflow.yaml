@@ -1,0 +1,11 @@
+# Observation: Ad-hoc implementation without PRD leads to wasted effort
+# Source: CLAUDE.md learned rule 1
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: hq-core
+signal: "NEVER work on a project without using the actual PRD and /run-project flow. All project work must have a tracked PRD. Ad-hoc implementation without PRD tracking led to wasted effort and unstructured code."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-13T00:00:00Z"
+frequency: 3
+impact: critical

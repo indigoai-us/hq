@@ -1,0 +1,11 @@
+# Observation: C:\hq vs C:\repos\hq confusion
+# Source: CLAUDE.md learned rule 2
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: hq-core
+signal: "Code contributions were made to C:\\hq (installed) instead of C:\\repos\\hq (source). The installed HQ is for personal use; source code changes for PRs go to C:\\repos\\hq."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-13T00:00:00Z"
+frequency: 2
+impact: critical

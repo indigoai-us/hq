@@ -1,0 +1,11 @@
+# Observation: Virtuous cycle pattern applied to HQ itself
+# Source: thread T-20260306-220000-hq-virtuous-cycle-prd
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: patterns
+signal: "The virtuous cycle pattern (knowledge/patterns/virtuous-cycle.md) was applied to HQ itself — observation emission, confidence decay, curiosity engine. This is a meta-application worth documenting as a case study."
+source_file: workspace/threads/T-20260306-220000-hq-virtuous-cycle-prd.json
+detected_at: "2026-03-06T22:00:00Z"
+frequency: 1
+impact: medium

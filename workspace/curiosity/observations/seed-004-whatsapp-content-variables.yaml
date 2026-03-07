@@ -1,0 +1,11 @@
+# Observation: WhatsApp template ContentVariables use named keys, not numbered
+# Source: thread T-20260307-030000-holler-comms-org-context-prd + MEMORY.md
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: integrations
+signal: "WhatsApp template ContentVariables use named keys (e.g. {name: 'FirstName'}) not numbered ({1: 'FirstName'}) — caused outreach failures"
+source_file: workspace/threads/T-20260307-030000-holler-comms-org-context-prd.json
+detected_at: "2026-03-07T03:00:00Z"
+frequency: 2
+impact: high

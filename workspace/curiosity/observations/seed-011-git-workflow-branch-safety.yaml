@@ -1,0 +1,11 @@
+# Observation: Branch safety checks needed before code work
+# Source: CLAUDE.md Branch Safety section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: hq-core
+signal: "Sessions were starting work on branches with uncommitted changes or open PRs, causing conflicts. Branch Safety pre-flight checks were added as a hard rule."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-03-01T00:00:00Z"
+frequency: 2
+impact: high

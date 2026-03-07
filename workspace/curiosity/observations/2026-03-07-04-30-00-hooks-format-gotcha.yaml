@@ -1,0 +1,5 @@
+type: correction
+signal: "Claude Code hooks settings.json format was wrong in 3 consecutive publishes — matcher must be a regex string, not an object. The error message example was misleading."
+domain: ".claude/policies/claude-code-hooks-format.md"
+source_thread: null
+timestamp: "2026-03-07T04:30:00.000Z"

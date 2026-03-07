@@ -1,0 +1,11 @@
+# Observation: scripts/run-project.sh was referenced but never built
+# Source: thread T-20260307-040600-run-project-exp-prd
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: hq-core
+signal: "scripts/run-project.sh was referenced in codebase but never actually built; pure-ralph-loop.sh lacks retry/back-pressure — gap in orchestrator documentation"
+source_file: workspace/threads/T-20260307-040600-run-project-exp-prd.json
+detected_at: "2026-03-07T04:06:00Z"
+frequency: 1
+impact: high

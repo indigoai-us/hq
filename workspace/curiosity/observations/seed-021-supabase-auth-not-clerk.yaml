@@ -1,0 +1,11 @@
+# Observation: Level Fitness uses Supabase Auth, not Clerk
+# Source: MEMORY.md Level Fitness section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: integrations
+signal: "Level Fitness uses Supabase Auth (Google OAuth), NOT Clerk. This is an exception to the 'all HQ products use Indigo Auth (Clerk)' rule. Confusion between auth systems is possible."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-20T00:00:00Z"
+frequency: 1
+impact: medium

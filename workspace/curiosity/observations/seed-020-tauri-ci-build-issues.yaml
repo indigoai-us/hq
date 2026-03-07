@@ -1,0 +1,11 @@
+# Observation: Tauri CI builds have recurring issues (icons, CLI install, runner)
+# Source: thread T-20260307-040000-goclaw-conversational-onboarding-prd
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: integrations
+signal: "Tauri CI builds had issues: missing icons, CLI install failures, runner compatibility. No comprehensive Tauri CI troubleshooting guide exists."
+source_file: workspace/threads/T-20260307-040000-goclaw-conversational-onboarding-prd.json
+detected_at: "2026-03-07T04:00:00Z"
+frequency: 1
+impact: medium

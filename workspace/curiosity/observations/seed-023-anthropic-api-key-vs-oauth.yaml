@@ -1,0 +1,11 @@
+# Observation: Claude auth methods differ per deployment context
+# Source: MEMORY.md Claude Auth for Containers section
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: integrations
+signal: "Claude auth varies: holler-comms EC2 uses ANTHROPIC_API_KEY (OAuth expired warning is irrelevant), local CLI uses OAuth via ~/.claude/.credentials.json, hq-cloud ECS uses API key from Secrets Manager. No unified auth knowledge file."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-23T00:00:00Z"
+frequency: 1
+impact: medium

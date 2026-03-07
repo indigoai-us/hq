@@ -1,0 +1,11 @@
+# Observation: Linear @mentions require ProseMirror JSON bodyData
+# Source: CLAUDE.md learned rule 12
+# Seeded: 2026-03-06 (bootstrap)
+
+type: correction
+domain: integrations
+signal: "Linear comments with @mentions MUST use bodyData (ProseMirror JSON) with suggestion_userMentions nodes. The body field does NOT resolve mentions. Em dashes and non-ASCII punctuation render as mojibake."
+source_file: .claude/CLAUDE.md
+detected_at: "2026-02-21T00:00:00Z"
+frequency: 3
+impact: high

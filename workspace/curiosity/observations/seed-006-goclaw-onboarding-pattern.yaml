@@ -1,0 +1,11 @@
+# Observation: Conversational onboarding pattern (Claude Code as engine) is a new paradigm
+# Source: thread T-20260307-040000-goclaw-conversational-onboarding-prd
+# Seeded: 2026-03-06 (bootstrap)
+
+type: knowledge_gap
+domain: patterns
+signal: "Claude Code as conversational onboarding engine (replacing form-based UX) is a novel pattern — no knowledge file documents this approach for reuse"
+source_file: workspace/threads/T-20260307-040000-goclaw-conversational-onboarding-prd.json
+detected_at: "2026-03-07T04:00:00Z"
+frequency: 1
+impact: medium
