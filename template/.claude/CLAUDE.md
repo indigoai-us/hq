@@ -201,6 +201,19 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 **When in doubt:** `qmd search "project name"` finds files by topic without any timeout risk
 
+## LSP (Language Server Protocol)
+
+When `ENABLE_LSP_TOOL=1` is set, Claude Code has access to LSP tools for code intelligence — go-to-definition, find-references, type info, and hover. Prefer LSP over Grep for navigating codebases:
+
+| Need | Use |
+|------|-----|
+| Find where a function is defined | LSP go-to-definition |
+| Find all usages of a symbol | LSP find-references |
+| Check type of a variable | LSP hover |
+| Find string patterns across files | Grep (LSP can't do regex search) |
+
+**Setup:** Add `export ENABLE_LSP_TOOL=1` to your shell profile (`~/.zshrc` or `~/.bashrc`), then restart Claude Code.
+
 ## Policies (Learned Rules)
 
 Rules are stored as policy files — structured markdown with YAML frontmatter. Migrated from inline `## Learned Rules`.
