@@ -13,6 +13,26 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-hq-grep.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/warn-cross-company-settings.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [

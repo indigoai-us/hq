@@ -1,5 +1,22 @@
 # Changelog
 
+## v6.5.1 (2026-03-07)
+
+LSP support, hook improvements, and command cleanup.
+
+### Added
+- **LSP section** (CLAUDE.md) — Guidance for using LSP tools (go-to-definition, find-references, type info) over grep when `ENABLE_LSP_TOOL=1` is set
+- **LSP setup** (README) — Prerequisites section with setup instructions for enabling LSP
+- **Grep safety hook** — PreToolUse hook (`block-hq-grep.sh`) for HQ root grep protection
+- **Cross-company settings hook** — PreToolUse hook (`warn-cross-company-settings.sh`) warns when reading settings from wrong company context
+- **context-manager worker** — Discover, maintain, and audit project context (4 skills: audit, discover, learn, update)
+
+### Removed
+- `/checkemail` — Moved to private (requires personal Gmail config)
+- `/email` — Moved to private (requires personal Gmail config)
+
+---
+
 ## v6.5.0 (2026-03-06)
 
 Enhanced company isolation, new worker teams, expanded knowledge, and command updates.

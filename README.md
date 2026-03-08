@@ -66,6 +66,16 @@ Not just files. Active systems that:
 | [Vercel CLI](https://vercel.com/docs/cli) | Optional | `npm install -g vercel` then `vercel login` |
 | [ggshield](https://docs.gitguardian.com/ggshield-docs/getting-started/installation) | Recommended | `brew install ggshield` then `ggshield auth login` |
 
+### LSP (Language Server Protocol)
+
+Enable LSP tools for code intelligence (go-to-definition, find-references, type info) by setting:
+
+```bash
+echo 'export ENABLE_LSP_TOOL=1' >> ~/.zshrc && source ~/.zshrc
+```
+
+Then restart Claude Code. With LSP enabled, Claude prefers LSP over grep for code navigation — faster and more accurate for symbol lookups, type checking, and reference finding.
+
 `/setup` checks for these automatically and guides you through anything missing.
 
 ### Secret Scanning (recommended)

@@ -4,6 +4,47 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v6.5.1 (from v6.5.0)
+
+### New Files
+- `.claude/hooks/block-hq-grep.sh` — Grep safety hook
+- `.claude/hooks/warn-cross-company-settings.sh` — Cross-company settings warning
+- `workers/dev-team/context-manager/` — Context management worker (4 skills)
+
+### Updated Files
+- `.claude/CLAUDE.md` — New LSP section
+- `.claude/settings.json` — Added Grep and Read PreToolUse hooks
+- `README.md` — LSP setup in prerequisites
+
+### CLAUDE.md Updates
+
+**New section to add (after Search):**
+- **LSP** — When `ENABLE_LSP_TOOL=1` is set, prefer LSP tools over Grep for code navigation
+
+### Settings.json Updates
+Add these to your `PreToolUse` hooks array:
+```json
+{
+  "matcher": "Grep",
+  "hooks": [{ "type": "command", "command": ".claude/hooks/block-hq-grep.sh", "timeout": 5 }]
+},
+{
+  "matcher": "Read",
+  "hooks": [{ "type": "command", "command": ".claude/hooks/warn-cross-company-settings.sh", "timeout": 5 }]
+}
+```
+
+### Removed Commands
+- `/checkemail` — Moved to private (requires personal Gmail config)
+- `/email` — Moved to private (requires personal Gmail config)
+
+If you use these commands, keep your local copies. They are no longer part of the public starter kit.
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v6.5.0 (from v6.4.0)
 
 ### New Workers
