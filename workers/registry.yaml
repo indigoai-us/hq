@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "8.0"
-updated: "2026-03-06"
+version: "9.0"
+updated: "2026-03-09"
 
 workers:
   # ===================
@@ -26,7 +26,7 @@ workers:
     description: "Example worker — copy and customize for your own"
 
   # ===================
-  # Standalone Workers (6)
+  # Standalone Workers (9)
   # ===================
 
   - id: frontend-designer
@@ -65,6 +65,24 @@ workers:
     status: active
     description: "Config-driven local business website generation and deployment"
 
+  - id: accessibility-auditor
+    path: workers/accessibility-auditor/
+    type: OpsWorker
+    status: active
+    description: "WCAG 2.2 AA auditing — automated + manual checks, remediation plans"
+
+  - id: exec-summary
+    path: workers/exec-summary/
+    type: OpsWorker
+    status: active
+    description: "McKinsey SCQA executive summaries with data-driven insights"
+
+  - id: performance-benchmarker
+    path: workers/performance-benchmarker/
+    type: OpsWorker
+    status: active
+    description: "Core Web Vitals + k6 load testing with performance budgets"
+
   # ===================
   # Gemini Team (3)
   # ===================
@@ -91,7 +109,7 @@ workers:
     description: "Frontend development via Gemini CLI — component building, styling, responsiveness, accessibility"
 
   # ===================
-  # Dev Team (16)
+  # Dev Team (17)
   # ===================
 
   - id: project-manager
@@ -213,6 +231,13 @@ workers:
     status: active
     description: "Discover, maintain, and audit project context"
 
+  - id: reality-checker
+    path: workers/dev-team/reality-checker/
+    type: CodeWorker
+    team: dev-team
+    status: active
+    description: "Final quality gate — verifies implementation matches spec, defaults to NEEDS WORK"
+
   # ===================
   # Content Team (5)
   # ===================
@@ -290,74 +315,6 @@ workers:
     team: social-team
     status: active
     description: "Delivery verification — confirms posts are live via agent-browser and Post-Bridge API"
-
-  # ===================
-  # Stefan's Workers
-  # ===================
-
-  - id: email-digest
-    path: workers/assistant/email/
-    type: AssistantWorker
-    status: active
-    description: "Morning email digest - Presidential Daily Brief format"
-
-  - id: x-stefan
-    path: workers/social/x-stefan/
-    type: SocialWorker
-    status: active
-    description: "X content drafting - Indigo, AI, experiences, future"
-
-  - id: protofit-coder
-    path: workers/code/protofit/
-    type: CodeWorker
-    status: active
-    description: "Ralph loop for protofit project"
-
-  # ===================
-  # PR Team (6)
-  # ===================
-
-  - id: pr-shared
-    path: workers/pr-shared/
-    type: Library
-    team: pr-team
-    status: active
-    description: "Shared utilities for PR team (types, media DB, pitch/coverage tracking, templates)"
-
-  - id: pr-strategist
-    path: workers/pr-strategist/
-    type: OpsWorker
-    team: pr-team
-    status: active
-    description: "PR strategy, campaign planning, messaging frameworks, competitive intel"
-
-  - id: pr-writer
-    path: workers/pr-writer/
-    type: ContentWorker
-    team: pr-team
-    status: active
-    description: "Press releases, pitches, talking points, op-eds, media alerts, crisis statements"
-
-  - id: pr-outreach
-    path: workers/pr-outreach/
-    type: OpsWorker
-    team: pr-team
-    status: active
-    description: "Journalist research, media list building, pitch personalization, outreach"
-
-  - id: pr-monitor
-    path: workers/pr-monitor/
-    type: ResearchWorker
-    team: pr-team
-    status: active
-    description: "Media monitoring, coverage tracking, sentiment analysis, competitive PR intel"
-
-  - id: pr-coordinator
-    path: workers/pr-coordinator/
-    type: OpsWorker
-    team: pr-team
-    status: active
-    description: "End-to-end PR campaign orchestration, dashboard, content team coordination"
 
   # ===================
   # Gardener Team (3)

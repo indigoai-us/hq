@@ -94,6 +94,64 @@ which codex >/dev/null 2>&1
 
 This enables graceful degradation — pipeline continues without Codex but logs a warning.
 
+### 2.6 Check Story Checkout State
+
+Guard against concurrent execution of the same story.
+
+1. **Load config**: Read `settings/orchestrator.yaml` → `checkout.enabled` and `checkout.stale_timeout_minutes` (defaults: `true`, `30`)
+2. **Skip if disabled**: If `checkout.enabled: false`, skip this step entirely and proceed to step 3
+
+3. **Read state.json**: Read `workspace/orchestrator/{project}/state.json` (if it doesn't exist, skip to step 3 (Classify Task Type) — no checkout to check)
+
+4. **Check for existing checkout**: If `current_task.id` matches this story's ID AND `current_task.checkedOutBy` is not null:
+
+   a. **Extract checkout info**:
+   ```
+   checkedOutPid = state.current_task.checkedOutBy.pid
+   checkedOutSession = state.current_task.checkedOutBy.sessionId
+   checkedOutAt = state.current_task.checkedOutBy.startedAt
+   ```
+
+   b. **Check if PID is alive** via:
+   ```bash
+   kill -0 {checkedOutPid} 2>/dev/null
+   ```
+
+   c. **If PID is ALIVE** — warn and ask user:
+   ```
+   AskUserQuestion: "Story {task.id} is currently checked out by PID {checkedOutPid}
+   (session: {checkedOutSession}, started: {checkedOutAt}).
+   Another /execute-task may be running.
+   Proceed anyway (override) or abort?"
+   Options: ["Proceed anyway", "Abort"]
+   ```
+   - If user chooses **Abort**: stop immediately
+   - If user chooses **Proceed anyway**: log warning "User overrode live checkout (PID {checkedOutPid})" and continue
+
+   d. **If PID is DEAD** — check timestamp and compute age:
+   - **If `checkedOutAt` is null/empty**: release unconditionally — update state.json: set `current_task.checkedOutBy = null`, update `updated_at`. Warn "Released checkout held by dead PID {checkedOutPid} (no timestamp)". Proceed normally.
+   - **If `checkedOutAt` is present**: compute age:
+     ```
+     ageSeconds = now() - Date.parse(checkedOutAt)
+     staleSeconds = stale_timeout_minutes * 60
+     ```
+     - Regardless of age (dead PID = safe to take over):
+       - Update state.json: set `current_task.checkedOutBy = null`, update `updated_at`
+       - If age >= staleSeconds: warn "Released stale checkout (dead PID {checkedOutPid}, {ageSeconds}s old)"
+       - If age < staleSeconds: warn "Released checkout held by dead PID {checkedOutPid} (not yet stale, but PID is gone)"
+     - Proceed normally
+
+5. **If `current_task.id` does NOT match this story** OR **`checkedOutBy` is null**: proceed normally — no checkout conflict
+
+Report:
+```
+Checkout check: clear (no active checkout for {task.id})
+```
+or after release:
+```
+Checkout check: released dead checkout for {task.id}, proceeding
+```
+
 ### 3. Classify Task Type
 
 Analyze task title, description, and acceptance criteria. Match against patterns:
@@ -243,6 +301,42 @@ Write to `workspace/orchestrator/{project}/executions/{task-id}.json`:
   "handoffs": [],
   "codex_debug_attempts": []
 }
+```
+
+### 5.0.5 Acquire Story Checkout
+
+If `checkout.enabled: true` (from `settings/orchestrator.yaml`):
+
+1. **Read state.json**: Read `workspace/orchestrator/{project}/state.json`. If it doesn't exist, create it with minimal structure: `{"version":1,"current_task":{},"updated_at":"{ISO8601}"}`
+
+2. **Write checkout entry** into `current_task.checkedOutBy`:
+   ```json
+   {
+     "pid": {current_process_pid},
+     "startedAt": "{ISO8601}",
+     "sessionId": "{started_at from step 5}"
+   }
+   ```
+   Also ensure `current_task.id` is set to this story's ID and `updated_at` is refreshed.
+
+   **Getting the PID**: Run `echo $$` in bash to get the current shell's PID. Use that value as the `pid` field.
+
+3. **Write state.json back** with the updated `checkedOutBy` block
+
+4. **Report**: `Checkout acquired for {task.id} (PID: {pid})`
+
+If `checkout.enabled: false`: skip this step silently.
+
+### 5.1 Audit: Task Started
+
+```bash
+scripts/audit-log.sh append \
+  --event task_started \
+  --project {project} \
+  --story-id {task.id} \
+  --company {company} \
+  --session-id {started_at} \
+  --action "Task execution started: {task.title}" || true
 ```
 
 ### 5.5 Acquire File Locks
@@ -490,12 +584,45 @@ After each phase:
 }
 ```
 
+#### 6e.5 Audit: Phase Completed
+
+```bash
+scripts/audit-log.sh append \
+  --event phase_completed \
+  --project {project} \
+  --story-id {task.id} \
+  --worker {worker.id} \
+  --model {resolved_model} \
+  --result {success|fail} \
+  --duration-ms {phase_duration_ms} \
+  --action "Phase {N} completed: {worker.id}" || true
+```
+
 #### 6f. Log Model Usage
+
+<!-- Schema (all fields):
+  ts         string (ISO8601)  — timestamp of the log entry
+  project    string            — project slug (from prd.json metadata.name or directory name)
+  task       string            — story/task ID (e.g. "US-002")
+  worker     string            — worker ID (e.g. "backend-engineer")
+  model      string            — resolved model name (e.g. "sonnet", "opus")
+  phase      number            — execution phase number (1-based)
+  company    string (required) — company slug resolved from prd.metadata.company; if absent,
+                                 look up manifest.yaml entry matching the project's directory path
+  session_id string (optional) — ISO8601 timestamp of task start, taken from started_at
+                                 recorded in the execution state (step 5); omit if unavailable
+-->
 
 Append one line per phase to `workspace/metrics/model-usage.jsonl`:
 ```json
-{"ts":"ISO8601","project":"{project}","task":"{task.id}","worker":"{worker.id}","model":"{resolved model}","phase":N}
+{"ts":"ISO8601","project":"{project}","task":"{task.id}","worker":"{worker.id}","model":"{resolved model}","phase":N,"company":"{company}","session_id":"{session_id}"}
 ```
+
+**Resolving `company`:** Use `prd.metadata.company` if present. Otherwise, find the company by matching the project's path (`companies/{co}/projects/…`) against `companies/manifest.yaml` — use the matching `{co}` slug.
+
+**Resolving `session_id`:** Use the `started_at` ISO8601 value written to the execution state in step 5. If no `started_at` is available, omit the field entirely.
+
+**Backward compatibility:** Existing entries that lack `company` or `session_id` remain valid — parsers must treat both fields as optional when reading historical data.
 
 Create `workspace/metrics/` if it doesn't exist. This is append-only — no reads during execution.
 
@@ -503,7 +630,7 @@ Create `workspace/metrics/` if it doesn't exist. This is append-only — no read
 
 When all phases complete:
 
-#### 7.0 Release File Locks
+#### 7.0 Release File Locks and Checkout
 
 If file locking is enabled and locks were acquired in step 5.5:
 1. Read `{repoPath}/.file-locks.json`
@@ -512,7 +639,15 @@ If file locking is enabled and locks were acquired in step 5.5:
 4. Read orchestrator state.json, remove matching entries from project's `checkedOutFiles`
 5. Write state.json
 
-This runs BEFORE PRD update so locks are released even if later steps fail.
+**Release story checkout** (if `checkout.enabled: true`):
+
+1. Read `workspace/orchestrator/{project}/state.json`
+2. **Safety check**: Only release if the current session holds the checkout — verify `current_task.checkedOutBy.pid` matches the PID acquired in step 5.0.5
+3. If it matches: set `current_task.checkedOutBy = null`, update `updated_at`, write state.json back
+4. If it does NOT match (another session took over): log warning "Checkout held by different PID — not releasing" and skip
+5. Report: `Checkout released for {task.id}`
+
+This entire step runs BEFORE PRD update so locks and checkout are released even if later steps fail.
 
 #### 7a. Update PRD
 
@@ -628,6 +763,21 @@ Run: `qmd update 2>/dev/null || true`
 
 Ensures any knowledge, worker instructions, or command rules modified during execution are immediately searchable.
 
+#### 7c.0 Audit: Task Completed
+
+```bash
+scripts/audit-log.sh append \
+  --event task_completed \
+  --project {project} \
+  --story-id {task.id} \
+  --company {company} \
+  --session-id {started_at} \
+  --files "{comma_separated_files_touched}" \
+  --duration-ms {total_duration_ms} \
+  --action "Task completed: {total_phases} phases, {files_touched_count} files" \
+  --result success || true
+```
+
 #### 7c. Report Completion
 
 ```
@@ -686,7 +836,7 @@ When invoked as a sub-agent by `/run-project`, end with this JSON so the orchest
 
 If any phase fails after retry:
 
-0. **Release file locks:** Same as step 7.0 — release all locks for this story from both `.file-locks.json` and state.json. Never orphan locks on failure.
+0. **Release file locks and checkout:** Same as step 7.0 — release all locks for this story from both `.file-locks.json` and state.json. Also release story checkout: read state.json, verify `current_task.checkedOutBy.pid` matches the PID acquired in step 5.0.5, and if so set `current_task.checkedOutBy = null` and write state.json back. Never orphan locks or checkouts on failure.
 
 0.5. **Auto-capture failure as learning:**
    Run `/learn` with:
@@ -701,6 +851,21 @@ If any phase fails after retry:
    }
    ```
    This ensures the failure becomes a rule BEFORE asking the user what to do.
+
+### 8.0.6 Audit: Task Failed
+
+```bash
+scripts/audit-log.sh append \
+  --event task_failed \
+  --project {project} \
+  --story-id {task.id} \
+  --company {company} \
+  --session-id {started_at} \
+  --worker {failed_worker} \
+  --error "{error_message}" \
+  --action "Task failed at phase {N}: {failed_worker}" \
+  --result fail || true
+```
 
 1. Update execution state: `status: "paused"`
 2. Log error details
@@ -751,6 +916,291 @@ Context passed between workers:
   }
 }
 ```
+
+## Worked Example: Complete End-to-End Task Execution
+
+This example shows a real task execution from start to finish, demonstrating task loading, classification, worker sequencing, phase execution, and completion.
+
+### Scenario: API Endpoint Implementation
+
+**Task:** `POST /api/v1/orders/{id}/cancel` endpoint to allow customers to cancel pending orders.
+
+### Step 1: Parse Arguments & Load Task
+
+```
+Input: /execute-task order-system/US-003
+```
+
+**Task spec loaded:**
+```json
+{
+  "id": "US-003",
+  "title": "Implement Cancel Order Endpoint",
+  "description": "Add POST /api/v1/orders/{id}/cancel endpoint that cancels pending orders and notifies customer",
+  "acceptance_criteria": [
+    "Endpoint returns 400 if order not in 'pending' state",
+    "Endpoint sends cancellation email to customer",
+    "Endpoint logs action with order ID and timestamp",
+    "All code passes lint and tests"
+  ],
+  "passes": false,
+  "files": [
+    "apps/api/src/routes/orders.ts",
+    "apps/api/src/services/order-service.ts",
+    "apps/api/src/emails/order-cancelled.ts"
+  ]
+}
+```
+
+### Step 2: Classify Task Type
+
+```
+Analyzing task indicators:
+- "endpoint" → api_development
+- "POST /api" → REST endpoint
+- "services" → backend service
+- "emails" → integration
+
+Classification: api_development
+Matched indicators: endpoint, service, email notification
+```
+
+### Step 3: Select Worker Sequence
+
+```
+Task Type: api_development
+Spec Clarity: ✓ Clear acceptance criteria
+
+Worker Sequence:
+Phase 1: backend-dev → Implement service
+Phase 2: code-reviewer → Review changes
+Phase 3: codex-reviewer → Mandatory security/quality review
+Phase 4: dev-qa-tester → Verify implementation
+
+Proceeding with 4-phase pipeline.
+```
+
+### Step 4: Initialize Execution State
+
+```
+Creating execution file: workspace/orchestrator/order-system/executions/US-003.json
+
+{
+  "task_id": "US-003",
+  "project": "order-system",
+  "started_at": "2026-03-08T14:35:22Z",
+  "status": "in_progress",
+  "current_phase": 1,
+  "phases": [
+    {"worker": "backend-dev", "status": "pending"},
+    {"worker": "code-reviewer", "status": "pending"},
+    {"worker": "codex-reviewer", "status": "pending"},
+    {"worker": "dev-qa-tester", "status": "pending"}
+  ],
+  "handoffs": [],
+  "codex_debug_attempts": []
+}
+```
+
+### Step 5: Phase 1 — backend-dev
+
+**Worker output (JSON):**
+```json
+{
+  "summary": "Implemented POST /api/v1/orders/{id}/cancel endpoint with state validation and email notification",
+  "files_created": [
+    "apps/api/src/emails/order-cancelled.ts"
+  ],
+  "files_modified": [
+    "apps/api/src/routes/orders.ts",
+    "apps/api/src/services/order-service.ts"
+  ],
+  "key_decisions": [
+    "Used order state machine pattern (pending → cancelled transition only)",
+    "Email notification async to prevent timeout on customer signal path",
+    "Added database transaction to ensure order + audit log atomicity"
+  ],
+  "context_for_next": "Focus review on transaction semantics. Verify email template vars match order schema (customer_name, order_id, created_at). Check cancellation reasons logged to audit table.",
+  "back_pressure": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass"
+  },
+  "issues": []
+}
+```
+
+**Files created/modified summary:**
+```
+✓ apps/api/src/emails/order-cancelled.ts (52 new lines)
+✓ apps/api/src/routes/orders.ts (+18 lines, cancel route added)
+✓ apps/api/src/services/order-service.ts (+31 lines, cancelOrder method added)
+
+All back pressure checks pass:
+✓ npm test (42 passed, 0 failed)
+✓ npm run lint (0 issues)
+✓ npm run check (0 TS errors)
+```
+
+### Step 6: Phase 2 — code-reviewer
+
+**Worker receives handoff context:**
+```
+From: backend-dev
+Summary: Implemented cancel endpoint with state validation and email
+
+Key files: orders.ts, order-service.ts, order-cancelled.ts
+Decision: Used state machine pattern for order transitions
+Focus: Verify transaction semantics and email template vars
+```
+
+**Worker output (JSON):**
+```json
+{
+  "summary": "Code review passed. State machine pattern correct. Transaction boundaries validated. Email template vars match schema.",
+  "files_created": [],
+  "files_modified": [],
+  "key_decisions": [
+    "Confirmed transaction includes both order update and audit log insert",
+    "Email template correctly references order.customer_name (not customer.name)",
+    "Error handling appropriate: 400 for non-pending orders, 500 for service errors"
+  ],
+  "context_for_next": "Code changes are production-ready. Codex will provide additional security perspective. QA should test: cancel pending order (success), cancel completed order (400 error), email delivery timing.",
+  "back_pressure": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass"
+  },
+  "issues": []
+}
+```
+
+### Step 7: Phase 3 — codex-reviewer (Inline Execution)
+
+**Running Codex CLI directly:**
+```bash
+cd repos/private/order-system && codex review --uncommitted \
+  "Review changed files for: security, correctness, performance, style. Focus: API endpoint security, transaction safety, email delivery reliability"
+```
+
+**Codex output:**
+```
+CODEX REVIEW: order-system (uncommitted changes)
+═══════════════════════════════════════════════════════════
+
+Files analyzed: 3 (73 total lines changed)
+
+SECURITY:
+✓ No SQL injection (using parameterized queries)
+✓ No auth bypass (endpoint checks user.id ownership)
+✓ Email rate limiting OK (uses queue, not inline)
+
+CORRECTNESS:
+✓ Transaction boundary correct (both operations in same transaction)
+✓ Error messages don't leak internal state
+✓ Idempotency: calling twice won't double-cancel (state check before update)
+
+PERFORMANCE:
+⚠ Minor: Email sending is async but no timeout (could hang indefinitely)
+  Suggestion: Add 30s timeout to email task
+
+Code Quality: A
+Severity: info (not critical path)
+```
+
+**Handoff for next phase:**
+```
+Codex review completed. One informational finding: email timeout.
+Ready for QA testing. All critical checks pass.
+```
+
+### Step 8: Phase 4 — dev-qa-tester
+
+**Receives full handoff context:**
+```
+Implemented: POST /api/v1/orders/{id}/cancel endpoint
+Code review: Passed, state machine pattern correct
+Codex security: Passed, email timeout noted as info-level
+Test coverage: All unit tests passing
+
+Your tasks:
+1. Test cancel pending order → returns 200, email sent, audit logged
+2. Test cancel completed order → returns 400, email NOT sent
+3. Test auth: Verify user can only cancel own orders
+```
+
+**QA Worker Output:**
+```json
+{
+  "summary": "All acceptance criteria verified. E2E tests pass: cancel pending (200), cancel completed (400), auth check (403 for other user orders)",
+  "files_created": [
+    "apps/api/tests/e2e/cancel-order.e2e.ts"
+  ],
+  "files_modified": [
+    "apps/api/tests/cancel-order.test.ts"
+  ],
+  "key_decisions": [
+    "Added E2E test covering auth boundary (user A cannot cancel user B's orders)",
+    "Email delivery tested via mock SES (no actual email sent)",
+    "Tested idempotency: cancelling twice returns 200 both times (same result)"
+  ],
+  "context_for_next": "All acceptance criteria met. Endpoint ready for production.",
+  "back_pressure": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass"
+  },
+  "issues": []
+}
+```
+
+### Step 9: Complete Task
+
+**Update prd.json:**
+```json
+{
+  "id": "US-003",
+  "title": "Implement Cancel Order Endpoint",
+  "passes": true,
+  "linearIssueId": "ORD-42",
+  "notes": "Completed 2026-03-08. All phases passed (backend → review → codex → qa)."
+}
+```
+
+**Sync Linear:**
+```
+✓ Issue ORD-42 → Done state
+✓ Comment: "Completed by HQ. Ready for production. Codex flagged email timeout (info-level)."
+```
+
+**Final Report:**
+```
+Task Complete: US-003 - Implement Cancel Order Endpoint
+
+Phases: 4 completed
+Workers: backend-dev, code-reviewer, codex-reviewer, dev-qa-tester
+Files touched: 5 (3 modified, 2 created with tests)
+
+Key decisions:
+- Used state machine pattern for order transitions
+- Email notification async with rate limiting
+- Added comprehensive auth + idempotency tests
+
+Back pressure summary:
+✓ All tests pass (84 total)
+✓ All lint checks pass
+✓ All TypeScript checks pass
+✓ Build succeeds
+
+Learning captured: workspace/learnings/order-system/US-003.json
+PRD updated: passes: true
+Linear synced: issue → Done state
+```
+
+---
 
 ## Rules
 
