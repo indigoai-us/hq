@@ -123,6 +123,11 @@
 {"issue_id":"ghq-53s.1.5.4","label":"production-house"}
 {"issue_id":"ghq-53s.1.5.4","label":"ship-it-code"}
 {"issue_id":"ghq-53s.1.5.4","label":"video"}
+{"issue_id":"ghq-r56","label":"company"}
+{"issue_id":"ghq-r56","label":"indigo"}
+{"issue_id":"ghq-r56.1","label":"company"}
+{"issue_id":"ghq-r56.1","label":"indigo"}
+{"issue_id":"ghq-r56.1","label":"indigo-nx"}
 {"issue_id":"ghq-uik","label":"company"}
 {"issue_id":"ghq-uik","label":"launch-grid"}
 {"issue_id":"ghq-uik.1","label":"company"}
