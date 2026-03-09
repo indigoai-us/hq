@@ -12,7 +12,7 @@ personal:
 
 indigo:
   domain: getindigo.ai
-  repos: []
+  repos: [repos/private/indigo-nx]
   settings: []
   workers: []
   knowledge: companies/indigo/knowledge/
