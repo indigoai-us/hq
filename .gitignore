@@ -51,6 +51,9 @@ social-content/drafts/**/*.md
 # Checkpoints (session-specific)
 workspace/checkpoints/*.json
 
+# Knowledge capture event logs
+workspace/knowledge-logs/
+
 # Hook-generated ephemeral files
 workspace/learnings/.observe-patterns-latest.json
 

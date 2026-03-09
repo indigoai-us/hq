@@ -175,10 +175,10 @@ If git operations fail (no repo, nothing to commit), continue — the file is st
 ## Step 6: Log Event
 
 ```bash
-mkdir -p workspace/learnings
+mkdir -p workspace/knowledge-logs
 ```
 
-Write `workspace/learnings/knowledge-capture-{YYYYMMDD-HHMMSS}.json`:
+Write `workspace/knowledge-logs/knowledge-capture-{YYYYMMDD-HHMMSS}.json`:
 
 ```json
 {
@@ -212,7 +212,7 @@ Knowledge captured:
   Type: {ontology type}
   Tags: {comma-separated tags}
   Related: {related doc paths or "none"}
-  Event: workspace/learnings/knowledge-capture-{timestamp}.json
+  Event: workspace/knowledge-logs/knowledge-capture-{timestamp}.json
 
 Search with: qmd vsearch "{topic keywords}"
 ```
