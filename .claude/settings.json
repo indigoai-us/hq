@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "plan"
+    "defaultMode": "bypassPermissions"
   },
   "hooks": {
     "PreToolUse": [
