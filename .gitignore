@@ -51,6 +51,9 @@ social-content/drafts/**/*.md
 # Checkpoints (session-specific)
 workspace/checkpoints/*.json
 
+# Hook-generated ephemeral files
+workspace/learnings/.observe-patterns-latest.json
+
 # Journal entries (personal)
 data/journal/*.jsonl
 
