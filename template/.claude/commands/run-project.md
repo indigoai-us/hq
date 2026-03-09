@@ -54,6 +54,7 @@ bash scripts/run-project.sh --status
 | `--retry-failed` | off | Re-run previously failed stories only |
 | `--timeout N` | none | Per-story wall-clock timeout in minutes |
 | `--verbose` | off | Show full claude output |
+| `--tmux` | off | Launch in tmux session with RC (observe from phone) |
 
 ## How It Works (Ralph Loop)
 
@@ -136,6 +137,250 @@ If that fails, fall back to the legacy pattern: spawn Task() sub-agents per stor
 - **Resume is first-class** — auto-detected from state.json
 - **Codex CLI mandatory** — at least one codex step (review or exec) required per code task. Sub-agent prompt enforces it; orchestrator runs fallback `codex review` post-task
 - **Back pressure** — enforced inside `/execute-task`, not by orchestrator
+- **ALWAYS**: Use `"userStories"` key in prd.json (not `"stories"`) — `run-project.sh` greps for this exact key name
+
+## Worked Example: Complete Project Execution (Ralph Loop)
+
+This example shows `/run-project campaign-migration` executing through multiple stories, showing task selection, execution, regression gates, and completion.
+
+### Scenario: Multi-Story Campaign Migration Project
+
+**Project:** `campaign-migration` — Migrate 3 campaigns from legacy system to new platform.
+
+**PRD State (at start):**
+```json
+{
+  "name": "campaign-migration",
+  "metadata": {
+    "company": "{company}",
+    "repoPath": "repos/private/{product}",
+    "qualityGates": ["bun test", "bun check", "bun lint"]
+  },
+  "userStories": [
+    {
+      "id": "CM-001",
+      "title": "Set up campaign database tables",
+      "passes": false,
+      "priority": 1,
+      "dependsOn": []
+    },
+    {
+      "id": "CM-002",
+      "title": "Migrate campaign A data",
+      "passes": false,
+      "priority": 2,
+      "dependsOn": ["CM-001"]
+    },
+    {
+      "id": "CM-003",
+      "title": "Migrate campaign B data",
+      "passes": false,
+      "priority": 2,
+      "dependsOn": ["CM-001"]
+    },
+    {
+      "id": "CM-004",
+      "title": "Verify all campaigns migrated",
+      "passes": false,
+      "priority": 3,
+      "dependsOn": ["CM-002", "CM-003"]
+    }
+  ]
+}
+```
+
+### Start Execution
+
+```bash
+bash scripts/run-project.sh campaign-migration --no-permissions
+```
+
+### Iteration 1: CM-001 (Database Schema)
+
+**Task Selection:**
+```
+Re-reading PRD...
+Candidates: CM-001 (deps OK, priority 1), CM-002 (blocked on CM-001), CM-003 (blocked on CM-001)
+Selected: CM-001 (lowest priority value)
+```
+
+**Execution:**
+```
+[1/4] Task: CM-001 - Set up campaign database tables
+├─ Branch: checkout feature/cm-001 from main
+├─ Linear sync: Issue CMG-1 → In Progress
+├─ Command: claude -p "/execute-task campaign-migration/CM-001"
+│  └─ Workers: [architect, database-dev, code-reviewer, codex-reviewer, dev-qa-tester]
+│  └─ Phases: 5 completed (all passed)
+├─ Post-task validation: git diff confirms 3 files modified
+├─ Codex review: ✓ passed (no critical issues)
+├─ Linear sync: Issue CMG-1 → Done
+└─ Result: ✓ PASS (5 phases, 0 issues)
+
+Updated PRD: CM-001 passes: true
+Updated state.json: current_task = CM-001, status = completed
+Updated progress.txt: [1/4] Complete
+```
+
+### Iteration 2: CM-002 (Campaign A Migration)
+
+**Task Selection:**
+```
+Re-reading PRD...
+Candidates: CM-002 (CM-001 done ✓), CM-003 (CM-001 done ✓)
+Selected: CM-002 (priority 2, first in array order)
+```
+
+**Execution:**
+```
+[2/4] Task: CM-002 - Migrate campaign A data
+├─ Branch: checkout feature/cm-002 from main
+├─ Linear sync: Issue CMG-2 → In Progress
+├─ Command: claude -p "/execute-task campaign-migration/CM-002"
+│  └─ Workers: [backend-dev, code-reviewer, codex-reviewer, dev-qa-tester]
+│  └─ Phases: 4 completed (all passed)
+├─ Post-task validation: git diff confirms 2 files modified, 1 migration created
+├─ Codex review: ✓ passed
+├─ Linear sync: Issue CMG-2 → Done
+└─ Result: ✓ PASS (4 phases, 0 issues)
+
+Updated PRD: CM-002 passes: true
+Progress: [2/4] Complete
+```
+
+### Iteration 3: CM-003 (Campaign B Migration)
+
+**Task Selection:**
+```
+Re-reading PRD...
+Candidates: CM-003 (CM-001 done ✓, CM-002 independent)
+Selected: CM-003 (priority 2, available)
+```
+
+**Execution:**
+```
+[3/4] Task: CM-003 - Migrate campaign B data
+├─ Branch: checkout feature/cm-003 from main
+├─ Linear sync: Issue CMG-3 → In Progress
+├─ Command: claude -p "/execute-task campaign-migration/CM-003"
+│  └─ Workers: [backend-dev, code-reviewer, codex-reviewer, dev-qa-tester]
+│  └─ Phases: 4 completed (all passed)
+├─ Post-task validation: git diff confirms 2 files modified, 1 migration created
+├─ Codex review: ✓ passed
+├─ Linear sync: Issue CMG-3 → Done
+└─ Result: ✓ PASS (4 phases, 0 issues)
+
+Updated PRD: CM-003 passes: true
+Progress: [3/4] Complete
+
+>>> REGRESSION GATE: Every 3 stories complete, run quality gates
+Running: bun test, bun check, bun lint
+├─ bun test: 127 passed, 0 failed ✓
+├─ bun check: 0 TypeScript errors ✓
+├─ bun lint: 0 issues ✓
+Result: ✓ ALL GATES PASSED
+```
+
+### Iteration 4: CM-004 (Verification)
+
+**Task Selection:**
+```
+Re-reading PRD...
+Candidates: CM-004 (CM-002 done ✓, CM-003 done ✓)
+Selected: CM-004 (all deps satisfied)
+```
+
+**Execution:**
+```
+[4/4] Task: CM-004 - Verify all campaigns migrated
+├─ Branch: checkout feature/cm-004 from main
+├─ Linear sync: Issue CMG-4 → In Progress
+├─ Command: claude -p "/execute-task campaign-migration/CM-004"
+│  └─ Workers: [dev-qa-tester, code-reviewer]
+│  └─ Phases: 2 completed (all passed)
+├─ Post-task validation: git status clean
+├─ Codex review: ✓ passed
+├─ Linear sync: Issue CMG-4 → Done
+└─ Result: ✓ PASS (2 phases, 0 issues)
+
+Updated PRD: CM-004 passes: true
+Progress: [4/4] Complete
+```
+
+### Completion Flow
+
+**All Stories Complete:**
+```
+✓ CM-001: Set up campaign database tables
+✓ CM-002: Migrate campaign A data
+✓ CM-003: Migrate campaign B data
+✓ CM-004: Verify all campaigns migrated
+
+Running completion flow...
+├─ Linear board sync: Project → done state
+├─ Generate summary report: workspace/reports/campaign-migration-summary.md
+├─ INDEX.md flagged for rebuild (deferred to /cleanup)
+├─ Manifest verification: ✓ all repos registered
+├─ Final reindex: qmd update
+└─ State: status → completed
+
+Completion Summary:
+╔═══════════════════════════════════════════════════════╗
+║  campaign-migration: ALL 4 STORIES COMPLETE          ║
+╠═══════════════════════════════════════════════════════╣
+║  Started: 2026-03-08 14:15 UTC                       ║
+║  Completed: 2026-03-08 16:47 UTC (2h 32m)            ║
+║  Total phases: 15                                    ║
+║  Total workers: 6 unique workers                     ║
+║  Back pressure: 15/15 phases passed ✓                ║
+║  Regression gates: 2/2 passed ✓                      ║
+╚═══════════════════════════════════════════════════════╝
+
+Report saved: workspace/reports/campaign-migration-summary.md
+State saved: workspace/orchestrator/campaign-migration/state.json
+Progress: workspace/orchestrator/campaign-migration/progress.txt
+
+Next step: /run-project --status to see all projects
+```
+
+### Summary Output
+
+The orchestrator stores execution metadata at:
+- **State:** `workspace/orchestrator/campaign-migration/state.json`
+- **Progress:** `workspace/orchestrator/campaign-migration/progress.txt`
+- **Report:** `workspace/reports/campaign-migration-summary.md`
+
+**progress.txt:**
+```
+campaign-migration: 4/4 complete
+[✓] CM-001: Set up campaign database tables
+[✓] CM-002: Migrate campaign A data
+[✓] CM-003: Migrate campaign B data
+[✓] CM-004: Verify all campaigns migrated
+
+Regression gates: 2/2 passed
+Last updated: 2026-03-08 16:47:33 UTC
+```
+
+**state.json (final):**
+```json
+{
+  "project": "campaign-migration",
+  "status": "completed",
+  "started_at": "2026-03-08T14:15:00Z",
+  "completed_at": "2026-03-08T16:47:33Z",
+  "stories_total": 4,
+  "stories_completed": 4,
+  "stories_failed": 0,
+  "current_task": null,
+  "phases_total": 15,
+  "phases_completed": 15,
+  "regressions_run": 2,
+  "regressions_passed": 2
+}
+```
+
+---
 
 ## Integration
 

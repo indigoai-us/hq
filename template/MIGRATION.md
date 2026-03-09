@@ -4,6 +4,103 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v7.0.0 (from v6.5.1)
+
+### New Hooks (3 files)
+Copy to `.claude/hooks/` and make executable:
+```bash
+cp starter-kit/.claude/hooks/hook-gate.sh .claude/hooks/
+cp starter-kit/.claude/hooks/detect-secrets.sh .claude/hooks/
+cp starter-kit/.claude/hooks/observe-patterns.sh .claude/hooks/
+chmod +x .claude/hooks/hook-gate.sh .claude/hooks/detect-secrets.sh .claude/hooks/observe-patterns.sh
+```
+
+### Settings.json — Hook Rewiring (BREAKING)
+Your `.claude/settings.json` hooks are rewired through `hook-gate.sh`. This is a **breaking change** if you have custom hooks.
+
+**Before (v6.5.1):**
+```json
+{ "matcher": "Glob", "hooks": [{ "type": "command", "command": ".claude/hooks/block-hq-glob.sh" }] }
+```
+
+**After (v7.0.0):**
+```json
+{ "matcher": "Glob", "hooks": [{ "type": "command", "command": ".claude/hooks/hook-gate.sh block-hq-glob .claude/hooks/block-hq-glob.sh" }] }
+```
+
+Copy the full `settings.json` from starter-kit, or manually rewire each hook through `hook-gate.sh`. Two new hooks added:
+- PreToolUse Bash → `hook-gate.sh detect-secrets .claude/hooks/detect-secrets.sh`
+- Stop → `hook-gate.sh observe-patterns .claude/hooks/observe-patterns.sh`
+
+### New Script
+```bash
+mkdir -p scripts/
+cp starter-kit/scripts/audit-log.sh scripts/
+chmod +x scripts/audit-log.sh
+```
+
+### Updated Script
+Replace `.claude/scripts/run-project.sh` with the full v7.0.0 version (1390 lines). Includes audit log integration and `--tmux` mode.
+
+### New Commands (9 files)
+Copy to `.claude/commands/`:
+- `audit.md`, `brainstorm.md`, `dashboard.md`, `goals.md`, `harness-audit.md`, `idea.md`, `model-route.md`, `quality-gate.md`, `tdd.md`
+
+### Updated Commands (3 files)
+Review and merge:
+- `execute-task.md` — Checkout guard (section 2.6) prevents concurrent story execution
+- `prd.md` — Brainstorm detection (steps 3.5 + 5.5)
+- `run-project.md` — Worked example, `--tmux` flag
+
+### New Workers (4 dirs)
+Copy to `workers/`:
+- `accessibility-auditor/` — WCAG 2.2 AA auditing
+- `exec-summary/` — McKinsey SCQA executive summaries
+- `performance-benchmarker/` — Core Web Vitals + k6 load testing
+- `dev-team/reality-checker/` — Final quality gate
+
+### Registry Update
+Replace `workers/registry.yaml`. Version 8.0 → 9.0. If you have custom workers, merge them into the `# Add your workers below` section.
+
+### Removed Workers
+Delete these directories if present (were private/company-specific, leaked in v6.0.0):
+- `workers/pr-shared/`, `pr-strategist/`, `pr-writer/`, `pr-outreach/`, `pr-monitor/`, `pr-coordinator/`
+
+### Knowledge Cleanup
+- Delete `knowledge/hq/` if present (duplicate of `knowledge/hq-core/`)
+- Copy `knowledge/hq-core/handoff-templates.md` from starter-kit
+
+### CLAUDE.md Updates
+
+**New sections to add:**
+1. **Token Optimization** (after Context Diet) — Env var cost controls
+2. **Hook Profiles** (after Token Optimization) — Runtime hook configuration
+
+**Sections to update:**
+- **Workers** — Add accessibility-auditor, exec-summary, performance-benchmarker, reality-checker. Remove pr-team. Dev Team 16→17
+- **Commands count** — Update to 35+
+
+### Migration Steps
+1. Copy 3 new hooks and `chmod +x`
+2. Update `settings.json` (hook-gate rewiring)
+3. Copy `scripts/audit-log.sh` and `chmod +x`
+4. Replace `.claude/scripts/run-project.sh`
+5. Copy 9 new commands
+6. Merge 3 updated commands
+7. Copy 4 new worker directories
+8. Delete 6 PR team worker directories
+9. Update `workers/registry.yaml` (merge custom workers)
+10. Delete `knowledge/hq/` duplicate
+11. Merge CLAUDE.md sections (Token Optimization, Hook Profiles)
+12. Run `/search-reindex`
+
+### Breaking Changes
+- `settings.json` hooks now route through `hook-gate.sh` — direct hook commands no longer work without the gate
+- PR team workers removed — if you use them, keep your local copies
+- `knowledge/hq/` deleted — use `knowledge/hq-core/` instead
+
+---
+
 ## Migrating to v6.5.1 (from v6.5.0)
 
 ### New Files
