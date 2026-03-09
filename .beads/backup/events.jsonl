@@ -827,3 +827,8 @@
 {"actor":"Chaudhry Hassaan Saleem","comment":"Added label: indigo-nx","created_at":"2026-03-09T18:06:23Z","event_type":"label_added","id":907,"issue_id":"ghq-r56.1","new_value":null,"old_value":null}
 {"actor":"Chaudhry Hassaan Saleem","comment":"Added label: company","created_at":"2026-03-09T18:06:23Z","event_type":"label_added","id":908,"issue_id":"ghq-r56.1","new_value":null,"old_value":null}
 {"actor":"Chaudhry Hassaan Saleem","comment":null,"created_at":"2026-03-09T18:06:26Z","event_type":"closed","id":909,"issue_id":"ghq-r56.1","new_value":"Closed","old_value":""}
+{"actor":"Chaudhry Hassaan Saleem","comment":null,"created_at":"2026-03-09T18:54:42Z","event_type":"created","id":910,"issue_id":"ghq-r56.1.1","new_value":"","old_value":""}
+{"actor":"Chaudhry Hassaan Saleem","comment":"Added label: indigo","created_at":"2026-03-09T18:54:42Z","event_type":"label_added","id":911,"issue_id":"ghq-r56.1.1","new_value":null,"old_value":null}
+{"actor":"Chaudhry Hassaan Saleem","comment":"Added label: multi-company","created_at":"2026-03-09T18:54:42Z","event_type":"label_added","id":912,"issue_id":"ghq-r56.1.1","new_value":null,"old_value":null}
+{"actor":"Chaudhry Hassaan Saleem","comment":"Added label: company","created_at":"2026-03-09T18:54:42Z","event_type":"label_added","id":913,"issue_id":"ghq-r56.1.1","new_value":null,"old_value":null}
+{"actor":"Chaudhry Hassaan Saleem","comment":"Added label: indigo-nx","created_at":"2026-03-09T18:54:42Z","event_type":"label_added","id":914,"issue_id":"ghq-r56.1.1","new_value":null,"old_value":null}

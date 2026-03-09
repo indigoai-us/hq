@@ -128,6 +128,10 @@
 {"issue_id":"ghq-r56.1","label":"company"}
 {"issue_id":"ghq-r56.1","label":"indigo"}
 {"issue_id":"ghq-r56.1","label":"indigo-nx"}
+{"issue_id":"ghq-r56.1.1","label":"company"}
+{"issue_id":"ghq-r56.1.1","label":"indigo"}
+{"issue_id":"ghq-r56.1.1","label":"indigo-nx"}
+{"issue_id":"ghq-r56.1.1","label":"multi-company"}
 {"issue_id":"ghq-uik","label":"company"}
 {"issue_id":"ghq-uik","label":"launch-grid"}
 {"issue_id":"ghq-uik.1","label":"company"}
