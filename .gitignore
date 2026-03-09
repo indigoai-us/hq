@@ -57,3 +57,14 @@ data/journal/*.jsonl
 # Synced modules (cloned repos)
 modules/.synced/
 .claude/settings.local.json
+
+# Knowledge repo contents (tracked by their own git)
+knowledge/*/
+!knowledge/Ralph/
+!knowledge/workers/
+!knowledge/ai-security-framework/
+!knowledge/dev-team/
+!knowledge/design-styles/
+!knowledge/hq-core/
+!knowledge/loom/
+!knowledge/projects/
