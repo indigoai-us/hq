@@ -1,0 +1,21 @@
+# Company Manifest
+# Maps each company to its repos, workers, knowledge, deploy targets, and infrastructure.
+
+personal:
+  repos: []
+  settings: []
+  workers: []
+  knowledge: companies/personal/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections: [personal]
+
+indigo:
+  domain: getindigo.ai
+  repos: []
+  settings: []
+  workers: []
+  knowledge: companies/indigo/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections: [indigo]

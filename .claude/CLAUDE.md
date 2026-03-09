@@ -86,7 +86,7 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Companies
 
-{company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}. Each owns `settings/` (creds), `data/` (exports), `knowledge/` (symlink → own git repo). Details: `knowledge/public/hq-core/quick-reference.md`
+{company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}, indigo. Each owns `settings/` (creds), `data/` (exports), `knowledge/` (symlink → own git repo). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -294,7 +294,7 @@ For deployable projects (web, API, CLI):
 <!-- Max 25. Worker-scoped rules go in worker.yaml, not here. -->
 <!-- Auto-managed by /learn. Manual: /remember -->
 
-- **qmd collections**: hq, {product}, {company-1}, {company-2}, {company-3}, personal, {company-6}. Use `-c {co}` to scope
+- **qmd collections**: hq, {product}, {company-1}, {company-2}, {company-3}, personal, {company-6}, indigo. Use `-c {co}` to scope
 - **company isolation**: `manifest.yaml` enforced. Never cross-contaminate creds/knowledge/deploys
 - **agent-browser**: CLI browser automation (v0.11.1). Skill at `.claude/skills/agent-browser/`. Auth states at `settings/{company}/browser-state/`. ALWAYS use agent-browser for ALL browser interactions — NEVER open headed browsers. Keep Playwright only for structured QA suites
 - **vercel org mapping**: {Company-1} → `voyagesms`, {Company-2} → `{company-2}-c09fddff`, {Company-3} → `{company-3}-f0dc7e1b`, Personal → `{your-username}s-projects`. NEVER run `vercel` CLI without `--scope {org}`. Prefer `git push` for production deploys
