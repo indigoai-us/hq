@@ -1,9 +1,13 @@
-# Pure Ralph Prompt
+# Ralph Loop Prompt
 
-You are executing the Pure Ralph Loop. Read the PRD, pick ONE task, complete it, update the PRD.
+You are executing the Ralph Loop. Complete the ASSIGNED story, then exit.
 
+**Assigned Story:** {{STORY_ID}} — {{STORY_TITLE}}
 **PRD Path:** {{PRD_PATH}}
 **Target Repo:** {{TARGET_REPO}}
+
+> **CRITICAL:** Work on story {{STORY_ID}} ONLY. Do NOT pick a different story.
+> The orchestrator assigns one story per session.
 
 ---
 
@@ -110,16 +114,13 @@ This is a **HARD BLOCK**, not a warning. Committing to main is NEVER acceptable 
 
 1. **BRANCH** - Ensure you're on `feature/{{PROJECT_NAME}}` (create if needed)
 2. **READ** the PRD at {{PRD_PATH}}
-3. **PICK** the highest priority incomplete task (where `passes` is false/null and dependencies are met)
-4. **IMPLEMENT** that ONE task
-5. **TEST** - Verify the implementation works locally (see Testing Requirements below)
-6. **COMMIT** with message: `feat(TASK-ID): Brief description`
-7. **PUSH** your changes: `git push origin feature/{{PROJECT_NAME}}`
-8. **VERIFY CI** - Wait for E2E workflow to pass (see "CI E2E Verification" section)
-9. **UPDATE** the PRD: set `passes: true` ONLY after CI passes, fill in `notes` with what you did
-10. **CHECK** if all tasks complete:
-    - **If more tasks remain:** EXIT - the loop will spawn a fresh session
-    - **If all tasks complete:** CREATE PR (see "PR Creation" section below), then EXIT
+3. **IMPLEMENT** story {{STORY_ID}}: {{STORY_TITLE}}
+4. **TEST** - Verify the implementation works locally (see Testing Requirements below)
+5. **COMMIT** with message: `feat({{STORY_ID}}): Brief description`
+6. **PUSH** your changes: `git push origin feature/{{PROJECT_NAME}}`
+7. **VERIFY CI** - Wait for E2E workflow to pass (see "CI E2E Verification" section)
+8. **UPDATE** the PRD: set `passes: true` for {{STORY_ID}} ONLY after CI passes, fill in `notes` with what you did
+9. **EXIT** - the orchestrator handles the next story
 
 ---
 
@@ -435,20 +436,16 @@ Example notes for emergency skip:
 
 ## Task Selection
 
-When picking which task to do:
-1. Find tasks where `passes` is false or null (and `status` is not "completed")
-2. Check `dependsOn` - skip tasks whose dependencies aren't complete
-3. **Pick the MOST IMPORTANT eligible task** - consider:
-   - Dependencies: tasks that unblock others are higher priority
-   - Impact: core functionality before polish
-   - Risk: tackle uncertain/complex tasks early
-4. If ALL tasks have `passes: true` or `status: "completed"`, respond: "ALL TASKS COMPLETE"
+The orchestrator assigns your story via `{{STORY_ID}}`. You do NOT pick tasks.
+
+If the assigned story's dependencies (`dependsOn`) are not yet complete (`passes: true`),
+respond: "BLOCKED: {{STORY_ID}} depends on [list]" and exit.
 
 ---
 
 ## Worker Selection
 
-After picking a task, determine the best dev-team worker for implementation.
+After receiving your assigned story, determine the best dev-team worker for implementation.
 
 ### Selection Criteria
 
@@ -636,19 +633,21 @@ The worker context shapes HOW you implement, not just WHAT you implement.
 
 ---
 
-## PRD Task Schema
+## PRD Story Schema
 
-Each task in the PRD can include these fields:
+Each story in the PRD `userStories` array can include these fields:
 
 ```json
 {
-  "id": "TASK-001",
+  "id": "US-001",
   "title": "Implement user authentication",
   "description": "Add JWT-based auth middleware",
   "acceptance_criteria": ["..."],
   "files": ["src/auth/middleware.ts"],
-  "dependsOn": ["TASK-000"],
+  "dependsOn": ["US-000"],
+  "priority": 1,
   "worker": "backend-dev",      // ← Optional: override auto-selection
+  "model_hint": "sonnet",       // ← Optional: model override for this story
   "passes": false,
   "notes": ""
 }
@@ -675,11 +674,11 @@ This is useful when:
 
 ## PRD Updates
 
-After completing a task, you MUST edit the PRD JSON:
+After completing a story, you MUST edit the PRD JSON:
 
 ```json
 {
-  "id": "TASK-001",
+  "id": "US-001",
   "passes": true,  // ← Set this
   "notes": "Worker: backend-dev. Selection reason: API endpoint implementation in src/api/. Created auth middleware using JWT. Files: src/auth/middleware.ts"  // ← Add this
 }
@@ -854,22 +853,20 @@ Manual PR required - see instructions above
 
 ## Response
 
-When done, briefly confirm what you did:
+When done, output structured JSON for the orchestrator:
 
-```
-Completed TASK-ID: Brief summary
-Files: list of files modified
+```json
+{"task_id": "{{STORY_ID}}", "status": "completed", "summary": "Brief summary of what was done"}
 ```
 
 If blocked:
 
-```
-BLOCKED on TASK-ID: Reason
+```json
+{"task_id": "{{STORY_ID}}", "status": "blocked", "summary": "Reason for blockage"}
 ```
 
-If all done (and PR created):
+If all stories are now complete (and PR created):
 
-```
-ALL TASKS COMPLETE
-PR: {{PR_URL or "manual PR required"}}
+```json
+{"task_id": "{{STORY_ID}}", "status": "completed", "summary": "Final story done. PR: URL"}
 ```

@@ -360,19 +360,22 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 ### The Loop
 
 ```
-1. Pick task from PRD (passes: false)
-2. Execute in fresh context
+1. Orchestrator picks next story from PRD (passes: false)
+2. Spawn fresh Claude session with story assignment
 3. Run back pressure (tests, lint, typecheck)
-4. If passing → commit, mark complete
-5. Repeat until done
+4. If passing → commit, mark passes: true
+5. Retry failures (up to 2 attempts), then skip
+6. Repeat until all stories complete
 ```
 
 ### Why It Works
 
-- **Fresh context per task** — No accumulated confusion
+- **Fresh context per story** — No accumulated confusion
 - **Back pressure validates** — Code that doesn't pass isn't done
-- **Atomic commits** — One task = one commit
+- **Atomic commits** — One story = one commit
 - **PRD is truth** — Simple JSON, easy to inspect
+- **State machine** — Survives interruptions, resumes where it left off
+- **File locks** — Prevents concurrent edit conflicts across stories
 
 ### Running a Project
 
@@ -380,11 +383,25 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 # 1. Create PRD
 /prd "Build user authentication"
 
-# 2. Execute via Ralph loop
+# 2. Execute via Ralph loop (uses .claude/scripts/run-project.sh)
 /run-project auth-system
 
 # 3. Monitor progress
 /run-project auth-system --status
+
+# 4. Resume after interruption
+/run-project auth-system --resume
+
+# 5. Retry failed stories
+/run-project auth-system --retry-failed
+```
+
+The orchestrator script (`.claude/scripts/run-project.sh`) can also be run directly:
+
+```bash
+.claude/scripts/run-project.sh my-project --dry-run     # Preview without executing
+.claude/scripts/run-project.sh my-project --verbose      # Detailed output
+.claude/scripts/run-project.sh my-project --max-budget 5 # Cap at $5
 ```
 
 ---
@@ -451,7 +468,9 @@ ln -s ../../repos/public/knowledge-ralph knowledge/Ralph
 my-hq/
 ├── .claude/
 │   ├── CLAUDE.md              # Session protocol + Context Diet
-│   └── commands/              # 18 slash commands
+│   ├── commands/              # 18 slash commands
+│   └── scripts/
+│       └── run-project.sh     # Ralph loop orchestrator
 ├── agents.md                  # Your profile
 ├── knowledge/                 # Symlinks → repos/ (or plain dirs)
 │   ├── Ralph/                 # Coding methodology
@@ -469,6 +488,8 @@ my-hq/
 │   ├── registry.yaml          # Worker index
 │   ├── sample-worker/         # Example (copy + customize)
 │   └── dev-team/              # Codex workers (coder, reviewer, debugger)
+├── prompts/
+│   └── pure-ralph-base.md     # Ralph loop prompt template
 ├── projects/                  # Your PRDs
 ├── workspace/
 │   ├── threads/               # Auto-saved sessions
