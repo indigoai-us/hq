@@ -346,7 +346,6 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 
 - Always verify which branch you're on before committing.
 - Prefer merge over rebase when a branch is significantly behind (50+ commits).
-- If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
 
 ## Project Repos - Commit Rules
