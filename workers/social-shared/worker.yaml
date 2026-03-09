@@ -3,6 +3,10 @@ description: Shared utilities, types, and safety functions for the social-team w
 version: "1.0"
 type: library
 company: null  # public, company-agnostic
+
+state_machine:
+  enabled: false  # library — not executable
+
 tags:
   - social
   - shared
