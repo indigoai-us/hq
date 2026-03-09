@@ -4,7 +4,7 @@
 
 | Name | Status | Description |
 |------|--------|-------------|
-| `distributed-tracking/` | active | Distributed tracking project |
+| `_archive/distributed-tracking/` | archived | Distributed tracking project (orphaned, no prd.json) |
 | `e2e-cloud-testing/` | completed | Cloud-native E2E testing infrastructure |
 | `hq-installer/` | completed | Zero-friction native installer for non-technical users |
 | `hq-installer-test-env/` | completed | HQ installer test environment |

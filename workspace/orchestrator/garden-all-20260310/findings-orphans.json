@@ -1,0 +1,159 @@
+{
+  "run_id": "garden-all-20260310-orphans",
+  "scope": "_orphans",
+  "scanned_at": "2026-03-10T01:45:00Z",
+  "paths_scanned": ["projects/", "workspace/", "knowledge/", "workers/"],
+  "total_files_scanned": 47,
+  "findings": [
+    {
+      "id": "F-001",
+      "type": "orphan",
+      "path": "projects/distributed-tracking",
+      "severity": "medium",
+      "signal": "Project has no README.md or prd.json; last commit 42 days ago (2026-01-27). Contains only context files (overview.md, architecture.md, domain.md). Status shows 'In Development' but no active work.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-002",
+      "type": "stale",
+      "path": "knowledge/knowledge-hq-core",
+      "severity": "low",
+      "signal": "Single file (systems-access.md), 17 days stale (last commit 2026-02-19). May be duplicate of knowledge/hq-core (0 days stale, last commit 2026-03-10).",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-003",
+      "type": "duplicate",
+      "path": "knowledge/hq-core vs knowledge/knowledge-hq-core",
+      "severity": "high",
+      "signal": "Two directories with very similar names; hq-core is current (20 files, updated 2026-03-10), knowledge-hq-core has 1 file (systems-access.md, stale since 2026-02-19). Likely duplicate.",
+      "recommended_action": "clean"
+    },
+    {
+      "id": "F-004",
+      "type": "stale",
+      "path": "knowledge/loom",
+      "severity": "low",
+      "signal": "No commits for 43 days (last 2026-01-25). No active development.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-005",
+      "type": "stale",
+      "path": "knowledge/context-needs",
+      "severity": "low",
+      "signal": "No commits for 41 days (last 2026-01-27). Likely reference material not actively maintained.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-006",
+      "type": "stale",
+      "path": "knowledge/project-context",
+      "severity": "low",
+      "signal": "No commits for 40 days (last 2026-01-27). May be superseded by project-context-manager project.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-007",
+      "type": "stale",
+      "path": "knowledge/testing",
+      "severity": "low",
+      "signal": "No commits for 35 days (last 2026-02-01). Less active than hq-core but within normal range.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-008",
+      "type": "stale",
+      "path": "knowledge/ai-security-framework",
+      "severity": "low",
+      "signal": "No commits for 25 days (last 2026-02-12). Stable reference material.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-009",
+      "type": "drift",
+      "path": "workspace/metrics",
+      "severity": "medium",
+      "signal": "Missing INDEX.md file. Directory exists with single file (test-coverage.jsonl, stale 36 days). metrics/ is expected in workspace structure per CLAUDE.md.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-010",
+      "type": "empty",
+      "path": "workspace/checkpoints",
+      "severity": "low",
+      "signal": "Directory is empty. Expected per workspace structure but no checkpoints written.",
+      "recommended_action": "clean"
+    },
+    {
+      "id": "F-011",
+      "type": "drift",
+      "path": "workspace/knowledge-logs",
+      "severity": "low",
+      "signal": "Missing INDEX.md file. Contains knowledge-capture-20260309-231500.json (recent) and learning JSON files.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-012",
+      "type": "drift",
+      "path": "workspace/learnings",
+      "severity": "low",
+      "signal": "Missing INDEX.md file. Contains learn-20260309-225500.json and .observe-patterns-latest.json. Active but undocumented.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-013",
+      "type": "drift",
+      "path": "workspace/content-ideas",
+      "severity": "low",
+      "signal": "Missing INDEX.md file. No recent activity visible. Purpose unclear.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-014",
+      "type": "drift",
+      "path": "workspace/drafts",
+      "severity": "low",
+      "signal": "Missing INDEX.md file. Expected for workspace structure but no visible content.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-015",
+      "type": "drift",
+      "path": "workspace/scratch",
+      "severity": "low",
+      "signal": "Missing INDEX.md file. Typical throwaway directory but undocumented.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-016",
+      "type": "unowned",
+      "path": "workspace/ralph-test",
+      "severity": "medium",
+      "signal": "Contains test artifacts (hello.txt from 2026-01-26, COMPLETE.md marking Pure Ralph Loop test success). Not integrated into active projects. Likely safe to archive but documents successful test run.",
+      "recommended_action": "archive"
+    }
+  ],
+  "summary": {
+    "total_findings": 16,
+    "by_type": {
+      "stale": 5,
+      "duplicate": 1,
+      "orphan": 1,
+      "drift": 8,
+      "empty": 1,
+      "unowned": 1
+    },
+    "by_severity": {
+      "high": 1,
+      "medium": 3,
+      "low": 12
+    }
+  },
+  "notes": {
+    "distributed-tracking": "42-day-old orphan project with context files but no PRD. Status unclear.",
+    "knowledge-hq-core": "Likely stale duplicate of hq-core. Single outdated file. Recommend dedup.",
+    "workspace-missing-index": "9 workspace subdirectories missing INDEX.md (per spec). 3 have recent content (learnings, knowledge-logs).",
+    "workers-registry": "All 52 workers in registry exist and are properly registered. No orphans detected in workers/."
+  }
+}

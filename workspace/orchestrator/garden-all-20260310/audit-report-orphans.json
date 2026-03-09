@@ -1,0 +1,47 @@
+{
+  "run_id": "garden-all-20260310-orphans",
+  "audited_at": "2026-03-10T00:00:00Z",
+  "findings_reviewed": 4,
+  "actions": [
+    {
+      "finding_id": "F-003",
+      "validation": "confirmed",
+      "confidence": "high",
+      "notes": "knowledge/knowledge-hq-core/ contains exactly one file: systems-access.md (last updated 2026-02-13). The canonical knowledge/hq-core/ directory contains 18 files with no systems-access.md equivalent — the credential/system reference table content is NOT present there. However, the CLAUDE.md learned rules reference a 'credential-access-protocol.md' policy file as the canonical credential access guide, and systems-access.md predates and partially overlaps with per-company settings documentation. The file is well-structured and contains unique operational content (MCP server inventory, auth patterns by type, per-company system summary) not replicated in hq-core. The directory name 'knowledge-hq-core' is a clear naming collision with 'hq-core' — it is a leftover duplicate directory that was never cleaned up. No references to 'systems-access' or 'knowledge-hq-core' exist anywhere in .claude/, workers/, or other HQ files, confirming it is orphaned.",
+      "action": "merge",
+      "details": "Move knowledge/knowledge-hq-core/systems-access.md into knowledge/hq-core/systems-access.md (content is unique — not present in hq-core). Update INDEX.md in hq-core to include the new file. Then delete the now-empty knowledge/knowledge-hq-core/ directory. Do not simply archive — the content is operationally useful and belongs in the canonical hq-core location."
+    },
+    {
+      "finding_id": "F-001",
+      "validation": "confirmed",
+      "confidence": "medium",
+      "notes": "projects/distributed-tracking/context/ contains three well-structured spec files (overview.md, architecture.md, domain.md) all dated 2026-01-27, verified by 'context-manager'. The overview.md states status is 'In Development' with 9 user stories defined and references a prd.json that does not exist. The git log shows only a single commit (65965bd: 'feat(US-001): Define project context schema') with no subsequent activity. The project is 42 days stale with no prd.json, no commands implemented, and the only git activity is the initial scaffold commit. The target_repo reference ('C:/my-hq') contains a Windows path, suggesting this may have been created in a different environment context and never carried forward. The content is a real spec (not garbage) but there is no signal the project is being actively pursued.",
+      "action": "archive",
+      "details": "Move projects/distributed-tracking/ to projects/_archive/distributed-tracking/. The context files contain genuine spec work (domain model, architecture patterns, glossary) that may be useful as reference if the distributed tracking feature is ever revisited — do not delete. The absence of prd.json, zero implementation progress, and Windows path reference confirm this is an abandoned planning effort, not active work."
+    },
+    {
+      "finding_id": "F-009",
+      "validation": "partial",
+      "confidence": "high",
+      "notes": "workspace/metrics/ contains exactly one file: test-coverage.jsonl. The file has one record dated 2026-02-02 (project: hq-installer, 21/21 tests passed). The directory is actively referenced by two PowerShell scripts (.claude/scripts/collect-test-metrics.ps1 and show-test-coverage.ps1) which read/write to this exact path. Additionally, .claude/commands/execute-task.md, audit.md, run.md, and metrics.md all reference workspace/metrics/ for model-usage.jsonl, audit-log.jsonl, and metrics.jsonl files that do not yet exist. The directory is an active, intentional workspace — not abandoned. The test-coverage.jsonl file is stale but the directory structure is correct and expected by multiple commands. The only real issue is the missing INDEX.md.",
+      "action": "clean",
+      "details": "Add workspace/metrics/INDEX.md documenting the directory's purpose and the JSONL files it is expected to contain (test-coverage.jsonl, model-usage.jsonl, audit-log.jsonl, metrics.jsonl). Do NOT archive test-coverage.jsonl — it is the correct format and location; it is simply sparse. The directory is actively used by HQ infrastructure."
+    },
+    {
+      "finding_id": "F-016",
+      "validation": "confirmed",
+      "confidence": "high",
+      "notes": "workspace/ralph-test/ contains two files: hello.txt (content: 'Hello from Ralph Loop! Executed at: 2026-01-26T19:15:00Z') and COMPLETE.md (a summary confirming the Pure Ralph Loop test ran successfully on 2026-01-26). Both files were created as part of a TEST-001/TEST-002/TEST-003 sequence to validate the Ralph Loop orchestration system. The COMPLETE.md explicitly states 'The Pure Ralph Loop is working as designed.' These are pure test artifacts with no operational value. No commands, workers, or other HQ files reference workspace/ralph-test/. The test is over 6 weeks old with no subsequent activity.",
+      "action": "archive",
+      "details": "Move workspace/ralph-test/ to workspace/_archive/ralph-test/. Both files are test artifacts confirming a one-time validation run. The Pure Ralph Loop has since been used in production (e.g. the distributed-tracking project above used it). Archiving preserves a historical record of the first successful Ralph Loop test without cluttering the active workspace."
+    }
+  ],
+  "escalations": [],
+  "summary": {
+    "audited": 4,
+    "confirmed": 3,
+    "dismissed": 0,
+    "partial": 1,
+    "escalated": 0
+  }
+}

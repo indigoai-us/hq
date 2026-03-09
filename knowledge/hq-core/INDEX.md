@@ -20,4 +20,5 @@
 | `quick-reference.md` | HQ quick reference guide |
 | `shopify-launch-playbook.md` | Shopify launch playbook |
 | `starter-kit-compatibility-contract.md` | Starter kit compatibility contract |
+| `systems-access.md` | Systems access index — credentials and auth per company/service |
 | `thread-schema.md` | Thread JSON schema |

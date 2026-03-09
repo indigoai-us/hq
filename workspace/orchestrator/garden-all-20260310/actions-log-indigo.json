@@ -1,0 +1,20 @@
+{
+  "run_id": "garden-all-20260310-indigo",
+  "executed_at": "2026-03-10T00:00:00Z",
+  "actions": [
+    {
+      "finding_id": "F-004",
+      "action": "update",
+      "path": "companies/indigo/README.md",
+      "before": "## Repos\n\nNone yet.",
+      "after": "## Repos\n\n- [`indigo-nx`](../../repos/private/indigo-nx) — Indigo NX monorepo",
+      "status": "succeeded"
+    }
+  ],
+  "summary": {
+    "succeeded": 1,
+    "failed": 0,
+    "prds_created": [],
+    "repos_committed": []
+  }
+}

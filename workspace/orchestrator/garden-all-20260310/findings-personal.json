@@ -1,0 +1,59 @@
+{
+  "run_id": "garden-all-20260310-personal",
+  "scope": "personal",
+  "scanned_at": "2026-03-09T20:40:31Z",
+  "paths_scanned": [
+    "companies/personal/"
+  ],
+  "total_files_scanned": 4,
+  "findings": [
+    {
+      "id": "F-001",
+      "type": "unowned",
+      "path": "companies/personal/knowledge/INDEX.md",
+      "severity": "low",
+      "signal": "INDEX.md is not tracked in git (blocked by .gitignore line 72: 'companies/*/knowledge/*'). File is auto-generated but not version-controlled. Last filesystem modification: 2026-03-10 00:44.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-002",
+      "type": "empty",
+      "path": "companies/personal/data/",
+      "severity": "low",
+      "signal": "Data directory is empty. Standard location for company exports and reports. No files present.",
+      "recommended_action": "clean"
+    },
+    {
+      "id": "F-003",
+      "type": "empty",
+      "path": "companies/personal/settings/",
+      "severity": "low",
+      "signal": "Settings directory is empty. Standard location for company credentials and configuration. No files present.",
+      "recommended_action": "clean"
+    }
+  ],
+  "summary": {
+    "total_findings": 3,
+    "by_type": {
+      "stale": 0,
+      "duplicate": 0,
+      "orphan": 0,
+      "drift": 0,
+      "empty": 2,
+      "unowned": 1
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 3
+    }
+  },
+  "metadata": {
+    "scan_scope": "personal company knowledge, settings, and data directories",
+    "tracked_files_count": 2,
+    "untracked_files_count": 2,
+    "symlink_status": "valid (points to repos/private/knowledge-personal)",
+    "git_branch": "main",
+    "notes": "All tracked files (profile.md, voice-style.md) are fresh (committed 2026-03-09). INDEX.md is gitignored by design and should not be version-controlled. No staleness issues detected."
+  }
+}

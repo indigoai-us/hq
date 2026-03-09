@@ -1,0 +1,22 @@
+{
+  "run_id": "garden-all-20260310-indigo",
+  "audited_at": "2026-03-10T00:00:00Z",
+  "findings_reviewed": 1,
+  "actions": [
+    {
+      "finding_id": "F-004",
+      "validation": "confirmed",
+      "confidence": "high",
+      "notes": "README.md line 14 says 'None yet.' under Repos section, but manifest.yaml declares repos/private/indigo-nx which exists and has recent commits.",
+      "action": "update",
+      "details": "Update README.md Repos section to list indigo-nx"
+    }
+  ],
+  "escalations": [],
+  "summary": {
+    "audited": 1,
+    "confirmed": 1,
+    "dismissed": 0,
+    "escalated": 0
+  }
+}

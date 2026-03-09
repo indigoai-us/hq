@@ -11,7 +11,7 @@
 
 ## Repos
 
-None yet.
+- [`indigo-nx`](../../repos/private/indigo-nx) — Indigo NX monorepo
 
 ## Workers
 

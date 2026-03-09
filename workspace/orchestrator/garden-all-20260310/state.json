@@ -1,0 +1,19 @@
+{
+  "run_id": "garden-all-20260310",
+  "scope": "all",
+  "chunks": ["personal", "indigo", "_orphans"],
+  "status": "complete",
+  "phase": "complete",
+  "current_chunk": null,
+  "started_at": "2026-03-10T00:00:00Z",
+  "updated_at": "2026-03-10T02:00:00Z",
+  "findings_count": 23,
+  "approved_count": 5,
+  "actions_taken": 5,
+  "prds_created": [],
+  "chunk_results": {
+    "personal": {"findings": 3, "actions": 0, "status": "skipped_clean"},
+    "indigo": {"findings": 4, "actions": 1, "status": "complete"},
+    "_orphans": {"findings": 16, "actions": 4, "status": "complete"}
+  }
+}

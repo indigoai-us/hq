@@ -1,0 +1,54 @@
+{
+  "run_id": "garden-all-20260310-orphans",
+  "executed_at": "2026-03-10T02:00:00Z",
+  "actions": [
+    {
+      "finding_id": "F-003",
+      "action": "merge",
+      "path": "knowledge/knowledge-hq-core",
+      "before": "knowledge/knowledge-hq-core/ — plain directory (not a symlink, not a git repo) containing one file: systems-access.md",
+      "after": "systems-access.md copied to knowledge/hq-core/systems-access.md; knowledge/hq-core/INDEX.md updated to include entry; knowledge/knowledge-hq-core/ directory removed; staged as git rename knowledge/knowledge-hq-core/systems-access.md -> knowledge/hq-core/systems-access.md",
+      "status": "succeeded",
+      "notes": "Neither knowledge/hq-core nor knowledge/knowledge-hq-core were symlinks — both were plain directories embedded in HQ git. No separate knowledge repo commits needed. Changes staged in HQ git."
+    },
+    {
+      "finding_id": "F-001",
+      "action": "archive",
+      "path": "projects/distributed-tracking",
+      "before": "projects/distributed-tracking/ — active entry in projects/INDEX.md; contained only context/ subdirectory (no prd.json)",
+      "after": "git mv to projects/_archive/distributed-tracking/; projects/INDEX.md updated to show status=archived; staged in HQ git",
+      "status": "succeeded"
+    },
+    {
+      "finding_id": "F-009",
+      "action": "clean",
+      "path": "workspace/metrics",
+      "before": "workspace/metrics/ — directory with only test-coverage.jsonl (sparse); no INDEX.md",
+      "after": "workspace/metrics/INDEX.md created documenting purpose, expected files (test-coverage.jsonl, model-usage.jsonl, audit-log.jsonl, metrics.jsonl), format (JSONL), and which commands write to each file; staged in HQ git",
+      "status": "succeeded"
+    },
+    {
+      "finding_id": "F-016",
+      "action": "archive",
+      "path": "workspace/ralph-test",
+      "before": "workspace/ralph-test/ — contained COMPLETE.md and hello.txt; leftover test artifacts from Pure Ralph Loop validation project",
+      "after": "git mv to workspace/_archive/ralph-test/; staged in HQ git",
+      "status": "succeeded"
+    }
+  ],
+  "summary": {
+    "succeeded": 4,
+    "failed": 0,
+    "staged_for_hq_commit": [
+      "knowledge/hq-core/systems-access.md",
+      "knowledge/hq-core/INDEX.md",
+      "knowledge/knowledge-hq-core/ (deleted)",
+      "projects/_archive/distributed-tracking/ (renamed from projects/distributed-tracking/)",
+      "projects/INDEX.md",
+      "workspace/metrics/INDEX.md",
+      "workspace/_archive/ralph-test/ (renamed from workspace/ralph-test/)"
+    ],
+    "repos_committed": [],
+    "notes": "All 4 actions affected HQ git (not separate knowledge repos). Changes are staged but not committed per instructions — orchestrator handles commit."
+  }
+}

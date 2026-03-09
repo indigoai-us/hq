@@ -1,0 +1,57 @@
+{
+  "run_id": "garden-all-20260310-indigo",
+  "scope": "indigo",
+  "scanned_at": "2026-03-10T00:00:00Z",
+  "paths_scanned": ["companies/indigo/"],
+  "total_files_scanned": 1,
+  "findings": [
+    {
+      "id": "F-001",
+      "type": "empty",
+      "path": "companies/indigo/data/",
+      "severity": "low",
+      "signal": "Empty data directory - no exports or data files present. Expected for newly scaffolded company.",
+      "recommended_action": "monitor"
+    },
+    {
+      "id": "F-002",
+      "type": "empty",
+      "path": "companies/indigo/policies/",
+      "severity": "low",
+      "signal": "Empty policies directory - no company-scoped rules defined yet. Expected for newly scaffolded company.",
+      "recommended_action": "monitor"
+    },
+    {
+      "id": "F-003",
+      "type": "empty",
+      "path": "companies/indigo/settings/",
+      "severity": "low",
+      "signal": "Empty settings directory - no credentials or env files present. Expected for newly scaffolded company.",
+      "recommended_action": "monitor"
+    },
+    {
+      "id": "F-004",
+      "type": "drift",
+      "path": "companies/manifest.yaml",
+      "severity": "medium",
+      "signal": "README.md states 'Repos: None yet' but manifest.yaml declares repos/private/indigo-nx as an active repo",
+      "recommended_action": "investigate"
+    }
+  ],
+  "summary": {
+    "total_findings": 4,
+    "by_type": {
+      "stale": 0,
+      "duplicate": 0,
+      "orphan": 0,
+      "drift": 1,
+      "empty": 3,
+      "unowned": 0
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 1,
+      "low": 3
+    }
+  }
+}
