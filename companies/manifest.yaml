@@ -51,3 +51,18 @@ production-house:
   scheduler:
     enabled: false
     max_agents: 1
+
+indigo:
+  symlink: indigo
+  repos: []
+  settings: companies/indigo/settings/
+  skills: []
+  knowledge: companies/indigo/knowledge/
+  deploy: []
+  vercel_projects: []
+  epic: ghq-r56
+  qmd_collections:
+    - indigo
+  scheduler:
+    enabled: false
+    max_agents: 1
