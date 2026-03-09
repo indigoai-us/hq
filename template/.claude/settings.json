@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/block-hq-glob.sh",
+            "command": ".claude/hooks/hook-gate.sh block-hq-glob .claude/hooks/block-hq-glob.sh",
             "timeout": 5
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/block-hq-grep.sh",
+            "command": ".claude/hooks/hook-gate.sh block-hq-grep .claude/hooks/block-hq-grep.sh",
             "timeout": 5
           }
         ]
@@ -29,7 +29,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/warn-cross-company-settings.sh",
+            "command": ".claude/hooks/hook-gate.sh warn-cross-company-settings .claude/hooks/warn-cross-company-settings.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh detect-secrets .claude/hooks/detect-secrets.sh",
             "timeout": 5
           }
         ]
@@ -41,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/auto-checkpoint-trigger.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-checkpoint-trigger .claude/hooks/auto-checkpoint-trigger.sh",
             "timeout": 5
           }
         ]
@@ -51,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/auto-checkpoint-trigger.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-checkpoint-trigger .claude/hooks/auto-checkpoint-trigger.sh",
             "timeout": 5
           }
         ]
@@ -63,7 +73,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/auto-handoff-trigger.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-handoff-trigger .claude/hooks/auto-handoff-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh observe-patterns .claude/hooks/observe-patterns.sh",
             "timeout": 5
           }
         ]

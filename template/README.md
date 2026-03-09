@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#whats-new-in-v5">What's New</a> •
+  <a href="#whats-new">What's New</a> •
   <a href="#core-concepts">Core Concepts</a> •
   <a href="#commands">Commands</a> •
   <a href="#workers">Workers</a>
@@ -111,64 +111,66 @@ Setup asks your name, work, and goals. It also scaffolds your first knowledge re
 
 ## What's New
 
-### Codex Workers + MCP Integration (v5.3)
-Three production-ready workers powered by OpenAI Codex SDK via MCP:
+### Hook Profiles + Secret Detection (v7.0)
+Runtime-configurable hook system with three profiles — no `settings.json` edits needed:
 
 ```bash
-/run codex-coder generate-code --task "Create a rate limiter"
-/run codex-reviewer review-code --files src/auth/*.ts --focus security
-/run codex-debugger fix-bug --issue "Session not persisting"
+# Minimal: safety hooks only (fastest)
+HQ_HOOK_PROFILE=minimal claude
+
+# Standard (default): all hooks active
+HQ_HOOK_PROFILE=standard claude
+
+# Disable specific hooks
+HQ_DISABLED_HOOKS=auto-checkpoint-trigger claude
 ```
 
-Workers connect to external AI via **Model Context Protocol** — a shared `codex-engine` MCP server wraps the Codex SDK and exposes tools (`codex_generate`, `codex_review`, `codex_debug`, `codex_improve`). The `sample-worker` template now includes MCP, reporting, and verification patterns.
+All hooks route through `hook-gate.sh`. New `detect-secrets` hook blocks API keys in bash commands. New `observe-patterns` hook captures session insights on stop.
+
+### Audit Log (v7.0)
+Track every task execution across projects and workers:
+
+```bash
+/audit                              # Summary: last 7 days
+/audit --project my-app             # All events for a project
+/audit --failures                   # Show only failures with error details
+/audit --since 2026-03-01           # Custom date range
+```
+
+Populated automatically by `/run-project` and `/execute-task`. Stored as JSONL at `workspace/metrics/audit-log.jsonl`.
+
+### 9 New Commands (v7.0)
+| Command | Purpose |
+|---------|---------|
+| `/audit` | Query audit log events |
+| `/brainstorm` | Explore approaches before committing to a PRD |
+| `/dashboard` | Generate visual HTML goals dashboard |
+| `/goals` | View and manage OKR structure |
+| `/harness-audit` | Score HQ setup quality across 7 categories |
+| `/idea` | Capture a project idea without a full PRD |
+| `/model-route` | Recommend optimal Claude model for a task |
+| `/quality-gate` | Universal pre-commit checks (typecheck, lint, test) |
+| `/tdd` | RED→GREEN→REFACTOR cycle with coverage validation |
+
+### 4 New Workers (v7.0)
+| Worker | Type | Purpose |
+|--------|------|---------|
+| **accessibility-auditor** | OpsWorker | WCAG 2.2 AA auditing with remediation plans |
+| **exec-summary** | OpsWorker | McKinsey SCQA executive summaries |
+| **performance-benchmarker** | OpsWorker | Core Web Vitals + k6 load testing |
+| **reality-checker** | CodeWorker | Final quality gate — verifies impl matches spec |
+
+### Full Ralph Orchestrator (v7.0)
+`run-project.sh` now includes audit log integration, `--tmux` mode for parallel execution, session ID tracking, and checkout guards in `/execute-task`.
+
+### Codex Workers + MCP Integration (v5.3)
+Three production workers powered by OpenAI Codex SDK via MCP. Workers connect via **Model Context Protocol** — a shared `codex-engine` MCP server wraps the Codex SDK.
 
 ### Context Diet (v5.1)
-Sessions no longer pre-load INDEX.md or agents.md. Lazy-loading rules in CLAUDE.md tell Claude to load only what the task needs:
-
-```
-Writing task    → loads agents.md + voice-style.md
-Coding task     → goes straight to the repo
-Worker task     → loads just worker.yaml
-Resuming work   → reads handoff.json (7 lines)
-```
+Sessions lazy-load only what the task needs. No pre-loading INDEX.md or agents.md.
 
 ### Learning System (v5.0)
-Rules get injected directly into the files they govern:
-
-```bash
-/learn              # Auto-capture learnings after task execution
-/remember           # Manual correction → injects rule into source file
-```
-
-Worker rules → `worker.yaml`. Command rules → command `.md`. Global rules → `CLAUDE.md`.
-
-### Build Your Own Workers
-Start from `sample-worker` or the bundled codex workers:
-
-```bash
-/newworker          # Interactive scaffold from sample-worker template
-```
-
-Copy `workers/sample-worker/` (or any codex worker), customize the YAML, and you have a production worker.
-
-### Personal Interview
-Deep conversational interview builds your profile and voice:
-
-```bash
-/personal-interview # ~18 questions → agents.md, voice-style.md, profile.md
-```
-
-### Semantic Search
-[qmd](https://github.com/tobi/qmd)-powered search across all HQ content:
-
-```bash
-/search "auth middleware"           # BM25 keyword search
-/search "how billing works" -v     # Semantic/conceptual search
-/search-reindex                    # Rebuild search index
-```
-
-### Auto-Handoff
-Claude auto-runs `/handoff` when context hits 70%. Threads capture full git state, worker progress, and next steps. Fresh sessions resume seamlessly.
+Rules get injected directly into the files they govern via `/learn` and `/remember`.
 
 ---
 
@@ -244,6 +246,23 @@ Work survives context limits:
 | `/prd` | Generate PRD through discovery |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Run single task with workers |
+
+### Quality & Analysis
+| Command | What it does |
+|---------|--------------|
+| `/audit` | Query and display audit log events |
+| `/harness-audit` | Score HQ setup quality (7 categories) |
+| `/quality-gate` | Pre-commit checks (typecheck, lint, test) |
+| `/tdd` | RED→GREEN→REFACTOR with coverage validation |
+| `/model-route` | Recommend optimal Claude model for a task |
+| `/dashboard` | Generate visual HTML goals dashboard |
+
+### Planning
+| Command | What it does |
+|---------|--------------|
+| `/brainstorm` | Explore approaches before committing to a PRD |
+| `/idea` | Capture a project idea without a full PRD |
+| `/goals` | View and manage OKR structure |
 
 ### System
 | Command | What it does |
@@ -360,19 +379,22 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 ### The Loop
 
 ```
-1. Pick task from PRD (passes: false)
-2. Execute in fresh context
+1. Orchestrator picks next story from PRD (passes: false)
+2. Spawn fresh Claude session with story assignment
 3. Run back pressure (tests, lint, typecheck)
-4. If passing → commit, mark complete
-5. Repeat until done
+4. If passing → commit, mark passes: true
+5. Retry failures (up to 2 attempts), then skip
+6. Repeat until all stories complete
 ```
 
 ### Why It Works
 
-- **Fresh context per task** — No accumulated confusion
+- **Fresh context per story** — No accumulated confusion
 - **Back pressure validates** — Code that doesn't pass isn't done
-- **Atomic commits** — One task = one commit
+- **Atomic commits** — One story = one commit
 - **PRD is truth** — Simple JSON, easy to inspect
+- **State machine** — Survives interruptions, resumes where it left off
+- **File locks** — Prevents concurrent edit conflicts across stories
 
 ### Running a Project
 
@@ -380,11 +402,25 @@ HQ uses the **Ralph Methodology** for autonomous coding.
 # 1. Create PRD
 /prd "Build user authentication"
 
-# 2. Execute via Ralph loop
+# 2. Execute via Ralph loop (uses .claude/scripts/run-project.sh)
 /run-project auth-system
 
 # 3. Monitor progress
 /run-project auth-system --status
+
+# 4. Resume after interruption
+/run-project auth-system --resume
+
+# 5. Retry failed stories
+/run-project auth-system --retry-failed
+```
+
+The orchestrator script (`.claude/scripts/run-project.sh`) can also be run directly:
+
+```bash
+.claude/scripts/run-project.sh my-project --dry-run     # Preview without executing
+.claude/scripts/run-project.sh my-project --verbose      # Detailed output
+.claude/scripts/run-project.sh my-project --max-budget 5 # Cap at $5
 ```
 
 ---
@@ -451,7 +487,10 @@ ln -s ../../repos/public/knowledge-ralph knowledge/Ralph
 my-hq/
 ├── .claude/
 │   ├── CLAUDE.md              # Session protocol + Context Diet
-│   └── commands/              # 18 slash commands
+│   ├── commands/              # 35+ slash commands
+│   ├── hooks/                 # hook-gate, detect-secrets, observe-patterns
+│   └── scripts/
+│       └── run-project.sh     # Ralph loop orchestrator
 ├── agents.md                  # Your profile
 ├── knowledge/                 # Symlinks → repos/ (or plain dirs)
 │   ├── Ralph/                 # Coding methodology
@@ -465,10 +504,17 @@ my-hq/
 ├── repos/
 │   ├── public/                # Public repos + knowledge repos
 │   └── private/               # Private repos + knowledge repos
+├── scripts/
+│   └── audit-log.sh           # Audit log append/query/summary
 ├── workers/
 │   ├── registry.yaml          # Worker index
 │   ├── sample-worker/         # Example (copy + customize)
-│   └── dev-team/              # Codex workers (coder, reviewer, debugger)
+│   ├── accessibility-auditor/ # WCAG 2.2 AA auditing
+│   ├── exec-summary/          # Executive summaries
+│   ├── performance-benchmarker/ # Core Web Vitals + load testing
+│   └── dev-team/              # Codex workers, reality-checker, + more
+├── prompts/
+│   └── pure-ralph-base.md     # Ralph loop prompt template
 ├── projects/                  # Your PRDs
 ├── workspace/
 │   ├── threads/               # Auto-saved sessions

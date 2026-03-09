@@ -95,6 +95,26 @@ Ask for project slug (or infer from description). Then:
    - If exists: "Project exists. Continue editing or choose different name?"
 3. Validate slug format (lowercase, hyphens only)
 
+## Step 3.5: Brainstorm Detection
+
+Now that `{co}` and `{slug}` are resolved, check if a brainstorm file exists:
+
+```
+companies/{co}/projects/{slug}/brainstorm.md
+```
+
+**If found:**
+1. Read it. Extract YAML frontmatter (`status`, `source_idea_id`)
+2. If `status: "promoted"` → warn: "This brainstorm was already promoted to a PRD. Open existing prd.json instead?"
+3. **Pre-load brainstorm content** into interview context for Step 4:
+   - **Batch 1** (Problem/Success): pre-fill from brainstorm's `## Context`, `## Recommendation`. Present as confirmations ("Based on brainstorm: {X}. Confirm or modify?") instead of open-ended questions
+   - **Batch 2** (Scope/Constraints): pre-fill from `## What We Don't Know` + any constraints mentioned. Surface unknowns as explicit questions to resolve
+   - **Batch 3** (Integration): pre-fill from brainstorm's identified workers, repos, and recommended approach's tech choices
+   - **Batch 4** (E2E): unchanged — brainstorm doesn't cover testing specifics
+4. **Effect**: interview batches collapse to confirmations rather than open-ended questions. User answers faster, stories are better anchored to the evaluated approach
+
+**If not found:** proceed normally (no change to existing behavior).
+
 ## Step 4: Discovery Interview
 
 
@@ -120,7 +140,7 @@ Ask questions in batches. Users respond: "1A, 2C"
 9. Does this need a new worker or skill?
 10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 11. Branch name? (default: `feature/{project-name}`)
-12. Base branch? (default: `main`, or `staging` for indigo-nx, etc.) — Pure Ralph creates feature branch from this
+12. Base branch? (default: `main`, or `staging` for {product}, etc.) — Pure Ralph creates feature branch from this
 
 **Batch 4: E2E Testing (recommended for deployable projects)**
 For each user story targeting a deployable repo, specify E2E tests:
@@ -221,7 +241,15 @@ Generate FROM the prd.json data. Human-friendly view.
 {Remaining questions}
 ```
 
-## Step 5.5: Sync to Company Board
+## Step 5.5: Update Brainstorm (if exists)
+
+If a `brainstorm.md` was detected in Step 3.5, update its YAML frontmatter:
+- Set `status: "promoted"`
+- Set `promoted_to: "companies/{co}/projects/{name}/prd.json"`
+
+This marks the brainstorm as consumed. The file is preserved for reference.
+
+## Step 5.6: Sync to Company Board
 
 Read `companies/manifest.yaml` to find `metadata.company` → `board_path`.
 
@@ -334,3 +362,4 @@ To execute, start a new session and run:
 - **MANDATORY: Always create project files** — Every /prd invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for /run-project. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files
 - **Every story MUST have testable acceptance criteria** — "works correctly" is not acceptable
 - **Include testing stories** — For deployable projects, at least one story should be dedicated to E2E test infrastructure
+- **ALWAYS: Verify board.json write in Step 5.5** — After upserting the board entry, re-read board.json and confirm the new project ID exists. If the write failed silently (file parse error, missing board, manifest lookup miss), log the error and retry once. Silent failure leaves projects invisible in the HQ app — the orphan scanner catches them with an "Unregistered" badge, but proper registration is required

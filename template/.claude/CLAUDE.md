@@ -20,6 +20,48 @@ Minimize context burn on session start:
 - When unsure what to load: ask user, don't explore
 - Prefer `workspace/threads/handoff.json` (7 lines) over INDEX.md for session state
 
+## Token Optimization
+
+Env vars in `.claude/settings.json` control cost defaults:
+
+| Env var | Value | Why |
+|---------|-------|-----|
+| `MAX_THINKING_TOKENS` | `10000` | Caps extended thinking (~70% reasoning cost savings) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `50` | Triggers mandatory handoff at 50% context |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | `haiku` | Subagents (Task tool) use Haiku (~90% cheaper than Opus) |
+
+Switch models mid-session with `/model opus` for complex reasoning. Toggle thinking with Option+T.
+
+## Hook Profiles
+
+Runtime-configurable hook execution via environment variables (no settings.json edits needed).
+
+**Profiles** (set via `HQ_HOOK_PROFILE` env var):
+
+| Profile | Hooks | Use Case |
+|---------|-------|----------|
+| `minimal` | block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets | Critical safety only (no checkpoint nudges) |
+| `standard` | All minimal + auto-checkpoint-trigger, auto-handoff-trigger, observe-patterns | Default (all current hooks active) |
+| `strict` | All standard + future quality/format hooks | Development/testing (reserved) |
+
+**Default:** `standard` (all hooks active)
+
+**Disable individual hooks** (comma-separated):
+```
+HQ_DISABLED_HOOKS=auto-checkpoint-trigger,auto-handoff-trigger
+```
+
+**Usage examples:**
+```bash
+# Minimal mode (safety hooks only)
+HQ_HOOK_PROFILE=minimal claude code
+
+# Disable checkpoint nudges
+HQ_DISABLED_HOOKS=auto-checkpoint-trigger claude code
+```
+
+**Technical:** All hooks route through `.claude/hooks/hook-gate.sh` which reads profile/disabled lists before delegating.
+
 ## Session Handoffs
 
 When preparing a session handoff: always commit all pending changes first, write a handoff.json with current progress state (completed stories, remaining work, blockers), update INDEX files, and create a thread file. Never enter plan mode during handoff — execute steps directly.
@@ -123,7 +165,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid + dev-team (16) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): company-scoped workers. Full list: `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.

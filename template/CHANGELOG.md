@@ -1,5 +1,38 @@
 # Changelog
 
+## v7.0.0 (2026-03-09)
+
+Hook profiles, audit logging, 9 new commands, 4 new workers, full Ralph orchestrator.
+
+### Added
+
+- **Hook Profiles** — Runtime-configurable hook system via `HQ_HOOK_PROFILE` env var (minimal/standard/strict). All hooks route through `hook-gate.sh`. Disable individual hooks via `HQ_DISABLED_HOOKS`.
+- **Token Optimization** (CLAUDE.md) — `MAX_THINKING_TOKENS`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, `CLAUDE_CODE_SUBAGENT_MODEL` env var documentation.
+- **`hook-gate.sh`** — Profile routing hub for all hooks. Reads `HQ_HOOK_PROFILE` and `HQ_DISABLED_HOOKS` before delegating.
+- **`detect-secrets.sh`** — PreToolUse hook blocks API keys, tokens, and credentials in bash commands.
+- **`observe-patterns.sh`** — Stop hook captures session pattern analysis on conversation end.
+- **`scripts/audit-log.sh`** — Audit log engine: append, query, summary. JSONL storage at `workspace/metrics/audit-log.jsonl`.
+- **9 new commands** — `/audit`, `/brainstorm`, `/dashboard`, `/goals`, `/harness-audit`, `/idea`, `/model-route`, `/quality-gate`, `/tdd`.
+- **4 new workers** — `accessibility-auditor` (WCAG 2.2 AA), `exec-summary` (McKinsey SCQA), `performance-benchmarker` (Core Web Vitals + k6), `reality-checker` (final quality gate).
+
+### Changed
+
+- **`settings.json`** — All hooks rewired through `hook-gate.sh`. Added PreToolUse Bash → `detect-secrets`, Stop → `observe-patterns`.
+- **`run-project.sh`** — Full Ralph orchestrator (1390 lines). Audit log integration, `--tmux` mode, session ID tracking.
+- **`/execute-task`** — Checkout guard prevents concurrent story execution.
+- **`/prd`** — Brainstorm detection (steps 3.5 + 5.5) redirects to `/brainstorm` when appropriate.
+- **`/run-project`** — Worked example, `--tmux` flag documentation.
+- **CLAUDE.md** — Added Token Optimization + Hook Profiles sections. Updated workers section (+4 workers). Updated command count to 35+.
+- **`workers/registry.yaml`** — Version 8.0 → 9.0. Added 4 new workers. Updated counts: Standalone 6→9, Dev Team 16→17.
+- **README.md** — Updated What's New to v7.0.0, command count 18→35+, new directory structure with hooks/.
+
+### Removed
+
+- **PR team workers (6)** — `pr-shared`, `pr-strategist`, `pr-writer`, `pr-outreach`, `pr-monitor`, `pr-coordinator` removed (private/company-specific).
+- **`knowledge/hq/`** — Duplicate of `knowledge/hq-core/`, deleted.
+
+---
+
 ## v6.5.1 (2026-03-07)
 
 LSP support, hook improvements, and command cleanup.
