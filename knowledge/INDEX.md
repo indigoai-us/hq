@@ -12,7 +12,6 @@
 | `design-styles/` | Design Styles |
 | `dev-team/` | Dev Team Knowledge Base |
 | `gemini-cli/` | Gemini CLI patterns and setup |
-| `hq/` | HQ internal knowledge |
 | `hq-core/` | HQ core specs, schemas, and reference |
 | `knowledge-hq-core/` | Systems access documentation |
 | `loom/` | Loom worker pattern |
