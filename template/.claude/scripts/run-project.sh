@@ -32,6 +32,12 @@ SESSION_ID="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_START_EPOCH=$(date +%s)
 AUDIT_SCRIPT="$HQ_ROOT/scripts/audit-log.sh"
 
+# --- Git helpers (worktree-compatible) ---
+is_git_repo() {
+  local dir="${1:-.}"
+  [[ -d "$dir/.git" || -f "$dir/.git" ]]
+}
+
 # --- Defaults ---
 PROJECT=""
 RESUME=false
@@ -315,7 +321,7 @@ fi
 BRANCH_NAME=$(jq -r '.branchName // empty' "$PRD_PATH")
 BASE_BRANCH=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH")
 
-if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" && -d "$REPO_PATH/.git" ]]; then
+if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
   current_branch=$(git -C "$REPO_PATH" branch --show-current 2>/dev/null)
   if [[ "$current_branch" != "$BRANCH_NAME" ]]; then
     # Check if branch exists
@@ -716,6 +722,14 @@ After completion, output ONLY structured JSON:
     cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
   fi
 
+  # Clear orchestrator's checkout lock before subprocess — execute-task will acquire its own.
+  # Prevents self-locking: parent PID is alive so execute-task's AskUserQuestion fires
+  # but can't resolve in headless (-p) mode.
+  if [[ -f "$STATE_FILE" ]]; then
+    jq --arg ts "$(ts)" '.current_task.checkedOutBy = null | .updated_at = $ts' \
+      "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+  fi
+
   # Execute (unset CLAUDECODE to allow nested claude sessions)
   if [[ "$VERBOSE" == true ]]; then
     cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
@@ -733,7 +747,7 @@ After completion, output ONLY structured JSON:
 validate_git_state() {
   local story_id="$1"
 
-  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH/.git" ]] && return 0
+  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && return 0
 
   local dirty
   dirty=$(git -C "$REPO_PATH" status --porcelain 2>/dev/null) || return 0
@@ -746,13 +760,13 @@ validate_git_state() {
 }
 
 get_commit_sha() {
-  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH/.git" ]] && echo "n/a" && return
+  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && echo "n/a" && return
   git -C "$REPO_PATH" rev-parse --short HEAD 2>/dev/null || echo "n/a"
 }
 
 get_changed_files() {
   local story_id="$1"
-  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH/.git" ]] && echo "[]" && return
+  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && echo "[]" && return
   # Files changed in last commit
   git -C "$REPO_PATH" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
     | jq -R -s 'split("\n") | map(select(length > 0))' || echo "[]"
@@ -766,7 +780,7 @@ run_codex_review() {
   local story_id="$1"
 
   # Only run for repos with code changes
-  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH/.git" ]] && return 0
+  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && return 0
 
   # Check if codex CLI is available
   if ! command -v codex >/dev/null 2>&1; then
