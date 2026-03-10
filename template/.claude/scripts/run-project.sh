@@ -38,12 +38,182 @@ is_git_repo() {
   [[ -d "$dir/.git" || -f "$dir/.git" ]]
 }
 
+USING_WORKTREE=false
+WORKTREE_PATH=""
+ORIGINAL_REPO_PATH=""
+
+# Check if another active orchestrator is using the same repo on a different branch.
+# Returns 0 if conflict found, 1 if no conflict.
+# Sets CONFLICT_PROJECT and CONFLICT_BRANCH on match.
+check_repo_conflict() {
+  local my_repo="$1"
+  local my_project="$2"
+  local my_branch="$3"
+
+  [[ -z "$my_repo" ]] && return 1
+
+  # Normalize repo path for comparison
+  local my_repo_abs="$my_repo"
+  [[ ! "$my_repo_abs" = /* ]] && my_repo_abs="$HQ_ROOT/$my_repo_abs"
+
+  # Also resolve worktree → parent repo for comparison
+  local my_repo_canonical="$my_repo_abs"
+  if [[ -f "$my_repo_abs/.git" ]]; then
+    # This IS a worktree — resolve the parent repo
+    local gitdir
+    gitdir=$(sed 's/^gitdir: //' "$my_repo_abs/.git" 2>/dev/null)
+    if [[ "$gitdir" == *"/.git/worktrees/"* ]]; then
+      my_repo_canonical="${gitdir%%/.git/worktrees/*}"
+    fi
+  fi
+
+  for state_file in "$ORCH_DIR"/*/state.json; do
+    [[ -f "$state_file" ]] || continue
+    local other_project other_status
+    other_project=$(jq -r '.project // empty' "$state_file" 2>/dev/null) || continue
+    other_status=$(jq -r '.status // empty' "$state_file" 2>/dev/null) || continue
+
+    # Skip self and non-active projects
+    [[ "$other_project" == "$my_project" ]] && continue
+    [[ "$other_status" != "in_progress" ]] && continue
+
+    # Check if the other project's PID is alive
+    local other_pid
+    other_pid=$(jq -r '.current_task.checkedOutBy.pid // empty' "$state_file" 2>/dev/null) || true
+    if [[ -n "$other_pid" ]] && ! kill -0 "$other_pid" 2>/dev/null; then
+      continue  # Dead PID — not a real conflict
+    fi
+
+    # Get the other project's repo path
+    local other_prd other_repo other_repo_abs other_repo_canonical
+    other_prd=$(jq -r '.prd_path // empty' "$state_file" 2>/dev/null) || continue
+    [[ -z "$other_prd" ]] && continue
+    local other_prd_full="$other_prd"
+    [[ ! "$other_prd_full" = /* ]] && other_prd_full="$HQ_ROOT/$other_prd_full"
+    [[ -f "$other_prd_full" ]] || continue
+
+    other_repo=$(jq -r '.metadata.repoPath // empty' "$other_prd_full" 2>/dev/null) || continue
+    [[ -z "$other_repo" ]] && continue
+    other_repo_abs="$other_repo"
+    [[ ! "$other_repo_abs" = /* ]] && other_repo_abs="$HQ_ROOT/$other_repo_abs"
+
+    # Resolve worktree → parent for the other project too
+    other_repo_canonical="$other_repo_abs"
+    if [[ -f "$other_repo_abs/.git" ]]; then
+      local other_gitdir
+      other_gitdir=$(sed 's/^gitdir: //' "$other_repo_abs/.git" 2>/dev/null)
+      if [[ "$other_gitdir" == *"/.git/worktrees/"* ]]; then
+        other_repo_canonical="${other_gitdir%%/.git/worktrees/*}"
+      fi
+    fi
+
+    # Compare canonical repo paths
+    if [[ "$my_repo_canonical" == "$other_repo_canonical" ]]; then
+      local other_branch
+      other_branch=$(jq -r '.branchName // empty' "$other_prd_full" 2>/dev/null) || true
+
+      # Same branch = likely follow-up PRD, not a conflict
+      if [[ "$other_branch" == "$my_branch" ]]; then
+        continue
+      fi
+
+      CONFLICT_PROJECT="$other_project"
+      CONFLICT_BRANCH="${other_branch:-unknown}"
+      return 0  # Conflict found
+    fi
+  done
+  return 1  # No conflict
+}
+
+# Create or reuse a git worktree for isolated branch work.
+# Sets REPO_PATH to the worktree and USING_WORKTREE=true.
+ensure_worktree() {
+  local repo_path="$1"
+  local branch_name="$2"
+  local base_branch="${3:-main}"
+
+  # Check if ANY existing worktree already has this branch checked out
+  local existing_wt
+  existing_wt=$(git -C "$repo_path" worktree list --porcelain 2>/dev/null \
+    | awk -v branch="$branch_name" '
+      /^worktree / { wt=$2 }
+      /^branch refs\/heads\// {
+        b = substr($0, length("branch refs/heads/") + 1)
+        if (b == branch) print wt
+      }
+    ' | head -1)
+
+  if [[ -n "$existing_wt" && -d "$existing_wt" ]]; then
+    log_info "Reusing existing worktree: $existing_wt (branch: $branch_name)"
+    WORKTREE_PATH="$existing_wt"
+    ORIGINAL_REPO_PATH="$REPO_PATH"
+    REPO_PATH="$existing_wt"
+    USING_WORKTREE=true
+    return 0
+  fi
+
+  # Slugify branch for new worktree directory name
+  local branch_slug="${branch_name//\//-}"
+  local wt_path="${repo_path}-wt-${branch_slug}"
+
+  # Create the worktree
+  log_info "Creating worktree: $wt_path (branch: $branch_name)"
+  if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$branch_name" 2>/dev/null; then
+    git -C "$repo_path" worktree add "$wt_path" "$branch_name" 2>&1 || {
+      log_err "Failed to create worktree"
+      return 1
+    }
+  else
+    git -C "$repo_path" worktree add -b "$branch_name" "$wt_path" "$base_branch" 2>&1 || {
+      log_err "Failed to create worktree with new branch"
+      return 1
+    }
+  fi
+
+  # Install dependencies (monorepo needs node_modules)
+  if [[ -f "$wt_path/bun.lock" || -f "$wt_path/bun.lockb" ]]; then
+    log_info "Installing dependencies in worktree..."
+    (cd "$wt_path" && bun install --frozen-lockfile 2>/dev/null || bun install 2>/dev/null) || true
+  elif [[ -f "$wt_path/package-lock.json" ]]; then
+    (cd "$wt_path" && npm ci 2>/dev/null || npm install 2>/dev/null) || true
+  fi
+
+  WORKTREE_PATH="$wt_path"
+  ORIGINAL_REPO_PATH="$REPO_PATH"
+  REPO_PATH="$wt_path"
+  USING_WORKTREE=true
+  log_ok "Worktree ready: $wt_path"
+}
+
+# Clean up worktree on project completion
+cleanup_worktree() {
+  if [[ "$USING_WORKTREE" != true || -z "$WORKTREE_PATH" || -z "$ORIGINAL_REPO_PATH" ]]; then
+    return 0
+  fi
+
+  log_info "Cleaning up worktree: $WORKTREE_PATH"
+
+  # Ensure all changes are committed/pushed before removing
+  local dirty
+  dirty=$(git -C "$WORKTREE_PATH" status --porcelain 2>/dev/null) || true
+  if [[ -n "$dirty" ]]; then
+    log_warn "Worktree has uncommitted changes — skipping cleanup"
+    log_warn "  Manual cleanup: git -C $ORIGINAL_REPO_PATH worktree remove $WORKTREE_PATH"
+    return 0
+  fi
+
+  git -C "$ORIGINAL_REPO_PATH" worktree remove "$WORKTREE_PATH" 2>/dev/null || {
+    log_warn "Failed to remove worktree — manual cleanup needed"
+    log_warn "  git -C $ORIGINAL_REPO_PATH worktree remove $WORKTREE_PATH"
+  }
+}
+
 # --- Defaults ---
 PROJECT=""
 RESUME=false
 STATUS=false
 DRY_RUN=false
-MAX_BUDGET=5
+MAX_BUDGET=""
 MODEL=""
 NO_PERMISSIONS=false
 RETRY_FAILED=false
@@ -315,7 +485,7 @@ if [[ -n "$REPO_PATH" && ! "$REPO_PATH" = /* ]]; then
 fi
 
 # =============================================================================
-# Branch Setup
+# Branch Setup (with auto-worktree for concurrent projects)
 # =============================================================================
 
 BRANCH_NAME=$(jq -r '.branchName // empty' "$PRD_PATH")
@@ -323,15 +493,60 @@ BASE_BRANCH=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH")
 
 if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
   current_branch=$(git -C "$REPO_PATH" branch --show-current 2>/dev/null)
+
   if [[ "$current_branch" != "$BRANCH_NAME" ]]; then
-    # Check if branch exists
-    if git -C "$REPO_PATH" show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
-      log_info "Checking out existing branch: $BRANCH_NAME"
-      git -C "$REPO_PATH" checkout "$BRANCH_NAME"
+    # Check if another active project owns this repo on a different branch
+    if check_repo_conflict "$REPO_PATH" "$PROJECT" "$BRANCH_NAME"; then
+      log_warn "Repo conflict: $CONFLICT_PROJECT is active on branch $CONFLICT_BRANCH"
+
+      if [[ -t 0 ]]; then
+        # Interactive: ask user
+        echo ""
+        echo -e "${YELLOW}Another project ($CONFLICT_PROJECT) is using this repo on branch $CONFLICT_BRANCH.${NC}"
+        echo "Options:"
+        echo "  1) Auto-create worktree (recommended — isolated checkout)"
+        echo "  2) Checkout anyway (will disrupt $CONFLICT_PROJECT)"
+        echo "  3) Abort"
+        read -rp "Choice [1-3]: " wt_choice
+        case "$wt_choice" in
+          1) ensure_worktree "$REPO_PATH" "$BRANCH_NAME" "$BASE_BRANCH" ;;
+          2)
+            log_warn "Force-checking out $BRANCH_NAME (may disrupt $CONFLICT_PROJECT)"
+            git -C "$REPO_PATH" checkout "$BRANCH_NAME" 2>/dev/null \
+              || git -C "$REPO_PATH" checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
+            ;;
+          *) exit 0 ;;
+        esac
+      else
+        # Non-interactive: auto-worktree
+        log_info "Auto-creating worktree to avoid conflict with $CONFLICT_PROJECT"
+        ensure_worktree "$REPO_PATH" "$BRANCH_NAME" "$BASE_BRANCH"
+      fi
     else
-      log_info "Creating branch: $BRANCH_NAME from $BASE_BRANCH"
-      git -C "$REPO_PATH" checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
+      # No conflict — safe to checkout directly
+      if git -C "$REPO_PATH" show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
+        log_info "Checking out existing branch: $BRANCH_NAME"
+        git -C "$REPO_PATH" checkout "$BRANCH_NAME"
+      else
+        log_info "Creating branch: $BRANCH_NAME from $BASE_BRANCH"
+        git -C "$REPO_PATH" checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
+      fi
     fi
+  fi
+
+  # If REPO_PATH was already a worktree (e.g., prd.json points to one), detect it
+  if [[ -f "$REPO_PATH/.git" ]] && [[ "$USING_WORKTREE" != true ]]; then
+    USING_WORKTREE=true
+    WORKTREE_PATH="$REPO_PATH"
+    # Resolve original repo from gitdir
+    _gitdir_content=$(cat "$REPO_PATH/.git" 2>/dev/null)
+    if [[ "$_gitdir_content" == gitdir:* ]]; then
+      _resolved="${_gitdir_content#gitdir: }"
+      if [[ "$_resolved" == *"/.git/worktrees/"* ]]; then
+        ORIGINAL_REPO_PATH="${_resolved%%/.git/worktrees/*}"
+      fi
+    fi
+    log_info "Detected existing worktree at $REPO_PATH"
   fi
 fi
 
@@ -693,11 +908,15 @@ PRD: ${prd_path}
 
 Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
 Do NOT implement directly — delegate to workers via the execute-task pipeline.
+ISOLATION: Only modify files within your assigned repo and this project's PRD. Do NOT read, modify, pause, or interfere with other projects' state files in workspace/orchestrator/. Other orchestrators may be running concurrently — ignore them.
 
 After completion, output ONLY structured JSON:
 {\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}"
 
-  local flags=(-p --output-format json --max-budget-usd "$MAX_BUDGET")
+  local flags=(-p --output-format json)
+  if [[ -n "$MAX_BUDGET" ]]; then
+    flags+=(--max-budget-usd "$MAX_BUDGET")
+  fi
 
   if [[ "$NO_PERMISSIONS" == true ]]; then
     flags+=(--dangerously-skip-permissions)
@@ -1452,6 +1671,9 @@ if [[ "$REMAINING" -eq 0 ]]; then
       log_warn "Repo $repo_rel not found in manifest.yaml — verify registration"
     fi
   fi
+
+  # 6. Worktree cleanup (if used)
+  cleanup_worktree
 
 else
   echo -e "\n${YELLOW}$REMAINING stories remaining.${NC}"
