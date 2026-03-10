@@ -16,9 +16,6 @@
 #   knowledge:        list of knowledge directories scoped to this company
 #   deploy:           list of deploy target descriptors
 #   epic:             beads root epic ID for this company
-#   scheduler:
-#     enabled:        bool — whether the autonomous scheduler dispatches agents for this company
-#     max_agents:     int  — max concurrent agents the scheduler may spawn for this company
 
 launch-grid:
   symlink: launch-grid
@@ -32,9 +29,6 @@ launch-grid:
   epic: ghq-uik
   qmd_collections:
     - launch-grid
-  scheduler:
-    enabled: false
-    max_agents: 1
 
 production-house:
   symlink: production-house
@@ -48,9 +42,6 @@ production-house:
   epic: ghq-53s
   qmd_collections:
     - production-house
-  scheduler:
-    enabled: false
-    max_agents: 1
 
 indigo:
   symlink: indigo
@@ -63,6 +54,3 @@ indigo:
   epic: ghq-r56
   qmd_collections:
     - indigo
-  scheduler:
-    enabled: false
-    max_agents: 1

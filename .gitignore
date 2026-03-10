@@ -12,12 +12,6 @@ companies/*
 .beads/dolt-server.activity
 .beads/dolt-monitor.pid
 .beads/dolt-server.port
-/.claude/worktrees
 
 # Execution state (mutable runtime file)
 loops/state.jsonl
-
-# Scheduler runtime files (pid, lock, logs)
-loops/agents/*.pid
-loops/agents/*.lock
-loops/agents/*.log
