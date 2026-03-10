@@ -36,9 +36,12 @@ Example: /execute-task ghq-abc123
 
 ### 2. Load Task Spec
 
+Resolve the company from the task ID's epic prefix (e.g. `ghq-uik` → launch-grid, `ghq-53s` → production-house). Map via `companies/manifest.yaml` epic field. Then `cd companies/{slug}` so all `bd` commands use the correct per-company database.
+
 Fetch the task from beads:
 
 ```bash
+cd companies/{slug}
 bd show {task-id} --json
 ```
 

@@ -5,7 +5,6 @@ Personal OS for orchestrating work across companies and AI.
 ## Structure
 
 ```
-.beads/           issue tracker (bd CLI), JSONL backup
 .claude/          commands/, skills/, hooks/, policies/
 companies/        {slug}/settings/, knowledge/, projects/, policies/
 knowledge/        shared knowledge (skills framework, etc.)

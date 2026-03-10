@@ -53,9 +53,10 @@ Each skill is a `SKILL.md` file in `.claude/skills/{skill-id}/SKILL.md`. See [Sk
 
 ## Tasks
 
-Tasks are managed with `bd` (beads CLI):
+Tasks are managed with `bd` (beads CLI). Each company has its own `.beads/` database — always `cd companies/{slug}/` before running `bd` commands:
 
 ```bash
+cd companies/{slug}
 bd list                    # List all tasks
 bd show ghq-abc123         # Show task details
 bd children ghq-abc123     # List subtasks
@@ -84,6 +85,7 @@ Companies are stored outside the repo at `~/Documents/GHQ/companies/` and symlin
 ```
 companies/ -> ~/Documents/GHQ/companies/
   {slug}/
+    .beads/      # Per-company issue tracking (bd init)
     settings/    # Credentials, API keys (gitignored via symlink)
     knowledge/   # Company-specific knowledge
     projects/    # Company long-running projects

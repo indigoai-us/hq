@@ -28,19 +28,20 @@ loops/            Runtime state, active loops, checkpoints
    cd ~/repos/ghq_v2
    ```
 
-2. **Initialize beads:**
-   ```bash
-   bd init
-   ```
-
-3. **Set up company directories:**
+2. **Set up company directories:**
    ```bash
    mkdir -p ~/Documents/GHQ/companies/{your-company}
    ln -s ~/Documents/GHQ/companies/your-company companies/your-company
    ```
 
+3. **Initialize beads per company:**
+   ```bash
+   cd companies/your-company && bd init
+   ```
+
 4. **Verify setup:**
    ```bash
+   cd companies/your-company
    bd ready          # Should show available work
    ls companies/     # Should show your company symlinks
    ```
@@ -54,7 +55,7 @@ Company data (credentials, knowledge, deploy targets) lives at `~/Documents/GHQ/
 Skills live in `.claude/skills/<name>/` with a `SKILL.md` file that Claude discovers on demand. Each skill encapsulates a specific capability (frontend, backend, deployment, etc.).
 
 ### Task Tracking (bd)
-All task tracking uses `bd` (beads). Never use markdown TODO lists or external trackers. Issues auto-sync to `.beads/issues.jsonl` for git version control.
+All task tracking uses `bd` (beads). Each company has its own `.beads/` database — always `cd` into a company directory before running `bd` commands. Never use markdown TODO lists or external trackers.
 
 ### Loops
 The `loops/` directory holds runtime state for active work sessions -- checkpoints, thread context, and orchestrator state.

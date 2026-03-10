@@ -44,6 +44,8 @@ The orchestrator is an **ultra-lean state machine**. It picks subtasks and deleg
 - Orchestrator starts with ZERO accumulated context -- only state.jsonl + beads
 
 **If `{task-id}`:**
+- Resolve company from task ID's epic prefix via `companies/manifest.yaml` epic field
+- `cd companies/{slug}` so all `bd` commands use the correct per-company database
 - Validate task exists: `bd show {task-id} --json`
 - If task **NOT FOUND**: STOP immediately.
   ```

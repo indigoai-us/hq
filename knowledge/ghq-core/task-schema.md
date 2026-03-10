@@ -4,7 +4,7 @@ Tasks in GHQ are managed through beads (`bd` CLI). Only companies and projects a
 
 ## Hierarchy
 
-Tasks are stored in the beads database (`.beads/`). No filesystem files needed -- all task data lives in beads.
+Tasks are stored in per-company beads databases (`companies/{slug}/.beads/`). No filesystem files needed -- all task data lives in beads.
 
 ```
 Company Epic                    ← created by /new-company

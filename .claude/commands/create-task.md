@@ -60,6 +60,16 @@ Scanned GHQ:
 - Category: [company-specific | personal | GHQ infrastructure]
 ```
 
+## Step 2b: Resolve Company Context
+
+From the scan, identify which company this task belongs to. Then ensure all `bd` commands run in the company directory:
+
+```bash
+cd companies/{slug}
+```
+
+All subsequent `bd` commands in this session must run from the company directory.
+
 ## Step 3: Select Project Epic
 
 List available project epics from the scan and ask the user which one this task belongs under:

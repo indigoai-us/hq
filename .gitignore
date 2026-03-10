@@ -6,12 +6,10 @@ workspace/scratch/
 companies/*
 !companies/manifest.yaml
 
-# Dolt database files (added by bd init)
+# Beads issue tracking (per-company, not tracked in repo)
+.beads/
 .dolt/
 *.db
-.beads/dolt-server.activity
-.beads/dolt-monitor.pid
-.beads/dolt-server.port
 
 # Execution state (mutable runtime file)
 loops/state.jsonl

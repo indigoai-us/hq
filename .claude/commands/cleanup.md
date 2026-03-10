@@ -156,8 +156,8 @@ If duplicates found, show the duplicate pairs (hash + paths).
 **Policy**: No files over 500KB in tracked git content.
 
 ```bash
-# Find large files, excluding .git, .dolt, .beads, node_modules, worktrees
-find . -not -path './.git/*' -not -path './.dolt/*' -not -path './.beads/*' -not -path './node_modules/*' -not -path './.claude/worktrees/*' -type f -size +500k 2>/dev/null
+# Find large files, excluding .git, .dolt, .beads, node_modules
+find . -not -path './.git/*' -not -path './.dolt/*' -not -path '*/.beads/*' -not -path './node_modules/*' -type f -size +500k 2>/dev/null
 ```
 
 **Violations**:

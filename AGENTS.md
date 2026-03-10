@@ -1,15 +1,16 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+This project uses **bd** (beads) for issue tracking. Each company has its own `.beads/` database.
 
 ## Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd sync               # Sync with git
+cd companies/{slug}        # Navigate to company first
+bd ready                   # Find available work
+bd show <id>               # View issue details
+bd update <id> --claim     # Claim work atomically
+bd close <id>              # Complete work
+bd sync                    # Sync with git
 ```
 
 ## Non-Interactive Shell Commands
@@ -41,11 +42,19 @@ cp -rf source dest          # NOT: cp -r source dest
 
 **IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
 
+### Per-Company Beads
+
+Each company has its own `.beads/` database inside its directory (`companies/{slug}/.beads/`).
+Always `cd` into the company directory before running `bd` commands. The `/create-task`,
+`/execute-task`, and `/run-loop` commands resolve the company from the task's epic prefix
+automatically.
+
 ### Why bd?
 
 - Dependency-aware: Track blockers and relationships between issues
 - Git-friendly: Auto-syncs to JSONL for version control
 - Agent-optimized: JSON output, ready work detection, discovered-from links
+- Company-isolated: Each company has its own issue database
 - Prevents duplicate tracking systems and confusion
 
 ### Quick Start
@@ -103,11 +112,10 @@ bd close bd-42 --reason "Completed" --json
 
 ### Auto-Sync
 
-bd automatically syncs with git:
+bd automatically syncs within each company's `.beads/` directory:
 
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
+- Exports to `companies/{slug}/.beads/backup/issues.jsonl` after changes (5s debounce)
+- Run `bd sync` from a company directory to sync manually
 
 ### Important Rules
 
@@ -139,7 +147,9 @@ Skills are loaded on demand from `.claude/skills/<name>/SKILL.md`. Read the skil
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   for co in $(ls companies/); do
+     [ -d "companies/$co/.beads" ] && (cd "companies/$co" && bd sync)
+   done
    git push
    git status  # MUST show "up to date with origin"
    ```

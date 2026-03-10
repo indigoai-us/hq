@@ -46,6 +46,13 @@ Verify the symlink works:
 ls companies/{slug}/
 ```
 
+Initialize beads for this company:
+```bash
+cd companies/{slug}
+bd init
+cd -
+```
+
 ### 4. Create knowledge/INDEX.md
 
 ```bash
@@ -163,6 +170,7 @@ qmd update 2>/dev/null || true
 ```
 Company {slug} scaffolded:
   Directory:  companies/{slug}/
+  Beads:      companies/{slug}/.beads/ (bd init)
   Knowledge:  companies/{slug}/knowledge/INDEX.md
   Policies:   companies/{slug}/policies/
   Projects:   companies/{slug}/projects/
