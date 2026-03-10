@@ -1,0 +1,30 @@
+{
+  "thread_id": "T-20260310-120000-e2e-perf-prd",
+  "version": 1,
+  "type": "session",
+  "created_at": "2026-03-10T12:00:00Z",
+  "updated_at": "2026-03-10T12:00:00Z",
+  "workspace_root": "~/repos/hq",
+  "cwd": "/Users/hassaansaleemmacbook2026/repos/hq",
+  "git": {
+    "branch": "main",
+    "current_commit": "d33553b",
+    "dirty": true
+  },
+  "conversation_summary": "Created PRD for indigo e2e-perf project — 6 stories to optimize Electron e2e test execution time by replacing hardcoded sleeps with event-driven waits, reusing Electron instances, optimizing build pipeline, and reducing timeouts. User explicitly excluded parallelization and unit test extraction. Quality gates: typecheck+lint then full e2e run. Branch: feature/e2e-perf.",
+  "files_touched": [
+    "companies/indigo/projects/e2e-perf/prd.json",
+    "companies/indigo/projects/e2e-perf/README.md",
+    "companies/indigo/projects/INDEX.md"
+  ],
+  "metadata": {
+    "title": "PRD: indigo e2e-perf — reduce Electron test execution time",
+    "tags": ["prd", "indigo", "e2e", "testing", "performance"],
+    "company": "indigo",
+    "project": "e2e-perf"
+  },
+  "next_steps": [
+    "Start new session and run /run-project e2e-perf to execute all 6 stories",
+    "Or /execute-task e2e-perf/US-001 to start with the highest-impact change"
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "name": "e2e-perf",
+  "description": "Reduce Electron e2e test execution time by replacing hardcoded sleeps with event-driven waits, reusing Electron instances, and optimizing the build/install pipeline.",
+  "branchName": "feature/e2e-perf",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Replace hardcoded 5s sleep in launchElectronApp with event-driven wait",
+      "description": "As a developer, I want the Electron app launch to use Playwright's firstWindow() instead of a hardcoded 5-second setTimeout, so that each launch completes as fast as the app actually starts (~1s) instead of always waiting 5s.",
+      "acceptanceCriteria": [
+        "launchElectronApp() in test-utils.ts uses electronApp.firstWindow() instead of setTimeout(5000)",
+        "All 28 existing tests that use launchElectronApp still pass",
+        "App launch wait time is under 2s on average (down from fixed 5s)"
+      ],
+      "e2eTests": [],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "apps/electron/tests/test-utils.ts"
+      ],
+      "labels": ["perf", "test-infra"],
+      "dependsOn": [],
+      "notes": "Replace lines 82-84: `await new Promise<void>((resolve) => { setTimeout(() => resolve(), 5000); });` with `await electronApp.firstWindow();`. The firstWindow() API resolves as soon as the first BrowserWindow is created. Keep the subsequent windows() check and window selection logic.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Replace waitForTimeout calls in test-utils.ts with event-driven waits",
+      "description": "As a developer, I want the shared test utilities (logoutUser, waitForAppReady, waitForAuthWindow, performDeeplinkLogin) to use proper Playwright wait conditions instead of hardcoded sleeps, so tests complete as fast as the app responds.",
+      "acceptanceCriteria": [
+        "logoutUser: 3000ms sleep (line 147) replaced with polling for auth state change or waitForSelector on auth window",
+        "logoutUser: 2000ms sleep (line 162) removed — callers already wait for elements",
+        "waitForAppReady: 2000ms sleep (line 481) replaced with waitForSelector on a root app element (e.g. #root with content, or first meaningful element)",
+        "waitForAuthWindow: 1500ms sleep (line 545) reduced to 500ms or removed — the retry loop after it handles readiness",
+        "performDeeplinkLogin: 3000ms sleep (line 365) removed — the subsequent waitForLoadState('networkidle') already waits for completion",
+        "All 28 existing tests still pass after these changes",
+        "No new flaky test failures introduced (run 3x to verify)"
+      ],
+      "e2eTests": [],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "apps/electron/tests/test-utils.ts"
+      ],
+      "labels": ["perf", "test-infra"],
+      "dependsOn": ["US-001"],
+      "notes": "Conservative approach: if removing a sleep causes flakiness, replace with a shorter sleep (500ms) or a polling wait. The goal is to eliminate unnecessary fixed delays, not to introduce instability. Run tests 3 times locally before marking complete.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Replace waitForTimeout calls in test spec files",
+      "description": "As a developer, I want the individual test files (onboarding.spec.ts, auth.spec.ts, assistant-chat.spec.ts, chain-of-thought.spec.ts) to use proper Playwright assertions instead of hardcoded sleeps between actions.",
+      "acceptanceCriteria": [
+        "onboarding.spec.ts: navigateToOnboarding 2000ms sleep replaced with waitForSelector in each test's first assertion (already waits for 'Confirm Your Company Details' with 15s timeout)",
+        "onboarding.spec.ts: waitForTimeout(1000) on line 217 and waitForTimeout(2000) on lines 239, 309, 345, 365 replaced with short polling waits or removed where followed by expect()",
+        "auth.spec.ts: waitForTimeout(2000) calls after logout/reload replaced with element assertions",
+        "assistant-chat.spec.ts: waitForTimeout(1000-2000) between actions replaced with element visibility checks",
+        "chain-of-thought.spec.ts: waitForTimeout(2000) on line 95 replaced with waitForLoadState or element check",
+        "All 28 existing tests still pass",
+        "Run 3x to verify no flakiness"
+      ],
+      "e2eTests": [],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "apps/electron/e2e/onboarding.spec.ts",
+        "apps/electron/tests/auth.spec.ts",
+        "apps/electron/tests/assistant-chat.spec.ts",
+        "apps/electron/e2e/chain-of-thought.spec.ts"
+      ],
+      "labels": ["perf", "test-infra"],
+      "dependsOn": ["US-002"],
+      "notes": "Many waitForTimeout calls are immediately followed by expect() assertions with their own timeouts. In those cases, the sleep is redundant and can be removed. For cases where the sleep is the only sync mechanism, replace with a short poll or element check.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Reuse Electron instances in auth tests",
+      "description": "As a developer, I want the auth test suite to share Electron app instances across related tests instead of launching a new instance per test, reducing total Electron launches from 5 to 3.",
+      "acceptanceCriteria": [
+        "Auth tests 1-3 (show login screen, login with deeplink, logout and show auth screen) share a single Electron app instance via beforeAll/afterAll",
+        "Auth test 4 (UI logout via profile menu) keeps its own Electron launch (needs fresh onboarded state)",
+        "Auth test 5 (multi-account) keeps its own Electron launch (needs clean multi-user state)",
+        "Total Electron launches in auth.spec.ts reduced from 5 to 3",
+        "All 6 auth tests still pass",
+        "Test isolation is maintained — tests 1-3 run in serial order with proper state transitions between them"
+      ],
+      "e2eTests": [],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "apps/electron/tests/auth.spec.ts"
+      ],
+      "labels": ["perf", "test-infra"],
+      "dependsOn": ["US-001"],
+      "notes": "Tests 1-3 have a natural flow: (1) launch → show login screen (logged out), (2) login → verify logged in, (3) logout → verify auth screen. This sequence works with a single Electron instance. Tests 4 and 5 need isolated state due to onboarding and multi-account requirements.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Optimize build and playwright install in e2e target",
+      "description": "As a developer, I want the Nx e2e target to leverage build caching and skip unnecessary playwright installs, so repeat runs skip the 60-120s build and 30-60s install steps.",
+      "acceptanceCriteria": [
+        "project.json e2e target uses dependsOn: ['build'] so Nx caches the build step",
+        "Playwright install is gated: only runs if playwright is not already installed",
+        "First run still works correctly (builds + installs + tests)",
+        "Second run with no source changes skips build (Nx cache hit) and skips playwright install",
+        "pnpm typecheck and pnpm lint are verified to pass"
+      ],
+      "e2eTests": [],
+      "priority": 3,
+      "passes": false,
+      "files": [
+        "apps/electron/project.json"
+      ],
+      "labels": ["perf", "dx"],
+      "dependsOn": [],
+      "notes": "Change e2e target command to remove 'pnpm run build &&' and add dependsOn: ['build']. Gate playwright install with a version check: `pnpm exec playwright --version > /dev/null 2>&1 || pnpm exec playwright install --with-deps`.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Reduce global test timeout and set per-test overrides",
+      "description": "As a developer, I want the default Playwright test timeout reduced from 180s to 60s so non-LangGraph tests fail fast, while LangGraph-dependent tests keep the 180s timeout via per-test override.",
+      "acceptanceCriteria": [
+        "playwright.config.ts timeout changed from 180000 to 60000",
+        "assistant-chat.spec.ts uses test.setTimeout(180000) for each test that waits for LangGraph responses",
+        "All non-chat tests still pass with the 60s timeout",
+        "Chat tests (when enabled) still pass with their 180s override",
+        "Failing tests now fail in ~60s instead of ~180s, providing faster feedback"
+      ],
+      "e2eTests": [],
+      "priority": 3,
+      "passes": false,
+      "files": [
+        "apps/electron/playwright.config.ts",
+        "apps/electron/tests/assistant-chat.spec.ts"
+      ],
+      "labels": ["perf", "dx"],
+      "dependsOn": [],
+      "notes": "The 180s global timeout was set because the chat tests need to wait for LangGraph API responses. No other test needs this long. Reducing it means tests that are genuinely stuck fail faster.",
+      "model_hint": ""
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-03-10T12:00:00Z",
+    "goal": "Reduce Electron e2e test execution time by 50-60% through elimination of unnecessary waits and optimized infrastructure",
+    "successCriteria": "Full e2e suite runs in under 3 minutes (down from ~5-7 minutes) with zero test regressions",
+    "qualityGates": [
+      "pnpm typecheck && pnpm lint",
+      "pnpm run build && pnpm exec playwright test --config=playwright.config.ts"
+    ],
+    "repoPath": "repos/private/indigo-nx",
+    "baseBranch": "main",
+    "relatedWorkers": ["qa-tester", "dev-qa-tester"],
+    "knowledge": []
+  }
+}
