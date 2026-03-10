@@ -2,7 +2,7 @@
 
 ## v8.0.0 (2026-03-10)
 
-Policy-first system — all major commands now scan and enforce policies. `/learn` rewrite creates policy files as primary output. 6 new public commands, smarter regression gates.
+Policy-first system — all major commands now scan and enforce policies. `/learn` rewrite creates policy files as primary output. 1 new command (`/strategize`), smarter regression gates.
 
 ### Added
 
@@ -15,7 +15,7 @@ Policy-first system — all major commands now scan and enforce policies. `/lear
 - **`/learn` — Policy file output** — Primary output is now structured policy files (YAML frontmatter + Rule + Rationale) in scope-appropriate directories. Worker.yaml injection retained as fallback for worker-specific learnings only.
 - **`run-project.sh` — Regression baseline** — Captures pre-existing error counts on first gate run. Only flags errors above baseline as regressions, preventing false positives in repos with pre-existing issues.
 - **`run-project.sh` — Doc sweep flag** — Writes `doc-sweep-flag.json` on project completion for interactive documentation review.
-- **6 new commands** — `/bootcamp-student`, `/checkemail`, `/email`, `/launch-brand`, `/strategize`, `/{product}-prd`.
+- **New command** — `/strategize` for strategic prioritization with optional deep review.
 
 ### Changed
 
