@@ -14,11 +14,9 @@ for f in audit handoff harness-audit learn model-route prd run-project run start
 done
 ```
 
-### New Commands (6 files)
+### New Command (1 file)
 ```bash
-for f in bootcamp-student checkemail email launch-brand strategize vyg-prd; do
-  cp starter-kit/.claude/commands/$f.md .claude/commands/
-done
+cp starter-kit/.claude/commands/strategize.md .claude/commands/
 ```
 
 ### Updated CLAUDE.md
