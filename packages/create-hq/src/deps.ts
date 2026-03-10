@@ -25,7 +25,7 @@ const deps: Dep[] = [
     name: "qmd (search)",
     command: "qmd --version",
     required: true,
-    installHint: "brew install tobi/tap/qmd",
+    installHint: "npm install -g @tobilu/qmd",
   },
   {
     name: "gh CLI",
