@@ -1,9 +1,9 @@
 # Policies — Index
 
-> Auto-generated. Updated: 2026-03-05
+> Auto-generated. Updated: 2026-03-11
 
-Canonical policies live in `.claude/policies/`. This directory is kept for qmd discoverability.
+Reference policies for GHQ operations.
 
-| Name | Canonical Location |
-|------|-------------------|
-| `company-isolation.md` | `.claude/policies/company-isolation.md` |
+| Name | Description |
+|------|-------------|
+| `company-isolation.md` | Rules for keeping credentials, knowledge, and deploy targets isolated per company |

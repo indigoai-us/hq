@@ -11,6 +11,8 @@ Create a task with subtasks under an existing project epic. Only companies and p
 
 **User's input:** $ARGUMENTS
 
+**Pipeline:** `/idea` → `/brainstorm` → **`/create-task`** → `/execute-task`
+
 **Important:** Do NOT implement. Just create the tasks.
 
 ## Hierarchy
@@ -30,6 +32,17 @@ Only companies and projects should be epics. `/create-task` creates a **task** (
 
 If $ARGUMENTS provided, use as starting point.
 If empty, ask: "Describe what you want to build or accomplish."
+
+### Check for Brainstorm
+
+After resolving the description, check if a brainstorm.md exists for this topic:
+
+1. If `$ARGUMENTS` matches a company slug + project slug pattern (e.g. `launch-grid cortex-v2`), check `companies/{co}/projects/{slug}/brainstorm.md`
+2. If a brainstorm.md is found:
+   - Read it and extract: context, recommendation, approaches, next steps
+   - Announce: "Found brainstorm: **{title}** — using recommended approach (Option {X})"
+   - Pre-populate the discovery interview (Step 4) with brainstorm context — skip questions already answered
+   - Also check if a board.json entry exists with `brainstorm_path` set — if so, update its `status` to `"planning"`
 
 ## Step 2: Scan GHQ Context
 

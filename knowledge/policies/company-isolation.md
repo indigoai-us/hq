@@ -2,11 +2,11 @@
 id: company-isolation
 title: Company Isolation
 scope: global
-trigger: always
-enforcement: hard
 ---
 
-## Rule
+# Company Isolation
+
+## Rules
 
 1. **Infer active company** from context: cwd, skill being run, files being accessed, or project repo. When ambiguous, ask the user before proceeding.
 
@@ -24,4 +24,4 @@ enforcement: hard
 
 ## Rationale
 
-Mixing credentials, knowledge, or deploy targets across companies is a hard failure mode: it leaks confidential information, risks deploying the wrong product to the wrong customer, and breaks trust. Hard enforcement means violations block the task entirely — the user must explicitly authorize any cross-company action before it proceeds.
+Mixing credentials, knowledge, or deploy targets across companies is a hard failure mode: it leaks confidential information, risks deploying the wrong product to the wrong customer, and breaks trust.
