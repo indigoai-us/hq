@@ -1,6 +1,6 @@
 # Skills — Index
 
-> Auto-generated. Updated: 2026-03-05
+> Auto-generated. Updated: 2026-03-11
 
 | Name | Description |
 |------|-------------|
@@ -14,4 +14,4 @@
 | `frontend/` | React/Next.js components, pages, and client-side logic |
 | `full-stack/` | End-to-end feature delivery by chaining architect, backend, frontend, and review skills |
 | `qa/` | Testing, validation, and accessibility verification |
-| `video-gen/` | Video production: script to voiceover, Remotion render, and ffmpeg post-processing |
+| `video-gen/` | End-to-end video production pipeline |
