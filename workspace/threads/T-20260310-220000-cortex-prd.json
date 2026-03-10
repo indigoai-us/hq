@@ -1,0 +1,31 @@
+{
+  "thread_id": "T-20260310-220000-cortex-prd",
+  "version": 1,
+  "type": "session",
+  "created_at": "2026-03-10T22:00:00Z",
+  "updated_at": "2026-03-10T22:15:00Z",
+  "workspace_root": "~/Documents/HQ",
+  "cwd": "/Users/hassaansaleemmacbook2026/repos/hq",
+  "git": {
+    "branch": "main",
+    "current_commit": "450357e",
+    "dirty": false
+  },
+  "conversation_summary": "Created PRD for cortex-app — a Tauri desktop app with Claude API brain that autonomously pursues a single goal (revenue/MRR growth) with KPI tracking and unrestricted action space. 9 user stories covering scaffold, goal config, KPI input/dashboard, agent brain, autonomous loop, action framework, activity feed, and E2E testing.",
+  "files_touched": [
+    "companies/cortex/projects/cortex-app/prd.json",
+    "companies/cortex/projects/cortex-app/README.md",
+    "companies/cortex/projects/INDEX.md",
+    "workspace/orchestrator/state.json"
+  ],
+  "next_steps": [
+    "Start new session and run /run-project cortex-app to begin execution",
+    "Or run /execute-task cortex-app/US-001 to scaffold the Tauri app first",
+    "Repo repos/private/cortex-app needs to be created before execution"
+  ],
+  "metadata": {
+    "title": "PRD: cortex-app — autonomous agent desktop app",
+    "tags": ["prd", "cortex", "tauri", "agent"],
+    "company": "cortex"
+  }
+}
