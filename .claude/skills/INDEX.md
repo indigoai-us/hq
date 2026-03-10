@@ -6,6 +6,7 @@
 |------|-------------|
 | `architect/` | System design, API design, and architecture decisions |
 | `backend/` | API endpoints, business logic, and server-side integrations |
+| `browser-automation/` | Automate websites and desktop apps using agent-browser CLI |
 | `code-reviewer/` | Code review, quality gating, and merge management |
 | `database/` | Schema design, migrations, and query optimization |
 | `deep-research/` | Autonomous web research that produces comprehensive markdown reports with citations |
