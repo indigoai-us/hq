@@ -1,0 +1,7 @@
+{
+  "created_at": "2026-03-10T12:00:00Z",
+  "message": "",
+  "last_thread": "T-20260310-120000-e2e-perf-prd",
+  "thread_path": "workspace/threads/T-20260310-120000-e2e-perf-prd.json",
+  "context_notes": "PRD created for indigo e2e-perf project. 6 stories targeting apps/electron/ test infrastructure in indigo-nx repo. User excluded parallelization (flakiness risk) and unit test extraction. Execute with /run-project e2e-perf in a fresh session."
+}
