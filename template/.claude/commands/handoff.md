@@ -27,39 +27,65 @@ Prepare for a new session to continue this work.
     - Active repos: from `pwd`, git remotes
     - Work category: feature, integration, schema change, process, infra, content
 
-    **Scan existing knowledge:**
+    **Scan all 3 doc layers:**
+
+    **Layer 1 — HQ knowledge** (`companies/{co}/knowledge/`):
     ```bash
-    # What docs exist
     ls companies/{co}/knowledge/ 2>/dev/null
-    ls {repo}/README.md {repo}/docs/ {repo}/CLAUDE.md 2>/dev/null
-    # Is this topic already covered? (qmd for conceptual match, grep for exact)
     qmd search "{topic}" -c {company} --json -n 3
     ```
     Also use Grep across `companies/{co}/knowledge/` for exact terms if needed — Grep works from HQ root (`.ignore` protects it).
 
-    **Decide:**
+    **Layer 2 — Repo docs** (`{repo}/README.md`, `{repo}/docs/`, `{repo}/.claude/CLAUDE.md`):
+    ```bash
+    ls {repo}/README.md {repo}/docs/ {repo}/.claude/CLAUDE.md 2>/dev/null
+    # Detect boilerplate/stale READMEs
+    grep -l "create-next-app\|bootstrapped with\|TODO\|TBD\|FIXME" {repo}/README.md 2>/dev/null
+    ```
+
+    **Layer 3 — External docs** (knowledge sites, published docs):
+    ```bash
+    # Check if company has a knowledge site
+    grep -A5 "^{co}:" companies/manifest.yaml | grep -i "knowledge_site\|docs_site" 2>/dev/null
+    ls companies/{co}/knowledge/INDEX.md 2>/dev/null  # check for site references
+    ```
+
+    **Decide (per layer):**
+
+    *HQ knowledge:*
     - Existing docs cover the work → skip
     - Docs exist but need updating → propose specific edits with file path
     - No docs for this topic → propose new file with suggested name
 
+    *Repo docs:*
+    - README is boilerplate (create-next-app, default template) → propose full rewrite with project context
+    - README exists but missing new APIs/features/env vars → propose targeted section updates
+    - No docs/ folder but session introduced significant architecture → propose new docs
+    - `.claude/CLAUDE.md` missing repo-specific agent context → propose creation
+
+    *External docs:*
+    - Company has a knowledge site → flag: "New {topic} content available — consider publishing"
+    - Do NOT auto-publish — awareness note only
+
     **Present to user** via AskUserQuestion:
-    - Show numbered list of concrete UPDATE/CREATE proposals
+    - Show numbered list of concrete UPDATE/CREATE proposals grouped by layer
     - Options: apply all, pick specific numbers, skip
     - If unsure what to propose, ask open-ended: "This session involved significant {co} work. Any knowledge worth documenting?"
 
     **Execute selected items:**
     - UPDATES: read existing file, edit relevant section
-    - CREATES: write new file in `companies/{co}/knowledge/` or repo docs, following conventions of sibling files. Include: title heading, description, organized sections
+    - CREATES: write new file in appropriate location, following conventions of sibling files. Include: title heading, description, organized sections
+    - Repo READMEs: if boilerplate → full rewrite covering stack, features, API routes, env vars, dev commands, deploy instructions
+    - Repo docs/: follow existing conventions (if docs/ already has files, match format)
     - Do NOT regenerate INDEX.md here — step 4 handles it
     - Do NOT commit here — step 3/3b handles it
-
-    **Repo docs** (README, CLAUDE.md, docs/): same logic — if session changed APIs, features, or setup, propose updates.
 
     **Edge cases:**
     - No company detected → ask user which company, or skip if purely HQ infra work
     - Multi-company session → handle each company separately (company isolation)
     - Knowledge dir has no `.git` → write files anyway, step 3b (HQ commit) catches them
-    - Session already updated knowledge files directly → scan for remaining coverage gaps only
+    - Session already updated knowledge/docs directly → scan for remaining coverage gaps only
+    - Repo README already comprehensive → skip (don't re-propose what's already covered)
 
 1. **Ensure thread exists**
    - Check `workspace/threads/` for recent thread

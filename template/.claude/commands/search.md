@@ -106,7 +106,7 @@ Display: "qmd unavailable, falling back to grep"
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
 /search "brand guidelines" -c {company}             # Search {Company} knowledge only
-/search "recovery metrics" -c {company}        # Search {Product} knowledge only
+/search "recovery metrics" -c {company}        # Search {Company} knowledge only
 # If cwd is companies/{company}/:
 /search "case study"                             # Auto-detects → -c {company}
 ```

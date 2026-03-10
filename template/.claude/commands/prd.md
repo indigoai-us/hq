@@ -57,6 +57,9 @@ Before asking questions, explore HQ. If company is anchored (Step 0), scope all 
 **Company Policies (anchored only):**
 - Read all files in `companies/{co}/policies/` (skip `example-policy.md`). These constrain the PRD
 
+**Repo Policies (if repo resolved):**
+- If target repo identified, check `{repoPath}/.claude/policies/` for repo-scoped rules. These constrain the PRD (e.g., commit hooks, deploy procedures, code location rules)
+
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
 - If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
@@ -140,7 +143,7 @@ Ask questions in batches. Users respond: "1A, 2C"
 9. Does this need a new worker or skill?
 10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 11. Branch name? (default: `feature/{project-name}`)
-12. Base branch? (default: `main`, or `staging` for {product}, etc.) — Pure Ralph creates feature branch from this
+12. Base branch? (default: `main`, or `staging` for {company}-nx, etc.) — Pure Ralph creates feature branch from this
 
 **Batch 4: E2E Testing (recommended for deployable projects)**
 For each user story targeting a deployable repo, specify E2E tests:
@@ -318,6 +321,30 @@ Also reindex: `qmd update 2>/dev/null || true`
 
 **Update INDEX.md:** Regenerate `companies/{co}/projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
 
+## Step 7.6: Doc Scout (read-only)
+
+Check if the new project's scope reveals missing or stale docs. Scout only — no modifications (project hasn't been built yet).
+
+1. **Repo README** (`{repoPath}/README.md` if `repoPath` set):
+   - Does it exist? Is it boilerplate (`create-next-app`, default template)?
+   - If repo is new or README is stale, note for post-implementation
+
+2. **HQ knowledge** (`companies/{co}/knowledge/`):
+   - `qmd search "{project topic}" -c {co} --json -n 3` — is this topic already covered?
+   - If no coverage and project is non-trivial, note the gap
+
+3. **External docs**: If company has a knowledge site (check INDEX.md references), note potential publishing need
+
+**Do NOT create or modify docs** — project hasn't been implemented. Instead:
+- Add a `postImplementation` array to prd.json `metadata` listing doc tasks:
+  ```json
+  "postImplementation": [
+    "Update repo README with API docs",
+    "Create {topic} architecture doc in companies/{co}/knowledge/"
+  ]
+  ```
+- Include these notes in the Step 8 confirmation output so user sees them
+
 ## Step 8: Confirm & STOP
 
 Tell user:
@@ -327,6 +354,9 @@ Project **{name}** created with {N} user stories.
 Files:
   companies/{co}/projects/{name}/prd.json   (source of truth — tracks all work)
   companies/{co}/projects/{name}/README.md  (human-readable view)
+
+Post-implementation docs needed:
+  {list from postImplementation metadata, or "None detected"}
 
 To execute, start a new session and run:
   /run-project {name}        (multi-story orchestrator)

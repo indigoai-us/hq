@@ -5,7 +5,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
-- `agents-profile.md` - {your-name}'s profile + style (load only for writing/comms tasks)
+- `agents-profile.md` - Corey's profile + style (load only for writing/comms tasks)
 - `agents-companies.md` - Company contexts + roles (load only when company routing needed)
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `workers/registry.yaml` - Worker index
@@ -26,9 +26,9 @@ Env vars in `.claude/settings.json` control cost defaults:
 
 | Env var | Value | Why |
 |---------|-------|-----|
-| `MAX_THINKING_TOKENS` | `10000` | Caps extended thinking (~70% reasoning cost savings) |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `50` | Triggers mandatory handoff at 50% context |
-| `CLAUDE_CODE_SUBAGENT_MODEL` | `haiku` | Subagents (Task tool) use Haiku (~90% cheaper than Opus) |
+| `MAX_THINKING_TOKENS` | `20000` | Caps extended thinking from 31,999 → 20,000 (~37% reasoning cost savings) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Triggers mandatory handoff at 80% context (compaction can't be blocked — handoff preserves state) |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | `sonnet` | Subagents (Task tool) use Sonnet (~60% cheaper than Opus, better quality than Haiku) |
 
 Switch models mid-session with `/model opus` for complex reasoning. Toggle thinking with Option+T.
 
@@ -54,10 +54,13 @@ HQ_DISABLED_HOOKS=auto-checkpoint-trigger,auto-handoff-trigger
 **Usage examples:**
 ```bash
 # Minimal mode (safety hooks only)
-HQ_HOOK_PROFILE=minimal claude code
+HQ_HOOK_PROFILE=minimal bash -c 'claude code ...'
 
 # Disable checkpoint nudges
 HQ_DISABLED_HOOKS=auto-checkpoint-trigger claude code
+
+# Combine
+HQ_HOOK_PROFILE=standard HQ_DISABLED_HOOKS=auto-handoff-trigger claude code
 ```
 
 **Technical:** All hooks route through `.claude/hooks/hook-gate.sh` which reads profile/disabled lists before delegating.
@@ -82,11 +85,11 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 ## Structure
 
-Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/`, `repos/{public,private}/`, `settings/`, `workers/{public,private}/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
+Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
 ## Companies
 
-{company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}. Each owns `settings/` (creds), `data/` (exports), `knowledge/` (symlink → own git repo). Details: `knowledge/public/hq-core/quick-reference.md`
+{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, hpo. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -116,28 +119,50 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, workers, kn
 
 **Credential access:** See policy `credential-access-protocol.md`. Always: manifest lookup → company policies → company settings. Never guess.
 
-## Policies
+**Hook:** `warn-cross-company-settings.sh` (PreToolUse on Read) warns when reading a company's settings that doesn't match current cwd context.
 
-Before executing tasks, load applicable policies from all three directories:
-1. `companies/{co}/policies/` — company-scoped rules (infer company from context)
-2. `repos/{repo}/.claude/policies/` — repo-scoped rules (if working inside a repo)
-3. `.claude/policies/` — cross-cutting + command-scoped rules
+## Sensitive Path Deny Lists
 
-Hard enforcement policies block on violation; soft enforcement policies note deviations.
+Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
 
-**Spec:** `knowledge/public/hq-core/policies-spec.md`
-**Template:** `companies/_template/policies/example-policy.md`
-**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + `## Rule` + `## Rationale`
-**Precedence:** company > repo > command > global
+## {Product} Linear Integration
 
-## Skills
+All {PRODUCT}/{Product}/{Company} work tracked in Linear (workspace: `voyage`). Same hierarchy: Initiatives > Projects > Issues > Sub-issues.
 
-`.claude/skills/` is the canonical HQ skill tree. Do not duplicate skill definitions for Codex.
+**Creds:** `companies/{company}/settings/linear/credentials.json`
+**Config:** `companies/{company}/settings/linear/config.json` (team IDs, state IDs, initiative IDs, members)
+**Teams:** DEV (Development), AGE (Agent-Ops), GTM, PROD (Product), CX, OPS, LIVOPS (Live Ops), STYLE (Design), HR
+**API:** `https://api.linear.app/graphql` — queries at `knowledge/private/linear/graphql-queries.md`
 
-To expose HQ skills to Codex, install a single symlink bridge:
-- `scripts/codex-skill-bridge.sh install` → creates `~/.codex/skills/hq` pointing at `.claude/skills/`
-- New skills created under `.claude/skills/` become available to Codex without a sync step
-- Inference: Codex may need a fresh session to notice a brand-new skill, but the filesystem bridge stays current
+### Team Routing
+
+| Work type | Team |
+|-----------|------|
+| Platform/infra/Lambda/DB/SST/ECS/code | DEV |
+| Agent-ops/HQ tooling/dashboards | AGE |
+| GTM/marketing/analytics/pixels/CAPI | GTM |
+| Product specs/features/roadmap | PROD |
+| Customer support/CX dashboards | CX |
+| Operations/billing/TAM/finance | OPS |
+| Live ops/monitoring/incidents | LIVOPS |
+| Design/UI/brand | STYLE |
+
+### Rules
+
+1. **`/prd` → create Linear project + issues**: On {Company}/{Product} PRD creation, create Linear project (linked to best-fit initiative), create issue per story, store IDs in prd.json
+2. **`/execute-task` → sync state + comment**: Set issue In Progress on start, Done on completion. Comment with status + @mention reviewers when done
+3. **`/run-project` → sync project state + comment**: Set Linear project "started" on first task. Comment on state transitions
+4. **Team routing**: Use table above. When in doubt, default to DEV
+5. **Initiative grouping**: Reuse existing (CDP Migration, {PRODUCT}.ai, Build Faster, Deliver More Value, Capture TAM, Automate Internal Ops, Grow Wallet Share). Only create new for genuinely new strategic themes
+6. **prd.json fields**: `metadata.linearProjectId`, `metadata.linearCredentials` (must point to `companies/{company}/...`), per-story `linearIssueId`
+7. **Best-effort**: Linear sync never blocks execution. Log errors, skip on failure
+8. **No retroactive sync**: Don't create Linear objects for archived/completed projects
+9. **Commenting on state changes**: When issue → In Review, comment mentioning relevant reviewer(s). When blocked/needs resolution, comment with context + @mention. Use member IDs from config.json `members` block, fall back to display name
+10. **Cross-posting guard**: NEVER use another company's Linear creds for {Product} work. Validate `workspace: "voyage"` in config before any API call
+
+### Triage
+
+`/check-linear-voyage` — interactive triage for {Product} workspace. Enforces company isolation.
 
 ## Infrastructure-First
 
@@ -146,8 +171,8 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 | Signal | Action |
 |--------|--------|
 | New company | `/newcompany {slug}` — creates dir, manifest, knowledge repo, qmd collection |
-| New worker needed | `/newworker` — scaffolds worker.yaml, auto-registers in registry + manifest |
-| New knowledge base | Create repo in `repos/{pub|priv}/knowledge-{name}` → symlink → add to `modules/modules.yaml` |
+| New worker needed | `/newworker` — scaffolds worker.yaml in `companies/{co}/workers/`, registers in registry + manifest |
+| New knowledge base | For company: `git init` in `companies/{co}/knowledge/`. For shared: create repo in `repos/public/knowledge-{name}` → symlink to `knowledge/public/`. Add to `modules/modules.yaml` |
 | New project | `/prd` — creates `companies/{co}/projects/{name}/` with prd.json + README |
 | New repo | Clone to `repos/{pub|priv}/` → add to `manifest.yaml` → add qmd collection |
 
@@ -165,10 +190,33 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
-**Company** (`companies/{co}/workers/`): company-scoped workers. Full list: `workers/registry.yaml`.
+**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
+**Company** (`companies/{co}/workers/`): {company} (6), {company}/PR (6), personal (3), {company} (2), {company} (1). Full list: `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
+
+## Policies
+
+Before executing tasks, load applicable policies from all three directories:
+1. `companies/{co}/policies/` — company-scoped rules (infer company from context)
+2. `repos/{repo}/.claude/policies/` — repo-scoped rules (if working inside a repo)
+3. `.claude/policies/` — cross-cutting + command-scoped rules
+
+Hard enforcement policies block on violation; soft enforcement policies note deviations.
+
+**Spec:** `knowledge/public/hq-core/policies-spec.md`
+**Template:** `companies/_template/policies/example-policy.md`
+**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + `## Rule` + `## Rationale`
+**Precedence:** company > repo > command > global
+
+**Standard Policy Loading Protocol (for all commands):**
+When a command resolves a company and/or repo context:
+1. Company: `companies/{co}/policies/` — read all (skip `example-policy.md`)
+2. Repo: `{repoPath}/.claude/policies/` — read all (if dir exists)
+3. Global: `.claude/policies/` — filter by `trigger` field relevance to current task
+4. Hard-enforcement → must follow; soft-enforcement → note deviations
+5. Display policy count in any orientation/status output
+Commands implementing this: `/startwork`, `/run-project`, `/execute-task`, `/prd`, `/run`, `/learn`
 
 ## Sub-Agent Rules
 
@@ -180,11 +228,11 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-35+ commands in `.claude/commands/`. Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+44 commands in `.claude/commands/` (and growing). Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
-Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework, testing, agent-browser, curious-minds, gemini-cli, pr, context-needs, project-context. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
+Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework, agent-browser, curious-minds, gemini-cli. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Repos
 
@@ -196,15 +244,24 @@ Every knowledge folder is its own git repo with independent versioning.
 
 **Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
 
-**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
-
 **Adding new knowledge:** Company: `git init` in `companies/{co}/knowledge/`. Shared: create repo in `repos/public/knowledge-{name}`, symlink to `knowledge/public/`. Register in `modules/modules.yaml`.
+
+## Skills
+
+`.claude/skills/` is the canonical HQ skill tree. Do not duplicate skill definitions for Codex.
+
+Use a bridge instead of copying files:
+- `scripts/codex-skill-bridge.sh install` creates `~/.codex/skills/hq` pointing at `.claude/skills/`
+- The same install also mirrors `.claude/` into project-local `.codex/claude` and exposes `.claude/commands/` as project-local `.codex/prompts`
+- New skills created under `.claude/skills/` become available to Codex without a sync step
+- New command files created under `.claude/commands/` become available to Codex through the prompt bridge without a sync step
+- Inference: Codex may need a fresh session to notice brand-new bridged content, but the filesystem bridge stays current
 
 ## Search (qmd)
 
 HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
 
-**Collections:** `hq` (all HQ), `{product}` ({Product} monorepo), `{company-1}`, `{company-2}`, `{company-3}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
+**Collections:** `hq` (all HQ), `{product}` ({PRODUCT} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
 
 **When to search:** Before any planning, research, or context-gathering task, search with `qmd` first. This includes codebase exploration — use qmd for conceptual search instead of Grep.
 
@@ -229,11 +286,11 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 | Exact pattern match in code | `Grep` (works from HQ root) | `import.*AuthService` with `glob: "*.ts"` |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
+**Never use Glob for prd.json or worker.yaml discovery.** Use `qmd search` or read index files directly (`manifest.yaml`, `registry.yaml`). Hook enforced — Glob with these patterns is blocked.
+
 **Prefer qmd for codebase exploration.** Use Grep for exact pattern matching. Commands/skills scanning HQ must use `qmd vsearch` or `qmd search`, not Grep.
 
 **`.ignore` file protects Grep** — HQ has a `.ignore` (ripgrep ignore) that blocks `repos/`, `node_modules/`, `**/.git/`. Grep from HQ root is safe. Glob from HQ root still times out — always pass a scoped `path:` to Glob.
-
-**Never use Glob for prd.json or worker.yaml discovery.** Use `qmd search` or read index files directly (`manifest.yaml`, `registry.yaml`). Hook enforced — Glob with these patterns is blocked.
 
 **Glob rules:**
 - NEVER Glob for `prd.json` or `worker.yaml` — blocked by hook, use qmd or direct Read
@@ -243,22 +300,9 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 
 **When in doubt:** `qmd search "project name"` finds files by topic without any timeout risk
 
-## LSP (Language Server Protocol)
-
-When `ENABLE_LSP_TOOL=1` is set, Claude Code has access to LSP tools for code intelligence — go-to-definition, find-references, type info, and hover. Prefer LSP over Grep for navigating codebases:
-
-| Need | Use |
-|------|-----|
-| Find where a function is defined | LSP go-to-definition |
-| Find all usages of a symbol | LSP find-references |
-| Check type of a variable | LSP hover |
-| Find string patterns across files | Grep (LSP can't do regex search) |
-
-**Setup:** Add `export ENABLE_LSP_TOOL=1` to your shell profile (`~/.zshrc` or `~/.bashrc`), then restart Claude Code.
-
 ## Policies (Learned Rules)
 
-Rules are stored as policy files — structured markdown with YAML frontmatter. Migrated from inline `## Learned Rules`.
+Rules are stored as policy files — structured markdown with YAML frontmatter. Migrated from inline `## Learned Rules` on 2026-02-22.
 
 **Directories (check before executing tasks):**
 - `companies/{co}/policies/` — company-scoped rules
@@ -269,65 +313,6 @@ Rules are stored as policy files — structured markdown with YAML frontmatter. 
 
 **Spec:** `knowledge/public/hq-core/policies-spec.md`
 **Template:** `companies/_template/policies/example-policy.md`
-
-## Core Principles
-
-1. **Infrastructure scales, effort doesn't** - Build reusable systems
-2. **Workers should grow smarter** - Capture learnings in knowledge bases
-3. **Context is precious** - Checkpoint often, don't let work evaporate
-4. **Test before ship** - If you can't verify it works, you can't ship it
-5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
-
-## E2E Testing Standards
-
-For deployable projects (web, API, CLI):
-- E2E tests verify the product works, not just the code
-- Tests are back-pressure in the Ralph loop (fail = task incomplete)
-- Knowledge base: `knowledge/public/testing/` (templates, infra guides, agent-browser)
-- PRDs include optional `e2eTests` per story
-- Workers use `e2e-testing` skill for writing/running tests
-
-**Full guide:** `knowledge/public/testing/e2e-cloud.md`
-
-## Learned Rules
-
-<!-- Max 25. Worker-scoped rules go in worker.yaml, not here. -->
-<!-- Auto-managed by /learn. Manual: /remember -->
-
-- **qmd collections**: hq, {product}, {company-1}, {company-2}, {company-3}, personal, {company-6}. Use `-c {co}` to scope
-- **company isolation**: `manifest.yaml` enforced. Never cross-contaminate creds/knowledge/deploys
-- **agent-browser**: CLI browser automation (v0.11.1). Skill at `.claude/skills/agent-browser/`. Auth states at `settings/{company}/browser-state/`. ALWAYS use agent-browser for ALL browser interactions — NEVER open headed browsers. Keep Playwright only for structured QA suites
-- **vercel org mapping**: {Company-1} → `voyagesms`, {Company-2} → `{company-2}-c09fddff`, {Company-3} → `{company-3}-f0dc7e1b`, Personal → `{your-username}s-projects`. NEVER run `vercel` CLI without `--scope {org}`. Prefer `git push` for production deploys
-- **gmail reply_email danger**: NEVER use `reply_email` to compose — it sends immediately. ALWAYS `draft_email` first. Plain text only
-- **{company-2}-site no purple text**: NEVER use `text-primary` (purple) for text. All text must be foreground/grey tones. Purple reserved for backgrounds, borders, accent elements only
-- **draft file content extraction**: NEVER send raw draft file content as a social post. Draft files have markdown metadata headers (`# Title`, `**Status:**`, `---`). ALWAYS strip everything above `---` separator before posting. For multi-option drafts, extract only the recommended option. Validate: if caption starts with `#` or contains `**Status:**`, abort.
-- **Post-Bridge no test calls**: NEVER send test/exploratory API calls to production social accounts. When debugging API field names, read docs first — never send `{"caption":"test"}` to a live account. Build the full request locally, verify fields, and only call the API once with real content. Test posts publish immediately and cannot be deleted via API
-- **supabase project deletion**: NEVER delete Supabase projects without confirming with user first. rose-flower was {Company-5}'s DB and was incorrectly deleted as "unused" on 2026-02-10. Always ask before deleting any Supabase/Vercel project
-- **Glob requires scoped path**: ALWAYS pass `path:` to Glob scoped to a subdirectory (e.g. `projects/`, `workers/`). Glob from HQ root times out (`.ignore` doesn't protect it). Grep from HQ root is safe (`.ignore` blocks repos/node_modules). Parallel tool failures cascade — one timeout kills all siblings
-- **knowledge diagrams**: When creating/editing knowledge files, ALWAYS use ` ```mermaid ` blocks for diagrams — never ASCII art. The {company-3}-hq-app renders Mermaid as interactive SVG with {Company-3} theming and click-to-zoom
-- **holler apply deploy**: {company-4}.com (apply site) has NO GitHub auto-deploy. Must CLI deploy with BOTH project.json AND vercel.json swapped: `cp apps/apply/.vercel/project.json .vercel/project.json && mv vercel.json vercel.json.bak` → `vercel deploy --prod --scope {your-username}s-projects` → restore both. Root `vercel.json` has API buildCommand that breaks apply deploy. Running `vercel deploy` from `apps/apply/` dir doubles path (Vercel project rootDirectory=apps/apply). Push to BOTH remotes (`origin`=goldenthreadband, `{company-4}`).
-- **model routing**: Workers declare `execution.model` in worker.yaml (opus/sonnet/haiku). `/execute-task` passes model to `Task()`. Stories can override via `model_hint` in prd.json. Default: opus. Metrics logged to `workspace/metrics/model-usage.jsonl`
-- **post-bridge verify delivery**: After ANY Post-Bridge API call, ALWAYS use agent-browser to navigate to the actual social page and visually confirm the post is live. `status: "posted"` is unreliable. Also: ALWAYS check the target page with agent-browser BEFORE posting to confirm context and avoid duplicates. Never trust API status alone.
-- **git branch before committing**: ALWAYS run `git branch --show-current` before committing to any repo. Never assume the current branch — inherited cwd or installs can silently land you on an unintended branch (e.g. feature/{company-3}-staging-cleanup instead of a clean branch). If wrong branch: create correct branch, cherry-pick, revert from wrong branch. <!-- 2026-02-19 -->
-- **tauri dev deep link**: `pnpm tauri dev` runs a raw binary — it does NOT install to /Applications/ so macOS ignores its CFBundleURLSchemes. For deep links to work during dev: run `pnpm tauri build --debug`, copy .app to /Applications/, then `lsregister -f` it. Use `LSSetDefaultHandlerForURLScheme` via Swift if the Electron app still wins. <!-- 2026-02-19 -->
-- **tauri tokio::spawn**: NEVER use `tokio::spawn` directly in Tauri app setup (e.g. in `setup` closure or `did_finish_launching`). Tokio runtime isn't initialized yet — causes panic "no reactor running". ALWAYS use `tauri::async_runtime::spawn` instead; it uses Tauri's managed runtime which is guaranteed to exist. <!-- 2026-02-19 -->
-- **email subject ASCII only**: NEVER use special characters (em dash, curly quotes, Unicode punctuation) in email subject lines — they encode as garbled text. Plain ASCII only: hyphens not dashes, straight quotes. <!-- user-correction | 2026-02-19 -->
-- **{company-3-domain} DNS via Route 53**: {company-3-domain} DNS is in AWS Route 53 (NOT Vercel). To add a subdomain: (1) add CNAME in Route 53 pointing to `cname.vercel-dns.com`, (2) add domain in Vercel dashboard under `{company-3}-f0dc7e1b` project settings. Vercel login for {company-3} team: GitHub auth as `{your-username}` — team@company.com has NO Vercel account. <!-- user-correction | 2026-02-19 -->
-- **{Company-3} AWS creds**: AWS credentials for {Company-3} (Route 53, full infra) are in `companies/{company-3}/settings/.env` (AWS_ACCESS_KEY_ID/SECRET). Backup: 1Password `team-{company-3}ai.1password.com`. NEVER use these creds for non-{Company-3} work. NEVER delete any {Company-3} AWS/Vercel resources without explicit confirmation. Full infra docs: `companies/{company-3}/knowledge/infrastructure.md`. <!-- user-correction | 2026-02-19 -->
-- **vercel custom domain deploy safety**: NEVER deploy to a production custom domain (e.g. token.{company-3-domain}, {company-4}.com) without explicit user confirmation. "Deploy to a temporary Vercel site" means a fresh Vercel project with only a .vercel.app URL — no custom domain aliases. Existing Vercel projects with custom domains are live production sites. <!-- user-correction | 2026-02-19 -->
-- **Task() sub-agents lack MCP**: Sub-agents spawned via Task() don't inherit MCP server connections. Workers needing external tools (Codex, etc.) must use CLI via Bash, not MCP tools declared in worker.yaml. <!-- 2026-02-20 -->
-- **Shopify 2026 auth**: No more permanent Admin API tokens from store admin (Jan 2026). New apps use Dev Dashboard + client_credentials grant: `POST https://{store}.myshopify.com/admin/oauth/access_token` with `client_id` + `client_secret`. Returns ephemeral `shpat_` token (24h expiry). The `shpss_` Storefront token from Dev Dashboard IS the `client_secret`. Store both in env, regenerate admin token on demand. <!-- 2026-02-20 -->
-- **vercel preview SSO**: `vercel deploy --public` makes source public, NOT bypasses deployment protection (SSO). Vercel preview URLs always require login unless project-level protection is disabled. To test a preview without auth: run prod server locally (`npm run build && npm run start`). <!-- 2026-02-21 -->
-- **Vercel domain team move**: When purchasing a domain via Vercel/Name.com, it can land in the wrong team/org. Check ownership with `GET /v6/domains/{domain}?teamId={teamId}` across all teams. Move between teams with `PATCH /v6/domains/{domain}?teamId={source}` body `{"op": "move-out", "destination": "{target_team_id}"}`. Cannot delete Vercel-purchased domains — must move them. <!-- 2026-02-20 -->
-- **Vercel framework detection**: If Vercel project has `framework: null`, production builds deploy but serve 404 on all routes (even though build succeeds). Fix with `PATCH /v9/projects/{id}` setting `{"framework":"nextjs","installCommand":"pnpm install"}` then redeploy. Always verify framework is set after project creation. <!-- 2026-02-20 -->
-- **pre-deploy domain check**: Before ANY Vercel deploy to a custom domain, ALWAYS (1) `curl -s` the live URL to see what's currently there, (2) check which Vercel project owns the domain (`GET /v6/domains/{domain}`), (3) read the relevant infra knowledge for domain registry. NEVER remove a domain from one project to assign it to another — add new routes within the existing project instead. <!-- 2026-02-20 -->
-- **EAS build env vars**: EAS production builds do NOT inherit local `.env` files — `EXPO_PUBLIC_*` vars must be set on expo.dev or via CLI before building or the app crashes on launch. Set with: `eas env:create production --name KEY --value VALUE --visibility sensitive --scope project --non-interactive`. Use `sensitive` (NOT `secret`) for `EXPO_PUBLIC_*` vars — EAS rejects `secret` visibility for public-prefixed vars. Verify with `eas env:list production` before triggering build. <!-- 2026-02-21 -->
-- **Vercel env var trailing newlines**: When piping values to `vercel env add`, ALWAYS use `printf` (no trailing newline) — NOT `echo`. `echo` appends `\n` to the value, causing API calls with those credentials to fail with 400 Bad Request. Diagnose with `vercel env pull` and inspect for `\n` in values. <!-- 2026-02-21 -->
-- **E2E tests cover real user flows**: Write E2E tests that exercise the actual user flow — run the CLI, open the URL in Playwright, verify the page renders. Unit tests passing ≠ product works. <!-- e2e-cloud-testing -->
-- **Test before marking complete**: Never mark a task `passes: true` without running tests AND verifying the feature works. <!-- e2e-cloud-testing -->
-- **PRD test-first structure**: PRDs should include E2E tests per story, verification commands, and Phase 0 test infrastructure. <!-- e2e-cloud-testing -->
-- **PRD baseBranch**: Include `metadata.baseBranch` so Pure Ralph creates feature branches from the correct base. <!-- e2e-cloud-testing -->
-- **Script/schema compatibility**: When updating PRD schema (e.g. `features` → `userStories`), also update all scripts that consume PRDs. <!-- e2e-cloud-testing -->
 
 ## Learning System
 
@@ -351,13 +336,13 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 
 ## Project Repos - Commit Rules
 
-### {Product} (`repos/private/{product}`)
+### {PRODUCT} (`repos/private/{product}`)
 **MANDATORY before any PR (enforced by hook):**
 1. `bun run test` — must pass
 2. `bun check` — must pass (TypeScript)
 3. `bun lint` — must pass
 
-**Use `/{product}-pr` command** (in {Product} repo's `.claude/commands/`) — direct `gh pr create` is blocked by PreToolUse hook.
+**Use `/{product}-pr` command** (in {PRODUCT} repo's `.claude/commands/`) — direct `gh pr create` is blocked by PreToolUse hook.
 
 **Code location rules:**
 - Lambda code → `apps/function/src/` (NOT libs)
@@ -366,15 +351,12 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 
 **Parallel agent cleanup:** When running parallel agents for large-scale code removal, they miss files outside their assigned scope (e.g. schema files, session handling, component props, infra configs). ALWAYS run a comprehensive grep for all removed identifiers after parallel agents finish and before committing.
 
+**Sub-agent import paths:** Sub-agents consistently get relative import paths wrong when creating files in unfamiliar directory structures (e.g. `../../hooks/` instead of `../hooks/`). ALWAYS run `bun check` after sub-agent edits to catch broken imports before proceeding.
+
 **Integration deprecation:** Removing an integration ID from `libs/db/src/constants/integration.ts` causes cascading TS errors — the `DatabaseEntity['integrations']['id']` union type flows through Supabase `.eq()` filters across many files. Fully remove the constant from the `Integration` object; `@deprecated` JSDoc on a const value still includes it in the union type.
 
 **Full rules:** `repos/private/{product}/.claude/CLAUDE.md`
-Repo: https://github.com/{github-org}/{product}
-
-### {Company-2} CMO HQ (`repos/private/{company-2}-cmohq`)
-- **Always commit and push** after completing work
-- Provide GitHub link to commit after pushing
-- Repo: https://github.com/{company-2}brand/{company-2}-cmohq
+Repo: https://github.com/{org}/{repo}
 
 ## Vercel Deployments
 
@@ -386,7 +368,7 @@ Repo: https://github.com/{github-org}/{product}
 
 When building HQ infrastructure, auto-capture structural changes via `/learn`. See **Infrastructure-First** section for the full creation checklist and reindex triggers.
 
-**Why:** Fresh sessions discover resources via `qmd`, `registry.yaml`, and `projects/*/prd.json`. Global learned rules are reserved for cross-cutting safety rules. Worker-scoped rules go in `worker.yaml`.
+**Why:** Fresh sessions discover resources via `qmd`, `registry.yaml`, and `companies/{co}/projects/*/prd.json`. Global learned rules are reserved for cross-cutting safety rules. Worker-scoped rules go in `worker.yaml`.
 
 ## Auto-Checkpoint (PostToolUse Hook)
 
@@ -426,7 +408,7 @@ PostToolUse hooks on Bash and Write tool calls detect checkpoint-worthy events a
 
 **Do NOT** on auto-checkpoints: rebuild INDEX files, update `recent.md`, run `qmd update`, write legacy checkpoint files. Just write the JSON and move on.
 
-**Knowledge repos:** When edits touch knowledge files (symlinked to `repos/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above.
+**Knowledge repos:** When edits touch knowledge files (`companies/{co}/knowledge/` or `knowledge/public/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above.
 
 ## Session Learnings
 
@@ -439,10 +421,32 @@ Before `/handoff` or `/checkpoint`, reflect on the session and extract reusable 
 
 ## Auto-Handoff (PreCompact Hook)
 
-A PreCompact hook fires when auto-compaction triggers (context window full). When you see the handoff nudge:
+A PreCompact hook fires at 80% context. Autocompact cannot be fully disabled in Claude Code — no off switch exists. The hook forces an immediate `/handoff` to preserve state before compaction destroys context.
 
-1. Finish current atomic action (don't leave files half-edited)
-2. Run `/handoff` to preserve session state
-3. Do NOT start new tasks — hand off first
+**When you see the handoff banner: STOP immediately.**
+
+1. Save any mid-edit file (don't leave partial edits)
+2. Run `/handoff` RIGHT NOW
+3. Do NOT continue working, do NOT "finish quickly"
+4. The next session picks up where you left off
 
 **Fallback (instruction-based):** If you notice context is running low (many long turns, compaction has occurred), proactively run `/handoff` without waiting for the hook.
+
+## Core Principles
+
+1. **Infrastructure scales, effort doesn't** - Build reusable systems
+2. **Workers should grow smarter** - Capture learnings in knowledge bases
+3. **Context is precious** - Checkpoint often, don't let work evaporate
+4. **Test before ship** - If you can't verify it works, you can't ship it
+5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
+
+## E2E Testing Standards
+
+For deployable projects (web, API, CLI):
+- E2E tests verify the product works, not just the code
+- Tests are back-pressure in the Ralph loop (fail = task incomplete)
+- Knowledge base: `knowledge/public/testing/` (templates, infra guides, agent-browser)
+- PRDs include optional `e2eTests` per story
+- Workers use `e2e-testing` skill for writing/running tests
+
+**Full guide:** `knowledge/public/testing/e2e-cloud.md`

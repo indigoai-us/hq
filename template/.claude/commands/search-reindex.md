@@ -77,15 +77,15 @@ qmd collection add ~/Documents/HQ --name hq --mask "**/*.md"
 qmd context add qmd://hq "HQ knowledge base: company knowledge, AI worker definitions, project PRDs, slash commands, reports, social drafts, and session threads."
 qmd context add qmd://hq/knowledge "HQ-level knowledge bases: Ralph coding methodology, worker framework patterns, dev-team practices, design styles, security framework, project templates."
 qmd context add qmd://hq/.claude/commands "Claude Code slash commands: 30 agent skills for session management, worker execution, project management, content creation, design, deployment."
-qmd context add qmd://hq/companies "Five company-scoped directories ({Product}, {Company}, {Product}, Personal, Band-TBD) each with knowledge bases, settings, and data."
+qmd context add qmd://hq/companies "Five company-scoped directories ({Company}, {Company}, {Product}, Personal, Band-TBD) each with knowledge bases, settings, and data."
 qmd context add qmd://hq/workers "AI worker definitions with YAML configs and skill markdown files. Top-level ops workers, 12-person dev-team, 5-person content team."
 qmd context add qmd://hq/projects "Project PRDs and READMEs for active and planned projects across all companies."
 qmd context add qmd://hq/workspace "Runtime workspace: session threads, checkpoints, orchestrator state, reports, social drafts, content ideas, metrics."
 
 # {PRODUCT} collection
 qmd collection add ~/Documents/HQ/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
-qmd context add qmd://{product} "{PRODUCT} monorepo: Nx monorepo for {Product}/{Product}. Apps (web-admin, web-client, web-front, function, {company}, cdp) + libs (core, db, ui, web, util, schema). Next.js, React 19, TypeScript, SST, Prisma, PostgreSQL."
-qmd context add qmd://{product}/apps "Application code: Next.js web apps, AWS Lambda functions, {Product} SMS platform, CDP."
+qmd context add qmd://{product} "{PRODUCT} monorepo: Nx monorepo for {Product}/{Company}. Apps (web-admin, web-client, web-front, function, {company}, cdp) + libs (core, db, ui, web, util, schema). Next.js, React 19, TypeScript, SST, Prisma, PostgreSQL."
+qmd context add qmd://{product}/apps "Application code: Next.js web apps, AWS Lambda functions, {Company} SMS platform, CDP."
 qmd context add qmd://{product}/libs "Shared libraries: db/Prisma schemas, core feature modules (auth, billing, brand, conversation, ai, workflow), UI components, utilities."
 
 qmd embed

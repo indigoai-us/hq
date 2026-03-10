@@ -112,7 +112,7 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
 - `qmd` is installed
 - Number of qmd collections (target: 5+)
 - Index freshness (last update <7 days ago)
-- Collections: hq, {product}, {company-1}, {company-2}, personal minimum
+- Collections: hq, {product}, {company}, {company}, personal minimum
 
 **Scoring:**
 - qmd installed + 5+ collections + index <7 days old = 10 points
@@ -193,8 +193,8 @@ CATEGORY SCORES:
 TOTAL: 63/70 (A grade)
 
 TOP 3 IMPROVEMENTS:
-1. Add missing hook: .claude/hooks/observe-patterns.sh (S)
-2. Write security policy: .claude/policies/company-isolation-validation.md (M)
+1. Add missing hook: ~/Documents/HQ/.claude/hooks/observe-patterns.sh (S)
+2. Write security policy: ~/Documents/HQ/.claude/policies/company-isolation-validation.md (M)
 3. Add /tdd command to .claude/commands/ (S)
 
 NOTES:

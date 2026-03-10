@@ -70,6 +70,7 @@ Pass arguments to the skill. The skill file will reference `$ARGUMENTS`.
 
 When executing a skill:
 1. **Load context** - Read worker.yaml (includes accumulated learnings in `instructions:`), any knowledge files referenced
+1b. **Load policies** — Determine company from worker path (`companies/{co}/workers/` → `{co}`) or from worker.yaml `company` field. Read `companies/{co}/policies/` (skip `example-policy.md`). If worker targets a repo, also check `{repoPath}/.claude/policies/`. Apply hard-enforcement policies as constraints during execution
 2. **Execute** - Follow the skill's instructions
 3. **Verify** - Run any verification steps defined
 4. **PostToolsHook** - Auto-save thread to `workspace/threads/`

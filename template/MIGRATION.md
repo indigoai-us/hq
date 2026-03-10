@@ -4,6 +4,49 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v8.0.0 (from v7.0.0)
+
+### Updated Commands (9 files)
+These commands now include policy loading. Copy from starter-kit to your HQ:
+```bash
+for f in audit handoff harness-audit learn model-route prd run-project run startwork; do
+  cp starter-kit/.claude/commands/$f.md .claude/commands/
+done
+```
+
+### New Commands (6 files)
+```bash
+for f in bootcamp-student checkemail email launch-brand strategize {product}-prd; do
+  cp starter-kit/.claude/commands/$f.md .claude/commands/
+done
+```
+
+### Updated CLAUDE.md
+The Policies section now includes a **Standard Policy Loading Protocol**. Review and merge:
+```bash
+diff .claude/CLAUDE.md starter-kit/.claude/CLAUDE.md
+```
+Key addition: 5-step protocol for commands to load company → repo → global policies, plus list of implementing commands.
+
+### Updated run-project.sh
+Regression gates now use baseline comparison (smarter — won't flag pre-existing errors). Copy:
+```bash
+cp starter-kit/.claude/scripts/run-project.sh .claude/scripts/run-project.sh
+# or if you keep it at scripts/run-project.sh:
+cp starter-kit/.claude/scripts/run-project.sh scripts/run-project.sh
+chmod +x scripts/run-project.sh
+```
+
+### `/learn` — Breaking Behavioral Change
+`/learn` now creates **policy files** (structured markdown with YAML frontmatter) as its primary output instead of injecting rules into `worker.yaml` or `CLAUDE.md`. Existing learned rules in worker.yaml files still work but new learnings will be written as policy files in:
+- `companies/{co}/policies/` (company scope)
+- `repos/{repo}/.claude/policies/` (repo scope)
+- `.claude/policies/` (global/command scope)
+
+No action needed — old rules remain valid. New rules will be policy files.
+
+---
+
 ## Migrating to v7.0.0 (from v6.5.1)
 
 ### New Hooks (3 files)

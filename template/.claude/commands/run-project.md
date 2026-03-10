@@ -58,6 +58,18 @@ bash scripts/run-project.sh --status
 
 ## How It Works (Ralph Loop)
 
+### Pre-Loop: Load Policies
+
+Before entering the Ralph loop:
+
+1. Read prd.json → extract `metadata.company` (or resolve from `metadata.repoPath` via manifest)
+2. Load `companies/{co}/policies/` (skip `example-policy.md`) — read all
+3. If `metadata.repoPath` set, check `{repoPath}/.claude/policies/` — read all
+4. Load `.claude/policies/` — filter to policies with triggers relevant to "task execution", "deployment", "commit"
+5. Pass applicable policy summaries to each `claude -p "/execute-task ..."` invocation context
+
+Ensures orchestrator respects hard constraints (deploy safety, credential isolation) before delegating to execute-task.
+
 ### Task Selection (per iteration)
 
 Selection order: **deps resolved → no file lock conflicts → lowest priority → array order**
@@ -102,10 +114,30 @@ When all stories have `passes: true`:
 
 1. **Board sync** → `done`
 2. **Summary report** → `workspace/reports/{project}-summary.md`
-3. **INDEX.md** — flag for rebuild (deferred to `/cleanup`)
-4. **Manifest verification** — check repos/workers registered
-5. **qmd reindex** — final search index update
-6. **State** → `status: "completed"`
+3. **Doc sweep** — interactive, runs after bash script returns to the session
+   Scan 3 doc layers for stale/missing content based on completed stories:
+
+   a. **HQ knowledge** (`companies/{co}/knowledge/`):
+      - Do completed stories introduce architecture, integrations, or processes not in existing knowledge?
+      - `qmd search "{topic}" -c {co} --json -n 3` for each major topic from story titles
+      - Propose CREATE for undocumented topics, UPDATE for stale existing docs
+
+   b. **Repo docs** (`{repoPath}/README.md`, `{repoPath}/docs/`, `{repoPath}/.claude/CLAUDE.md`):
+      - Is README boilerplate or stale? (`grep "create-next-app\|TODO\|TBD"`)
+      - Do new API routes, env vars, or features need documenting?
+      - Is `.claude/CLAUDE.md` missing repo-specific agent context?
+
+   c. **External docs** (knowledge sites):
+      - If company has a published knowledge site, flag new publishable content
+
+   Present proposals via AskUserQuestion (apply all / pick / skip).
+   Execute approved items. Commit to appropriate repos (knowledge repo, project repo).
+   The bash script writes `doc-sweep-flag.json` to state dir as a reminder.
+
+4. **INDEX.md** — flag for rebuild (deferred to `/cleanup`)
+5. **Manifest verification** — check repos/workers registered
+6. **qmd reindex** — final search index update
+7. **State** → `status: "completed"`
 
 State: `workspace/orchestrator/{project}/state.json` + `progress.txt`
 
@@ -137,6 +169,7 @@ If that fails, fall back to the legacy pattern: spawn Task() sub-agents per stor
 - **Resume is first-class** — auto-detected from state.json
 - **Codex CLI mandatory** — at least one codex step (review or exec) required per code task. Sub-agent prompt enforces it; orchestrator runs fallback `codex review` post-task
 - **Back pressure** — enforced inside `/execute-task`, not by orchestrator
+- **Policy-aware** — load company + repo + global policies before first task. Hard-enforcement policies block the loop if violated
 - **ALWAYS**: Use `"userStories"` key in prd.json (not `"stories"`) — `run-project.sh` greps for this exact key name
 
 ## Worked Example: Complete Project Execution (Ralph Loop)
