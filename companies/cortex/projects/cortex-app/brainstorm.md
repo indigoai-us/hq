@@ -25,11 +25,14 @@ A PRD already exists (`cortex-app/prd.json`) with 9 stories targeting a Tauri + 
 - Claude Agent SDK exists — provides agent loop, tool_use, multi-turn reasoning out of the box
 - Tauri v2 is known tech in this HQ (prior experience with deep links, builds, credential storage)
 - The "unrestricted action space" requirement means the agent needs system-level access (shell, files, HTTP, potentially browser)
+- **KPI input cadence:** Human enters KPI values a few times per day (not real-time, but frequent)
+- **Delayed attribution:** Some actions take days to affect KPIs — the agent must reason about lagging indicators, not just immediate cause-and-effect
 
 ## What We Don't Know
 
-- How will the agent measure the impact of its own actions on revenue? Manual KPI input creates a feedback gap — the agent acts, but doesn't see results until the human enters data
-- What's the right cycle interval? Too frequent = wasted API spend, too infrequent = missed opportunities
+- **Attribution model:** When a KPI moves days after an action, how does the agent know which action caused it? Multiple actions may be in flight simultaneously. The agent needs a hypothesis-tracking system — "I did X on Monday, I expect Y KPI to move by Wednesday" — then validate or invalidate when data arrives
+- **Action decay:** Some actions compound (content builds audience over time), others are one-shot (a cold email converts or doesn't). The agent needs to model different action-to-outcome timelines
+- What's the right cycle interval? KPI input happens a few times/day, but actions take days — the agent shouldn't re-plan every 4 hours if nothing new has been measured. Cycle should trigger on new KPI data, not just a timer
 - How do you sandbox an agent with "unrestricted" action space without it doing something harmful?
 - Is a desktop app the right form factor, or would a headless agent with web dashboard be more practical?
 - How much of this overlaps with what Claude Code / HQ workers already do?
@@ -99,7 +102,7 @@ A PRD already exists (`cortex-app/prd.json`) with 9 stories targeting a Tauri + 
 
 **Key condition:** If the primary goal is a shippable product (not validation), go directly to Option B. If you're exploring whether goal-directed autonomy even works at all, start with Option C.
 
-**Biggest risk:** The feedback loop. With manual KPI input, the agent can't measure its own impact in real-time. It takes actions blindly until the human enters new numbers. Phase 1 (Option C) will surface this problem cheaply before you've built a whole app around it.
+**Biggest risk:** Delayed attribution. The agent takes 5 actions on Monday. KPIs don't move until Thursday. Which action worked? The agent needs a **hypothesis ledger** — each action logged with an expected KPI impact and timeline ("I expect this blog post to add ~$200 MRR within 7 days"). When new KPI data arrives, the agent compares actual vs expected across all pending hypotheses. Without this, the agent either (a) takes credit for coincidences or (b) abandons effective strategies too early. Phase 1 (Option C) will surface this problem cheaply before you've built a whole app around it.
 
 ## Next Steps
 
