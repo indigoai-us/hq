@@ -1,0 +1,20 @@
+{
+  "run_id": "garden-all-20260311",
+  "scope": "all",
+  "chunks": ["personal", "indigo", "cortex", "_orphans"],
+  "status": "complete",
+  "phase": "complete",
+  "current_chunk": null,
+  "started_at": "2026-03-11T00:00:00Z",
+  "updated_at": "2026-03-11T00:15:00Z",
+  "findings_count": 15,
+  "approved_count": 6,
+  "actions_taken": 6,
+  "prds_created": [],
+  "chunk_results": {
+    "personal": {"findings": 4, "actions": 1, "status": "complete"},
+    "indigo": {"findings": 4, "actions": 1, "status": "complete"},
+    "cortex": {"findings": 0, "actions": 0, "status": "clean"},
+    "_orphans": {"findings": 7, "actions": 4, "status": "complete"}
+  }
+}

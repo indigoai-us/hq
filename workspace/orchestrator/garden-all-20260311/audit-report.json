@@ -1,0 +1,65 @@
+{
+  "run_id": "garden-all-20260311",
+  "audited_at": "2026-03-11T00:05:00Z",
+  "total_findings": 15,
+  "auto_approved": 6,
+  "skipped": 9,
+  "actions": [
+    {
+      "finding_id": "F-personal-001",
+      "action": "archive",
+      "path": "companies/personal/knowledge/voice-style.md",
+      "destination": "companies/personal/knowledge/_archive/voice-style.md",
+      "confidence": "high",
+      "rationale": "Placeholder-only file — header + single instruction line, no actual content"
+    },
+    {
+      "finding_id": "F-indigo-001",
+      "action": "archive",
+      "path": "companies/indigo/projects/e2e-perf/README.md",
+      "destination": "companies/indigo/projects/e2e-perf/_archive/README.md",
+      "confidence": "high",
+      "rationale": "Near-duplicate of prd.json — same stories, goals, acceptance criteria. prd.json is canonical."
+    },
+    {
+      "finding_id": "F-orphans-001",
+      "action": "update",
+      "path": "workspace/threads/INDEX.md",
+      "confidence": "high",
+      "rationale": "Add cortex-prd thread entry missing since 2026-03-10 22:00"
+    },
+    {
+      "finding_id": "F-orphans-002",
+      "action": "update",
+      "path": "workspace/threads/recent.md",
+      "confidence": "high",
+      "rationale": "Add cortex-prd thread to recent list"
+    },
+    {
+      "finding_id": "F-orphans-003",
+      "action": "update",
+      "path": "workspace/reports/INDEX.md",
+      "confidence": "high",
+      "rationale": "Add garden-all-20260310-b.md as canonical report, reference archive"
+    },
+    {
+      "finding_id": "F-orphans-004",
+      "action": "archive",
+      "path": "workspace/reports/garden/garden-all-20260310.md",
+      "destination": "workspace/reports/garden/_archive/garden-all-20260310.md",
+      "confidence": "high",
+      "rationale": "Superseded by garden-all-20260310-b.md which has updated methodology and corrected findings count"
+    }
+  ],
+  "skipped_findings": [
+    {"id": "F-personal-002", "reason": "low severity — waiting for /personal-interview to populate"},
+    {"id": "F-personal-003", "reason": "low severity — empty scaffold dirs are expected"},
+    {"id": "F-personal-004", "reason": "low severity — empty scaffold dirs are expected"},
+    {"id": "F-indigo-002", "reason": "low severity — empty scaffold dir, normal before policies defined"},
+    {"id": "F-indigo-003", "reason": "low severity — empty scaffold dir, normal before settings configured"},
+    {"id": "F-indigo-004", "reason": "recent working doc from yesterday, skip per suggested_action"},
+    {"id": "F-orphans-005", "reason": "low severity — keep orchestrator history for debugging"},
+    {"id": "F-orphans-006", "reason": "current run — skip"},
+    {"id": "F-orphans-007", "reason": "low severity — will be updated by qmd reindex post-run"}
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "run_id": "garden-all-20260311",
+  "executed_at": "2026-03-11T00:10:00Z",
+  "succeeded": 6,
+  "failed": 0,
+  "prds_created": [],
+  "repos_committed": [],
+  "actions": [
+    {
+      "finding_id": "F-personal-001",
+      "action": "archive",
+      "status": "success",
+      "from": "companies/personal/knowledge/voice-style.md",
+      "to": "companies/personal/knowledge/_archive/voice-style.md",
+      "method": "git mv"
+    },
+    {
+      "finding_id": "F-indigo-001",
+      "action": "archive",
+      "status": "success",
+      "from": "companies/indigo/projects/e2e-perf/README.md",
+      "to": "companies/indigo/projects/e2e-perf/_archive/README.md",
+      "method": "git mv"
+    },
+    {
+      "finding_id": "F-orphans-001",
+      "action": "update",
+      "status": "success",
+      "path": "workspace/threads/INDEX.md",
+      "change": "Added T-20260310-220000-cortex-prd entry, updated date to 2026-03-11"
+    },
+    {
+      "finding_id": "F-orphans-002",
+      "action": "update",
+      "status": "success",
+      "path": "workspace/threads/recent.md",
+      "change": "Added cortex-prd thread row, updated date to 2026-03-11"
+    },
+    {
+      "finding_id": "F-orphans-003",
+      "action": "update",
+      "status": "success",
+      "path": "workspace/reports/INDEX.md",
+      "change": "Added garden-all-20260311.md entry, garden-all-20260310-b.md as canonical, archived old -20260310.md"
+    },
+    {
+      "finding_id": "F-orphans-004",
+      "action": "archive",
+      "status": "success",
+      "from": "workspace/reports/garden/garden-all-20260310.md",
+      "to": "workspace/reports/garden/_archive/garden-all-20260310.md",
+      "method": "git mv"
+    }
+  ]
+}
