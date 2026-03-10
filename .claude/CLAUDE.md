@@ -86,7 +86,7 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Companies
 
-{company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}, indigo. Each owns `settings/` (creds), `data/` (exports), `knowledge/` (symlink → own git repo). Details: `knowledge/public/hq-core/quick-reference.md`
+{company-1}, {company-2}, {company-3}, personal, {company-7}, {company-8}, {company-4}, {company-6}, {company-5}, {company-9}, indigo, cortex. Each owns `settings/` (creds), `data/` (exports), `knowledge/` (symlink → own git repo). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 

@@ -19,3 +19,12 @@ indigo:
   deploy: []
   vercel_projects: []
   qmd_collections: [indigo]
+
+cortex:
+  repos: []
+  settings: []
+  workers: []
+  knowledge: companies/cortex/knowledge/
+  deploy: []
+  vercel_projects: []
+  qmd_collections: [cortex]

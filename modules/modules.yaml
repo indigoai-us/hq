@@ -29,6 +29,15 @@ modules:
     paths:
       .: companies/indigo/knowledge
 
+  # Cortex knowledge
+  - name: knowledge-cortex
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/cortex/knowledge
+
   # Example: Company shared module
   # - name: acme-workflows
   #   repo: https://github.com/acme-corp/hq-module.git
