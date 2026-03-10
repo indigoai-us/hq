@@ -39,6 +39,7 @@ git log -1 --format="%ai" -- "{file}" 2>/dev/null
 ```bash
 find {path} -type l ! -exec test -e {} \; -print 2>/dev/null
 ```
+⚠️ **NEVER use `readlink` to check if a symlink is broken.** `readlink` returns the raw relative target string — testing that relative path from a different cwd gives false positives. The `find` command above (or `test -e {symlink_path}`) resolves symlinks correctly via the OS. If you must inspect a target manually, `cd` to the symlink's parent directory first.
 
 **Empty directories:**
 ```bash
