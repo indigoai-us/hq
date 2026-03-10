@@ -1,6 +1,6 @@
 # Knowledge
 
-> Auto-generated. Updated: 2026-03-09
+> Auto-generated. Updated: 2026-03-10
 
 | Name | Description |
 |------|-------------|
@@ -13,7 +13,6 @@
 | `dev-team/` | Dev Team Knowledge Base |
 | `gemini-cli/` | Gemini CLI patterns and setup |
 | `hq-core/` | HQ core specs, schemas, and reference |
-| `knowledge-hq-core/` | Systems access documentation |
 | `loom/` | Loom worker pattern |
 | `pr/` | PR media lists and coverage |
 | `project-context/` | Project context schemas and templates |
