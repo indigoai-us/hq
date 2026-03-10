@@ -37,7 +37,7 @@ Based on flags parsed above, choose one of three modes:
 
 **If no `--since` and no `--company` flags**, call the script's built-in summary:
 ```bash
-cd $HQ_ROOT && bash scripts/audit-log.sh summary 2>/dev/null
+cd ~/Documents/HQ && bash scripts/audit-log.sh summary 2>/dev/null
 ```
 Display the output directly — it already includes by-project and by-worker tables.
 
@@ -45,7 +45,7 @@ Display the output directly — it already includes by-project and by-worker tab
 
 Compute `SINCE_DATE`: if `--since` was provided use that value, otherwise use 7 days ago in `YYYY-MM-DD` format.
 ```bash
-cd $HQ_ROOT && \
+cd ~/Documents/HQ && \
   SINCE="$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '7 days ago' +%Y-%m-%d)" && \
   bash scripts/audit-log.sh query --since "$SINCE" 2>/dev/null
 ```
@@ -114,7 +114,7 @@ Sort by tasks descending.
 
 Run:
 ```bash
-cd $HQ_ROOT && \
+cd ~/Documents/HQ && \
   bash scripts/audit-log.sh query --event task_failed 2>/dev/null
 ```
 
@@ -147,7 +147,7 @@ If zero results: print `No task failures found.`
 
 Build query:
 ```bash
-cd $HQ_ROOT && \
+cd ~/Documents/HQ && \
   bash scripts/audit-log.sh query --project <name> 2>/dev/null
 ```
 
@@ -189,7 +189,7 @@ If zero results: print `No events found for project "{name}".`
 /audit                              # Summary: last 7 days
 /audit --since 2026-03-01           # Summary since March 1
 /audit --project hq-observability   # All events for that project
-/audit --company {company}             # Summary filtered to a company
+/audit --company indigo             # Summary filtered to indigo
 /audit --failures                   # All failures across all projects
 /audit --failures --project vyg     # Failures for a specific project
 /audit --project assistant-standalone --since 2026-03-05

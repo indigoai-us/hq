@@ -29,8 +29,8 @@ If no arguments provided, read `workers/registry.yaml` and display:
 Available Workers:
 
   x-corey            X/Twitter posting for Corey
-  cfo-liverecover    Financial reporting
-  liverecover-analyst LR/VYG data analysis
+  cfo-{company}    Financial reporting
+  {company}-analyst LR/VYG data analysis
   ...
 
 Usage: /run {worker-id} to see skills
@@ -70,6 +70,7 @@ Pass arguments to the skill. The skill file will reference `$ARGUMENTS`.
 
 When executing a skill:
 1. **Load context** - Read worker.yaml (includes accumulated learnings in `instructions:`), any knowledge files referenced
+1b. **Load policies** — Determine company from worker path (`companies/{co}/workers/` → `{co}`) or from worker.yaml `company` field. Read `companies/{co}/policies/` (skip `example-policy.md`). If worker targets a repo, also check `{repoPath}/.claude/policies/`. Apply hard-enforcement policies as constraints during execution
 2. **Execute** - Follow the skill's instructions
 3. **Verify** - Run any verification steps defined
 4. **PostToolsHook** - Auto-save thread to `workspace/threads/`
@@ -100,7 +101,7 @@ Also append to metrics: `workspace/metrics/metrics.jsonl`
 /run x-corey                      # See x-corey skills
 /run x-corey contentidea          # Run contentidea
 /run x-corey contentidea "AI workforce" # Run with topic
-/run cfo-liverecover mrr          # Run MRR report
+/run cfo-{company} mrr          # Run MRR report
 ```
 
 ## Notes

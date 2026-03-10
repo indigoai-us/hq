@@ -22,7 +22,7 @@ Beginning of every session. Replaces ad-hoc orientation. Much lighter than `/rea
 Determine mode from arg (first match wins):
 
 - **No arg / empty** → Resume mode
-- **Arg matches company slug** in `companies/manifest.yaml` (e.g. `{company-1}`, `{company-2}`, `personal`) → Company mode
+- **Arg matches company slug** in `companies/manifest.yaml` ({company}, abacus, indigo, personal, {company}, {company}, {company}, {company}, {company}, {company}) → Company mode
 - **Arg matches a directory** in `projects/` (not `_archive/`) → Project mode
 - **Arg matches a directory** in `repos/private/` or `repos/public/` → Repo mode
 - **Partial match** → arg is a substring of any company slug, project dir, or repo name (exclude `knowledge-*` repos). 1 match → use that mode. 2-5 matches → present list via AskUserQuestion, ask user to pick. >5 → ask user to be more specific
@@ -57,6 +57,27 @@ Determine mode from arg (first match wins):
 2. Git state: `git -C {repoPath} branch --show-current`, `git -C {repoPath} log --oneline -5`, `git -C {repoPath} status --short`
 3. Owning company: scan `companies/manifest.yaml` for a company whose `repos:` list contains this path. If not found, infer from repo name prefix or note as untracked
 4. Related projects: `qmd search "{repo-name} prd.json" --json -n 10` → filter for projects matching this repo. For each match (max 5), Read the prd.json and extract `name` + count incomplete stories (where `passes !== true`)
+
+### 2.5 Load Applicable Policies
+
+Once company `{co}` is resolved (from any mode):
+
+1. **Company policies**: If `{co}` known, read all files in `companies/{co}/policies/` (skip `example-policy.md`). Note count + any `enforcement: hard` rules
+2. **Repo policies**: If repo context resolved, check `{repoPath}/.claude/policies/` (if dir exists). Note count
+3. **Global policies**: Count files in `.claude/policies/`. Filter to policies whose `trigger` matches general triggers ("before any task execution", "session start", etc.). Don't load all — just count and note hard-enforcement ones
+
+Display in orientation block:
+```
+Policies: {N} company, {M} repo, {K} global ({H} hard-enforcement)
+```
+
+**Hard-enforcement policies** with triggers matching current context: list titles in orientation block so user sees constraints upfront.
+
+Rules:
+- Only READ policy frontmatter (title, enforcement, trigger) — don't load full body into context
+- Exception: hard-enforcement policies — read full `## Rule` section
+- If no company resolved (resume mode with no company context), skip company policies
+- Precedence: company > repo > global
 
 ### 3. Present & Ask
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## v8.0.0 (2026-03-10)
+
+Policy-first system — all major commands now scan and enforce policies. `/learn` rewrite creates policy files as primary output. 6 new public commands, smarter regression gates.
+
+### Added
+
+- **Standard Policy Loading Protocol** (CLAUDE.md) — 5-step protocol for all commands to load company → repo → global policies. Documents which commands implement it.
+- **`/startwork` — Policy scan** (Step 2.5) — Sessions now load applicable policies on startup. Displays policy counts + hard-enforcement rule titles in orientation block.
+- **`/run-project` — Pre-Loop policy loading** — Orchestrator loads company + repo + global policies before entering the Ralph loop. Hard-enforcement policies block the loop if violated.
+- **`/prd` — Repo policy loading** — PRD creation now checks `{repoPath}/.claude/policies/` for repo-scoped constraints (commit hooks, deploy procedures, code location rules).
+- **`/run` — Policy loading** (Step 1b) — Worker execution loads company policies from worker path context and repo policies if applicable.
+- **`/learn` — Scan existing policies** (Step 4.5) — Before creating new rules, scans existing policy files for updates. Prevents duplicate policies.
+- **`/learn` — Policy file output** — Primary output is now structured policy files (YAML frontmatter + Rule + Rationale) in scope-appropriate directories. Worker.yaml injection retained as fallback for worker-specific learnings only.
+- **`run-project.sh` — Regression baseline** — Captures pre-existing error counts on first gate run. Only flags errors above baseline as regressions, preventing false positives in repos with pre-existing issues.
+- **`run-project.sh` — Doc sweep flag** — Writes `doc-sweep-flag.json` on project completion for interactive documentation review.
+- **6 new commands** — `/bootcamp-student`, `/checkemail`, `/email`, `/launch-brand`, `/strategize`, `/vyg-prd`.
+
+### Changed
+
+- **`/learn`** — Major rewrite: policy files are now primary output (was worker.yaml/CLAUDE.md injection). Step 3 scope resolution targets policy directories. Step 5 creates structured policy files per `policies-spec.md`. CLAUDE.md `## Learned Rules` reserved for global promotion of critical rules only.
+- **`/startwork`** — Now policy-aware: loads company, repo, and global policies during session startup.
+- **`/run-project`** — Now policy-aware: loads policies before first task, passes to sub-agents.
+- **`/prd`** — Now loads repo policies in addition to company policies during PRD creation.
+- **`/run`** — Now policy-aware: determines company from worker path and loads applicable policies.
+- **`/audit`**, **`/handoff`**, **`/harness-audit`**, **`/model-route`** — Various improvements.
+- **`run-project.sh`** — Regression gates upgraded with baseline comparison (57 new lines). Doc sweep flag in completion flow.
+- **CLAUDE.md** — Added Standard Policy Loading Protocol to Policies section. Updated command count to 44+.
+
+---
+
 ## v7.0.0 (2026-03-09)
 
 Hook profiles, audit logging, 9 new commands, 4 new workers, full Ralph orchestrator.

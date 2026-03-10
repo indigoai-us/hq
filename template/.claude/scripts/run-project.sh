@@ -25,7 +25,7 @@ set -euo pipefail
 #   --tmux              Launch in tmux session with Remote Control
 # =============================================================================
 
-HQ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HQ_ROOT="~/Documents/HQ"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
 SESSION_ID="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -825,15 +825,67 @@ run_regression_gate() {
 
   log_info "Running regression gates after $after_story..."
 
+  # Baseline file captures pre-existing error counts at project start
+  local baseline_file="$PROJECT_DIR/regression-baseline.json"
+
   local gate_passed=true
   while IFS= read -r gate; do
     [[ -z "$gate" ]] && continue
     log "  Gate: $gate"
-    if ! (cd "$REPO_PATH" && eval "$gate" >/dev/null 2>&1); then
-      log_err "  REGRESSION: $gate failed"
-      gate_passed=false
-    else
+    local output
+    local exit_code=0
+    output=$(cd "$REPO_PATH" && eval "$gate" 2>&1) || exit_code=$?
+
+    if [[ $exit_code -eq 0 ]]; then
       log_ok "  Passed: $gate"
+      continue
+    fi
+
+    # Gate failed — check if errors are pre-existing (baseline comparison)
+    # Count error lines (heuristic: lines containing "error" case-insensitive)
+    local err_count
+    err_count=$(echo "$output" | grep -ci "error" 2>/dev/null || echo "0")
+    local gate_key
+    gate_key=$(echo "$gate" | tr ' ' '_')
+
+    # Capture baseline on first regression gate run
+    if [[ ! -f "$baseline_file" ]]; then
+      log "  Capturing baseline error counts..."
+      # Run gate on baseBranch to get pre-existing error count
+      local base_branch
+      base_branch=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH" 2>/dev/null || echo "main")
+      local current_branch
+      current_branch=$(cd "$REPO_PATH" && git branch --show-current)
+      local base_err_count=0
+      local stashed=false
+      # Only stash if there are uncommitted changes
+      if (cd "$REPO_PATH" && ! git diff --quiet HEAD 2>/dev/null); then
+        (cd "$REPO_PATH" && git stash push -q 2>/dev/null) && stashed=true
+      fi
+      local base_exit=0
+      local base_output=""
+      base_output=$(cd "$REPO_PATH" && git checkout "$base_branch" -q 2>/dev/null && eval "$gate" 2>&1) || base_exit=$?
+      # Always return to current branch and restore stash
+      (cd "$REPO_PATH" && git checkout "$current_branch" -q 2>/dev/null) || log_warn "  Failed to checkout back to $current_branch"
+      [[ "$stashed" == true ]] && (cd "$REPO_PATH" && git stash pop -q 2>/dev/null) || true
+      if [[ $base_exit -ne 0 ]]; then
+        base_err_count=$(echo "$base_output" | grep -ci "error" 2>/dev/null || echo "0")
+      fi
+      # Initialize baseline file
+      echo "{}" > "$baseline_file"
+      jq --arg key "$gate_key" --argjson count "$base_err_count" \
+        '. + {($key): $count}' "$baseline_file" > "$baseline_file.tmp" \
+        && mv "$baseline_file.tmp" "$baseline_file"
+    fi
+
+    local baseline_count
+    baseline_count=$(jq -r --arg key "$gate_key" '.[$key] // 0' "$baseline_file" 2>/dev/null || echo "0")
+
+    if [[ "$err_count" -le "$baseline_count" ]]; then
+      log_warn "  $gate: $err_count errors (≤ baseline $baseline_count — pre-existing, not a regression)"
+    else
+      log_err "  REGRESSION: $gate — $err_count errors (baseline: $baseline_count, +$((err_count - baseline_count)) new)"
+      gate_passed=false
     fi
   done <<< "$gates"
 
@@ -1370,11 +1422,16 @@ if [[ "$REMAINING" -eq 0 ]]; then
     log_info "INDEX: $orch_index needs rebuild (deferred)"
   fi
 
-  # 3. Final reindex
+  # 3. Doc sweep flag (interactive session handles the actual sweep)
+  echo '{"doc_sweep_needed":true,"project":"'"$PROJECT"'","company":"'"$COMPANY"'","repo_path":"'"$REPO_PATH"'"}' \
+    > "$PROJECT_DIR/doc-sweep-flag.json" 2>/dev/null || true
+  log_info "Doc sweep flagged — run interactively to review"
+
+  # 4. Final reindex
   qmd update 2>/dev/null || true
   log_ok "qmd reindexed"
 
-  # 4. Verify manifest (repos/workers created during project are registered)
+  # 5. Verify manifest (repos/workers created during project are registered)
   if [[ -n "$REPO_PATH" && -f "$HQ_ROOT/companies/manifest.yaml" ]]; then
     local repo_rel="${REPO_PATH#"$HQ_ROOT/"}"
     if ! grep -q "$repo_rel" "$HQ_ROOT/companies/manifest.yaml" 2>/dev/null; then

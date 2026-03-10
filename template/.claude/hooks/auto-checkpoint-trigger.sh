@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-HQ="$(cd "$(dirname "$0")/../.." && pwd)"
+HQ="~/Documents/HQ"
 INPUT=$(cat)
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
