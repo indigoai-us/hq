@@ -1,5 +1,5 @@
 ---
-name: Deep Research
+name: deep-research
 description: Autonomous web research that produces comprehensive markdown reports with citations
 ---
 
