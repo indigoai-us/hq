@@ -8,11 +8,13 @@ source_idea_id: null
 
 # Cortex — Autonomous Goal-Directed Agent
 
-> A desktop agent that pursues a single goal (grow revenue/MRR) with full autonomy, KPI tracking, and an unrestricted action space — powered by Claude.
+> A desktop agent that pursues a single goal with full autonomy, KPI tracking, and an unrestricted action space — powered by Claude.
 
 ## Context
 
-Cortex is the first product under the cortex company. The idea: give an AI agent one goal and let it figure out how to achieve it. The user sets a measurable target (e.g., "Grow MRR to $10K/mo by June"), defines KPIs, and the agent autonomously plans and executes actions — content, code, API calls, video creation, anything. Human reviews async via an activity feed.
+Cortex is the first product under the cortex company. The idea: give an AI agent one goal and let it figure out how to achieve it. The user sets a measurable target, defines KPIs, and the agent autonomously plans and executes actions — content, code, API calls, video creation, anything. Human reviews async via an activity feed.
+
+**Reference project: YouTube channel growth.** The canonical use case is an agent managing a YouTube channel. Goal: grow the channel (subscribers, views, revenue). KPIs: subscriber count, views per video, watch time, CTR, ad revenue, etc. The agent scripts videos, generates thumbnails, optimizes titles/descriptions/tags, plans a content calendar, researches competitors, handles SEO, engages with comments. This grounds every design decision — if it works for YouTube, it works for anything.
 
 A PRD already exists (`cortex-app/prd.json`) with 9 stories targeting a Tauri + Rust + React stack. This brainstorm evaluates whether that's the right approach vs alternatives, before committing engineering time.
 
@@ -27,11 +29,12 @@ A PRD already exists (`cortex-app/prd.json`) with 9 stories targeting a Tauri + 
 - The "unrestricted action space" requirement means the agent needs system-level access (shell, files, HTTP, potentially browser)
 - **KPI input cadence:** Human enters KPI values a few times per day (not real-time, but frequent)
 - **Delayed attribution:** Some actions take days to affect KPIs — the agent must reason about lagging indicators, not just immediate cause-and-effect
+- **Reference use case:** YouTube channel management. Natural KPI set (subs, views, watch time, CTR, revenue). Rich action space (script, thumbnail, title, SEO, content calendar, competitor research, community). Clear delayed feedback — a video published today may take days/weeks to find its audience via the algorithm
 
 ## What We Don't Know
 
-- **Attribution model:** When a KPI moves days after an action, how does the agent know which action caused it? Multiple actions may be in flight simultaneously. The agent needs a hypothesis-tracking system — "I did X on Monday, I expect Y KPI to move by Wednesday" — then validate or invalidate when data arrives
-- **Action decay:** Some actions compound (content builds audience over time), others are one-shot (a cold email converts or doesn't). The agent needs to model different action-to-outcome timelines
+- **Attribution model:** When a KPI moves days after an action, how does the agent know which action caused it? Multiple actions may be in flight simultaneously. The agent needs a hypothesis-tracking system — "I scripted a video on Monday targeting keyword X, I expect views to increase by 500 within 7 days of upload" — then validate or invalidate when data arrives
+- **Action decay:** Some actions compound (SEO-optimized back catalog grows forever), others peak and fade (a trending video gets views for 3 days then flatlines), others are maintenance (community replies don't directly grow subs but reduce churn). The agent needs to model different action-to-outcome timelines
 - What's the right cycle interval? KPI input happens a few times/day, but actions take days — the agent shouldn't re-plan every 4 hours if nothing new has been measured. Cycle should trigger on new KPI data, not just a timer
 - How do you sandbox an agent with "unrestricted" action space without it doing something harmful?
 - Is a desktop app the right form factor, or would a headless agent with web dashboard be more practical?
@@ -102,14 +105,15 @@ A PRD already exists (`cortex-app/prd.json`) with 9 stories targeting a Tauri + 
 
 **Key condition:** If the primary goal is a shippable product (not validation), go directly to Option B. If you're exploring whether goal-directed autonomy even works at all, start with Option C.
 
-**Biggest risk:** Delayed attribution. The agent takes 5 actions on Monday. KPIs don't move until Thursday. Which action worked? The agent needs a **hypothesis ledger** — each action logged with an expected KPI impact and timeline ("I expect this blog post to add ~$200 MRR within 7 days"). When new KPI data arrives, the agent compares actual vs expected across all pending hypotheses. Without this, the agent either (a) takes credit for coincidences or (b) abandons effective strategies too early. Phase 1 (Option C) will surface this problem cheaply before you've built a whole app around it.
+**Biggest risk:** Delayed attribution. The agent optimizes a title, scripts a new video, and replies to 50 comments on Monday. Subscribers jump Thursday. Which action drove it? The agent needs a **hypothesis ledger** — each action logged with an expected KPI impact and timeline ("This video targets keyword X with 10K monthly search volume — expect +200 subs within 10 days of upload"). When new KPI data arrives, the agent compares actual vs expected across all pending hypotheses. Without this, the agent either (a) takes credit for coincidences or (b) abandons effective strategies too early. Phase 1 (Option C) will surface this problem cheaply before you've built a whole app around it.
 
 ## Next Steps
 
 - [ ] Decide: validate with HQ worker first (Option C) or build product directly (Option B)?
 - [ ] If Option C: run `/newworker cortex-agent` to scaffold the worker
 - [ ] If Option B: research Claude Agent SDK capabilities and sidecar architecture for Tauri
-- [ ] Define the initial tool set — what actions can the agent take on day one?
+- [ ] Define the initial tool set for YouTube: script generation, title/description optimization, thumbnail prompts, content calendar, competitor analysis, comment engagement
+- [ ] Design the hypothesis ledger schema — action → expected KPI Δ → timeline → actual Δ → learning
 - [ ] Design the KPI feedback mechanism — how does the agent learn what worked?
 - [ ] Set a cost budget for Claude API usage per day/month
 
