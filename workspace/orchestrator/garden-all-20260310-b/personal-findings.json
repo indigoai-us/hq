@@ -1,0 +1,59 @@
+{
+  "chunk": "personal",
+  "scanned_at": "2026-03-10T00:00:00Z",
+  "files_scanned": 5,
+  "findings": [
+    {
+      "id": "F-personal-001",
+      "type": "broken_link",
+      "severity": "high",
+      "path": "companies/personal/knowledge/personal",
+      "signal": "Symlink target ../../../repos/private/knowledge-personal does not exist. Resolves to /Users/hassaansaleemmacbook2026/repos/hq/repos/private/knowledge-personal (non-existent)",
+      "last_modified": "2026-03-09T23:06:32+05:00",
+      "confidence": "high"
+    },
+    {
+      "id": "F-personal-002",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/personal/data",
+      "signal": "Directory exists but contains no files. No commits to this directory in git history.",
+      "last_modified": null,
+      "confidence": "high"
+    },
+    {
+      "id": "F-personal-003",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/personal/settings",
+      "signal": "Directory exists but contains no files. Likely intended for credential storage but never initialized.",
+      "last_modified": null,
+      "confidence": "high"
+    },
+    {
+      "id": "F-personal-004",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "companies/personal/knowledge/INDEX.md",
+      "signal": "INDEX.md references 'personal/' symlink repo as available, but symlink target is broken. INDEX.md is not tracked in git (gitignored), so it's auto-generated but relies on working symlink.",
+      "last_modified": "2026-03-10T00:44:20Z",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-personal-005",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "companies/personal/knowledge/profile.md",
+      "signal": "Profile file contains placeholder text '[to be filled by /personal-interview]' — indicates incomplete setup state. Not stale but unfinished.",
+      "last_modified": "2026-03-09T23:06:32+05:00",
+      "confidence": "high"
+    }
+  ],
+  "summary": {
+    "broken_links": 1,
+    "empty_dirs": 2,
+    "incomplete_setup": 1,
+    "index_drift": 1,
+    "notes": "personal company is newly created (2026-03-09) with foundational files. Main issue: knowledge-personal repo symlink target does not exist — this is a critical blocker for the personal knowledge base to function. settings and data directories are empty shells."
+  }
+}

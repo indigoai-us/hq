@@ -1,0 +1,21 @@
+{
+  "run_id": "garden-all-20260310-b",
+  "executed_at": "2026-03-10T02:00:00Z",
+  "actions": [
+    {
+      "finding_id": "F-orphan-013",
+      "action": "update",
+      "path": "workspace/reports/INDEX.md",
+      "before": "Stale INDEX.md — said 'Empty directory' but workspace/reports/garden/garden-all-20260310.md existed",
+      "after": "INDEX.md regenerated to document garden/ subdirectory and its contents with table entry for garden-all-20260310.md",
+      "status": "succeeded",
+      "commit": "f0f5afa",
+      "error": null
+    }
+  ],
+  "summary": {
+    "succeeded": 1,
+    "failed": 0,
+    "committed": 1
+  }
+}

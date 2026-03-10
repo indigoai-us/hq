@@ -1,0 +1,193 @@
+{
+  "chunk": "_orphans",
+  "scanned_at": "2026-03-10T10:46:25Z",
+  "scan_date": "2026-03-10",
+  "files_scanned": 47,
+  "findings": [
+    {
+      "id": "F-orphan-001",
+      "type": "broken_link",
+      "severity": "high",
+      "path": "workers/content-shared",
+      "signal": "Worker directory exists with 22 files (index.ts, cli.ts, lib/, test/) but NO worker.yaml. Directory contains implementation code but is not registered in worker manifest.",
+      "last_modified": "2026-03-09T08:08:00-0600",
+      "confidence": "high"
+    },
+    {
+      "id": "F-orphan-002",
+      "type": "broken_link",
+      "severity": "high",
+      "path": "workers/dev-team",
+      "signal": "Worker directory exists with 99 files (README.md, _template.yaml, 17 subdirectories: architect, backend-dev, code-reviewer, codex-coder, etc.) but NO worker.yaml. This is a team directory but lacks proper worker registration.",
+      "last_modified": "2026-03-09T08:08:00-0600",
+      "confidence": "high"
+    },
+    {
+      "id": "F-orphan-003",
+      "type": "broken_link",
+      "severity": "high",
+      "path": "workers/gardener-team",
+      "signal": "Worker directory exists with 7 files (README.md, 3 subdirectories: garden-auditor, garden-curator, garden-scout) but NO worker.yaml. Team is referenced in learned rules but not properly registered.",
+      "last_modified": "2026-03-09T08:08:00-0600",
+      "confidence": "high"
+    },
+    {
+      "id": "F-orphan-004",
+      "type": "stale",
+      "severity": "medium",
+      "path": "workers/sample-worker",
+      "signal": "Sample/template worker for documentation. Not meant for production use but consumed in learned rules and execution paths. Last modified 2026-02-11 (28 days old).",
+      "last_modified": "2026-02-11T16:37:02-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-005",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-brand",
+      "signal": "Worker stale >20 days (2026-02-19). Part of content-team but not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-006",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-legal",
+      "signal": "Worker stale >20 days (2026-02-19). Part of content-team but not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-007",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-product",
+      "signal": "Worker stale >20 days (2026-02-19). Part of content-team but not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-008",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-sales",
+      "signal": "Worker stale >20 days (2026-02-19). Part of content-team but not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-009",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/frontend-designer",
+      "signal": "Worker stale >20 days (2026-02-19). Not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-010",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/pretty-mermaid",
+      "signal": "Worker stale >20 days (2026-02-19). Not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-011",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/qa-tester",
+      "signal": "Worker stale >20 days (2026-02-19). Not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-012",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/security-scanner",
+      "signal": "Worker stale >20 days (2026-02-19). Not recently maintained.",
+      "last_modified": "2026-02-19T16:54:29-0700",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-013",
+      "type": "index_drift",
+      "severity": "medium",
+      "path": "workspace/reports/INDEX.md",
+      "signal": "INDEX says 'Empty directory' but reports/garden/ contains 2 files: garden-all-20260310.md (generated 2026-03-10 01:51:09) and INDEX.md. INDEX last updated 2026-03-09 (before garden report was generated). INDEX is stale.",
+      "last_modified": "2026-03-10T00:07:19+0500",
+      "confidence": "high"
+    },
+    {
+      "id": "F-orphan-014",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "workspace/threads/INDEX.md",
+      "signal": "INDEX says 'Empty directory' and threads/ is indeed empty (only .gitkeep). But INDEX was last updated 2026-03-09 and threads/ may be used by /checkpoint command. Status accurate but not recently validated.",
+      "last_modified": "2026-03-10T00:07:19+0500",
+      "confidence": "low"
+    },
+    {
+      "id": "F-orphan-015",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "projects/INDEX.md",
+      "signal": "INDEX last updated 2026-03-09 but project files were modified 2026-03-10 (cleanup/migration). INDEX says 'distributed-tracking' is 'archived' and 'orphaned, no prd.json' — verified: no prd.json found in _archive/distributed-tracking/. Status appears correct.",
+      "last_modified": "2026-03-10T00:07:19+0500",
+      "confidence": "medium"
+    },
+    {
+      "id": "F-orphan-016",
+      "type": "orphan",
+      "severity": "medium",
+      "path": "projects/_archive/distributed-tracking",
+      "signal": "Archived project with 3 context files (architecture.md, overview.md, domain.md) but no prd.json. Noted in INDEX as 'orphaned' — appears to be intentionally archived but confirms lack of active project metadata.",
+      "last_modified": "2026-03-10T01:51:09+0500",
+      "confidence": "high"
+    }
+  ],
+  "summary": {
+    "by_severity": {
+      "high": 4,
+      "medium": 5,
+      "low": 7
+    },
+    "by_type": {
+      "broken_link": 3,
+      "stale": 8,
+      "index_drift": 3,
+      "orphan": 1,
+      "duplicate": 0,
+      "empty_dir": 0
+    },
+    "actionable": {
+      "register_workers": [
+        "workers/content-shared",
+        "workers/dev-team",
+        "workers/gardener-team"
+      ],
+      "update_indexes": [
+        "workspace/reports/INDEX.md"
+      ],
+      "review_stale": [
+        "workers/content-* (4)",
+        "workers/frontend-designer",
+        "workers/pretty-mermaid",
+        "workers/qa-tester",
+        "workers/security-scanner"
+      ]
+    }
+  },
+  "notes": [
+    "Active garden runs (garden-all-20260310 and garden-all-20260310-b) were excluded from scan per instructions.",
+    "workspace/threads/ is correctly empty — no stale threads found.",
+    "workspace/orchestrator/ has no abandoned run state files (only active runs).",
+    "All project directories (9 projects + 1 archived) have valid structure post-2026-03-09 cleanup.",
+    "Three high-severity findings: worker.yaml missing for 3 major worker groups. These should be registered in workers/registry.yaml.",
+    "Stale workers (12+ days old) are primarily in content-team, design, and QA domains — may be intentionally on hold.",
+    "No broken symlinks or truly orphaned knowledge repos detected."
+  ]
+}

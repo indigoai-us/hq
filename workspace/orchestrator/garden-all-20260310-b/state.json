@@ -1,0 +1,28 @@
+{
+  "run_id": "garden-all-20260310-b",
+  "scope": "all",
+  "chunks": ["personal", "indigo", "_orphans"],
+  "status": "complete",
+  "phase": "complete",
+  "current_chunk": null,
+  "started_at": "2026-03-10T00:00:00Z",
+  "updated_at": "2026-03-10T00:00:00Z",
+  "findings_count": 25,
+  "approved_count": 1,
+  "actions_taken": 1,
+  "prds_created": [],
+  "escalations": [
+    {
+      "finding_id": "F-personal-001",
+      "type": "broken_link",
+      "path": "companies/personal/knowledge/personal",
+      "description": "Symlink points to repos/private/knowledge-personal which does not exist. Personal knowledge base inaccessible.",
+      "action_needed": "Create repo at repos/private/knowledge-personal OR update/remove the symlink"
+    }
+  ],
+  "chunk_results": {
+    "personal": {"findings": 5, "actions": 0, "status": "complete"},
+    "indigo": {"findings": 4, "actions": 0, "status": "complete"},
+    "_orphans": {"findings": 16, "actions": 1, "status": "complete"}
+  }
+}

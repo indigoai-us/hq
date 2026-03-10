@@ -1,0 +1,297 @@
+{
+  "run_id": "garden-all-20260310-b",
+  "audited_at": "2026-03-10T10:49:47Z",
+  "findings": [
+    {
+      "id": "F-personal-001",
+      "type": "broken_link",
+      "severity": "high",
+      "path": "companies/personal/knowledge/personal",
+      "validation": "CONFIRMED. Symlink at companies/personal/knowledge/personal -> ../../../repos/private/knowledge-personal is broken. Target path /Users/hassaansaleemmacbook2026/repos/private/knowledge-personal does not exist. The repos/private/ directory does not contain a knowledge-personal repo. This is a blocking issue — personal knowledge base cannot be read or searched via qmd.",
+      "action": "escalate",
+      "action_detail": "Create the knowledge-personal repo: `git init repos/private/knowledge-personal && mkdir -p repos/private/knowledge-personal && echo '# Personal Knowledge' > repos/private/knowledge-personal/README.md`. Then verify the symlink resolves. Alternatively, if the repo exists elsewhere (e.g. a different path), update the symlink to point to the correct location.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-personal-002",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/personal/data",
+      "validation": "CONFIRMED. Directory is empty. This is expected for a newly created company (created 2026-03-09). No data exports have been generated yet. Normal initial state.",
+      "action": "skip",
+      "action_detail": "No action needed. Empty data directories are expected for newly scaffolded companies. Will populate naturally when data export workflows run.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-personal-003",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/personal/settings",
+      "validation": "CONFIRMED. Directory is empty. Expected state for a newly scaffolded company where credentials have not yet been added. No credential files required until actual service integrations are configured.",
+      "action": "skip",
+      "action_detail": "No action needed. Settings directories are intentionally empty until credentials are added. This is standard scaffolding state.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-personal-004",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "companies/personal/knowledge/INDEX.md",
+      "validation": "PARTIALLY CONFIRMED. INDEX.md lists 'personal/' as 'Symlinked knowledge repo (private)' but the symlink is broken (see F-personal-001). The INDEX is technically accurate in describing what was intended, but the entry is misleading since the symlink does not resolve. INDEX also correctly lists profile.md and voice-style.md which exist.",
+      "action": "skip",
+      "action_detail": "INDEX drift is a downstream symptom of F-personal-001. Fix the broken symlink first (F-personal-001), then regenerate the INDEX with `qmd update`. No direct INDEX edit needed.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-personal-005",
+      "type": "incomplete",
+      "severity": "low",
+      "path": "companies/personal/knowledge/profile.md",
+      "validation": "CONFIRMED. File contains placeholder text '[to be filled by /personal-interview]' in the Communication style and Autonomy level fields. The file is not stale — it is structurally correct with valid content in Goals and About sections. Only preference fields are unfilled. This is an incomplete setup state, not content decay.",
+      "action": "skip",
+      "action_detail": "No automated action appropriate. User should run `/personal-interview` when ready to populate the profile. Placeholder text is intentional scaffolding.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-indigo-001",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/indigo/data",
+      "validation": "CONFIRMED. Directory is empty. Indigo was scaffolded on 2026-03-10 (same day as audit). Expected initial state for a brand-new company entry.",
+      "action": "skip",
+      "action_detail": "No action needed. Empty data directory is expected for newly created company. Symlinks, knowledge base, and README are all correctly configured.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-indigo-002",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/indigo/policies",
+      "validation": "CONFIRMED. Directory is empty. No company-scoped policies have been written yet. Expected for a company scaffolded within the last 24 hours.",
+      "action": "skip",
+      "action_detail": "No action needed. Policies are written reactively as rules are learned. Empty policies dir is the correct initial state.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-indigo-003",
+      "type": "empty_dir",
+      "severity": "low",
+      "path": "companies/indigo/settings",
+      "validation": "CONFIRMED. Directory is empty. No credentials have been added yet. Expected for a newly scaffolded company.",
+      "action": "skip",
+      "action_detail": "No action needed. Settings directories are populated only when service integrations are configured.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-indigo-004",
+      "type": "index_drift",
+      "severity": "medium",
+      "path": "companies/indigo/README.md",
+      "validation": "PARTIALLY CONFIRMED. Scout flagged 'Repos: None yet' as drift vs manifest having indigo-nx. However, on reading the actual README.md file, it already shows '- [`indigo-nx`](../../repos/private/indigo-nx) — Indigo NX monorepo' under the Repos section. README is NOT stale — it already lists the repo. Scout finding was inaccurate. The 'Workers: None yet' line is also accurate (no workers registered). Finding is a false positive.",
+      "action": "skip",
+      "action_detail": "No action needed. The README already reflects the correct state. Scout may have read a cached or pre-update version. No curator action required.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-001",
+      "type": "missing_worker_yaml",
+      "severity": "high",
+      "path": "workers/content-shared",
+      "validation": "PARTIALLY CONFIRMED with important nuance. workers/content-shared/ contains TypeScript library code (index.ts, cli.ts, lib/, test/) and has NO worker.yaml. However, it IS registered in workers/registry.yaml as type: Library, team: content-team, status: active. The scout classified it as broken_link but the real issue is it is a code library, not a Claude worker — it does not need a worker.yaml. The registry correctly categorizes it as a Library type.",
+      "action": "skip",
+      "action_detail": "No action needed. content-shared is a TypeScript utility library registered as type: Library in registry.yaml. Worker.yaml is not applicable to library packages. Finding was a false positive due to scout treating all worker directories uniformly.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-002",
+      "type": "missing_worker_yaml",
+      "severity": "high",
+      "path": "workers/dev-team",
+      "validation": "FALSE POSITIVE. The scout flagged the team-level directory workers/dev-team/ for lacking a worker.yaml. However, workers/dev-team/ is a team container directory, not itself a worker. All 17 sub-workers within it (architect, backend-dev, code-reviewer, codex-coder, codex-debugger, codex-engine, codex-reviewer, context-manager, database-dev, frontend-dev, infra-dev, knowledge-curator, motion-designer, product-planner, project-manager, qa-tester, reality-checker, task-executor) each have their own worker.yaml and are individually registered in workers/registry.yaml with team: dev-team. Finding is invalid.",
+      "action": "skip",
+      "action_detail": "No action needed. Team container directories do not require worker.yaml. All individual sub-workers are properly registered. Scout should be tuned to recognize team directory patterns (presence of README.md + _template.yaml + only subdirs = team container).",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-003",
+      "type": "missing_worker_yaml",
+      "severity": "high",
+      "path": "workers/gardener-team",
+      "validation": "FALSE POSITIVE. Same pattern as F-orphan-002. workers/gardener-team/ is a team container directory. All three sub-workers (garden-auditor, garden-curator, garden-scout) each have worker.yaml files and are individually registered in workers/registry.yaml with team: gardener-team. The team is active — currently executing this very audit run. Finding is invalid.",
+      "action": "skip",
+      "action_detail": "No action needed. Team container directories do not require worker.yaml. All three gardener sub-workers are properly registered and actively in use.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-004",
+      "type": "stale",
+      "severity": "medium",
+      "path": "workers/sample-worker",
+      "validation": "CONFIRMED as template/reference, NOT truly stale. workers/sample-worker/worker.yaml is a well-structured reference template with comments explaining every field. Last modified 2026-02-11 (28 days). The content is evergreen documentation — it does not reference deprecated APIs or expired URLs. It is intentionally static as a template. Age alone does not constitute staleness for reference material.",
+      "action": "skip",
+      "action_detail": "No action needed. sample-worker is intentional reference material. Being 28 days old is not a defect for a template. Only escalate if the worker framework schema changes significantly enough to make the template misleading.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-005",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-brand",
+      "validation": "UNCONFIRMED as stale. Directory exists with worker.yaml, README.md, and skills/ — proper worker structure. Last modified 2026-02-19 (19 days). Scout's threshold for 'stale' appears to be >20 days, but 19 days is borderline. No evidence that content (skills, instructions) references deprecated tooling or obsolete patterns. Workers that are simply not recently run are not stale — they may be waiting for active content work.",
+      "action": "skip",
+      "action_detail": "No action needed. Worker is structurally sound. Time-since-modification alone does not indicate staleness for on-demand workers. Review content quality only if the worker produces incorrect output when run.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-006",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-legal",
+      "validation": "UNCONFIRMED as stale. Same pattern as F-orphan-005. Proper structure with worker.yaml, README.md, skills/. Last modified 2026-02-19. Age threshold triggering this finding is not meaningful for on-demand workers.",
+      "action": "skip",
+      "action_detail": "No action needed. Same rationale as F-orphan-005.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-007",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-product",
+      "validation": "UNCONFIRMED as stale. Same pattern as F-orphan-005 and F-orphan-006. Proper structure, last modified 2026-02-19.",
+      "action": "skip",
+      "action_detail": "No action needed. Same rationale as F-orphan-005.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-008",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/content-sales",
+      "validation": "UNCONFIRMED as stale. Same pattern. Last modified 2026-02-19.",
+      "action": "skip",
+      "action_detail": "No action needed. Same rationale as F-orphan-005.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-009",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/frontend-designer",
+      "validation": "UNCONFIRMED as stale. Proper worker structure with worker.yaml, README.md, skills/. Last modified 2026-02-19. Frontend design work has not required this worker recently but that is not a structural defect.",
+      "action": "skip",
+      "action_detail": "No action needed. On-demand workers are not stale simply because they have not run recently.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-010",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/pretty-mermaid",
+      "validation": "UNCONFIRMED as stale. Proper worker structure with worker.yaml. Last modified 2026-02-19. Mermaid diagram generation is a utility worker that runs infrequently by design.",
+      "action": "skip",
+      "action_detail": "No action needed.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-011",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/qa-tester",
+      "validation": "UNCONFIRMED as stale. This is the public/shared qa-tester (workers/qa-tester/). Note: there is also a dev-team version at workers/dev-team/qa-tester/. The shared version has proper structure with worker.yaml and tests/ directory. Last modified 2026-02-19. Functional and structurally correct.",
+      "action": "skip",
+      "action_detail": "No action needed. The qa-tester worker is structurally sound. The presence of a dev-team variant is not a conflict — they serve different scopes.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-012",
+      "type": "stale",
+      "severity": "low",
+      "path": "workers/security-scanner",
+      "validation": "UNCONFIRMED as stale. Proper worker structure with worker.yaml and README.md. Last modified 2026-02-19. Security scanning is an on-demand utility worker.",
+      "action": "skip",
+      "action_detail": "No action needed.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-013",
+      "type": "index_drift",
+      "severity": "medium",
+      "path": "workspace/reports/INDEX.md",
+      "validation": "CONFIRMED. INDEX.md says 'Empty directory' and was last updated 2026-03-09. Actual directory contains a garden/ subdirectory with garden-all-20260310.md (generated 2026-03-10). The INDEX is genuinely stale — it predates the first garden run which created reports/garden/. Additionally, a second garden run (garden-all-20260310-b, the current audit) will also produce reports, making the INDEX further out of date.",
+      "action": "update",
+      "action_detail": "Regenerate workspace/reports/INDEX.md to reflect the garden/ subdirectory and its contents. Curator should update the INDEX to list: `garden/` — Garden audit reports (periodic HQ health scans). Run `qmd update` after.",
+      "confidence": "high",
+      "auto_approve": true
+    },
+    {
+      "id": "F-orphan-014",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "workspace/threads/INDEX.md",
+      "validation": "ACCURATE. INDEX says 'Empty directory' and the actual threads/ directory contains only INDEX.md itself (plus .gitkeep per convention). Content is correct. Scout flagged timestamp staleness (updated 2026-03-09) but no threads have been created since scaffolding. The INDEX accurately describes current state.",
+      "action": "skip",
+      "action_detail": "No action needed. INDEX content is accurate. Timestamp will update naturally when /checkpoint or /handoff commands create thread files.",
+      "confidence": "high",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-015",
+      "type": "index_drift",
+      "severity": "low",
+      "path": "projects/INDEX.md",
+      "validation": "ACCURATE. Index was last updated 2026-03-09. Content accurately lists all 9 active projects and 1 archived project. The archived entry for distributed-tracking correctly notes 'orphaned, no prd.json' — confirmed: only context/ files exist, no prd.json. No drift detected — the 2026-03-10 modification to project files during cleanup did not add new projects, only archived/reorganized existing ones.",
+      "action": "skip",
+      "action_detail": "No action needed. projects/INDEX.md accurately reflects the current project structure.",
+      "confidence": "medium",
+      "auto_approve": false
+    },
+    {
+      "id": "F-orphan-016",
+      "type": "orphan",
+      "severity": "medium",
+      "path": "projects/_archive/distributed-tracking",
+      "validation": "CONFIRMED as archived orphan. Directory contains context/ with architecture.md, domain.md, overview.md but no prd.json. Already placed in _archive/ which indicates intentional archival. The INDEX correctly marks it as 'archived' and 'orphaned, no prd.json'. The project context files have knowledge value as architecture documentation even without an active PRD.",
+      "action": "skip",
+      "action_detail": "No action needed. Project is already in _archive/ which is the correct state. The context files (architecture.md, domain.md, overview.md) may still have reference value. Only delete if the architecture knowledge is confirmed obsolete and has no future reference use.",
+      "confidence": "high",
+      "auto_approve": false
+    }
+  ],
+  "summary": {
+    "total": 24,
+    "auto_approved": 1,
+    "skipped": 22,
+    "escalated": 1,
+    "false_positives": 4,
+    "notes": [
+      "F-orphan-002 and F-orphan-003 are false positives: team container directories do not require worker.yaml. All sub-workers are properly registered.",
+      "F-indigo-004 is a false positive: README.md already lists indigo-nx repo correctly.",
+      "F-orphan-001 (content-shared) is a false positive: it is a TypeScript library, not a Claude worker — worker.yaml is not applicable.",
+      "The 8 'stale worker' findings (F-orphan-005 through F-orphan-012) use age-as-proxy for staleness, which is not meaningful for on-demand workers. None were confirmed as content-stale.",
+      "Only one finding requires curator action: workspace/reports/INDEX.md update (F-orphan-013).",
+      "One finding requires human action: broken symlink for personal knowledge repo (F-personal-001) — a knowledge-personal repo must be created or the symlink must point to an existing repo.",
+      "Scout should be updated to recognize: (1) team container directories vs individual workers, (2) Library type entries in registry.yaml, (3) age alone is insufficient signal for on-demand worker staleness."
+    ]
+  }
+}
