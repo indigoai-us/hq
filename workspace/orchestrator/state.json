@@ -1,0 +1,13 @@
+{
+  "projects": [
+    {
+      "name": "cortex-app",
+      "state": "READY",
+      "prdPath": "companies/cortex/projects/cortex-app/prd.json",
+      "updatedAt": "2026-03-10T22:00:00Z",
+      "storiesComplete": 0,
+      "storiesTotal": 9,
+      "checkedOutFiles": []
+    }
+  ]
+}

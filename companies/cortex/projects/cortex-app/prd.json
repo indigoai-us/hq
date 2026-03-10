@@ -1,0 +1,292 @@
+{
+  "name": "cortex-app",
+  "description": "Tauri desktop app — an autonomous Claude-powered agent with a single goal (grow revenue/MRR), KPI tracking, and unrestricted action space",
+  "branchName": "feature/cortex-app",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold Tauri + React app with dev tooling",
+      "description": "As a developer, I want a working Tauri app shell with React frontend so that I have a foundation to build on",
+      "acceptanceCriteria": [
+        "Tauri app launches a window with React frontend rendering",
+        "Rust backend compiles with cargo check",
+        "Frontend builds with pnpm build",
+        "Hot reload works in dev mode (pnpm tauri dev)",
+        "Project structure follows Tauri v2 conventions (src-tauri/ for Rust, src/ for React)",
+        "TypeScript configured with strict mode",
+        "Tailwind CSS installed and working"
+      ],
+      "e2eTests": [
+        "App window opens without crash",
+        "React root renders a placeholder screen"
+      ],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "src-tauri/Cargo.toml",
+        "src-tauri/src/main.rs",
+        "src-tauri/src/lib.rs",
+        "src-tauri/tauri.conf.json",
+        "package.json",
+        "tsconfig.json",
+        "tailwind.config.ts",
+        "src/main.tsx",
+        "src/App.tsx"
+      ],
+      "labels": ["scaffold", "infra"],
+      "dependsOn": [],
+      "notes": "Use Tauri v2. React + TypeScript + Tailwind. Vite as bundler.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Goal configuration — set a single goal with target and deadline",
+      "description": "As a user, I want to define one goal (e.g., 'Grow MRR to $10K/mo by June') so the agent knows exactly what to optimize for",
+      "acceptanceCriteria": [
+        "Goal setup screen with fields: goal name, target metric value, current value, deadline",
+        "Goal persists to local storage (Tauri fs or SQLite)",
+        "Only one active goal at a time — setting a new goal archives the previous one",
+        "Goal displays prominently on the main dashboard",
+        "Validation: target must be numeric, deadline must be future date"
+      ],
+      "e2eTests": [
+        "User can create a goal and see it on the dashboard",
+        "Goal persists after app restart"
+      ],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "src/components/GoalSetup.tsx",
+        "src/components/GoalCard.tsx",
+        "src/lib/storage.ts",
+        "src/types/goal.ts",
+        "src-tauri/src/storage.rs"
+      ],
+      "labels": ["ui", "core"],
+      "dependsOn": ["US-001"],
+      "notes": "Keep it dead simple — one goal, one number, one deadline. The agent's entire existence revolves around this.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-003",
+      "title": "KPI definition and manual data input",
+      "description": "As a user, I want to define KPIs that track progress toward my goal and manually enter data points so the agent can measure its impact",
+      "acceptanceCriteria": [
+        "User can add multiple KPIs (e.g., MRR, signups, churn rate, conversion rate)",
+        "Each KPI has: name, unit, current value, target value, direction (up/down is good)",
+        "Manual data entry form: select KPI, enter value, timestamp auto-filled",
+        "Data points stored locally with full history",
+        "KPI list view shows current value, trend arrow, % to target"
+      ],
+      "e2eTests": [
+        "User can add a KPI and enter a data point",
+        "KPI list displays correct trend direction"
+      ],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "src/components/KpiList.tsx",
+        "src/components/KpiForm.tsx",
+        "src/components/DataEntryForm.tsx",
+        "src/types/kpi.ts",
+        "src/lib/kpi-store.ts"
+      ],
+      "labels": ["ui", "data"],
+      "dependsOn": ["US-002"],
+      "notes": "MVP is manual input only. Future: Stripe API, analytics integrations.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-004",
+      "title": "KPI dashboard with trend visualization",
+      "description": "As a user, I want a dashboard showing my goal progress and KPI trends over time so I can see if the agent is working",
+      "acceptanceCriteria": [
+        "Main dashboard shows: goal with progress bar, time remaining, projected completion",
+        "Sparkline charts for each KPI showing last 30 data points",
+        "Color coding: green (on track), yellow (behind), red (off track)",
+        "Summary stat: overall goal health score (composite of KPI trends)",
+        "Dashboard auto-refreshes when new data is entered"
+      ],
+      "e2eTests": [
+        "Dashboard renders with goal and KPI data",
+        "Charts display data points correctly",
+        "Color coding matches KPI status"
+      ],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "src/components/Dashboard.tsx",
+        "src/components/ProgressBar.tsx",
+        "src/components/SparklineChart.tsx",
+        "src/components/HealthScore.tsx",
+        "src/lib/analytics.ts"
+      ],
+      "labels": ["ui", "visualization"],
+      "dependsOn": ["US-003"],
+      "notes": "Use a lightweight chart lib (e.g., recharts or visx). Keep it clean and glanceable.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Claude API agent brain with goal-directed reasoning",
+      "description": "As the system, I want a Claude API integration that reasons about the goal, KPIs, and available actions so the agent can plan intelligently",
+      "acceptanceCriteria": [
+        "Rust backend makes Claude API calls via anthropic SDK or HTTP",
+        "System prompt includes: current goal, KPI snapshot, action history, constraints",
+        "Agent can reason about which actions would most impact KPIs",
+        "Conversation history maintained per session (context window management)",
+        "API key stored securely in Tauri keychain/credential store",
+        "Error handling: rate limits, network failures, token limits"
+      ],
+      "e2eTests": [
+        "Agent brain receives goal context and returns a structured action plan",
+        "API key validation works on setup"
+      ],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "src-tauri/src/agent/mod.rs",
+        "src-tauri/src/agent/brain.rs",
+        "src-tauri/src/agent/prompt.rs",
+        "src-tauri/src/agent/api.rs",
+        "src/lib/agent-client.ts",
+        "src/components/ApiKeySetup.tsx"
+      ],
+      "labels": ["core", "ai"],
+      "dependsOn": ["US-001"],
+      "notes": "Use Claude's tool_use for structured action output. The agent should return actions as tool calls, not free text.",
+      "model_hint": "opus"
+    },
+    {
+      "id": "US-006",
+      "title": "Autonomous action loop — plan, act, measure cycle",
+      "description": "As the agent, I want to run an autonomous loop that plans actions, executes them, and measures results so I can continuously pursue the goal",
+      "acceptanceCriteria": [
+        "Agent loop runs on configurable interval (default: every 4 hours)",
+        "Each cycle: (1) read goal + KPIs, (2) review action history, (3) plan next actions, (4) execute, (5) log results",
+        "Loop runs in background (Tauri background task / Rust async)",
+        "User can pause/resume the loop from the UI",
+        "Each cycle produces an action log entry with: timestamp, reasoning, actions taken, results",
+        "Loop respects a daily action budget (configurable max actions per day)"
+      ],
+      "e2eTests": [
+        "Agent loop completes one full cycle without error",
+        "Pause/resume controls work correctly",
+        "Action log captures cycle details"
+      ],
+      "priority": 1,
+      "passes": false,
+      "files": [
+        "src-tauri/src/agent/loop.rs",
+        "src-tauri/src/agent/scheduler.rs",
+        "src-tauri/src/agent/action_log.rs",
+        "src/components/LoopControls.tsx",
+        "src/components/ActionLog.tsx"
+      ],
+      "labels": ["core", "agent"],
+      "dependsOn": ["US-005"],
+      "notes": "This is the heart of cortex. The loop must be resilient — crash recovery, retry logic, graceful degradation.",
+      "model_hint": "opus"
+    },
+    {
+      "id": "US-007",
+      "title": "Action framework — extensible system for agent to execute actions",
+      "description": "As the agent, I want an extensible action framework so I can execute diverse actions (write content, run shell commands, call APIs, create files)",
+      "acceptanceCriteria": [
+        "Action trait/interface: each action has name, description, execute(), validate_result()",
+        "Built-in actions for MVP: shell_command, write_file, http_request, create_content",
+        "Agent selects actions via Claude tool_use — each action is a tool",
+        "Action results feed back into agent context for next cycle",
+        "Sandboxing: actions run in a restricted context (no arbitrary system access without user-approved permissions)",
+        "Action registry: new actions can be added as plugins"
+      ],
+      "e2eTests": [
+        "Agent can execute a write_file action and verify the output exists",
+        "Action registry lists all available actions",
+        "Sandboxing prevents unauthorized system access"
+      ],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "src-tauri/src/actions/mod.rs",
+        "src-tauri/src/actions/traits.rs",
+        "src-tauri/src/actions/shell.rs",
+        "src-tauri/src/actions/file.rs",
+        "src-tauri/src/actions/http.rs",
+        "src-tauri/src/actions/content.rs",
+        "src-tauri/src/actions/sandbox.rs"
+      ],
+      "labels": ["core", "extensibility"],
+      "dependsOn": ["US-005"],
+      "notes": "The action space is deliberately unrestricted — the agent decides what to do. Permissions model: user approves action categories on first use, then they're allowed going forward.",
+      "model_hint": "opus"
+    },
+    {
+      "id": "US-008",
+      "title": "Activity feed and cycle reporting",
+      "description": "As a user, I want to see what the agent has been doing — its reasoning, actions, and results — so I can review its work async",
+      "acceptanceCriteria": [
+        "Activity feed shows chronological list of agent cycles",
+        "Each cycle entry shows: timestamp, goal context, reasoning summary, actions taken, results, KPI impact",
+        "Expandable detail view for full agent reasoning chain",
+        "Filter by: action type, time range, success/failure",
+        "Notification badge when new cycles complete"
+      ],
+      "e2eTests": [
+        "Activity feed displays completed cycles",
+        "Filter controls narrow results correctly",
+        "Detail view shows full reasoning chain"
+      ],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "src/components/ActivityFeed.tsx",
+        "src/components/CycleDetail.tsx",
+        "src/components/CycleFilters.tsx",
+        "src/lib/activity-store.ts"
+      ],
+      "labels": ["ui", "reporting"],
+      "dependsOn": ["US-006"],
+      "notes": "This is the primary way the user reviews the agent's work. Make reasoning transparent.",
+      "model_hint": ""
+    },
+    {
+      "id": "US-009",
+      "title": "E2E test infrastructure for Tauri app",
+      "description": "As a developer, I want E2E testing infrastructure so that I can verify the full app works end-to-end",
+      "acceptanceCriteria": [
+        "Tauri E2E test harness configured (WebDriver or Playwright with Tauri)",
+        "At least one smoke test: app launches, goal can be set, KPI entered",
+        "CI-compatible: tests can run headless",
+        "Test fixtures for goal and KPI data",
+        "cargo test runs Rust unit tests, pnpm test runs frontend tests"
+      ],
+      "e2eTests": [
+        "E2E smoke test passes: launch → set goal → enter KPI → verify dashboard"
+      ],
+      "priority": 2,
+      "passes": false,
+      "files": [
+        "tests/e2e/smoke.test.ts",
+        "tests/e2e/fixtures.ts",
+        "tests/e2e/setup.ts",
+        "src-tauri/tests/integration.rs",
+        "vitest.config.ts"
+      ],
+      "labels": ["testing", "infra"],
+      "dependsOn": ["US-004"],
+      "notes": "Phase 0 testing story. Tauri E2E is tricky — consider using tauri-driver or WebDriverIO.",
+      "model_hint": ""
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-03-10T22:00:00Z",
+    "goal": "Build an autonomous desktop agent that pursues a single goal (revenue/MRR growth) with KPI tracking, Claude-powered reasoning, and an unrestricted action space",
+    "successCriteria": "Agent can run autonomously for 24 hours — completing multiple plan/act/measure cycles, taking real actions, and showing KPI trend data on the dashboard",
+    "qualityGates": ["cargo test", "pnpm test", "pnpm lint"],
+    "repoPath": "repos/private/cortex-app",
+    "baseBranch": "main",
+    "relatedWorkers": ["architect", "backend-dev", "frontend-dev", "dev-qa-tester"],
+    "knowledge": ["knowledge/public/testing/", "knowledge/public/ralph/"]
+  }
+}
