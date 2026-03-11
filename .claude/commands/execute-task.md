@@ -391,19 +391,13 @@ Bug verification:
 
 When all phases complete:
 
-#### 7a. Close Task in Beads
-
-```bash
-bd close {task-id}
-```
-
-#### 7b. Append Completion to State
+#### 7a. Append Completion to State
 
 ```jsonl
 {"ts":"{ISO8601}","type":"story_complete","story_id":"{task.id}","data":{"skills_run":["{list}"]}}
 ```
 
-#### 7c. Capture Learnings via /learn
+#### 7b. Capture Learnings via /learn
 
 Run `/learn` with structured input from execution:
 
@@ -424,13 +418,13 @@ Run `/learn` with structured input from execution:
 
 If task completed cleanly with no failures/retries/notable patterns, `/learn` logs the event only (no rule created).
 
-#### 7d. Reindex
+#### 7c. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-#### 7e. Report Completion
+#### 7d. Report Completion
 
 ```
 Task Complete: {task.id} - {task.title}
@@ -443,10 +437,9 @@ Key decisions:
 - {decision 1}
 - {decision 2}
 
-Task closed in beads.
 ```
 
-#### 7f. Structured Output for Orchestrator
+#### 7e. Structured Output for Orchestrator
 
 When invoked as a sub-agent by `/run-loop`, end with this JSON so the orchestrator can parse results:
 
@@ -528,3 +521,4 @@ Options:
 - **Skill chains replace workers** -- resolve skill chain from SKILL.md, not worker.yaml
 - **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- this creates separate git worktrees per agent, scattering commits across branches. Sub-agents must work in the same directory as the orchestrator (either main or a shared worktree managed by `/run-loop`)
 - **Scope discovered work tightly** -- only surface work caused by or blocking the current subtask. Pre-existing repo issues (lint errors, stale imports, broken tests) are NOT discovered work -- they belong in a separate hygiene task
+- **NEVER close/complete bd tasks** -- execute-task must NOT run `bd close` or mark tasks as completed in beads. Only the orchestrator (`/run-loop`) may close bd tasks
