@@ -215,23 +215,52 @@ Fix any issues reported before proceeding.
 
 ## Step 8: Confirm & STOP
 
-Tell user:
-```
-Task **{task-id}** created: {title}
-  Project: {project-epic-id} ({project title})
-  Subtasks: {N}
+Present the full plan to the user. Show the task description and each subtask's description in separate code blocks so the user can review exactly what was created.
 
-  {subtask-1-id}: {title}
-  {subtask-2-id}: {title}
-  ...
+Format:
+
+---
+
+Task **{task-id}**: {title}
+Project: {project-epic-id} ({project title})
+Subtasks: {N}
+
+### Task Description
+
+```
+{full task description text, as stored in beads}
+```
+
+### Subtasks
+
+**{subtask-1-id}**: {title} (P{priority})
+{dependency info, e.g. "blocked by .1"}
+
+```
+{full subtask-1 description text, as stored in beads}
+```
+
+**{subtask-2-id}**: {title} (P{priority})
+{dependency info}
+
+```
+{full subtask-2 description text, as stored in beads}
+```
+
+{...repeat for all subtasks...}
+
+---
 
 To execute, start a new session and run:
-  /run-loop {task-id}           (run all subtasks)
-  /execute-task {subtask-id}    (run single subtask)
+```
+/run-loop {task-id}           (run all subtasks)
+/execute-task {subtask-id}    (run single subtask)
+```
 
 To view:
-  bd show {task-id}
-  bd children {task-id} --pretty
+```
+bd show {task-id}
+bd children {task-id}
 ```
 
 **Then STOP.** Do NOT proceed to execution.
