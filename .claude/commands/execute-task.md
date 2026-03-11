@@ -252,6 +252,12 @@ When complete, provide JSON:
     {"title": "short description", "rationale": "why this is needed", "urgency": "blocking|important|nice-to-have"}
   ]
 }
+
+IMPORTANT — discovered_work scoping:
+Only surface work that is CAUSED BY or BLOCKING the current subtask.
+Do NOT report pre-existing repo issues (lint errors, stale imports, broken tests
+that existed before this subtask). Ambient repo hygiene belongs in a separate
+task, not discovered mid-execution.
 ```
 
 #### 6c. Spawn Skill Sub-Agent
@@ -521,3 +527,4 @@ Options:
 - **Always reindex after task completion** -- `qmd update` after every completed task (step 7d)
 - **Skill chains replace workers** -- resolve skill chain from SKILL.md, not worker.yaml
 - **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- this creates separate git worktrees per agent, scattering commits across branches. Sub-agents must work in the same directory as the orchestrator (either main or a shared worktree managed by `/run-loop`)
+- **Scope discovered work tightly** -- only surface work caused by or blocking the current subtask. Pre-existing repo issues (lint errors, stale imports, broken tests) are NOT discovered work -- they belong in a separate hygiene task
