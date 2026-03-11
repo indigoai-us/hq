@@ -27,12 +27,21 @@ diff .claude/CLAUDE.md starter-kit/.claude/CLAUDE.md
 Key addition: 5-step protocol for commands to load company → repo → global policies, plus list of implementing commands.
 
 ### Updated run-project.sh
-Regression gates now use baseline comparison (smarter — won't flag pre-existing errors). Copy:
+Major upgrade: swarm mode (parallel story execution), worktree isolation, signal trapping, headless doc sweep, budget caps removed. Copy:
 ```bash
 cp starter-kit/.claude/scripts/run-project.sh .claude/scripts/run-project.sh
 # or if you keep it at scripts/run-project.sh:
 cp starter-kit/.claude/scripts/run-project.sh scripts/run-project.sh
 chmod +x scripts/run-project.sh
+```
+
+### Updated execute-task.md
+Self-owned lock skip for swarm mode + single-writer pattern (orchestrator writes `passes`). Already included in the 9-file copy above.
+
+### New: orchestrator.yaml
+Swarm configuration. Copy to your settings dir:
+```bash
+cp starter-kit/settings/orchestrator.yaml settings/orchestrator.yaml
 ```
 
 ### `/learn` — Breaking Behavioral Change
