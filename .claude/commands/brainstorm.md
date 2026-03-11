@@ -94,23 +94,14 @@ Batch all missing directional info into **one** `AskUserQuestion` call. Skip any
 
 **If GHQ context is sufficient** (the common case): skip entirely.
 
-## Step 5: Generate brainstorm.md
+## Step 5: Populate bd Task Description
 
-**Derive slug** from title (lowercase, hyphens, no special chars).
+Write the brainstorm output directly into the bd task description. No files generated.
 
-**Create** `companies/{co}/projects/{slug}/brainstorm.md`:
+**Description format** (use as the bd task description):
 
-```markdown
----
-company: {slug}
-created_at: {ISO8601}
-status: exploring
-source_task: {task-id or null}
----
-
-# {Title}
-
-> {1-sentence problem/opportunity framing}
+```
+{1-sentence problem/opportunity framing}
 
 ## Context
 
@@ -120,66 +111,39 @@ source_task: {task-id or null}
 
 - {Confirmed fact from GHQ research — existing projects, prior work, tech constraints}
 - {Relevant skill or knowledge base that exists}
-- ...
 
 ## What We Don't Know
 
 - {Open question that would change the approach}
 - {Assumption that needs validating}
-- ...
 
 ## Approaches
 
 ### Option A: {Name}
-
-**How it works:** {2-3 sentences describing the approach}
-
-**Tradeoffs:**
-- Pro: {specific advantage}
-- Pro: {specific advantage}
-- Con: {specific cost or risk}
-
-**Effort:** {S / M / L / XL}
-**When to choose this:** {specific signal or condition that makes this the right pick}
-
----
+How: {2-3 sentences}
+Pro: {specific advantage} | Pro: {specific advantage}
+Con: {specific cost or risk}
+Effort: {S / M / L / XL} | When: {condition}
 
 ### Option B: {Name}
+How: {2-3 sentences}
+Pro: {specific advantage}
+Con: {specific cost or risk}
+Effort: {S / M / L / XL} | When: {condition}
 
-**How it works:** {2-3 sentences}
-
-**Tradeoffs:**
-- Pro: {specific advantage}
-- Con: {specific cost or risk}
-
-**Effort:** {S / M / L / XL}
-**When to choose this:** {condition}
-
----
-
-### Option C: {Name} *(only if genuinely distinct from A and B)*
-
+### Option C: {Name} (only if genuinely distinct)
 ...
-
----
 
 ## Recommendation
 
-**Preferred approach:** Option {X} — {one sentence on why}
-
-**Key condition:** {What would make you choose a different option instead}
-
-**Biggest risk:** {The one thing most likely to blow up the preferred approach}
+Preferred: Option {X} — {one sentence on why}
+Override condition: {What would make you choose a different option}
+Biggest risk: {The one thing most likely to blow up the preferred approach}
 
 ## Next Steps
 
-- [ ] {Specific validation task or question to resolve before creating tasks}
-- [ ] {Other prerequisite}
-
-**Promotion path:**
-- Ready to build → `/plan {co} {slug}` (brainstorm.md pre-populates the interview)
-- Needs more research → edit this file, revisit later
-- Not worth pursuing → leave task as idea
+- {Specific validation task or question to resolve before creating tasks}
+- {Other prerequisite}
 ```
 
 **Approach rules:**
@@ -190,15 +154,16 @@ source_task: {task-id or null}
 - Must state a recommendation — no "it depends" without a stated override condition
 - T-shirt effort: S (hours-days), M (days-week), L (week-month), XL (month+)
 
-## Step 6: Update bd Task
+## Step 6: Write to bd Task
 
 If started from an existing bd task (`source_task_id` set):
 
 ```bash
 cd companies/{co}
 bd update {source_task_id} \
-  --description "{enriched description with brainstorm summary, recommendation, and link to brainstorm.md}" \
-  --labels "{company-label},exploring"
+  --description "{full brainstorm description from Step 5}"
+bd label add {source_task_id} exploring
+bd label remove {source_task_id} idea
 ```
 
 If fresh brainstorm (no existing task), create a new bd task:
@@ -208,7 +173,7 @@ cd companies/{co}
 bd create "{title}" \
   --parent {project-epic-id} \
   --type task \
-  --description "{enriched description with brainstorm summary}" \
+  --description "{full brainstorm description from Step 5}" \
   --labels "{company-label},exploring" \
   --silent
 ```
@@ -218,7 +183,6 @@ bd create "{title}" \
 Print:
 ```
 Brainstorm: **{title}** ({id})
-File: companies/{co}/projects/{slug}/brainstorm.md
 
 Approaches:
   A. {Option A name} — {effort}
@@ -228,8 +192,8 @@ Approaches:
 Recommendation: Option {X}
 
 Next:
-  /plan {co} {slug}  → create tasks (pre-populates from brainstorm)
-  Edit brainstorm.md         → refine approaches before promoting
+  /plan {co} {task-id}  → create subtasks
+  bd show {task-id}      → review brainstorm in task description
 ```
 
 Reindex: `qmd update 2>/dev/null || true`
@@ -240,10 +204,9 @@ Reindex: `qmd update 2>/dev/null || true`
 - **1 AskUserQuestion max** — direction + constraints in one call. Zero questions is fine if clear
 - **2-3 approaches, no more** — present distinct options, not variations
 - **State a recommendation** — "it depends" without a stated override condition is not a recommendation
-- **No execution** — brainstorm.md is the output. Do NOT write code or modify implementation files
-- **No task creation** — this command does NOT create bd tasks. That is `/plan`'s job
-- **brainstorm.md + bd task update are the only artifacts**
+- **No execution** — bd task description is the output. Do NOT write code or modify implementation files
+- **No file generation** — brainstorm content goes into the bd task description, not a separate file
+- **bd task is the only artifact** — no files written to disk
 - **T-shirt effort, not story points** — S (hours-days), M (days-week), L (week-month), XL (month+)
 - **Do NOT use TodoWrite or EnterPlanMode** — this command IS the thinking artifact
 - **Company isolation enforced** — if anchored, scope all searches to that company
-- **brainstorm.md is human-editable** — the user may refine it after generation. `/plan` reads whatever is in the file

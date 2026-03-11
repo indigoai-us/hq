@@ -33,13 +33,12 @@ Only companies and projects should be epics. `/plan` decomposes a task into subt
 If $ARGUMENTS provided, use as starting point.
 If empty, ask: "Describe what you want to build or accomplish."
 
-### Check for Existing Task / Brainstorm
+### Check for Existing Task
 
 1. If `$ARGUMENTS` matches a bd task ID (e.g. `ghq-abc`), read the task with `bd show {task-id} --json`
    - Use the task's title and description as starting context
-   - Check if a brainstorm.md exists in the task's project dir
-2. If a brainstorm.md is found:
-   - Read it and extract: context, recommendation, approaches, next steps
+2. If the task description contains a brainstorm (has `## Approaches` and `## Recommendation` sections):
+   - Extract: context, recommendation, approaches, next steps
    - Announce: "Found brainstorm: **{title}** — using recommended approach (Option {X})"
    - Pre-populate the discovery interview (Step 4) with brainstorm context — skip questions already answered
 
