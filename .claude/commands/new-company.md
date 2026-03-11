@@ -137,24 +137,13 @@ Credentials and config at `companies/{slug}/settings/` (excluded from version co
 Company-scoped rules at `companies/{slug}/policies/`.
 ```
 
-### 8. Create Root Epic
-
-Create a beads root epic for the company. All future work for this company will be tracked as children of this epic.
-
-```bash
-bd create "{Name}" --type epic --description "Root epic for {Name} — {brief description}.
-
-## Success Criteria
-{success criteria bullet points from step 2}" --labels "company,{slug}" --json
-```
-
-### 9. Reindex
+### 8. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-### 10. Report
+### 9. Report
 
 ```
 Company {slug} scaffolded:

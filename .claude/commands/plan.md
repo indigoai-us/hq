@@ -18,15 +18,14 @@ Break down an existing task into subtasks for execution via `/run-loop`. Only co
 ## Hierarchy
 
 ```
-Company Epic (existing)         ← created by /new-company
-└── Project Epic (existing)     ← created manually or by project setup
-    └── Task (created here)     ← /plan creates subtasks under this
-        ├── Subtask 1
-        ├── Subtask 2
-        └── Subtask 3
+Project Epic (root)             ← created by /new-project
+└── Task (created here)         ← /plan creates subtasks under this
+    ├── Subtask 1
+    ├── Subtask 2
+    └── Subtask 3
 ```
 
-Only companies and projects should be epics. `/plan` decomposes a task into subtasks under a project epic.
+Only projects are epics (root-level, no parent). `/plan` decomposes a task into subtasks under a project epic.
 
 ## Step 1: Get Task Description
 
@@ -94,14 +93,13 @@ Available project epics:
 Which project epic should this task go under?
 ```
 
-If the user says the project doesn't exist yet, create a project epic first:
+If the user says the project doesn't exist yet, create a root project epic:
 
 ```bash
 bd create "{project name}" \
   --type epic \
-  --parent {company-epic-id} \
   --description "{project description}" \
-  --labels "{company-label}" \
+  --labels "{company-label},{project-slug}" \
   --silent
 ```
 
@@ -251,7 +249,7 @@ To view:
 
 - Scan GHQ first, ask questions second
 - Batch questions (don't overwhelm)
-- **Never create epics** -- only companies and projects are epics. `/plan` creates subtasks only
+- **Never create epics** -- only projects are epics (root-level). `/plan` creates subtasks only
 - **Beads is the source of truth** -- all tasks managed via `bd` CLI
 - **Do NOT use EnterPlanMode** -- this skill IS planning
 - **Do NOT use TodoWrite** -- beads subtasks track tasks

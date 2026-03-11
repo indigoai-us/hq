@@ -14,11 +14,10 @@ Create a new project with a beads epic and directory structure under a company.
 ## Hierarchy
 
 ```
-Company Epic (existing)         ← created by /new-company
-└── Project Epic (created here) ← /new-project creates this
-    └── Task (future)           ← created by /plan
-        ├── Subtask 1
-        └── Subtask 2
+Project Epic (root, created here) ← /new-project creates this
+└── Task (future)                 ← created by /plan
+    ├── Subtask 1
+    └── Subtask 2
 ```
 
 ## Process
@@ -54,10 +53,10 @@ Which company does this project belong to?
 Check existing project epics under the selected company:
 
 ```bash
-bd children {company-epic-id} --json
+bd list --type epic --json
 ```
 
-If a project with a similar name/slug already exists:
+Filter results by company label. If a project with a similar name/slug already exists:
 "A project '{title}' ({epic-id}) already exists under {company}. Continue anyway? (yes/no)"
 
 ### 4. Interactive Setup
@@ -74,7 +73,6 @@ Ask (batch):
 ```bash
 bd create "{Project Name}" \
   --type epic \
-  --parent {company-epic-id} \
   --description "{description}
 
 ## Success Criteria
@@ -83,10 +81,17 @@ bd create "{Project Name}" \
   --json
 ```
 
-Capture the epic ID from the JSON output. Immediately close the epic — project epics are containers, not actionable work. Closing them keeps `bd ready` clean. Tasks can still be created under closed epics.
+Capture the epic ID from the JSON output.
+
+Then create a sentinel task to keep the epic open:
 
 ```bash
-bd close {epic-id}
+bd create "🔒 Project sentinel — do not close" \
+  --parent {epic-id} \
+  --type task \
+  --description "Permanent blocked task that prevents the project epic from being closed when all real tasks complete. Never close or delete this task." \
+  --silent
+bd set-state {sentinel-id} blocked
 ```
 
 ### 6. Scaffold Project Directory
@@ -155,7 +160,7 @@ qmd update 2>/dev/null || true
 
 ```
 Project {project-slug} scaffolded:
-  Epic:       {epic-id} (under {company-slug})
+  Epic:       {epic-id} (root, company: {company-slug})
   Directory:  companies/{company-slug}/projects/{project-slug}/
   Knowledge:  companies/{company-slug}/projects/{project-slug}/knowledge/INDEX.md
 
@@ -166,10 +171,11 @@ Next steps:
 
 ## Rules
 
-- Projects are always epics (type=epic) — only companies and projects are epics
+- Projects are always epics (type=epic) — only projects are epics, and they are root-level (no parent)
 - Project directory lives under `companies/{company-slug}/projects/{project-slug}/`
 - Always create a beads epic — never just scaffold files without an epic
 - Validate slug: lowercase, hyphens only, no spaces
 - Never create a project under a company that doesn't exist in manifest.yaml
 - Check for duplicate projects before creating
+- Every project epic gets a blocked sentinel task — never close or delete it
 - Skills, not workers — reference skill IDs from `.claude/skills/`

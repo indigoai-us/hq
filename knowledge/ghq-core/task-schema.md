@@ -1,38 +1,30 @@
 # Task Schema
 
-Tasks in GHQ are managed through beads (`bd` CLI). Only companies and projects are epics. Tasks contain subtasks that are executed by `/run-loop` and `/execute-task`.
+Tasks in GHQ are managed through beads (`bd` CLI). Only projects are epics. Tasks contain subtasks that are executed by `/run-loop` and `/execute-task`.
 
 ## Hierarchy
 
 Tasks are stored in per-company beads databases (`companies/{slug}/.beads/`). No filesystem files needed -- all task data lives in beads.
 
 ```
-Company Epic                    ← created by /new-company
-└── Project Epic                ← created manually or by /plan (if project doesn't exist)
-    └── Task                    ← created by /plan
-        ├── Subtask 1
-        ├── Subtask 2 (depends on 1)
-        └── Subtask 3
+Project Epic (root)             ← created by /new-project
+└── Task                        ← created by /plan
+    ├── Subtask 1
+    ├── Subtask 2 (depends on 1)
+    └── Subtask 3
 ```
 
-**Only companies and projects are epics.** Tasks and subtasks use `--type task`.
+**Only projects are epics.** Each project epic is a root-level issue (no parent). Tasks and subtasks use `--type task`.
 
 ## Creating Tasks
 
-### Company Epic (created by /new-company)
-
-```bash
-bd create "Company Name" --type epic --labels "company"
-```
-
-### Project Epic (under company)
+### Project Epic (root — created by /new-project)
 
 ```bash
 bd create "Project Name" \
   --type epic \
-  --parent {company-epic-id} \
   --description "Project description" \
-  --labels "company-label"
+  --labels "company-slug,project-slug"
 ```
 
 ### Task (under project epic — created by /plan)
@@ -93,7 +85,7 @@ bd dep add {subtask-id} {depends-on-id}
 | Priority | 0-4 (0 = highest) |
 | Status | open / in_progress / closed |
 | Labels | Categorization tags |
-| Type | `epic` (companies and projects only) / `task` (tasks and subtasks) |
+| Type | `epic` (projects only) / `task` (tasks and subtasks) |
 | Parent | Parent ID (project epic for tasks, task for subtasks) |
 
 ## E2E Tests (Required)
