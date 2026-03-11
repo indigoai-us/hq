@@ -180,7 +180,10 @@ while (open subtasks remain):
                        \"lint\": \"pass|fail|skipped\",
                        \"typecheck\": \"pass|fail|skipped\",
                        \"build\": \"pass|fail|skipped\"
-                     }
+                     },
+                     \"discovered_work\": [
+                       {\"title\": \"short description\", \"rationale\": \"why needed\", \"urgency\": \"blocking|important|nice-to-have\"}
+                     ]
                    }"
         })
 
@@ -197,7 +200,24 @@ while (open subtasks remain):
              {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","data":{"skills_run":[...]}}
            - Increment completed count
 
-        ii. If status == "failed" or "blocked":
+        ii. If discovered_work is non-empty:
+            - Present to user:
+              ```
+              Subtask {subtask.id} discovered additional work:
+                1. "{title}" ({urgency}) — {rationale}
+                ...
+
+              Options:
+                A. Add as new subtask(s) and continue
+                B. Note for later and continue
+                C. Pause loop to investigate
+              ```
+            - If A: create beads subtasks via `bd create "{title}" --parent {task-id}` for each item.
+              Step 5e auto-reanchor will pick them up automatically.
+            - If B: append to loops/state.jsonl as `{"ts":"...","type":"discovered_work","data":{...}}`
+            - If C: pause loop
+
+        iii. If status == "failed" or "blocked":
             - Append to loops/state.jsonl:
               {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","data":{"reason":"{summary}"}}
             - Ask user:
@@ -205,7 +225,7 @@ while (open subtasks remain):
               2. Skip and continue
               3. Pause loop (run /run-loop --resume {task-id})
 
-    5d. PROGRESS DISPLAY
+    5d. PROGRESS DISPLAY + RE-PLANNING GATE
 
         After each subtask completes, show progress:
         ```
@@ -222,6 +242,19 @@ while (open subtasks remain):
           {id}: {title}
         ════════════════════════════════════
         ```
+
+        RE-PLANNING GATE: If completed_this_session == 10 AND remaining > 0:
+        ```
+        ────────────────────────────────────
+        CHECKPOINT: {completed}/{total} subtasks complete
+
+        Based on completed work, should we:
+          1. Continue as planned (default)
+          2. Re-scope: skip/modify/add subtasks
+          3. Pause for manual review
+        ────────────────────────────────────
+        ```
+        Default to option 1 if user doesn't respond within prompt.
 
     5e. AUTO-REANCHOR (between subtasks, silent)
 
@@ -242,11 +275,24 @@ while (open subtasks remain):
 
 If a sub-agent returns failed/blocked:
 
+**Gutter detection:** Before offering options, check `loops/state.jsonl` for previous `story_blocked` entries for this same subtask. If a previous attempt failed with the same error category, the agent is stuck in a gutter — add a "try different approach" option.
+
 ```
 Subtask {subtask.id} failed: {summary}
 
 Options:
 1. Retry this subtask
+2. Skip and continue to next subtask
+3. Pause loop (/run-loop --resume {task-id})
+4. Abort
+```
+
+If gutter detected (repeated failure, same error):
+```
+Subtask {subtask.id} failed again with same error: {summary}
+
+Options:
+1. Try with different approach (spawn fresh agent with error context from previous attempts)
 2. Skip and continue to next subtask
 3. Pause loop (/run-loop --resume {task-id})
 4. Abort

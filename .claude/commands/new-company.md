@@ -101,7 +101,7 @@ Ask: "Create a qmd collection named '{slug}' for this company's knowledge? (yes/
 
 If yes:
 ```bash
-qmd collection add companies/{slug} --name {slug} --mask "**/*.md"
+qmd collection add companies/{slug} --name {slug} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
 qmd update 2>/dev/null || true
 ```
 

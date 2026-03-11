@@ -63,6 +63,33 @@ Research complete:
 - Prior art: {relevant knowledge hits or "none"}
 ```
 
+## Step 2.1: Repo Exploration (if target repo identified)
+
+**Skip if** no target repo was found in Step 2 (e.g. knowledge-only or GHQ infrastructure tasks).
+
+**Goal:** Understand the repo's structure, patterns, and relevant code before forming approaches. This prevents brainstorm options that conflict with existing architecture.
+
+**Procedure:**
+
+1. **Read repo overview** — check for README.md, CLAUDE.md, package.json, or equivalent at repo root
+2. **Scan structure** — `ls` key directories (src/, app/, lib/, etc.) to understand project layout
+3. **Find relevant code** — based on the task description, use Grep/Glob to locate:
+   - Files directly related to the feature/problem area
+   - Existing patterns (how similar features are implemented)
+   - Shared utilities, types, or components that would be reused
+4. **Read key files** — read 2-5 most relevant files to understand current implementation
+
+**Append to research summary:**
+```
+Repo context ({repo name}):
+- Stack: {framework, language, key deps}
+- Relevant files: {list of files related to this task}
+- Existing patterns: {how similar things are done in this codebase}
+- Integration points: {where new code would connect}
+```
+
+**Keep it targeted** — only explore what's relevant to the task description. Do not map the entire repo.
+
 ## Step 2.5: Bug Reproduction (bugs only)
 
 **Skip unless** the task description, title, or labels indicate a **bug** (e.g. label `bug`, words like "broken", "error", "crash", "regression", "doesn't work").
@@ -102,7 +129,7 @@ Research complete:
 
 **If the app requires auth or is not web-accessible:** Skip reproduction, note why, and flag it as an open question in "What We Don't Know".
 
-## Step 3: Light Interview (1 AskUserQuestion max)
+## Step 3: Light Interview (4 AskUserQuestion max)
 
 Batch all missing directional info into **one** `AskUserQuestion` call. Skip any field already clear from args, board entry, or research.
 

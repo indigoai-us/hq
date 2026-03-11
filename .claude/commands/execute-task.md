@@ -246,7 +246,10 @@ When complete, provide JSON:
     "lint": "pass|fail|skipped",
     "typecheck": "pass|fail|skipped"
   },
-  "issues": ["any blocking issues"]
+  "issues": ["any blocking issues"],
+  "discovered_work": [
+    {"title": "short description", "rationale": "why this is needed", "urgency": "blocking|important|nice-to-have"}
+  ]
 }
 ```
 
@@ -388,7 +391,10 @@ When invoked as a sub-agent by `/run-loop`, end with this JSON so the orchestrat
     "lint": "pass|fail|skipped",
     "typecheck": "pass|fail|skipped",
     "build": "pass|fail|skipped"
-  }
+  },
+  "discovered_work": [
+    {"title": "short description", "rationale": "why needed", "urgency": "blocking|important|nice-to-have"}
+  ]
 }
 ```
 

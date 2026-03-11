@@ -238,11 +238,21 @@ To view:
 
 ## Subtask Guidelines
 
-- Each subtask completable in one AI session
-- Acceptance criteria must be verifiable (not "works correctly")
-- Order: schema -> backend -> UI -> integration
+### Sizing
+- Each subtask completable by a single agent in one context window — typically 1-2 files, one logical change
+- 1-2 files modified (3 max for tightly coupled changes)
+- If you need "and" to describe what a subtask does, split it
 - Keep subtasks atomic (one deliverable each)
-- `e2eTests` (REQUIRED): every subtask must have at least one. Store in metadata.
+
+### Acceptance Criteria
+- Each criterion must be binary pass/fail (not subjective like "works correctly")
+- At least one criterion must be machine-checkable (test, lint, typecheck, curl)
+- Include at least one negative case (what should NOT happen)
+- Each criterion testable without depending on other incomplete subtasks
+
+### Ordering & Testing
+- Order: schema -> backend -> UI -> integration
+- `e2eTests`: required for subtasks with user-facing or deployable changes. Not needed for schema-only, refactor, or infrastructure subtasks. Store in metadata.
 - For deployable tasks, include at least one subtask dedicated to E2E test infrastructure (Phase 0 pattern)
 
 ## Rules
