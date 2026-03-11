@@ -348,11 +348,12 @@ If the story has a non-empty `files` array and the target repo has a `repoPath` 
 3. **Read existing locks**: Read `{repoPath}/.file-locks.json` (create if missing: `{"version":1,"locks":[]}`)
 4. **Stale lock cleanup**: For each existing lock, check if owner PID is running (`kill -0 {pid} 2>/dev/null`). If not running AND lock is older than `stale_lock_timeout_minutes`, remove it
 5. **Conflict check**: For each file in `task.files`, check if already locked by another story:
-   - If conflicts found, apply `conflict_mode`:
+   - **Self-owned lock**: If a file is already locked by the SAME story ID, skip it (the orchestrator may have pre-acquired locks for swarm mode)
+   - If conflicts found with a DIFFERENT story, apply `conflict_mode`:
      - `hard_block`: STOP — report conflicting files + owner story, exit with structured JSON `{"status":"blocked","blocked_by":[...]}`
      - `soft_block`: Log warning, proceed but instruct workers to skip locked files. Add `locked_files` to worker prompt context
      - `read_only_fallback`: Log warning, proceed. Add `read_only_files` to worker prompt context
-6. **Acquire locks**: For each file in `task.files`, append to `.file-locks.json`:
+6. **Acquire locks**: For each file in `task.files` (skip files already self-owned), append to `.file-locks.json`:
    ```json
    {"file": "{path}", "owner": {"project": "{project}", "story": "{task.id}", "pid": {$$}}, "acquired_at": "{ISO8601}"}
    ```
@@ -651,9 +652,16 @@ This entire step runs BEFORE PRD update so locks and checkout are released even 
 
 #### 7a. Update PRD
 
+When invoked by `/run-project` (headless `claude -p`), the **orchestrator** writes `passes: true` — execute-task must NOT write it.
+When invoked standalone (interactive), execute-task writes `passes` directly:
+
 ```javascript
+// Only if NOT invoked by orchestrator (check if prompt says "Do NOT write passes to prd.json"):
 // Update resolved prd.json (at companies/{co}/projects/{project}/prd.json)
 task.passes = true
+
+// If invoked by orchestrator: skip this write. Output status JSON instead.
+// The orchestrator reads your output.json and writes passes itself.
 ```
 
 #### 7a.5 Sync to Linear (if configured)

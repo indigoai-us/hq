@@ -41,89 +41,6 @@ USING_WORKTREE=false
 WORKTREE_PATH=""
 ORIGINAL_REPO_PATH=""
 
-# Check if another active orchestrator is using the same repo on a different branch.
-# Returns 0 if conflict found, 1 if no conflict.
-# Sets CONFLICT_PROJECT and CONFLICT_BRANCH on match.
-check_repo_conflict() {
-  local my_repo="$1"
-  local my_project="$2"
-  local my_branch="$3"
-
-  [[ -z "$my_repo" ]] && return 1
-
-  # Normalize repo path for comparison
-  local my_repo_abs="$my_repo"
-  [[ ! "$my_repo_abs" = /* ]] && my_repo_abs="$HQ_ROOT/$my_repo_abs"
-
-  # Also resolve worktree → parent repo for comparison
-  local my_repo_canonical="$my_repo_abs"
-  if [[ -f "$my_repo_abs/.git" ]]; then
-    # This IS a worktree — resolve the parent repo
-    local gitdir
-    gitdir=$(sed 's/^gitdir: //' "$my_repo_abs/.git" 2>/dev/null)
-    if [[ "$gitdir" == *"/.git/worktrees/"* ]]; then
-      my_repo_canonical="${gitdir%%/.git/worktrees/*}"
-    fi
-  fi
-
-  for state_file in "$ORCH_DIR"/*/state.json; do
-    [[ -f "$state_file" ]] || continue
-    local other_project other_status
-    other_project=$(jq -r '.project // empty' "$state_file" 2>/dev/null) || continue
-    other_status=$(jq -r '.status // empty' "$state_file" 2>/dev/null) || continue
-
-    # Skip self and non-active projects
-    [[ "$other_project" == "$my_project" ]] && continue
-    [[ "$other_status" != "in_progress" ]] && continue
-
-    # Check if the other project's PID is alive
-    local other_pid
-    other_pid=$(jq -r '.current_task.checkedOutBy.pid // empty' "$state_file" 2>/dev/null) || true
-    if [[ -n "$other_pid" ]] && ! kill -0 "$other_pid" 2>/dev/null; then
-      continue  # Dead PID — not a real conflict
-    fi
-
-    # Get the other project's repo path
-    local other_prd other_repo other_repo_abs other_repo_canonical
-    other_prd=$(jq -r '.prd_path // empty' "$state_file" 2>/dev/null) || continue
-    [[ -z "$other_prd" ]] && continue
-    local other_prd_full="$other_prd"
-    [[ ! "$other_prd_full" = /* ]] && other_prd_full="$HQ_ROOT/$other_prd_full"
-    [[ -f "$other_prd_full" ]] || continue
-
-    other_repo=$(jq -r '.metadata.repoPath // empty' "$other_prd_full" 2>/dev/null) || continue
-    [[ -z "$other_repo" ]] && continue
-    other_repo_abs="$other_repo"
-    [[ ! "$other_repo_abs" = /* ]] && other_repo_abs="$HQ_ROOT/$other_repo_abs"
-
-    # Resolve worktree → parent for the other project too
-    other_repo_canonical="$other_repo_abs"
-    if [[ -f "$other_repo_abs/.git" ]]; then
-      local other_gitdir
-      other_gitdir=$(sed 's/^gitdir: //' "$other_repo_abs/.git" 2>/dev/null)
-      if [[ "$other_gitdir" == *"/.git/worktrees/"* ]]; then
-        other_repo_canonical="${other_gitdir%%/.git/worktrees/*}"
-      fi
-    fi
-
-    # Compare canonical repo paths
-    if [[ "$my_repo_canonical" == "$other_repo_canonical" ]]; then
-      local other_branch
-      other_branch=$(jq -r '.branchName // empty' "$other_prd_full" 2>/dev/null) || true
-
-      # Same branch = likely follow-up PRD, not a conflict
-      if [[ "$other_branch" == "$my_branch" ]]; then
-        continue
-      fi
-
-      CONFLICT_PROJECT="$other_project"
-      CONFLICT_BRANCH="${other_branch:-unknown}"
-      return 0  # Conflict found
-    fi
-  done
-  return 1  # No conflict
-}
-
 # Create or reuse a git worktree for isolated branch work.
 # Sets REPO_PATH to the worktree and USING_WORKTREE=true.
 ensure_worktree() {
@@ -207,6 +124,55 @@ cleanup_worktree() {
   }
 }
 
+# Signal-safe cleanup: release checkouts, kill swarm children, then cleanup worktree
+cleanup_on_signal() {
+  local sig="$1"
+  log_warn "Caught signal $sig — cleaning up..."
+
+  # Kill background check-in timer if running
+  [[ -n "${CHECKIN_PID:-}" ]] && kill "$CHECKIN_PID" 2>/dev/null || true
+
+  # Kill swarm background processes
+  if [[ ${#SWARM_PIDS[@]:-0} -gt 0 ]]; then
+    local i=0
+    while [[ $i -lt ${#SWARM_PIDS[@]} ]]; do
+      local pid="${SWARM_PIDS[$i]}"
+      local sid="${SWARM_STORY_IDS[$i]}"
+      if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || true
+        log_warn "Killed swarm process $sid (PID $pid)"
+      fi
+      # Release checkout for this story
+      if [[ -n "${STATE_FILE:-}" && -f "${STATE_FILE:-}" ]]; then
+        release_checkout "$sid" 2>/dev/null || true
+      fi
+      # Release file locks
+      release_swarm_locks "$sid" 2>/dev/null || true
+      i=$((i + 1))
+    done
+  fi
+
+  # Release current sequential story checkout
+  if [[ -n "${STORY_ID:-}" && -n "${STATE_FILE:-}" && -f "${STATE_FILE:-}" ]]; then
+    release_checkout "$STORY_ID" 2>/dev/null || true
+  fi
+
+  # Update state to paused (not in_progress with stale PID)
+  if [[ -n "${STATE_FILE:-}" && -f "${STATE_FILE:-}" ]]; then
+    jq --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      '.status = "paused" | .updated_at = $ts | .current_tasks = []' \
+      "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null \
+      && mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || true
+  fi
+
+  cleanup_worktree
+  exit 130
+}
+
+trap 'cleanup_on_signal INT' INT
+trap 'cleanup_on_signal TERM' TERM
+trap 'cleanup_worktree' EXIT
+
 # --- Defaults ---
 PROJECT=""
 RESUME=false
@@ -218,6 +184,10 @@ RETRY_FAILED=false
 TIMEOUT=""
 VERBOSE=false
 TMUX_MODE=false
+IN_PLACE=false
+SWARM_MODE=false
+SWARM_MAX=4
+CHECKIN_INTERVAL=180  # seconds between check-in status prints
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -252,6 +222,15 @@ while [[ $# -gt 0 ]]; do
     --timeout)      TIMEOUT="$2"; shift 2 ;;
     --verbose)      VERBOSE=true; shift ;;
     --tmux)         TMUX_MODE=true; shift ;;
+    --in-place)     IN_PLACE=true; shift ;;
+    --swarm)
+      SWARM_MODE=true
+      # Optional: --swarm 3 sets max concurrency
+      if [[ $# -gt 1 && "$2" =~ ^[0-9]+$ ]]; then
+        SWARM_MAX="$2"; shift
+      fi
+      shift ;;
+    --checkin-interval) CHECKIN_INTERVAL="$2"; shift 2 ;;
     --help|-h)
       cat <<'HELP'
 Usage: scripts/run-project.sh <project> [flags]
@@ -267,6 +246,9 @@ Flags:
   --timeout N         Per-story wall-clock timeout in minutes
   --verbose           Show full claude output
   --tmux              Launch in tmux session with Remote Control
+  --in-place          Skip worktree creation, work directly on repo checkout
+  --swarm [N]         Run eligible stories in parallel (max N concurrent, default 4)
+  --checkin-interval N  Seconds between check-in status prints (default: 180)
 HELP
       exit 0
       ;;
@@ -481,53 +463,33 @@ if [[ -n "$REPO_PATH" && ! "$REPO_PATH" = /* ]]; then
 fi
 
 # =============================================================================
-# Branch Setup (with auto-worktree for concurrent projects)
+# Branch Setup (always-worktree for isolation)
 # =============================================================================
 
+WORKTREE_ENABLED=$(yq e '.worktree.enabled // true' "$HQ_ROOT/settings/orchestrator.yaml" 2>/dev/null || echo "true")
 BRANCH_NAME=$(jq -r '.branchName // empty' "$PRD_PATH")
 BASE_BRANCH=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH")
 
 if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
-  current_branch=$(git -C "$REPO_PATH" branch --show-current 2>/dev/null)
-
-  if [[ "$current_branch" != "$BRANCH_NAME" ]]; then
-    # Check if another active project owns this repo on a different branch
-    if check_repo_conflict "$REPO_PATH" "$PROJECT" "$BRANCH_NAME"; then
-      log_warn "Repo conflict: $CONFLICT_PROJECT is active on branch $CONFLICT_BRANCH"
-
-      if [[ -t 0 ]]; then
-        # Interactive: ask user
-        echo ""
-        echo -e "${YELLOW}Another project ($CONFLICT_PROJECT) is using this repo on branch $CONFLICT_BRANCH.${NC}"
-        echo "Options:"
-        echo "  1) Auto-create worktree (recommended — isolated checkout)"
-        echo "  2) Checkout anyway (will disrupt $CONFLICT_PROJECT)"
-        echo "  3) Abort"
-        read -rp "Choice [1-3]: " wt_choice
-        case "$wt_choice" in
-          1) ensure_worktree "$REPO_PATH" "$BRANCH_NAME" "$BASE_BRANCH" ;;
-          2)
-            log_warn "Force-checking out $BRANCH_NAME (may disrupt $CONFLICT_PROJECT)"
-            git -C "$REPO_PATH" checkout "$BRANCH_NAME" 2>/dev/null \
-              || git -C "$REPO_PATH" checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
-            ;;
-          *) exit 0 ;;
-        esac
-      else
-        # Non-interactive: auto-worktree
-        log_info "Auto-creating worktree to avoid conflict with $CONFLICT_PROJECT"
-        ensure_worktree "$REPO_PATH" "$BRANCH_NAME" "$BASE_BRANCH"
-      fi
-    else
-      # No conflict — safe to checkout directly
+  if [[ "$IN_PLACE" == true || "$WORKTREE_ENABLED" != true ]]; then
+    # Opt-out: legacy checkout behavior (no worktree)
+    current_branch=$(git -C "$REPO_PATH" branch --show-current 2>/dev/null)
+    if [[ "$current_branch" != "$BRANCH_NAME" ]]; then
       if git -C "$REPO_PATH" show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
-        log_info "Checking out existing branch: $BRANCH_NAME"
+        log_info "In-place: checking out existing branch: $BRANCH_NAME"
         git -C "$REPO_PATH" checkout "$BRANCH_NAME"
       else
-        log_info "Creating branch: $BRANCH_NAME from $BASE_BRANCH"
+        log_info "In-place: creating branch: $BRANCH_NAME from $BASE_BRANCH"
         git -C "$REPO_PATH" checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
       fi
     fi
+  else
+    # Default: always use worktree for isolation
+    log_info "Creating/reusing worktree for branch: $BRANCH_NAME"
+    ensure_worktree "$REPO_PATH" "$BRANCH_NAME" "$BASE_BRANCH" || {
+      log_err "Failed to create worktree — aborting"
+      exit 1
+    }
   fi
 
   # If REPO_PATH was already a worktree (e.g., prd.json points to one), detect it
@@ -601,12 +563,12 @@ else
   "started_at": "$(ts)",
   "updated_at": "$(ts)",
   "progress": { "total": $TOTAL, "completed": $COMPLETED, "failed": 0, "in_progress": 0 },
-  "current_task": null,
+  "current_tasks": [],
   "completed_tasks": [],
   "failed_tasks": [],
   "retry_queue": [],
   "regression_gates": [],
-  "orchestrator": "bash-v1"
+  "orchestrator": "bash-v2"
 }
 EOF
   echo "[$(ts)] Project started: $PROJECT ($TOTAL stories, $COMPLETED already completed)" >> "$PROGRESS_FILE"
@@ -619,11 +581,41 @@ EOF
 fi
 
 # =============================================================================
+# State Schema Migration (current_task → current_tasks[])
+# =============================================================================
+
+migrate_state_schema() {
+  [[ ! -f "$STATE_FILE" ]] && return 0
+
+  local has_old
+  has_old=$(jq 'has("current_task") and (has("current_tasks") | not)' "$STATE_FILE" 2>/dev/null) || return 0
+
+  if [[ "$has_old" == "true" ]]; then
+    jq '
+      .current_tasks = (if .current_task != null then [.current_task] else [] end) |
+      del(.current_task) |
+      .orchestrator = "bash-v2"
+    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+    log_info "Migrated state.json: current_task → current_tasks[]"
+  fi
+}
+
+migrate_state_schema
+
+# =============================================================================
 # Checkout Config (from orchestrator.yaml)
 # =============================================================================
 
 CHECKOUT_ENABLED=$(yq e '.checkout.enabled // true' "$HQ_ROOT/settings/orchestrator.yaml" 2>/dev/null || echo "true")
 CHECKOUT_STALE_MINUTES=$(yq e '.checkout.stale_timeout_minutes // 30' "$HQ_ROOT/settings/orchestrator.yaml" 2>/dev/null || echo "30")
+
+# Swarm config (CLI flags override yaml)
+if [[ "$SWARM_MAX" -eq 4 ]]; then
+  SWARM_MAX=$(yq e '.swarm.max_concurrency // 4' "$HQ_ROOT/settings/orchestrator.yaml" 2>/dev/null || echo "4")
+fi
+if [[ "$CHECKIN_INTERVAL" -eq 180 ]]; then
+  CHECKIN_INTERVAL=$(yq e '.swarm.checkin_interval_seconds // 180' "$HQ_ROOT/settings/orchestrator.yaml" 2>/dev/null || echo "180")
+fi
 
 # =============================================================================
 # Checkout Functions
@@ -634,44 +626,60 @@ clean_stale_checkouts() {
   [[ "$CHECKOUT_ENABLED" != "true" ]] && return 0
   [[ ! -f "$STATE_FILE" ]] && return 0
 
-  local checkout_pid checkout_started pid_age_seconds stale_seconds
+  local stale_seconds
   stale_seconds=$(( CHECKOUT_STALE_MINUTES * 60 ))
 
-  checkout_pid=$(jq -r '.current_task.checkedOutBy.pid // empty' "$STATE_FILE" 2>/dev/null) || return 0
-  [[ -z "$checkout_pid" ]] && return 0
+  # Iterate current_tasks[] and remove entries with dead PIDs past stale timeout
+  local task_count
+  task_count=$(jq '.current_tasks // [] | length' "$STATE_FILE" 2>/dev/null) || return 0
+  [[ "$task_count" -eq 0 ]] && return 0
 
-  # Check if PID is still alive
-  if kill -0 "$checkout_pid" 2>/dev/null; then
-    return 0  # Still running — leave it
-  fi
+  local i=0
+  while [[ $i -lt $task_count ]]; do
+    local checkout_pid checkout_started story_id
+    checkout_pid=$(jq -r --argjson idx "$i" '.current_tasks[$idx].checkedOutBy.pid // empty' "$STATE_FILE" 2>/dev/null) || true
+    [[ -z "$checkout_pid" ]] && { i=$((i + 1)); continue; }
 
-  # PID is dead — check age
-  checkout_started=$(jq -r '.current_task.checkedOutBy.startedAt // empty' "$STATE_FILE" 2>/dev/null) || return 0
-  [[ -z "$checkout_started" ]] && {
-    # No timestamp — release unconditionally (dead PID + no timestamp)
-    jq --arg ts "$(ts)" '
-      .current_task.checkedOutBy = null |
-      .updated_at = $ts
-    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-    log_warn "Released stale checkout (dead PID $checkout_pid, no timestamp)"
-    return 0
-  }
+    # Check if PID is still alive
+    if kill -0 "$checkout_pid" 2>/dev/null; then
+      i=$((i + 1)); continue  # Still running — leave it
+    fi
 
-  # Compute age in seconds (macOS-compatible)
-  local started_epoch now_epoch
-  started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$checkout_started" "+%s" 2>/dev/null) || return 0
-  now_epoch=$(date -u +%s)
-  pid_age_seconds=$(( now_epoch - started_epoch ))
+    # PID is dead — check age
+    checkout_started=$(jq -r --argjson idx "$i" '.current_tasks[$idx].checkedOutBy.startedAt // empty' "$STATE_FILE" 2>/dev/null) || true
+    story_id=$(jq -r --argjson idx "$i" '.current_tasks[$idx].id // "unknown"' "$STATE_FILE" 2>/dev/null) || true
 
-  if (( pid_age_seconds >= stale_seconds )); then
-    local story_id
-    story_id=$(jq -r '.current_task.id // "unknown"' "$STATE_FILE" 2>/dev/null)
-    jq --arg ts "$(ts)" '
-      .current_task.checkedOutBy = null |
-      .updated_at = $ts
-    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-    log_warn "Released stale checkout: $story_id (dead PID $checkout_pid, ${pid_age_seconds}s old)"
-  fi
+    if [[ -z "$checkout_started" ]]; then
+      # No timestamp — release unconditionally
+      jq --arg sid "$story_id" --arg ts "$(ts)" '
+        .current_tasks = [.current_tasks[] | select(.id != $sid)] |
+        .progress.in_progress = (.current_tasks | length) |
+        .updated_at = $ts
+      ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+      log_warn "Released stale checkout (dead PID $checkout_pid, $story_id, no timestamp)"
+      task_count=$((task_count - 1))
+      continue  # Don't increment — array shifted
+    fi
+
+    # Compute age in seconds (macOS-compatible)
+    local started_epoch now_epoch pid_age_seconds
+    started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$checkout_started" "+%s" 2>/dev/null) || { i=$((i + 1)); continue; }
+    now_epoch=$(date -u +%s)
+    pid_age_seconds=$(( now_epoch - started_epoch ))
+
+    if (( pid_age_seconds >= stale_seconds )); then
+      jq --arg sid "$story_id" --arg ts "$(ts)" '
+        .current_tasks = [.current_tasks[] | select(.id != $sid)] |
+        .progress.in_progress = (.current_tasks | length) |
+        .updated_at = $ts
+      ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+      log_warn "Released stale checkout: $story_id (dead PID $checkout_pid, ${pid_age_seconds}s old)"
+      task_count=$((task_count - 1))
+      continue  # Don't increment — array shifted
+    fi
+
+    i=$((i + 1))
+  done
 }
 
 # Attempt to checkout a story. Returns 0 if acquired, 1 if another live PID holds it.
@@ -679,45 +687,65 @@ checkout_story() {
   local story_id="$1"
   [[ "$CHECKOUT_ENABLED" != "true" ]] && return 0
 
+  # Check if this specific story is already checked out in current_tasks[]
   local existing_pid
-  existing_pid=$(jq -r '.current_task.checkedOutBy.pid // empty' "$STATE_FILE" 2>/dev/null) || return 0
+  existing_pid=$(jq -r --arg sid "$story_id" '
+    (.current_tasks // [])[] | select(.id == $sid) | .checkedOutBy.pid // empty
+  ' "$STATE_FILE" 2>/dev/null) || true
 
   if [[ -n "$existing_pid" ]]; then
-    # Check if the holding PID is still alive
     if kill -0 "$existing_pid" 2>/dev/null; then
       local holder_session
-      holder_session=$(jq -r '.current_task.checkedOutBy.sessionId // "unknown"' "$STATE_FILE" 2>/dev/null)
+      holder_session=$(jq -r --arg sid "$story_id" '
+        (.current_tasks // [])[] | select(.id == $sid) | .checkedOutBy.sessionId // "unknown"
+      ' "$STATE_FILE" 2>/dev/null)
       log_warn "Story $story_id is checked out by live PID $existing_pid (session: $holder_session) — skipping"
       return 1
     fi
-    # Dead PID — allow takeover (stale cleanup may not have caught it yet)
+    # Dead PID — remove stale entry before re-adding
     log_warn "Overriding dead PID $existing_pid checkout for $story_id"
+    jq --arg sid "$story_id" --arg ts "$(ts)" '
+      .current_tasks = [(.current_tasks // [])[] | select(.id != $sid)] |
+      .updated_at = $ts
+    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
   fi
 
-  # Write checkout entry
-  jq --arg pid "$$" --arg ts "$(ts)" --arg sid "$SESSION_ID" '
-    .current_task.checkedOutBy = {"pid": ($pid | tonumber), "startedAt": $ts, "sessionId": $sid} |
+  # Add checkout entry to current_tasks[]
+  jq --arg id "$story_id" --arg pid "$$" --arg ts "$(ts)" --arg sid "$SESSION_ID" '
+    .current_tasks = ((.current_tasks // []) + [{
+      "id": $id,
+      "started_at": $ts,
+      "checkedOutBy": {"pid": ($pid | tonumber), "startedAt": $ts, "sessionId": $sid}
+    }]) |
+    .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
   ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 
   return 0
 }
 
-# Release checkout after story completion or failure
+# Release checkout after story completion or failure.
+# In sequential mode: release by PID match. In swarm: release by story ID.
 release_checkout() {
+  local story_id="${1:-}"
   [[ "$CHECKOUT_ENABLED" != "true" ]] && return 0
   [[ ! -f "$STATE_FILE" ]] && return 0
 
-  # Only release if WE hold the checkout (don't clobber another PID's entry)
-  local holder_pid
-  holder_pid=$(jq -r '.current_task.checkedOutBy.pid // empty' "$STATE_FILE" 2>/dev/null) || return 0
-  [[ -z "$holder_pid" ]] && return 0
-  [[ "$holder_pid" != "$$" ]] && return 0
-
-  jq --arg ts "$(ts)" '
-    .current_task.checkedOutBy = null |
-    .updated_at = $ts
-  ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+  if [[ -n "$story_id" ]]; then
+    # Remove specific story from current_tasks[]
+    jq --arg sid "$story_id" --arg ts "$(ts)" '
+      .current_tasks = [(.current_tasks // [])[] | select(.id != $sid)] |
+      .progress.in_progress = (.current_tasks | length) |
+      .updated_at = $ts
+    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+  else
+    # Legacy: remove all entries owned by our PID
+    jq --arg pid "$$" --arg ts "$(ts)" '
+      .current_tasks = [(.current_tasks // [])[] | select(.checkedOutBy.pid != ($pid | tonumber))] |
+      .progress.in_progress = (.current_tasks | length) |
+      .updated_at = $ts
+    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+  fi
 }
 
 # =============================================================================
@@ -767,13 +795,22 @@ has_file_conflict() {
   ' "$PRD_PATH" 2>/dev/null) || return 1
   [[ -z "$story_files" ]] && return 1  # no files declared = no conflicts
 
-  # Check each file against active locks
+  # Check each file against active locks (array schema: {version, locks: [{file, owner, acquired_at}]})
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    local locked
-    locked=$(jq -r --arg file "$f" '.[$file].locked_by // empty' "$lock_file" 2>/dev/null) || continue
-    if [[ -n "$locked" ]]; then
-      log_warn "  File conflict: $f locked by $locked"
+    local locked_by owner_pid
+    locked_by=$(jq -r --arg file "$f" --arg self "$story_id" '
+      .locks // [] | map(select(.file == $file and .owner.story != $self)) | .[0].owner.story // empty
+    ' "$lock_file" 2>/dev/null) || continue
+    if [[ -n "$locked_by" ]]; then
+      # Verify the owning PID is still alive (stale lock = ignore)
+      owner_pid=$(jq -r --arg file "$f" --arg self "$story_id" '
+        .locks // [] | map(select(.file == $file and .owner.story != $self)) | .[0].owner.pid // empty
+      ' "$lock_file" 2>/dev/null) || true
+      if [[ -n "$owner_pid" ]] && ! kill -0 "$owner_pid" 2>/dev/null; then
+        continue  # stale lock — owner PID is dead
+      fi
+      log_warn "  File conflict: $f locked by $locked_by"
       return 0  # has conflict
     fi
   done <<< "$story_files"
@@ -785,6 +822,9 @@ has_file_conflict() {
 get_next_story() {
   # Re-read PRD each time (execute-task may have updated passes)
   # Selection: unblocked deps → no file conflicts → lowest priority number → array order
+  # Optional arg: newline-separated list of IDs to skip
+  local skip_list="${1:-}"
+
   local candidates
   candidates=$(jq -r '
     .userStories as $all |
@@ -796,21 +836,126 @@ get_next_story() {
     .[].id
   ' "$PRD_PATH") || true
 
-  # Check file locks for each candidate
+  # Check file locks for each candidate, skip IDs in skip_list
   while IFS= read -r cid; do
     [[ -z "$cid" ]] && continue
+    # Skip if in skip list
+    if [[ -n "$skip_list" ]] && echo "$skip_list" | grep -qx "$cid"; then
+      continue
+    fi
     if ! has_file_conflict "$cid"; then
       echo "$cid"
       return 0
     fi
   done <<< "$candidates"
 
-  # All candidates have conflicts — return empty
+  # All candidates have conflicts or are skipped — return empty
   echo ""
 }
 
 get_story_title() {
   jq -r --arg id "$1" '.userStories[] | select(.id == $id) | .title' "$PRD_PATH"
+}
+
+# =============================================================================
+# Swarm Helpers
+# =============================================================================
+
+# Check if a story has non-empty files[] declared in prd.json
+story_has_files_declared() {
+  local story_id="$1"
+  local count
+  count=$(jq -r --arg id "$story_id" '
+    .userStories[] | select(.id == $id) | .files // [] | length
+  ' "$PRD_PATH" 2>/dev/null) || true
+  [[ -n "$count" && "$count" -gt 0 ]] && return 0
+  return 1
+}
+
+# Check if two stories share any declared files (returns 0=overlap, 1=no overlap)
+# Empty files[] on either side = overlap (conservative — can't verify safety)
+stories_have_file_overlap() {
+  local id_a="$1" id_b="$2"
+
+  local files_a files_b
+  files_a=$(jq -r --arg id "$id_a" '
+    .userStories[] | select(.id == $id) | .files // [] | .[]
+  ' "$PRD_PATH" 2>/dev/null) || true
+  files_b=$(jq -r --arg id "$id_b" '
+    .userStories[] | select(.id == $id) | .files // [] | .[]
+  ' "$PRD_PATH" 2>/dev/null) || true
+
+  # Empty files = treat as overlap (unknown surface, can't safely swarm)
+  [[ -z "$files_a" || -z "$files_b" ]] && return 0
+
+  # Check intersection
+  while IFS= read -r fa; do
+    [[ -z "$fa" ]] && continue
+    while IFS= read -r fb; do
+      [[ -z "$fb" ]] && continue
+      [[ "$fa" == "$fb" ]] && return 0  # overlap found
+    done <<< "$files_b"
+  done <<< "$files_a"
+
+  return 1  # no overlap
+}
+
+# Get all stories eligible for concurrent swarm execution.
+# Returns story IDs one per line (empty = nothing eligible).
+# Selection: deps resolved → has files[] → no active lock conflicts → pairwise no file overlap
+get_swarm_candidates() {
+  # 1. Get all dep-resolved, incomplete stories (same jq as get_next_story)
+  local candidates
+  candidates=$(jq -r '
+    .userStories as $all |
+    [.userStories[] | select(.passes != true)] |
+    [.[] | select(
+      (.dependsOn // []) | all(. as $dep | $all[] | select(.id == $dep) | .passes == true)
+    )] |
+    sort_by(.priority // 99) |
+    .[].id
+  ' "$PRD_PATH") || true
+
+  [[ -z "$candidates" ]] && return 0
+
+  # 2. Filter: must have files[] declared AND no existing lock conflicts
+  local eligible_list=""
+  local eligible_count=0
+  while IFS= read -r cid; do
+    [[ -z "$cid" ]] && continue
+    if story_has_files_declared "$cid" && ! has_file_conflict "$cid"; then
+      eligible_list="${eligible_list}${cid}"$'\n'
+      eligible_count=$((eligible_count + 1))
+    fi
+  done <<< "$candidates"
+
+  [[ "$eligible_count" -eq 0 ]] && return 0
+
+  # 3. Pairwise overlap elimination — greedy selection
+  local selected_list=""
+  local selected_count=0
+  while IFS= read -r cid; do
+    [[ -z "$cid" ]] && continue
+    local conflict=false
+    # Check against all already-selected stories
+    while IFS= read -r sel; do
+      [[ -z "$sel" ]] && continue
+      if stories_have_file_overlap "$cid" "$sel"; then
+        conflict=true
+        break
+      fi
+    done <<< "$selected_list"
+
+    if [[ "$conflict" == false ]]; then
+      selected_list="${selected_list}${cid}"$'\n'
+      selected_count=$((selected_count + 1))
+    fi
+    # Respect max concurrency cap
+    [[ "$selected_count" -ge "$SWARM_MAX" ]] && break
+  done <<< "$eligible_list"
+
+  # Output selected candidates
+  echo -n "$selected_list" | sed '/^$/d'
 }
 
 # =============================================================================
@@ -820,34 +965,107 @@ get_story_title() {
 if [[ "$DRY_RUN" == true ]]; then
   echo -e "${BOLD}Dry Run — Story Execution Order:${NC}\n"
   idx=1
+  batch_num=0
 
   # Simulate the selection loop
   temp_prd=$(mktemp)
   cp "$PRD_PATH" "$temp_prd"
 
   while true; do
-    next=$(jq -r '
+    # Get all candidates with resolved deps
+    candidates=$(jq -r '
       .userStories as $all |
       [.userStories[] | select(.passes != true)] |
       [.[] | select(
         (.dependsOn // []) | all(. as $dep | $all[] | select(.id == $dep) | .passes == true)
       )] |
-      .[0].id // empty
+      .[].id // empty
     ' "$temp_prd")
 
-    [[ -z "$next" ]] && break
+    [[ -z "$candidates" ]] && break
 
-    title=$(jq -r --arg id "$next" '.userStories[] | select(.id == $id) | .title' "$temp_prd")
-    deps=$(jq -r --arg id "$next" '.userStories[] | select(.id == $id) | .dependsOn // [] | join(", ")' "$temp_prd")
+    # In swarm mode, show parallel batches
+    if [[ "$SWARM_MODE" == true ]]; then
+      # Collect candidates that can run in parallel (no file overlap)
+      parallel_batch=()
+      sequential_fallback=()
 
-    dep_note=""
-    [[ -n "$deps" ]] && dep_note=" ${DIM}(after: $deps)${NC}"
-    echo -e "  ${BOLD}$idx.${NC} $next: $title$dep_note"
+      while IFS= read -r cand_id; do
+        [[ -z "$cand_id" ]] && continue
+        cand_files=$(jq -r --arg id "$cand_id" '.userStories[] | select(.id == $id) | .files // [] | .[]' "$temp_prd" 2>/dev/null)
 
-    # Mark as passed for next iteration
-    jq --arg id "$next" '(.userStories[] | select(.id == $id)).passes = true' "$temp_prd" > "$temp_prd.tmp" \
-      && mv "$temp_prd.tmp" "$temp_prd"
-    idx=$((idx + 1))
+        # Check overlap with existing batch members
+        has_overlap=false
+        if [[ -z "$cand_files" ]]; then
+          # No files declared — conservative: can't parallelize
+          sequential_fallback+=("$cand_id")
+          continue
+        fi
+
+        if [[ ${#parallel_batch[@]} -gt 0 ]]; then
+          for batch_id in "${parallel_batch[@]}"; do
+            batch_files=$(jq -r --arg id "$batch_id" '.userStories[] | select(.id == $id) | .files // [] | .[]' "$temp_prd" 2>/dev/null)
+            for cf in $cand_files; do
+              for bf in $batch_files; do
+                if [[ "$cf" == "$bf" ]]; then
+                  has_overlap=true; break 3
+                fi
+              done
+            done
+          done
+        fi
+
+        if [[ "$has_overlap" == false && ${#parallel_batch[@]} -lt "$SWARM_MAX" ]]; then
+          parallel_batch+=("$cand_id")
+        else
+          sequential_fallback+=("$cand_id")
+        fi
+      done <<< "$candidates"
+
+      if [[ ${#parallel_batch[@]} -gt 1 ]]; then
+        batch_num=$((batch_num + 1))
+        echo -e "  ${GREEN}── Parallel Batch $batch_num (${#parallel_batch[@]} stories) ──${NC}"
+        for pid_story in "${parallel_batch[@]}"; do
+          title=$(jq -r --arg id "$pid_story" '.userStories[] | select(.id == $id) | .title' "$temp_prd")
+          deps=$(jq -r --arg id "$pid_story" '.userStories[] | select(.id == $id) | .dependsOn // [] | join(", ")' "$temp_prd")
+          dep_note=""
+          [[ -n "$deps" ]] && dep_note=" ${DIM}(after: $deps)${NC}"
+          echo -e "    ${BOLD}$idx.${NC} $pid_story: $title$dep_note"
+          jq --arg id "$pid_story" '(.userStories[] | select(.id == $id)).passes = true' "$temp_prd" > "$temp_prd.tmp" \
+            && mv "$temp_prd.tmp" "$temp_prd"
+          idx=$((idx + 1))
+        done
+      else
+        # Single candidate or all in sequential fallback
+        first_cand="${parallel_batch[0]:-${sequential_fallback[0]:-}}"
+        [[ -z "$first_cand" ]] && break
+
+        title=$(jq -r --arg id "$first_cand" '.userStories[] | select(.id == $id) | .title' "$temp_prd")
+        deps=$(jq -r --arg id "$first_cand" '.userStories[] | select(.id == $id) | .dependsOn // [] | join(", ")' "$temp_prd")
+        dep_note=""
+        [[ -n "$deps" ]] && dep_note=" ${DIM}(after: $deps)${NC}"
+        echo -e "  ${BOLD}$idx.${NC} $first_cand: $title$dep_note"
+        jq --arg id "$first_cand" '(.userStories[] | select(.id == $id)).passes = true' "$temp_prd" > "$temp_prd.tmp" \
+          && mv "$temp_prd.tmp" "$temp_prd"
+        idx=$((idx + 1))
+      fi
+    else
+      # Sequential mode — pick first candidate only
+      next=$(echo "$candidates" | head -1)
+      [[ -z "$next" ]] && break
+
+      title=$(jq -r --arg id "$next" '.userStories[] | select(.id == $id) | .title' "$temp_prd")
+      deps=$(jq -r --arg id "$next" '.userStories[] | select(.id == $id) | .dependsOn // [] | join(", ")' "$temp_prd")
+
+      dep_note=""
+      [[ -n "$deps" ]] && dep_note=" ${DIM}(after: $deps)${NC}"
+      echo -e "  ${BOLD}$idx.${NC} $next: $title$dep_note"
+
+      # Mark as passed for next iteration
+      jq --arg id "$next" '(.userStories[] | select(.id == $id)).passes = true' "$temp_prd" > "$temp_prd.tmp" \
+        && mv "$temp_prd.tmp" "$temp_prd"
+      idx=$((idx + 1))
+    fi
   done
 
   # Check for blocked stories
@@ -856,6 +1074,11 @@ if [[ "$DRY_RUN" == true ]]; then
     echo ""
     echo -e "${YELLOW}Blocked (unresolvable deps):${NC}"
     jq -r '.userStories[] | select(.passes != true) | "  \(.id): \(.title) (needs: \(.dependsOn | join(", ")))"' "$temp_prd"
+  fi
+
+  if [[ "$SWARM_MODE" == true && "$batch_num" -gt 0 ]]; then
+    echo ""
+    echo -e "${DIM}Swarm mode: $batch_num parallel batch(es) detected${NC}"
   fi
 
   rm -f "$temp_prd" "$temp_prd.tmp"
@@ -934,12 +1157,16 @@ After completion, output ONLY structured JSON:
     cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
   fi
 
-  # Clear orchestrator's checkout lock before subprocess — execute-task will acquire its own.
+  # Clear orchestrator's checkout lock for this story before subprocess — execute-task will acquire its own.
   # Prevents self-locking: parent PID is alive so execute-task's AskUserQuestion fires
   # but can't resolve in headless (-p) mode.
   if [[ -f "$STATE_FILE" ]]; then
-    jq --arg ts "$(ts)" '.current_task.checkedOutBy = null | .updated_at = $ts' \
-      "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+    jq --arg sid "$story_id" --arg ts "$(ts)" '
+      .current_tasks = [(.current_tasks // [])[] |
+        if .id == $sid then .checkedOutBy = null else . end
+      ] |
+      .updated_at = $ts
+    ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
   fi
 
   # Execute (unset CLAUDECODE to allow nested claude sessions)
@@ -1176,23 +1403,30 @@ run_regression_gate() {
     # Capture baseline on first regression gate run
     if [[ ! -f "$baseline_file" ]]; then
       log "  Capturing baseline error counts..."
-      # Run gate on baseBranch to get pre-existing error count
-      local base_branch
-      base_branch=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH" 2>/dev/null || echo "main")
-      local current_branch
-      current_branch=$(cd "$REPO_PATH" && git branch --show-current)
+      # Run gate against baseBranch to get pre-existing error count.
+      # When using a worktree, ORIGINAL_REPO_PATH stays on baseBranch — no checkout needed.
+      # When in-place, fall back to stash/checkout on REPO_PATH.
+      local baseline_repo="${ORIGINAL_REPO_PATH:-$REPO_PATH}"
       local base_err_count=0
-      local stashed=false
-      # Only stash if there are uncommitted changes
-      if (cd "$REPO_PATH" && ! git diff --quiet HEAD 2>/dev/null); then
-        (cd "$REPO_PATH" && git stash push -q 2>/dev/null) && stashed=true
-      fi
       local base_exit=0
       local base_output=""
-      base_output=$(cd "$REPO_PATH" && git checkout "$base_branch" -q 2>/dev/null && eval "$gate" 2>&1) || base_exit=$?
-      # Always return to current branch and restore stash
-      (cd "$REPO_PATH" && git checkout "$current_branch" -q 2>/dev/null) || log_warn "  Failed to checkout back to $current_branch"
-      [[ "$stashed" == true ]] && (cd "$REPO_PATH" && git stash pop -q 2>/dev/null) || true
+      if [[ -n "$ORIGINAL_REPO_PATH" ]]; then
+        # Worktree mode: original repo is already on baseBranch
+        base_output=$(cd "$baseline_repo" && eval "$gate" 2>&1) || base_exit=$?
+      else
+        # In-place mode: stash, checkout baseBranch, measure, restore
+        local base_branch
+        base_branch=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH" 2>/dev/null || echo "main")
+        local current_branch
+        current_branch=$(cd "$REPO_PATH" && git branch --show-current)
+        local stashed=false
+        if (cd "$REPO_PATH" && ! git diff --quiet HEAD 2>/dev/null); then
+          (cd "$REPO_PATH" && git stash push -q 2>/dev/null) && stashed=true
+        fi
+        base_output=$(cd "$REPO_PATH" && git checkout "$base_branch" -q 2>/dev/null && eval "$gate" 2>&1) || base_exit=$?
+        (cd "$REPO_PATH" && git checkout "$current_branch" -q 2>/dev/null) || log_warn "  Failed to checkout back to $current_branch"
+        [[ "$stashed" == true ]] && (cd "$REPO_PATH" && git stash pop -q 2>/dev/null) || true
+      fi
       if [[ $base_exit -ne 0 ]]; then
         base_err_count=$(echo "$base_output" | grep -ci "error" 2>/dev/null || echo "0")
       fi
@@ -1302,11 +1536,11 @@ update_state_completed() {
     --argjson completed "$COMPLETED" \
   '
     .completed_tasks += [{"id": $id, "completed_at": $ts, "commit_sha": $sha, "files_changed": $files}] |
+    .current_tasks = [(.current_tasks // [])[] | select(.id != $id)] |
     .progress.total = $total |
     .progress.completed = $completed |
     .progress.failed = (.failed_tasks | length) |
-    .progress.in_progress = 0 |
-    .current_task = null |
+    .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
   ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 }
@@ -1322,18 +1556,56 @@ update_state_failed() {
   '
     .failed_tasks += [{"id": $id, "error": $err, "timestamp": $ts}] |
     .retry_queue += [$id] |
+    .current_tasks = [(.current_tasks // [])[] | select(.id != $id)] |
     .progress.failed = (.failed_tasks | length) |
-    .progress.in_progress = 0 |
-    .current_task = null |
+    .progress.in_progress = (.current_tasks | length) |
+    .updated_at = $ts
+  ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+}
+
+# Add a task to current_tasks[] with PID and worktree info (for swarm mode)
+update_state_add_task() {
+  local story_id="$1"
+  local pid="$2"
+  local worktree_path="${3:-}"
+
+  jq --arg id "$story_id" \
+     --arg pid "$pid" \
+     --arg wt "$worktree_path" \
+     --arg ts "$(ts)" \
+     --arg sid "$SESSION_ID" \
+  '
+    .current_tasks = ((.current_tasks // []) | map(select(.id != $id))) + [{
+      "id": $id,
+      "started_at": $ts,
+      "pid": ($pid | tonumber),
+      "worktree_path": $wt,
+      "checkedOutBy": {"pid": ($pid | tonumber), "startedAt": $ts, "sessionId": $sid}
+    }] |
+    .progress.in_progress = (.current_tasks | length) |
+    .updated_at = $ts
+  ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+}
+
+# Remove a task from current_tasks[] (on completion or failure)
+update_state_remove_task() {
+  local story_id="$1"
+  jq --arg id "$story_id" --arg ts "$(ts)" '
+    .current_tasks = [(.current_tasks // [])[] | select(.id != $id)] |
+    .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
   ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 }
 
 update_state_current() {
   local story_id="$1"
+  # In sequential mode, checkout_story already added to current_tasks[].
+  # Just update the started_at timestamp on the entry.
   jq --arg id "$story_id" --arg ts "$(ts)" '
-    .current_task = {"id": $id, "started_at": $ts, "checkedOutBy": (.current_task.checkedOutBy // null)} |
-    .progress.in_progress = 1 |
+    .current_tasks = [(.current_tasks // [])[] |
+      if .id == $id then .started_at = $ts else . end
+    ] |
+    .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
   ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 }
@@ -1438,6 +1710,478 @@ sync_linear_done() {
 }
 
 # =============================================================================
+# Orchestrator Writes Passes (replaces execute-task's prd.json write)
+# =============================================================================
+
+# Parse the claude -p output JSON to determine pass/fail, then write passes: true
+orchestrator_write_passes() {
+  local story_id="$1"
+  local output_file="$EXEC_DIR/${story_id}.output.json"
+
+  # Try to parse structured JSON from output
+  local status_from_output=""
+  if [[ -f "$output_file" ]]; then
+    # The output may contain a JSON object with "status" field, possibly wrapped in claude's output format
+    status_from_output=$(jq -r '
+      # Try direct .status field
+      if .status then .status
+      # Try .result.status (claude --output-format json wraps in result)
+      elif .result then (.result | if type == "string" then (fromjson? // {}) else . end | .status // empty)
+      else empty end
+    ' "$output_file" 2>/dev/null) || true
+
+    # Fallback: grep for status in raw output
+    if [[ -z "$status_from_output" ]]; then
+      status_from_output=$(grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' "$output_file" 2>/dev/null \
+        | tail -1 | sed 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/') || true
+    fi
+  fi
+
+  # Also check if execute-task already wrote passes (backward compat during transition)
+  local already_passed
+  already_passed=$(jq -r --arg id "$story_id" '
+    .userStories[] | select(.id == $id) | .passes
+  ' "$PRD_PATH" 2>/dev/null) || true
+
+  if [[ "$already_passed" == "true" ]]; then
+    return 0  # Already set — nothing to do
+  fi
+
+  if [[ "$status_from_output" == "completed" ]]; then
+    jq --arg id "$story_id" '
+      (.userStories[] | select(.id == $id)).passes = true
+    ' "$PRD_PATH" > "$PRD_PATH.tmp" && mv "$PRD_PATH.tmp" "$PRD_PATH"
+    log_ok "Orchestrator set passes=true for $story_id"
+  fi
+}
+
+# =============================================================================
+# Check-In Status (periodic monitoring for both sequential and swarm modes)
+# =============================================================================
+
+# Print current execution status — story IDs, PIDs, elapsed times, output sizes
+print_checkin_status() {
+  local now
+  now=$(date +%s)
+
+  echo ""
+  echo -e "${BOLD}--- Check-In [$(date +%H:%M:%S)] ---${NC}"
+
+  # Read current_tasks from state
+  local task_count
+  task_count=$(jq '.current_tasks // [] | length' "$STATE_FILE" 2>/dev/null) || task_count=0
+
+  if [[ "$task_count" -eq 0 ]]; then
+    echo -e "  ${DIM}No active tasks${NC}"
+  else
+    read_prd_stats 2>/dev/null || true
+    echo -e "Active: ${BLUE}${task_count}${NC} | Completed: ${GREEN}${COMPLETED}${NC}/${TOTAL}"
+    echo ""
+
+    local i=0
+    while [[ $i -lt $task_count ]]; do
+      local sid pid start_ts
+      sid=$(jq -r --argjson idx "$i" '.current_tasks[$idx].id // "?"' "$STATE_FILE" 2>/dev/null) || true
+      pid=$(jq -r --argjson idx "$i" '.current_tasks[$idx].pid // .current_tasks[$idx].checkedOutBy.pid // "?"' "$STATE_FILE" 2>/dev/null) || true
+      start_ts=$(jq -r --argjson idx "$i" '.current_tasks[$idx].started_at // empty' "$STATE_FILE" 2>/dev/null) || true
+
+      local elapsed_str="?"
+      if [[ -n "$start_ts" ]]; then
+        local start_epoch
+        start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$start_ts" "+%s" 2>/dev/null) || true
+        if [[ -n "$start_epoch" ]]; then
+          local elapsed=$(( now - start_epoch ))
+          elapsed_str="$((elapsed / 60))m$((elapsed % 60))s"
+        fi
+      fi
+
+      local title
+      title=$(get_story_title "$sid" 2>/dev/null) || title="?"
+
+      # Output file sizes (proxy for progress)
+      local out_size=0 err_size=0
+      [[ -f "$EXEC_DIR/${sid}.output.json" ]] && out_size=$(wc -c < "$EXEC_DIR/${sid}.output.json" 2>/dev/null | tr -d ' ') || true
+      [[ -f "$EXEC_DIR/${sid}.stderr" ]] && err_size=$(wc -c < "$EXEC_DIR/${sid}.stderr" 2>/dev/null | tr -d ' ') || true
+
+      local pid_status=""
+      if [[ "$pid" != "?" ]] && kill -0 "$pid" 2>/dev/null; then
+        pid_status="${GREEN}alive${NC}"
+      elif [[ "$pid" != "?" ]]; then
+        pid_status="${RED}exited${NC}"
+      fi
+
+      echo -e "  ${BOLD}${sid}${NC} — ${title}"
+      echo -e "    PID: ${pid} (${pid_status}) | Elapsed: ${elapsed_str} | Output: ${out_size}b | Stderr: ${err_size}b"
+
+      i=$((i + 1))
+    done
+  fi
+
+  echo -e "${DIM}──────────────────────────────────${NC}"
+  echo ""
+}
+
+# =============================================================================
+# Swarm Functions
+# =============================================================================
+
+# Parallel indexed arrays for tracking swarm members (bash 3.2 compat — no associative arrays)
+SWARM_STORY_IDS=()
+SWARM_PIDS=()
+SWARM_WORKTREES=()
+SWARM_START_TIMES=()
+SWARM_DONE=()
+PENDING_REGRESSION_GATE=""
+
+# Launch a story as a background process. Sets LAST_BG_PID.
+run_story_background() {
+  local story_id="$1"
+  local story_worktree="${2:-}"
+
+  local story_title story_labels story_files model_hint
+  story_title=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .title' "$PRD_PATH" 2>/dev/null) || true
+  story_labels=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .labels // [] | join(", ")' "$PRD_PATH" 2>/dev/null) || true
+  story_files=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .files // [] | join(", ")' "$PRD_PATH" 2>/dev/null) || true
+  model_hint=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .model_hint // empty' "$PRD_PATH" 2>/dev/null) || true
+
+  local worktree_note=""
+  [[ -n "$story_worktree" ]] && worktree_note="
+WORKTREE: ${story_worktree}
+Use this worktree as the working directory for all file operations."
+
+  local prompt="Execute /execute-task ${PROJECT}/${story_id}.
+
+CRITICAL — Follow the FULL Ralph worker pipeline:
+1. Classify task type (schema_change, api_development, ui_component, full_stack, enhancement)
+2. Select the correct worker sequence from execute-task step 4
+3. Load each worker's worker.yaml (instructions, context, verification)
+4. Spawn sub-agents PER WORKER with proper handoffs between phases
+5. Run back pressure checks (typecheck, lint, tests) per worker.yaml
+6. MANDATORY: Include at least one Codex CLI step for any code/dev/deploy task
+7. Commit ALL changes before completing
+8. Do NOT write passes to prd.json — the orchestrator handles that. Just output your status JSON.
+
+Story: ${story_id} — ${story_title}
+Labels: ${story_labels}
+Files: ${story_files}
+PRD: ${PRD_REL}
+${worktree_note}
+Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
+Do NOT implement directly — delegate to workers via the execute-task pipeline.
+ISOLATION: Only modify files within your assigned repo and this project's PRD. Do NOT read, modify, pause, or interfere with other projects' state files in workspace/orchestrator/. Other orchestrators may be running concurrently — ignore them.
+
+After completion, output ONLY structured JSON:
+{\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}"
+
+  local flags=(-p --output-format json)
+  [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions)
+
+  if [[ -n "$MODEL" ]]; then
+    flags+=(--model "$MODEL")
+  elif [[ -n "$model_hint" ]]; then
+    flags+=(--model "$model_hint")
+  fi
+
+  local output_file="$EXEC_DIR/${story_id}.output.json"
+  local stderr_file="$EXEC_DIR/${story_id}.stderr"
+  local cmd=(claude "${flags[@]}" "$prompt")
+  [[ -n "$TIMEOUT" ]] && cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
+
+  # Launch in background
+  (cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" >"$output_file" 2>"$stderr_file") &
+  LAST_BG_PID=$!
+}
+
+# Create a per-story worktree for swarm isolation. Sets STORY_WORKTREE_PATH.
+ensure_story_worktree() {
+  local story_id="$1"
+  local branch_name="${BRANCH_NAME:-main}"
+
+  local story_slug
+  story_slug=$(echo "$story_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+  local branch_slug="${branch_name//\//-}"
+  local base_repo="${ORIGINAL_REPO_PATH:-$REPO_PATH}"
+  local wt_path="${base_repo}-wt-${branch_slug}-${story_slug}"
+
+  STORY_WORKTREE_PATH=""
+
+  # Check if already exists
+  if [[ -d "$wt_path" ]]; then
+    STORY_WORKTREE_PATH="$wt_path"
+    return 0
+  fi
+
+  [[ -z "$base_repo" || ! -d "$base_repo" ]] && return 1
+
+  # Create worktree on the project branch
+  if git -C "$base_repo" show-ref --verify --quiet "refs/heads/${branch_name}" 2>/dev/null; then
+    git -C "$base_repo" worktree add "$wt_path" "$branch_name" 2>/dev/null || {
+      log_err "Failed to create story worktree for $story_id at $wt_path"
+      return 1
+    }
+  else
+    local base_branch="${BASE_BRANCH:-main}"
+    git -C "$base_repo" worktree add -b "$branch_name" "$wt_path" "$base_branch" 2>/dev/null || {
+      log_err "Failed to create story worktree with new branch for $story_id"
+      return 1
+    }
+  fi
+
+  # Install deps if needed
+  if [[ -f "$wt_path/bun.lockb" || -f "$wt_path/bun.lock" ]] && command -v bun >/dev/null 2>&1; then
+    (cd "$wt_path" && bun install --frozen-lockfile 2>/dev/null) || true
+  elif [[ -f "$wt_path/package-lock.json" ]]; then
+    (cd "$wt_path" && npm ci 2>/dev/null) || true
+  fi
+
+  STORY_WORKTREE_PATH="$wt_path"
+  log_ok "Story worktree ready: $wt_path ($story_id)"
+}
+
+# Pre-acquire file locks for a story BEFORE launching background process
+preacquire_swarm_locks() {
+  local story_id="$1"
+  local pid="$2"
+
+  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH" ]] && return 0
+
+  local lock_file="$REPO_PATH/.file-locks.json"
+  [[ -f "$lock_file" ]] || echo '{"version":1,"locks":[]}' > "$lock_file"
+
+  local story_files
+  story_files=$(jq -r --arg id "$story_id" '
+    .userStories[] | select(.id == $id) | .files // [] | .[]
+  ' "$PRD_PATH" 2>/dev/null) || return 0
+  [[ -z "$story_files" ]] && return 0
+
+  local now_ts
+  now_ts=$(ts)
+
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    jq --arg file "$f" \
+       --arg project "$PROJECT" \
+       --arg story "$story_id" \
+       --arg pid "$pid" \
+       --arg ts "$now_ts" \
+    '
+      .locks = ((.locks // []) | map(select(.file != $file or .owner.story != $story))) + [{
+        "file": $file,
+        "owner": {"project": $project, "story": $story, "pid": ($pid | tonumber)},
+        "acquired_at": $ts
+      }]
+    ' "$lock_file" > "$lock_file.tmp" && mv "$lock_file.tmp" "$lock_file"
+  done <<< "$story_files"
+}
+
+# Release file locks for a story
+release_swarm_locks() {
+  local story_id="$1"
+
+  [[ -z "$REPO_PATH" || ! -d "$REPO_PATH" ]] && return 0
+
+  local lock_file="$REPO_PATH/.file-locks.json"
+  [[ -f "$lock_file" ]] || return 0
+
+  jq --arg story "$story_id" '
+    .locks = [(.locks // [])[] | select(.owner.story != $story)]
+  ' "$lock_file" > "$lock_file.tmp" && mv "$lock_file.tmp" "$lock_file"
+}
+
+# Process a completed swarm member — validate git, check passes, update state
+process_swarm_completion() {
+  local story_id="$1"
+  local exit_code="$2"
+  local duration="$3"
+  local worktree_path="${4:-}"
+
+  local saved_repo="$REPO_PATH"
+  [[ -n "$worktree_path" && -d "$worktree_path" ]] && REPO_PATH="$worktree_path"
+
+  validate_git_state "$story_id"
+  run_codex_review "$story_id"
+
+  # Orchestrator writes passes based on output JSON
+  orchestrator_write_passes "$story_id"
+
+  # Check source of truth
+  local passes
+  passes=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
+
+  REPO_PATH="$saved_repo"
+
+  if [[ "$passes" == "true" ]]; then
+    local commit_sha files_changed
+    local check_repo="$saved_repo"
+    [[ -n "$worktree_path" && -d "$worktree_path" ]] && check_repo="$worktree_path"
+    commit_sha=$(git -C "$check_repo" rev-parse --short HEAD 2>/dev/null || echo "n/a")
+    files_changed=$(git -C "$check_repo" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
+      | jq -R -s 'split("\n") | map(select(length > 0))' || echo "[]")
+
+    update_state_completed "$story_id" "$commit_sha" "$files_changed"
+    release_checkout "$story_id"
+    release_swarm_locks "$story_id"
+
+    local story_title
+    story_title=$(get_story_title "$story_id")
+    echo "[$(ts)] $story_id: $story_title — completed in swarm (${duration}s) [$commit_sha]" >> "$PROGRESS_FILE"
+
+    "$AUDIT_SCRIPT" append --event story_completed --project "$PROJECT" \
+      ${COMPANY:+--company "$COMPANY"} \
+      --story-id "$story_id" \
+      --action "$(get_story_title "$story_id") (swarm)" \
+      --result success \
+      --duration-ms $(( duration * 1000 )) \
+      --session-id "$SESSION_ID" || true
+
+    sync_linear_done "$story_id"
+    log_ok "$story_id completed in swarm (${duration}s) [$commit_sha]"
+
+    completed_this_run=$((completed_this_run + 1))
+
+    # Check if regression gate is due
+    if (( completed_this_run % REGRESSION_INTERVAL == 0 && completed_this_run > 0 )); then
+      PENDING_REGRESSION_GATE="$story_id"
+    fi
+  else
+    log_err "$story_id: passes still false in swarm (exit=$exit_code, ${duration}s)"
+    update_state_failed "$story_id" "passes not set in swarm (exit=$exit_code)"
+    release_checkout "$story_id"
+    release_swarm_locks "$story_id"
+    retry_queue+=("$story_id")
+    echo "[$(ts)] $story_id: FAILED in swarm — queued for retry" >> "$PROGRESS_FILE"
+
+    "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
+      ${COMPANY:+--company "$COMPANY"} \
+      --story-id "$story_id" \
+      --result fail \
+      --duration-ms $(( duration * 1000 )) \
+      --error "passes not set in swarm (exit=$exit_code)" \
+      --session-id "$SESSION_ID" || true
+  fi
+}
+
+# Monitor swarm until all members complete. Polls PIDs, prints check-in status.
+monitor_swarm_loop() {
+  local poll_interval=15
+  local last_checkin
+  last_checkin=$(date +%s)
+
+  while true; do
+    local now
+    now=$(date +%s)
+
+    # Check-in print
+    if (( now - last_checkin >= CHECKIN_INTERVAL )); then
+      print_checkin_status
+      last_checkin=$now
+    fi
+
+    # Check each PID for completion
+    local all_done=true
+    local i=0
+    while [[ $i -lt ${#SWARM_PIDS[@]} ]]; do
+      if [[ "${SWARM_DONE[$i]}" == "true" ]]; then
+        i=$((i + 1)); continue
+      fi
+
+      local pid="${SWARM_PIDS[$i]}"
+      local sid="${SWARM_STORY_IDS[$i]}"
+      local wt="${SWARM_WORKTREES[$i]}"
+      local start="${SWARM_START_TIMES[$i]}"
+
+      if ! kill -0 "$pid" 2>/dev/null; then
+        # Process exited — collect
+        local ec=0
+        wait "$pid" 2>/dev/null || ec=$?
+        SWARM_DONE[$i]="true"
+        local dur=$(( now - start ))
+
+        log_info "Swarm member $sid exited (PID $pid, exit=$ec, ${dur}s)"
+        process_swarm_completion "$sid" "$ec" "$dur" "$wt"
+      else
+        all_done=false
+      fi
+
+      i=$((i + 1))
+    done
+
+    [[ "$all_done" == "true" ]] && break
+
+    sleep "$poll_interval"
+  done
+}
+
+# Cherry-pick commits from each story worktree into the main project worktree
+merge_swarm_commits() {
+  local base_repo="${ORIGINAL_REPO_PATH:-$REPO_PATH}"
+  [[ -z "$base_repo" || ! -d "$base_repo" ]] && return 0
+  is_git_repo "$base_repo" || return 0
+
+  local i=0
+  while [[ $i -lt ${#SWARM_STORY_IDS[@]} ]]; do
+    local sid="${SWARM_STORY_IDS[$i]}"
+    local wt="${SWARM_WORKTREES[$i]}"
+    i=$((i + 1))
+
+    [[ -z "$wt" || ! -d "$wt" || "$wt" == "$base_repo" ]] && continue
+    [[ "${SWARM_DONE[$((i - 1))]}" != "true" ]] && continue
+
+    # Check if story actually passed
+    local passed
+    passed=$(jq -r --arg id "$sid" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH" 2>/dev/null) || true
+    [[ "$passed" != "true" ]] && continue
+
+    # Get the commit SHA from the story worktree
+    local wt_sha
+    wt_sha=$(git -C "$wt" rev-parse HEAD 2>/dev/null) || continue
+    local base_sha
+    base_sha=$(git -C "$base_repo" rev-parse HEAD 2>/dev/null) || continue
+
+    # Skip if same commit (worktree was on the same branch tip)
+    [[ "$wt_sha" == "$base_sha" ]] && continue
+
+    # Cherry-pick the latest commit(s) from the worktree
+    log_info "Merging swarm commits from $sid ($wt_sha) into main worktree"
+    git -C "$base_repo" cherry-pick "$wt_sha" --no-verify 2>/dev/null || {
+      # If cherry-pick fails, try merge approach
+      log_warn "Cherry-pick failed for $sid — attempting merge"
+      git -C "$base_repo" cherry-pick --abort 2>/dev/null || true
+      git -C "$base_repo" merge "$wt_sha" --no-edit --no-verify -m "[orchestrator] merge swarm: $sid" 2>/dev/null || {
+        log_err "Could not merge swarm commits for $sid — manual resolution needed"
+        log_err "  Worktree: $wt (commit: $wt_sha)"
+      }
+    }
+  done
+}
+
+# Clean up per-story worktrees after swarm batch
+cleanup_swarm_worktrees() {
+  local base_repo="${ORIGINAL_REPO_PATH:-$REPO_PATH}"
+  [[ -z "$base_repo" || ! -d "$base_repo" ]] && return 0
+
+  local i=0
+  while [[ $i -lt ${#SWARM_WORKTREES[@]} ]]; do
+    local wt="${SWARM_WORKTREES[$i]}"
+    local sid="${SWARM_STORY_IDS[$i]}"
+    i=$((i + 1))
+
+    [[ -z "$wt" || ! -d "$wt" ]] && continue
+
+    local dirty
+    dirty=$(git -C "$wt" status --porcelain 2>/dev/null) || true
+    if [[ -n "$dirty" ]]; then
+      log_warn "Swarm worktree $sid has uncommitted changes — skipping cleanup"
+      continue
+    fi
+
+    git -C "$base_repo" worktree remove "$wt" --force 2>/dev/null || {
+      log_warn "Could not auto-remove swarm worktree $wt"
+    }
+  done
+}
+
+# =============================================================================
 # Main Orchestration Loop
 # =============================================================================
 
@@ -1445,154 +2189,393 @@ completed_this_run=0
 retry_queue=()
 checkout_skipped=()
 
-echo -e "${BOLD}Starting execution loop...${NC}\n"
+if [[ "$SWARM_MODE" == true ]]; then
+  echo -e "${BOLD}Starting execution loop (swarm mode, max $SWARM_MAX concurrent)...${NC}\n"
+else
+  echo -e "${BOLD}Starting execution loop...${NC}\n"
+fi
 
-while true; do
-  # Re-read PRD each iteration (execute-task may have updated passes)
-  read_prd_stats
+if [[ "$SWARM_MODE" == true ]]; then
+  # =========================================================================
+  # Swarm Mode Loop
+  # =========================================================================
+  while true; do
+    read_prd_stats
+    [[ "$REMAINING" -eq 0 ]] && break
 
-  if [[ "$REMAINING" -eq 0 ]]; then
-    break
-  fi
+    # Get all eligible stories that can run in parallel
+    local_candidates=""
+    local_candidates=$(get_swarm_candidates) || true
 
-  # Get next unblocked story
-  STORY_ID=$(get_next_story)
+    if [[ -z "$local_candidates" ]]; then
+      # No candidates at all — check if blocked or truly done
+      STORY_ID=$(get_next_story) || true
+      if [[ -z "$STORY_ID" ]]; then
+        log_warn "All remaining stories are blocked by dependencies."
+        jq -r '.userStories[] | select(.passes != true) | "  \(.id): needs \(.dependsOn | join(", "))"' "$PRD_PATH"
+        break
+      fi
+      # Single story without files[] declared — fall through to sequential
+      local_candidates="$STORY_ID"
+    fi
 
-  if [[ -z "$STORY_ID" ]]; then
-    # All remaining stories are blocked
-    log_warn "All remaining stories are blocked by dependencies."
-    jq -r '.userStories[] | select(.passes != true) | "  \(.id): needs \(.dependsOn | join(", "))"' "$PRD_PATH"
-    break
-  fi
+    # Count candidates
+    local_count=0
+    local_first=""
+    while IFS= read -r cand; do
+      [[ -z "$cand" ]] && continue
+      local_count=$((local_count + 1))
+      [[ -z "$local_first" ]] && local_first="$cand"
+    done <<< "$local_candidates"
 
-  STORY_TITLE=$(get_story_title "$STORY_ID")
+    if [[ "$local_count" -le 1 ]]; then
+      # Single candidate — run sequentially with check-in timer
+      STORY_ID="$local_first"
+      STORY_TITLE=$(get_story_title "$STORY_ID")
 
-  # Skip if in retry queue or already checkout-skipped (will retry later)
-  if [[ ${#retry_queue[@]} -gt 0 ]] && printf '%s\n' "${retry_queue[@]}" | grep -qx "$STORY_ID"; then
-    break
-  fi
-  if [[ ${#checkout_skipped[@]} -gt 0 ]] && printf '%s\n' "${checkout_skipped[@]}" | grep -qx "$STORY_ID"; then
-    break  # All available stories are checkout-blocked — stop
-  fi
+      echo -e "${BOLD}=== $STORY_ID: $STORY_TITLE === ($COMPLETED/$TOTAL)${NC}"
 
-  echo -e "${BOLD}=== $STORY_ID: $STORY_TITLE === ($COMPLETED/$TOTAL)${NC}"
+      if ! checkout_story "$STORY_ID"; then
+        log_warn "$STORY_ID checked out by another process — skipping"
+        checkout_skipped+=("$STORY_ID")
+        # Avoid infinite loop on checkout-blocked
+        if [[ ${#checkout_skipped[@]} -ge "$REMAINING" ]]; then break; fi
+        continue
+      fi
 
-  # Checkout: acquire story-level lock before dispatch
-  if ! checkout_story "$STORY_ID"; then
-    checkout_skipped+=("$STORY_ID")
-    continue  # Another live PID holds this story — try next
-  fi
+      update_state_current "$STORY_ID"
+      sync_linear_start "$STORY_ID"
 
-  # Update state: current task
-  update_state_current "$STORY_ID"
+      log_info "Running story $STORY_ID..."
+      story_start=$(date +%s)
 
-  # PRE-TASK: Linear sync — set issue In Progress + comment (best-effort)
-  sync_linear_start "$STORY_ID"
-
-  # Execute story
-  attempt=1
-  story_passed=false
-
-  while [[ "$attempt" -le 2 ]]; do
-    log_info "Running story $STORY_ID (attempt $attempt)..."
-    story_start=$(date +%s)
-
-    "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
-      ${COMPANY:+--company "$COMPANY"} \
-      --story-id "$STORY_ID" \
-      --action "Dispatching $STORY_ID (attempt $attempt): $STORY_TITLE" \
-      --session-id "$SESSION_ID" || true
-
-    exit_code=0
-    run_story "$STORY_ID" "$PROJECT" "$PRD_REL" || exit_code=$?
-
-    story_end=$(date +%s)
-    duration=$(( story_end - story_start ))
-
-    # POST-INVOCATION: Validate git state (self-healing)
-    validate_git_state "$STORY_ID"
-
-    # POST-INVOCATION: Codex review safety net (best-effort)
-    run_codex_review "$STORY_ID"
-
-    # Check source of truth: did passes get set to true?
-    passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
-
-    if [[ "$passes" == "true" ]]; then
-      commit_sha=$(get_commit_sha)
-      files_changed=$(get_changed_files "$STORY_ID")
-
-      update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
-      release_checkout
-      echo "[$(ts)] $STORY_ID: $STORY_TITLE — completed (${duration}s) [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
-
-      "$AUDIT_SCRIPT" append --event story_completed --project "$PROJECT" \
+      "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
         ${COMPANY:+--company "$COMPANY"} \
         --story-id "$STORY_ID" \
-        --action "$STORY_TITLE" \
-        --result success \
-        --duration-ms $(( duration * 1000 )) \
+        --action "Dispatching $STORY_ID: $STORY_TITLE" \
         --session-id "$SESSION_ID" || true
 
-      # POST-TASK: Linear sync → Done (best-effort)
-      sync_linear_done "$STORY_ID"
+      # Background check-in timer
+      ( while true; do sleep "$CHECKIN_INTERVAL"; print_checkin_status; done ) &
+      CHECKIN_PID=$!
 
-      log_ok "$STORY_ID completed in ${duration}s [$commit_sha] ($COMPLETED/$TOTAL)"
-      story_passed=true
-      completed_this_run=$((completed_this_run + 1))
-      break
-    else
-      log_err "$STORY_ID: passes still false after invocation (exit=$exit_code, ${duration}s)"
+      exit_code=0
+      run_story "$STORY_ID" "$PROJECT" "$PRD_REL" || exit_code=$?
 
-      handle_failure "$STORY_ID" "$attempt"
-      result=$?
+      kill "$CHECKIN_PID" 2>/dev/null; wait "$CHECKIN_PID" 2>/dev/null || true
 
-      case $result in
-        0) attempt=$((attempt + 1)); continue ;;  # retry
-        2) # skip
-          retry_queue+=("$STORY_ID")
-          update_state_failed "$STORY_ID" "passes not set after attempt $attempt"
-          release_checkout
-          echo "[$(ts)] $STORY_ID: FAILED — queued for retry ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
-          "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
-            ${COMPANY:+--company "$COMPANY"} \
-            --story-id "$STORY_ID" \
-            --action "$STORY_TITLE" \
-            --result fail \
-            --duration-ms $(( duration * 1000 )) \
-            --error "passes not set after attempt $attempt (exit=$exit_code)" \
-            --session-id "$SESSION_ID" || true
-          break
-          ;;
-        3) # pause
-          release_checkout
-          jq --arg ts "$(ts)" '.status = "paused" | .updated_at = $ts' "$STATE_FILE" > "$STATE_FILE.tmp" \
-            && mv "$STATE_FILE.tmp" "$STATE_FILE"
-          "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
-            ${COMPANY:+--company "$COMPANY"} \
-            --story-id "$STORY_ID" \
-            --action "$STORY_TITLE" \
-            --result fail \
-            --duration-ms $(( duration * 1000 )) \
-            --error "paused by user after attempt $attempt (exit=$exit_code)" \
-            --session-id "$SESSION_ID" || true
-          log_warn "Paused. Resume: scripts/run-project.sh --resume $PROJECT"
-          exit 0
-          ;;
-      esac
+      story_end=$(date +%s)
+      duration=$(( story_end - story_start ))
+
+      validate_git_state "$STORY_ID"
+      run_codex_review "$STORY_ID"
+
+      # Orchestrator writes passes (source of truth)
+      orchestrator_write_passes "$STORY_ID"
+
+      passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
+
+      if [[ "$passes" == "true" ]]; then
+        commit_sha=$(get_commit_sha)
+        files_changed=$(get_changed_files "$STORY_ID")
+        update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
+        release_checkout "$STORY_ID"
+        echo "[$(ts)] $STORY_ID: $STORY_TITLE — completed (${duration}s) [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
+
+        "$AUDIT_SCRIPT" append --event story_completed --project "$PROJECT" \
+          ${COMPANY:+--company "$COMPANY"} \
+          --story-id "$STORY_ID" --action "$STORY_TITLE" \
+          --result success --duration-ms $(( duration * 1000 )) \
+          --session-id "$SESSION_ID" || true
+
+        sync_linear_done "$STORY_ID"
+        log_ok "$STORY_ID completed in ${duration}s [$commit_sha] ($COMPLETED/$TOTAL)"
+        completed_this_run=$((completed_this_run + 1))
+
+        if (( completed_this_run % REGRESSION_INTERVAL == 0 && completed_this_run > 0 )); then
+          run_regression_gate "$STORY_ID"
+        fi
+      else
+        log_err "$STORY_ID: passes still false (exit=$exit_code, ${duration}s)"
+        retry_queue+=("$STORY_ID")
+        update_state_failed "$STORY_ID" "passes not set (exit=$exit_code)"
+        release_checkout "$STORY_ID"
+        echo "[$(ts)] $STORY_ID: FAILED — queued for retry ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
+
+        "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
+          ${COMPANY:+--company "$COMPANY"} \
+          --story-id "$STORY_ID" --action "$STORY_TITLE" \
+          --result fail --duration-ms $(( duration * 1000 )) \
+          --error "passes not set (exit=$exit_code)" \
+          --session-id "$SESSION_ID" || true
+      fi
+
+      qmd update 2>/dev/null || true
+      echo ""
+      continue
     fi
+
+    # Multiple candidates — dispatch swarm batch
+    echo -e "${BOLD}=== Swarm Batch: $local_count stories in parallel ===${NC}"
+
+    # Reset swarm arrays
+    SWARM_STORY_IDS=()
+    SWARM_PIDS=()
+    SWARM_WORKTREES=()
+    SWARM_START_TIMES=()
+    SWARM_DONE=()
+    PENDING_REGRESSION_GATE=""
+
+    while IFS= read -r cand_id; do
+      [[ -z "$cand_id" ]] && continue
+
+      local cand_title
+      cand_title=$(get_story_title "$cand_id")
+      echo -e "  ${BLUE}Dispatching:${NC} $cand_id — $cand_title"
+
+      # Checkout lock
+      if ! checkout_story "$cand_id"; then
+        log_warn "$cand_id checked out by another process — skipping in swarm"
+        continue
+      fi
+
+      # Pre-acquire file locks
+      preacquire_swarm_locks "$cand_id" "$$"
+
+      # Create per-story worktree
+      ensure_story_worktree "$cand_id"
+      local wt_path="${STORY_WORKTREE_PATH:-}"
+
+      # Linear sync
+      sync_linear_start "$cand_id"
+
+      # Add to state
+      update_state_add_task "$cand_id" "" "$wt_path"
+
+      "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
+        ${COMPANY:+--company "$COMPANY"} \
+        --story-id "$cand_id" \
+        --action "Dispatching $cand_id (swarm): $cand_title" \
+        --session-id "$SESSION_ID" || true
+
+      # Launch background
+      local batch_start
+      batch_start=$(date +%s)
+
+      run_story_background "$cand_id" "$wt_path"
+
+      SWARM_STORY_IDS+=("$cand_id")
+      SWARM_PIDS+=("$LAST_BG_PID")
+      SWARM_WORKTREES+=("$wt_path")
+      SWARM_START_TIMES+=("$batch_start")
+      SWARM_DONE+=("false")
+
+      # Update state with PID
+      update_state_add_task "$cand_id" "$LAST_BG_PID" "$wt_path"
+
+      log_info "$cand_id dispatched (PID $LAST_BG_PID, worktree: ${wt_path:-none})"
+    done <<< "$local_candidates"
+
+    if [[ ${#SWARM_PIDS[@]} -eq 0 ]]; then
+      log_warn "No stories could be dispatched in swarm batch — all checkout-blocked"
+      break
+    fi
+
+    echo -e "\n${BOLD}Monitoring ${#SWARM_PIDS[@]} stories...${NC}\n"
+
+    # Block until all complete
+    monitor_swarm_loop
+
+    # Merge worktree commits into main branch
+    merge_swarm_commits
+
+    # Clean up worktrees
+    cleanup_swarm_worktrees
+
+    # Run pending regression gate if any
+    if [[ -n "$PENDING_REGRESSION_GATE" ]]; then
+      run_regression_gate "$PENDING_REGRESSION_GATE"
+      PENDING_REGRESSION_GATE=""
+    fi
+
+    # Reindex
+    qmd update 2>/dev/null || true
+
+    echo ""
   done
 
-  # REGRESSION GATE: every N completed stories
-  if [[ "$story_passed" == true && $((completed_this_run % REGRESSION_INTERVAL)) -eq 0 && "$completed_this_run" -gt 0 ]]; then
-    run_regression_gate "$STORY_ID"
-  fi
+else
+  # =========================================================================
+  # Sequential Mode Loop (with check-in timer)
+  # =========================================================================
+  while true; do
+    # Re-read PRD each iteration (execute-task may have updated passes)
+    read_prd_stats
 
-  # Reindex
-  qmd update 2>/dev/null || true
+    if [[ "$REMAINING" -eq 0 ]]; then
+      break
+    fi
 
-  echo ""
-done
+    # Build skip list from retry queue + checkout-skipped
+    skip_ids=""
+    if [[ ${#retry_queue[@]} -gt 0 ]]; then
+      skip_ids=$(printf '%s\n' "${retry_queue[@]}")
+    fi
+    if [[ ${#checkout_skipped[@]} -gt 0 ]]; then
+      local more_skips
+      more_skips=$(printf '%s\n' "${checkout_skipped[@]}")
+      if [[ -n "$skip_ids" ]]; then
+        skip_ids="$skip_ids"$'\n'"$more_skips"
+      else
+        skip_ids="$more_skips"
+      fi
+    fi
+
+    # Get next unblocked story (skipping retry queue + checkout-blocked)
+    STORY_ID=$(get_next_story "$skip_ids")
+
+    if [[ -z "$STORY_ID" ]]; then
+      # All remaining stories are blocked or skipped
+      if [[ ${#retry_queue[@]} -gt 0 || ${#checkout_skipped[@]} -gt 0 ]]; then
+        log_warn "All remaining stories are either blocked, in retry queue, or checkout-locked."
+      else
+        log_warn "All remaining stories are blocked by dependencies."
+        jq -r '.userStories[] | select(.passes != true) | "  \(.id): needs \(.dependsOn | join(", "))"' "$PRD_PATH"
+      fi
+      break
+    fi
+
+    STORY_TITLE=$(get_story_title "$STORY_ID")
+
+    echo -e "${BOLD}=== $STORY_ID: $STORY_TITLE === ($COMPLETED/$TOTAL)${NC}"
+
+    # Checkout: acquire story-level lock before dispatch
+    if ! checkout_story "$STORY_ID"; then
+      checkout_skipped+=("$STORY_ID")
+      continue  # Another live PID holds this story — try next
+    fi
+
+    # Update state: current task
+    update_state_current "$STORY_ID"
+
+    # PRE-TASK: Linear sync — set issue In Progress + comment (best-effort)
+    sync_linear_start "$STORY_ID"
+
+    # Execute story
+    attempt=1
+    story_passed=false
+
+    while [[ "$attempt" -le 2 ]]; do
+      log_info "Running story $STORY_ID (attempt $attempt)..."
+      story_start=$(date +%s)
+
+      "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
+        ${COMPANY:+--company "$COMPANY"} \
+        --story-id "$STORY_ID" \
+        --action "Dispatching $STORY_ID (attempt $attempt): $STORY_TITLE" \
+        --session-id "$SESSION_ID" || true
+
+      # Background check-in timer
+      ( while true; do sleep "$CHECKIN_INTERVAL"; print_checkin_status; done ) &
+      CHECKIN_PID=$!
+
+      exit_code=0
+      run_story "$STORY_ID" "$PROJECT" "$PRD_REL" || exit_code=$?
+
+      # Stop check-in timer
+      kill "$CHECKIN_PID" 2>/dev/null; wait "$CHECKIN_PID" 2>/dev/null || true
+
+      story_end=$(date +%s)
+      duration=$(( story_end - story_start ))
+
+      # POST-INVOCATION: Validate git state (self-healing)
+      validate_git_state "$STORY_ID"
+
+      # POST-INVOCATION: Codex review safety net (best-effort)
+      run_codex_review "$STORY_ID"
+
+      # Orchestrator writes passes (source of truth)
+      orchestrator_write_passes "$STORY_ID"
+
+      # Check source of truth: did passes get set to true?
+      passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
+
+      if [[ "$passes" == "true" ]]; then
+        commit_sha=$(get_commit_sha)
+        files_changed=$(get_changed_files "$STORY_ID")
+
+        update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
+        release_checkout "$STORY_ID"
+        echo "[$(ts)] $STORY_ID: $STORY_TITLE — completed (${duration}s) [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
+
+        "$AUDIT_SCRIPT" append --event story_completed --project "$PROJECT" \
+          ${COMPANY:+--company "$COMPANY"} \
+          --story-id "$STORY_ID" \
+          --action "$STORY_TITLE" \
+          --result success \
+          --duration-ms $(( duration * 1000 )) \
+          --session-id "$SESSION_ID" || true
+
+        # POST-TASK: Linear sync → Done (best-effort)
+        sync_linear_done "$STORY_ID"
+
+        log_ok "$STORY_ID completed in ${duration}s [$commit_sha] ($COMPLETED/$TOTAL)"
+        story_passed=true
+        completed_this_run=$((completed_this_run + 1))
+        break
+      else
+        log_err "$STORY_ID: passes still false after invocation (exit=$exit_code, ${duration}s)"
+
+        result=0
+        handle_failure "$STORY_ID" "$attempt" || result=$?
+
+        case $result in
+          0) attempt=$((attempt + 1)); continue ;;  # retry
+          2) # skip
+            retry_queue+=("$STORY_ID")
+            update_state_failed "$STORY_ID" "passes not set after attempt $attempt"
+            release_checkout "$STORY_ID"
+            echo "[$(ts)] $STORY_ID: FAILED — queued for retry ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
+            "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
+              ${COMPANY:+--company "$COMPANY"} \
+              --story-id "$STORY_ID" \
+              --action "$STORY_TITLE" \
+              --result fail \
+              --duration-ms $(( duration * 1000 )) \
+              --error "passes not set after attempt $attempt (exit=$exit_code)" \
+              --session-id "$SESSION_ID" || true
+            break
+            ;;
+          3) # pause
+            release_checkout "$STORY_ID"
+            jq --arg ts "$(ts)" '.status = "paused" | .updated_at = $ts' "$STATE_FILE" > "$STATE_FILE.tmp" \
+              && mv "$STATE_FILE.tmp" "$STATE_FILE"
+            "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
+              ${COMPANY:+--company "$COMPANY"} \
+              --story-id "$STORY_ID" \
+              --action "$STORY_TITLE" \
+              --result fail \
+              --duration-ms $(( duration * 1000 )) \
+              --error "paused by user after attempt $attempt (exit=$exit_code)" \
+              --session-id "$SESSION_ID" || true
+            log_warn "Paused. Resume: scripts/run-project.sh --resume $PROJECT"
+            exit 0
+            ;;
+        esac
+      fi
+    done
+
+    # REGRESSION GATE: every N completed stories
+    if [[ "$story_passed" == true && $((completed_this_run % REGRESSION_INTERVAL)) -eq 0 && "$completed_this_run" -gt 0 ]]; then
+      run_regression_gate "$STORY_ID"
+    fi
+
+    # Reindex
+    qmd update 2>/dev/null || true
+
+    echo ""
+  done
+fi
 
 # =============================================================================
 # Retry Pass
