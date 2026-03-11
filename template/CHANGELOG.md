@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.0.1 (2026-03-10)
+
+### Fixed
+
+- **`run-project.sh` — bash 3.2 crash** — 8 `local` declarations outside functions caused `set -e` to exit the script on macOS (bash 3.2). Affected swarm dispatch, sequential retry-skip, and project completion code paths. Replaced with plain variable assignments.
+- **`run-project.sh` — worktree self-removal** — When `branchName` matches the repo's current checkout (e.g., both are `main`), `ensure_worktree()` now detects this and skips worktree setup instead of "reusing" the main repo as a worktree. Prevents `cleanup_worktree()` from attempting to `git worktree remove` the main working directory on exit.
+
 ## v8.0.0 (2026-03-10)
 
 Policy-first system — all major commands now scan and enforce policies. `/learn` rewrite creates policy files as primary output. 1 new command (`/strategize`), smarter regression gates.
