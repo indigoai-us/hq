@@ -455,3 +455,4 @@ Options:
 - **Do NOT use EnterPlanMode or TodoWrite** -- the task classification and skill sequencing replace ad-hoc planning. Follow the steps in order
 - **Always reindex after task completion** -- `qmd update` after every completed task (step 7d)
 - **Skill chains replace workers** -- resolve skill chain from SKILL.md, not worker.yaml
+- **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- this creates separate git worktrees per agent, scattering commits across branches. Sub-agents must work in the same directory as the orchestrator (either main or a shared worktree managed by `/run-loop`)

@@ -160,6 +160,9 @@ while (open subtasks remain):
         the full skill chain, task closure, execution state,
         and learning capture -- all via /execute-task.
 
+        IMPORTANT: Do NOT set isolation: "worktree" on the Agent/Task call.
+        All sub-agents must work in the same shared directory.
+
         Task({
           description: "Execute {subtask.id}: {subtask.title}",
           prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
@@ -377,6 +380,7 @@ COMPLETED:
 - **Work mode: main or worktree only** -- NEVER create feature branches. Always ask the user which mode before starting.
 - **If worktree: ask merge or PR on completion** -- never assume one or the other.
 - **Zero accumulation** -- receives only structured JSON back from sub-agents. Discards everything else.
+- **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- the Claude Code `isolation: "worktree"` parameter creates a SEPARATE git worktree per agent invocation, scattering commits across branches. Instead, manage worktrees via `git worktree add` in Step 3 and pass the working directory to all sub-agents. All sub-agents must work in the SAME directory (either main or a single shared worktree).
 
 ## Integration
 
