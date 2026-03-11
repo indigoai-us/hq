@@ -1,6 +1,11 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "bypassPermissions",
+    "ask": [
+      "Bash(cd ..*)",
+      "Bash(cd /*)",
+      "Bash(cd ~/*)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
