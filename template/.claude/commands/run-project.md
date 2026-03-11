@@ -114,25 +114,25 @@ When all stories have `passes: true`:
 
 1. **Board sync** → `done`
 2. **Summary report** → `workspace/reports/{project}-summary.md`
-3. **Doc sweep** — interactive, runs after bash script returns to the session
-   Scan 3 doc layers for stale/missing content based on completed stories:
+3. **Doc sweep** — headless `claude -p` invocation updates 4 doc layers:
 
-   a. **HQ knowledge** (`companies/{co}/knowledge/`):
-      - Do completed stories introduce architecture, integrations, or processes not in existing knowledge?
-      - `qmd search "{topic}" -c {co} --json -n 3` for each major topic from story titles
-      - Propose CREATE for undocumented topics, UPDATE for stale existing docs
+   a. **Internal docs** (team-facing: tech guides, SOPs, manuals, ontology, taxonomy)
+      - `{repoPath}/docs/` or similar MDX dirs
+      - New APIs, services, patterns, config not yet documented
 
-   b. **Repo docs** (`{repoPath}/README.md`, `{repoPath}/docs/`, `{repoPath}/.claude/CLAUDE.md`):
-      - Is README boilerplate or stale? (`grep "create-next-app\|TODO\|TBD"`)
-      - Do new API routes, env vars, or features need documenting?
-      - Is `.claude/CLAUDE.md` missing repo-specific agent context?
+   b. **External docs** (customer/vendor-facing documentation)
+      - `{repoPath}/docs/` or published doc site
+      - User-facing features needing doc updates. Skip if no external surface
 
-   c. **External docs** (knowledge sites):
-      - If company has a published knowledge site, flag new publishable content
+   c. **Repo knowledge** (agent context)
+      - `{repoPath}/.claude/CLAUDE.md`, `{repoPath}/.claude/policies/`
+      - New patterns, gotchas, file locations from project execution
 
-   Present proposals via AskUserQuestion (apply all / pick / skip).
-   Execute approved items. Commit to appropriate repos (knowledge repo, project repo).
-   The bash script writes `doc-sweep-flag.json` to state dir as a reminder.
+   d. **Company knowledge** (business knowledge)
+      - `companies/{co}/knowledge/` — SEPARATE git repo, committed independently
+      - Architecture, integration, process docs
+
+   Output: `{execDir}/doc-sweep.output.json`. Non-blocking on failure.
 
 4. **INDEX.md** — flag for rebuild (deferred to `/cleanup`)
 5. **Manifest verification** — check repos/workers registered
