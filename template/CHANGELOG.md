@@ -14,7 +14,11 @@ Policy-first system — all major commands now scan and enforce policies. `/lear
 - **`/learn` — Scan existing policies** (Step 4.5) — Before creating new rules, scans existing policy files for updates. Prevents duplicate policies.
 - **`/learn` — Policy file output** — Primary output is now structured policy files (YAML frontmatter + Rule + Rationale) in scope-appropriate directories. Worker.yaml injection retained as fallback for worker-specific learnings only.
 - **`run-project.sh` — Regression baseline** — Captures pre-existing error counts on first gate run. Only flags errors above baseline as regressions, preventing false positives in repos with pre-existing issues.
-- **`run-project.sh` — Doc sweep flag** — Writes `doc-sweep-flag.json` on project completion for interactive documentation review.
+- **`run-project.sh` — Headless doc sweep** — `run_doc_sweep()` runs `claude -p` to update 4 documentation layers (internal docs, external docs, repo knowledge, company knowledge) after project completion. Replaces interactive doc-sweep-flag.json.
+- **`run-project.sh` — Swarm mode** (`--swarm [N]`) — Parallel story execution via git worktrees. Pre-acquires file locks, dispatches eligible stories as background `claude -p` processes, monitors PIDs with periodic check-ins, cherry-picks commits sequentially. Stories without `files[]` are never swarmed.
+- **`run-project.sh` — Signal trapping** — `cleanup_on_signal()` catches SIGINT/SIGTERM, kills swarm children, releases locks/checkouts, sets state to "paused".
+- **`run-project.sh` — Worktree isolation** — Each project gets its own git worktree for branch isolation. `check_repo_conflict()` detects concurrent orchestrators on the same repo. `ensure_worktree()` / `cleanup_worktree()` manage lifecycle.
+- **`settings/orchestrator.yaml` — Swarm config** — New `swarm:` section with `max_concurrency`, `checkin_interval_seconds`, `require_files_declared`.
 - **New command** — `/strategize` for strategic prioritization with optional deep review.
 
 ### Changed
@@ -25,7 +29,8 @@ Policy-first system — all major commands now scan and enforce policies. `/lear
 - **`/prd`** — Now loads repo policies in addition to company policies during PRD creation.
 - **`/run`** — Now policy-aware: determines company from worker path and loads applicable policies.
 - **`/audit`**, **`/handoff`**, **`/harness-audit`**, **`/model-route`** — Various improvements.
-- **`run-project.sh`** — Regression gates upgraded with baseline comparison (57 new lines). Doc sweep flag in completion flow.
+- **`run-project.sh`** — Regression gates upgraded with baseline comparison. Headless doc sweep. Swarm mode (+716 lines). Signal trapping. Worktree isolation. Budget caps removed.
+- **`/execute-task`** — Self-owned lock skip (orchestrator pre-acquires for swarm). Orchestrator writes `passes` (single-writer pattern).
 - **CLAUDE.md** — Added Standard Policy Loading Protocol to Policies section. Updated command count to 44+.
 
 ---
