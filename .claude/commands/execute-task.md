@@ -99,7 +99,8 @@ Analyze task title, description, and acceptance criteria. Match against patterns
 | `ui` | component, page, form, button, React, UI, responsive, CSS |
 | `full-stack` | Combination of backend + frontend indicators |
 | `content` | docs, README, copy, content, marketing |
-| `enhancement` | animation, polish, refactor, optimization, bug fix, UX |
+| `bug` | fix, broken, stale, regression, crash, error, doesn't work, incorrect |
+| `enhancement` | animation, polish, refactor, optimization, UX improvement |
 
 Report classification:
 ```
@@ -314,6 +315,70 @@ After each phase, construct handoff for the next skill:
     "typecheck": "pass"
   }
 }
+```
+
+### 6.5 Bug Fix Verification Gate (bug tasks only)
+
+**Skip unless** the task type is `enhancement` with bug indicators (label `bug`, title contains "fix", "broken", "stale", "regression", etc.).
+
+**Goal:** Verify the fix works in the running app via agent-browser, then write an E2E test that locks in the fix so the bug cannot regress.
+
+**This gate runs after the implementation skill phase(s) but BEFORE code-reviewer and qa phases.**
+
+#### 6.5a: Verify Fix in Running App
+
+1. **Connect to the running app** (same method as brainstorm Step 2.5):
+   - Web: `agent-browser open <url>` → `agent-browser snapshot -ic`
+   - Electron/CDP: `agent-browser --cdp 9222 snapshot -ic`
+
+2. **Reproduce the original bug flow** — follow the exact steps from the bug report
+3. **Confirm the fix works** — screenshot + snapshot showing correct behavior
+4. **If fix does NOT work:** STOP. Do not proceed to code review. Debug further.
+
+**Critical rule: Never commit a bug fix without verifying it in the running app.** Code reading alone is not verification.
+
+#### 6.5b: Write Regression E2E Test
+
+After verifying the fix works:
+
+1. **Write an E2E test** that exercises the exact user flow that was broken:
+   - The test should **fail without the fix** and **pass with the fix**
+   - Test the user-visible behavior, not internal implementation
+   - Place in the project's E2E test directory (e.g. `tests/`, `e2e/`, `playwright/`)
+
+2. **Run the test** to confirm it passes with the current code
+
+3. **Add the test file** to the commit with the fix
+
+Example pattern:
+```typescript
+// e2e/org-switch.spec.ts
+test('switching org updates sidebar footer and settings data', async ({ page }) => {
+  // Login and verify initial state
+  await page.goto('/');
+  await expect(page.locator('[data-user-profile-button]')).toContainText('Org A');
+
+  // Switch org via dropdown
+  await page.click('[data-user-profile-button]');
+  await page.click('[data-org="org-b"]');
+
+  // Verify sidebar footer updated (this was the bug)
+  await expect(page.locator('[data-user-profile-button]')).toContainText('Org B');
+
+  // Verify settings page shows new org data
+  await page.goto('/settings/members');
+  await expect(page.locator('[data-member-list]')).not.toContainText('Old Org Member');
+});
+```
+
+**If E2E infrastructure doesn't exist:** Write a unit/integration test instead that covers the same logic. The test must exist — skipping is not an option for bug fixes.
+
+**Output:** Append to the skill handoff context:
+```
+Bug verification:
+- Fix verified in-app: yes
+- E2E test written: {test file path}
+- E2E test passes: yes
 ```
 
 ### 7. Complete Task

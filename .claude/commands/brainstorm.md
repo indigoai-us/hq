@@ -94,40 +94,68 @@ Repo context ({repo name}):
 
 **Skip unless** the task description, title, or labels indicate a **bug** (e.g. label `bug`, words like "broken", "error", "crash", "regression", "doesn't work").
 
-**Goal:** Reproduce the bug with `agent-browser` to confirm behavior, capture evidence, and gather debugging context before exploring approaches.
+**Goal:** Reproduce the bug in the **running application** to confirm behavior, identify the exact code path, capture evidence, and gather debugging context before exploring approaches. **Do NOT start coding a fix until reproduction is complete.**
 
 **Procedure:**
 
 1. **Identify reproduction target** from the task description — URL, app screen, or user flow
 2. **Load the browser-automation skill** (read `.claude/skills/browser-automation/SKILL.md`) for command reference
-3. **Reproduce:**
+3. **Connect to the running app:**
+
+   **For web apps:**
    ```bash
    agent-browser open <url>
    agent-browser wait --load networkidle
    agent-browser snapshot -ic
    ```
-   Follow the steps described in the bug report. After each significant action, re-snapshot to observe state.
 
-4. **Capture evidence:**
+   **For Electron / desktop apps (CDP):**
+   - Check if the app has a CDP start script (e.g. `start:cdp` in package.json)
+   - Start the dev server (renderer) first, then the main process with CDP:
+     ```bash
+     # Start renderer dev server (if not already running)
+     pnpm run start:renderer &
+     # Wait for it, then start Electron with CDP
+     pnpm run start:cdp &
+     # Connect via CDP
+     agent-browser --cdp 9222 snapshot -ic
+     ```
+   - If no `start:cdp` script exists, use: `electron --remote-debugging-port=9222 ./main.js`
+   - Verify connection: `curl -s http://localhost:9222/json` to list CDP targets
+
+4. **Reproduce the exact user flow:**
+   - Follow the bug report steps precisely — click the same buttons, navigate the same paths
+   - After **each significant action**, take a snapshot and/or screenshot to observe state
+   - **Identify which code path is triggered** — use `agent-browser eval` to inspect DOM elements, component props, or state:
+     ```bash
+     agent-browser --cdp 9222 eval "document.querySelector('[data-testid=...]')?.textContent"
+     agent-browser --cdp 9222 eval "JSON.stringify(window.__STORE__?.getState()?.user)"
+     ```
+   - This step is critical: a bug in "company switching" could be in CompanySwitcher, SidebarFooter, or auth context — **observe which UI element the user clicks**
+
+5. **Capture evidence:**
    ```bash
    agent-browser screenshot bug-evidence.png    # Visual proof
    agent-browser errors                         # JS errors
    agent-browser console                        # Console output
    ```
 
-5. **Record findings** — append to the research summary from Step 2:
+6. **Record findings** — append to the research summary from Step 2:
    ```
    Bug reproduction:
    - Reproduced: {yes / no / partial}
    - Observed behavior: {what actually happens}
    - Expected behavior: {from bug report}
+   - Code path identified: {which component/handler is involved}
    - Error signals: {console errors, network failures, or "none"}
    - Environment notes: {anything relevant — viewport, auth state, etc.}
    ```
 
+**Critical rule: Reproduce first, code second.** Never start writing a fix based on code reading alone. 5 minutes of in-app observation prevents hours of fixing the wrong code path.
+
 **If reproduction fails:** Note what was tried and what differed from the report. This is still valuable context for Step 5 approaches (e.g. "may be environment-specific").
 
-**If the app requires auth or is not web-accessible:** Skip reproduction, note why, and flag it as an open question in "What We Don't Know".
+**If the app requires auth or is not web-accessible:** Check for CDP, deep-link auth, or saved sessions. Only skip reproduction as last resort — flag it as a major open question in "What We Don't Know".
 
 ## Step 3: Light Interview (4 AskUserQuestion max)
 
