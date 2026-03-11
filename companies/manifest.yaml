@@ -12,10 +12,13 @@
 #
 # Schema per entry:
 #   symlink:          path to company data (relative to ~/Documents/GHQ/companies/)
+#   repos:            list of repo slugs owned by this company
+#   settings:         path to company settings directory
 #   skills:           list of skill slugs owned by this company
-#   knowledge:        list of knowledge directories scoped to this company
+#   knowledge:        path to company knowledge directory
 #   deploy:           list of deploy target descriptors
-#   epic:             beads root epic ID for this company
+#   vercel_projects:  list of Vercel project identifiers
+#   qmd_collections:  list of qmd collection names for search scoping
 
 launch-grid:
   symlink: launch-grid
@@ -51,6 +54,6 @@ indigo:
   knowledge: companies/indigo/knowledge/
   deploy: []
   vercel_projects: []
-  epic: ghq-r56
+  epic: indigo-53t
   qmd_collections:
     - indigo

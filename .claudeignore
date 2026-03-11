@@ -1,2 +1,5 @@
 # Credentials and secrets - hidden from Claude
 companies/*/settings/**
+.env
+*.pem
+*.key

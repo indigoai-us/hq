@@ -42,8 +42,8 @@ Otherwise, list companies and ask:
 
 ```
 Available companies:
-  1. {slug} (epic: {epic-id})
-  2. {slug} (epic: {epic-id})
+  1. {slug}
+  2. {slug}
   ...
 
 Which company does this project belong to?

@@ -9,12 +9,17 @@ GHQ/
 │   ├── hooks/              # PreToolUse / PostToolUse hooks
 │   └── skills/             # SKILL.md files (native Claude Code format)
 │       ├── architect/
-│       │   └── SKILL.md
+│       ├── backend/
+│       ├── browser-automation/
 │       ├── code-reviewer/
-│       │   └── SKILL.md
-│       └── full-stack/
-│           └── SKILL.md
-├── companies/ -> ~/Documents/GHQ/companies/   # Symlink to secure storage
+│       ├── database/
+│       ├── deep-research/
+│       ├── enhancement/
+│       ├── frontend/
+│       ├── full-stack/
+│       ├── qa/
+│       └── video-gen/
+├── companies/                                 # Per-slug symlinks to ~/Documents/GHQ/companies/{slug}
 ├── knowledge/
 │   ├── ghq-core/           # GHQ schemas, specs, quick reference
 │   ├── policies/           # Enforcement policies
@@ -22,9 +27,9 @@ GHQ/
 │   ├── skills/             # Skill authoring guide
 │   └── video-gen/          # Video generation pipeline docs
 ├── loops/
-│   ├── state.jsonl         # Append-only execution state
-│   └── history.jsonl       # Completed loop records
-└── repos/                  # Cloned repos (targets of skill execution)
+│   ├── state.jsonl         # Append-only execution state (gitignored)
+│   └── history.jsonl       # Completed loop records (gitignored)
+└── workspace/              # Heavy assets, scratch files (scratch/ is gitignored)
 ```
 
 ## Skills
@@ -36,8 +41,16 @@ Skills are discovered automatically by Claude Code from `.claude/skills/*/SKILL.
 | Skill | Type | Purpose |
 |-------|------|---------|
 | `architect` | execution | System design, API design, architecture decisions |
+| `backend` | execution | API endpoints, business logic, and server-side integrations |
+| `browser-automation` | execution | Automate websites and desktop apps using agent-browser CLI |
 | `code-reviewer` | execution | Code review, quality gating, and merge management |
+| `database` | execution | Schema design, migrations, and query optimization |
+| `deep-research` | execution | Autonomous web research producing markdown reports with citations |
+| `enhancement` | composition | Incremental improvements (chains code-reviewer + qa) |
+| `frontend` | execution | React/Next.js components, pages, and client-side logic |
 | `full-stack` | composition | End-to-end feature delivery (chains architect + backend + frontend + review) |
+| `qa` | execution | Testing, validation, and accessibility verification |
+| `video-gen` | execution | End-to-end video production pipeline (TTS, Remotion, ffmpeg) |
 
 ### Skill Format
 
@@ -80,26 +93,26 @@ See [Loops Schema](loops-schema.md) for full field definitions.
 
 ## Companies
 
-Companies are stored outside the repo at `~/Documents/GHQ/companies/` and symlinked into the project:
+Companies are stored outside the repo at `~/Documents/GHQ/companies/` and symlinked into the project. Each company slug is an individual symlink:
 
 ```
-companies/ -> ~/Documents/GHQ/companies/
-  {slug}/
+companies/
+  {slug}/ -> ~/Documents/GHQ/companies/{slug}   # One symlink per company
     .beads/      # Per-company issue tracking (bd init)
-    settings/    # Credentials, API keys (gitignored via symlink)
+    settings/    # Credentials, API keys (hidden via .claudeignore)
     knowledge/   # Company-specific knowledge
     projects/    # Company long-running projects
     policies/    # Company-specific policies
 ```
 
-The symlink keeps sensitive data out of the git repo. See `.claude/policies/company-isolation.md`.
+The symlinks keep sensitive data out of the git repo. See `knowledge/policies/company-isolation.md`.
 
 ## Knowledge Bases
 
 | Path | Contents |
 |------|----------|
 | `knowledge/ghq-core/` | GHQ schemas, index-md spec, quick reference |
-| `knowledge/policies/` | Redirect index (canonical policies in `.claude/policies/`) |
+| `knowledge/policies/` | Enforcement policies (company isolation, etc.) |
 | `knowledge/ralph/` | Ralph methodology (01-overview through 11-team-training) |
 | `knowledge/skills/` | Skill authoring guide |
 | `knowledge/video-gen/` | Video generation pipeline reference |

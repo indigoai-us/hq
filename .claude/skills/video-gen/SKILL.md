@@ -15,7 +15,8 @@ video chunks sized to each audio chunk, and assembles the final output.
 ## Workspace Layout
 
 All heavy assets (models, renders, intermediate files) live in `workspace/`
-at the project root. This directory is gitignored — no binary blobs in the repo.
+at the project root. The `workspace/scratch/` subdirectory is gitignored for
+temporary files; other workspace content (e.g. `workspace/threads/`) may be tracked.
 
 ```
 workspace/
@@ -608,7 +609,7 @@ See `knowledge/video-gen/pipeline-reference.md` for detailed parameter docs.
   directly. Workspace is a flat working directory
 - **Never commit binaries**: Audio (.wav), video (.mp4, .mp3), and model files
   (.safetensors) must never be committed to git
-- **workspace/ is gitignored**: Entire directory excluded from version control
+- **workspace/scratch/ is gitignored**: Scratch directory excluded from version control
 - **Ask before creating repos**: Always confirm with the user before
   initializing or cloning any git repository
 - **Intermediates stay in out/**: Chunks, merged segments, and demucs output

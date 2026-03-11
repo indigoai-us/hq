@@ -1,4 +1,4 @@
-# GHQ v2
+# GHQ
 
 Personal OS for orchestrating work across companies and AI.
 
@@ -24,8 +24,8 @@ loops/            Runtime state, active loops, checkpoints
 
 1. **Clone the repo:**
    ```bash
-   git clone <repo-url> ~/repos/ghq_v2
-   cd ~/repos/ghq_v2
+   git clone <repo-url> ~/repos/ghq
+   cd ~/repos/ghq
    ```
 
 2. **Set up company directories:**
@@ -49,7 +49,7 @@ loops/            Runtime state, active loops, checkpoints
 ## Key Concepts
 
 ### Companies
-Company data (credentials, knowledge, deploy targets) lives at `~/Documents/GHQ/companies/` and is symlinked into the repo's `companies/` directory. The `companies/` directory itself is gitignored to prevent credential leaks.
+Company data (credentials, knowledge, deploy targets) lives at `~/Documents/GHQ/companies/` and is symlinked into the repo's `companies/` directory. The `companies/` directory is gitignored except for `companies/manifest.yaml`, which maps company ownership and is tracked in git.
 
 ### Skills
 Skills live in `.claude/skills/<name>/` with a `SKILL.md` file that Claude discovers on demand. Each skill encapsulates a specific capability (frontend, backend, deployment, etc.).
@@ -62,4 +62,4 @@ The `loops/` directory holds runtime state for active work sessions -- checkpoin
 
 ## Security
 
-Credentials are excluded from Claude's context via `.claudeignore` patterns (`.env`, `*.pem`, `*.key`). The `companies/` directory is gitignored entirely.
+Credentials are excluded from Claude's context via `.claudeignore` patterns (`companies/*/settings/**`, `.env`, `*.pem`, `*.key`). The `companies/` directory is gitignored except for `manifest.yaml`.

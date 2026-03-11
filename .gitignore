@@ -11,5 +11,6 @@ companies/*
 .dolt/
 *.db
 
-# Execution state (mutable runtime file)
+# Execution state (mutable runtime files)
 loops/state.jsonl
+loops/history.jsonl

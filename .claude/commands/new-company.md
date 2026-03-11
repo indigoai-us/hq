@@ -89,7 +89,6 @@ EOF
   knowledge: companies/{slug}/knowledge/
   deploy: []
   vercel_projects: []
-  epic: {epic-id}
   qmd_collections:
     - {slug}
 ```
@@ -149,19 +148,6 @@ bd create "{Name}" --type epic --description "Root epic for {Name} — {brief de
 {success criteria bullet points from step 2}" --labels "company,{slug}" --json
 ```
 
-Capture the epic ID from the JSON output. Immediately close the epic — company epics are containers, not actionable work. Closing them keeps `bd ready` clean. Tasks can still be created under closed epics.
-
-```bash
-bd close {epic-id}
-```
-
-Add the epic ID to the manifest entry:
-
-```yaml
-{slug}:
-  epic: {epic-id}
-```
-
 ### 9. Reindex
 
 ```bash
@@ -179,7 +165,6 @@ Company {slug} scaffolded:
   Projects:   companies/{slug}/projects/
   Settings:   companies/{slug}/settings/
   Manifest:   updated
-  Epic:       {epic-id}
   qmd:        collection "{slug}" {created | skipped}
 ```
 

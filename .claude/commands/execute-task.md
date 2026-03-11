@@ -189,8 +189,8 @@ Append to `loops/state.jsonl`:
 
 Load policies from available directories:
 
-1. **Repo policies**: Check `.claude/policies/` in the target repo
-2. **GHQ policies**: Check `.claude/policies/` in GHQ root
+1. **Repo policies**: Check `knowledge/policies/` in the target repo
+2. **GHQ policies**: Check `knowledge/policies/` in GHQ root
 3. **Company policies**: If company context is set, check `companies/{co}/policies/`
 
 Include applicable policy rules in skill prompts under `### Applicable Policies`.
