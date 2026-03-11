@@ -50,8 +50,11 @@ Initialize beads for this company:
 ```bash
 cd companies/{slug}
 bd init
+rm -rf .git AGENTS.md
 cd -
 ```
+
+**Why:** `bd init` creates a `.git` repo and `AGENTS.md` by default. Company dirs are not git repos — they're data directories symlinked into ghq. Remove both immediately after init.
 
 ### 4. Create knowledge/INDEX.md
 
