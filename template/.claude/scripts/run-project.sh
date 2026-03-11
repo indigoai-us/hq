@@ -16,7 +16,6 @@ set -euo pipefail
 #   --resume            Resume from next incomplete story (auto-detected)
 #   --status            Show all project statuses, exit
 #   --dry-run           Show story order without executing
-#   --max-budget N      Per-story cost cap in USD (default: 5)
 #   --model MODEL       Override model for all stories
 #   --no-permissions    Pass --dangerously-skip-permissions to claude
 #   --retry-failed      Re-run previously failed stories only
@@ -213,7 +212,6 @@ PROJECT=""
 RESUME=false
 STATUS=false
 DRY_RUN=false
-MAX_BUDGET=""
 MODEL=""
 NO_PERMISSIONS=false
 RETRY_FAILED=false
@@ -248,7 +246,6 @@ while [[ $# -gt 0 ]]; do
     --resume)       RESUME=true; shift ;;
     --status)       STATUS=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
-    --max-budget)   MAX_BUDGET="$2"; shift 2 ;;
     --model)        MODEL="$2"; shift 2 ;;
     --no-permissions) NO_PERMISSIONS=true; shift ;;
     --retry-failed) RETRY_FAILED=true; shift ;;
@@ -264,7 +261,6 @@ Flags:
   --resume            Resume from next incomplete story (auto-detected)
   --status            Show all project statuses, exit
   --dry-run           Show story order without executing
-  --max-budget N      Per-story cost cap in USD (default: 5)
   --model MODEL       Override model for all stories
   --no-permissions    Pass --dangerously-skip-permissions to claude
   --retry-failed      Re-run previously failed stories only
@@ -914,9 +910,6 @@ After completion, output ONLY structured JSON:
 {\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}"
 
   local flags=(-p --output-format json)
-  if [[ -n "$MAX_BUDGET" ]]; then
-    flags+=(--max-budget-usd "$MAX_BUDGET")
-  fi
 
   if [[ "$NO_PERMISSIONS" == true ]]; then
     flags+=(--dangerously-skip-permissions)
@@ -1043,6 +1036,105 @@ run_codex_review() {
     log_info "Codex review: no findings for $story_id"
     rm -f "$review_file"
   fi
+}
+
+# =============================================================================
+# Doc Sweep (post-project: update 4 documentation layers)
+# =============================================================================
+
+run_doc_sweep() {
+  local project="$1"
+  local prd_path="$2"
+
+  log_info "Doc sweep: scanning 4 layers for $project"
+
+  # Build story summary from completed tasks
+  local story_summary
+  story_summary=$(jq -r '.userStories[] | select(.passes == true) | "- \(.id): \(.title)"' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
+  [[ -z "$story_summary" ]] && { log_warn "Doc sweep: no completed stories found"; return 0; }
+
+  local repo_path="$REPO_PATH"
+  local company="$COMPANY"
+  local branch="${BRANCH_NAME:-main}"
+
+  local prompt
+  prompt="You are running a post-project documentation sweep for project '$project'.
+
+The following stories were completed:
+$story_summary
+
+PRD: $prd_path
+Repo: $repo_path
+Company: $company
+
+Update 4 documentation layers based on what changed:
+
+1. INTERNAL DOCS (team-facing: tech guides, SOPs, manuals, ontology, taxonomy)
+   - Path: ${repo_path}/docs/ or similar MDX dirs
+   - Check if completed stories introduced new APIs, services, patterns, config not documented
+   - Create/update MDX files as needed
+   - Only document what actually changed — no boilerplate
+
+2. EXTERNAL DOCS (customer/vendor-facing documentation)
+   - Path: ${repo_path}/docs/ or published doc site
+   - Check if user-facing features need documentation updates
+   - Skip if project has no external surface
+
+3. REPO KNOWLEDGE (agent context)
+   - Path: ${repo_path}/.claude/CLAUDE.md and ${repo_path}/.claude/policies/
+   - Update CLAUDE.md with new patterns, gotchas, file locations discovered during project
+   - Add policies for recurring issues found during execution
+
+4. COMPANY KNOWLEDGE (business knowledge)
+   - Path: $HQ_ROOT/companies/${company}/knowledge/
+   - This is a SEPARATE git repo — commit here independently
+   - cd companies/${company}/knowledge/ && git add -A && git commit -m 'docs: update from $project completion'
+   - Update architecture docs, integration docs, process docs as needed
+
+Rules:
+- Commit repo docs to the repo branch ($branch)
+- Commit company knowledge to the knowledge repo (separate git)
+- Do NOT create boilerplate — only document what actually changed
+- Do NOT use EnterPlanMode or TodoWrite
+- Output JSON: {\"layers_updated\": [\"internal\",\"external\",\"repo_knowledge\",\"company_knowledge\"], \"files_touched\": [], \"summary\": \"1-sentence\"}"
+
+  local flags=(-p --output-format json)
+
+  if [[ "$NO_PERMISSIONS" == true ]]; then
+    flags+=(--dangerously-skip-permissions)
+  fi
+
+  if [[ -n "$MODEL" ]]; then
+    flags+=(--model "$MODEL")
+  fi
+
+  local output_file="$EXEC_DIR/doc-sweep.output.json"
+  local stderr_file="$EXEC_DIR/doc-sweep.stderr"
+
+  local cmd=(claude "${flags[@]}" "$prompt")
+  local exit_code=0
+
+  cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
+
+  if [[ $exit_code -eq 0 ]]; then
+    log_ok "Doc sweep completed — see $output_file"
+    "$AUDIT_SCRIPT" append --event doc_sweep_completed --project "$project" \
+      ${company:+--company "$company"} \
+      --action "Doc sweep: 4 layers scanned" \
+      --result success \
+      --session-id "$SESSION_ID" || true
+  else
+    log_warn "Doc sweep failed (exit=$exit_code) — non-blocking, see $stderr_file"
+    "$AUDIT_SCRIPT" append --event doc_sweep_failed --project "$project" \
+      ${company:+--company "$company"} \
+      --action "Doc sweep failed" \
+      --result fail \
+      --error "exit=$exit_code" \
+      --session-id "$SESSION_ID" || true
+  fi
+
+  # Remove legacy flag file
+  rm -f "$PROJECT_DIR/doc-sweep-flag.json" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -1655,10 +1747,8 @@ if [[ "$REMAINING" -eq 0 ]]; then
     log_info "INDEX: $orch_index needs rebuild (deferred)"
   fi
 
-  # 3. Doc sweep flag (interactive session handles the actual sweep)
-  echo '{"doc_sweep_needed":true,"project":"'"$PROJECT"'","company":"'"$COMPANY"'","repo_path":"'"$REPO_PATH"'"}' \
-    > "$PROJECT_DIR/doc-sweep-flag.json" 2>/dev/null || true
-  log_info "Doc sweep flagged — run interactively to review"
+  # 3. Doc sweep — headless update of all 4 doc layers
+  run_doc_sweep "$PROJECT" "$PRD_REL"
 
   # 4. Final reindex
   qmd update 2>/dev/null || true
