@@ -29,7 +29,6 @@ launch-grid:
   knowledge: companies/launch-grid/knowledge/
   deploy: []
   vercel_projects: []
-  epic: ghq-uik
   qmd_collections:
     - launch-grid
 
@@ -42,7 +41,6 @@ production-house:
   knowledge: companies/production-house/knowledge/
   deploy: []
   vercel_projects: []
-  epic: ghq-53s
   qmd_collections:
     - production-house
 
@@ -54,6 +52,5 @@ indigo:
   knowledge: companies/indigo/knowledge/
   deploy: []
   vercel_projects: []
-  epic: indigo-53t
   qmd_collections:
     - indigo

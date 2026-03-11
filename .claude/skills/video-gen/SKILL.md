@@ -12,18 +12,13 @@ End-to-end video production pipeline. Transforms a script into a finished
 video: generates voiceover audio in small chunks, renders matching Remotion
 video chunks sized to each audio chunk, and assembles the final output.
 
-## Workspace Layout
-
-All heavy assets (models, renders, intermediate files) live in `workspace/`
-at the project root. The `workspace/scratch/` subdirectory is gitignored for
-temporary files; other workspace content (e.g. `workspace/threads/`) may be tracked.
 
 ```
-workspace/
+assets/
 ├── voice-cloning-model/    # Fine-tuned model weights and speaker reference
 │   ├── t3_finetuned.safetensors  # Fine-tuned speaker model
 │   └── narrator_ref.wav          # Male speaker reference (5-10s clean speech)
-├── remotion/               # Remotion video rendering workspace
+├── remotion/               # Remotion video rendering assets
 │   ├── package.json        # remotion, @remotion/cli, react, react-dom
 │   ├── src/
 │   │   ├── index.js        # registerRoot(RemotionRoot)
@@ -49,10 +44,10 @@ workspace/
         └── final.mp4        # Assembled, watermarked output
 ```
 
-### No git repos in workspace
+### No git repos in assets
 
-The workspace is a flat working directory, not a collection of cloned repos.
-Copy scripts and models directly — never `git clone` into workspace.
+The assets is a flat working directory, not a collection of cloned repos.
+Copy scripts and models directly — never `git clone` into assets.
 
 **Before creating any git repository, always ask the user for confirmation.**
 
@@ -74,7 +69,7 @@ Never speed up or slow down audio — it degrades voice quality.
 ## Step 1: Write Script
 
 Structure the script as a JSON array of chunks. Save to
-`workspace/videos/{n}-{name}/script.json`.
+`assets/videos/{n}-{name}/script.json`.
 
 ```json
 [
@@ -131,7 +126,7 @@ entirely on-device (Apple Silicon MPS or CUDA).
 
 The inference script lives in the chatterbox-finetuning repo and **must be
 run from that directory** (it imports local `src/` modules). Model weights
-and speaker reference live in the workspace.
+and speaker reference live in the assets.
 
 ```
 ~/repos/chatterbox-finetuning/        # Inference scripts + venv
@@ -140,7 +135,7 @@ and speaker reference live in the workspace.
 ├── batch_inference.py                # Multi-chunk from script.json
 └── speaker_reference/                # (defaults — do NOT use, see below)
 
-workspace/voice-cloning-model/        # Production assets
+assets/voice-cloning-model/        # Production assets
 ├── t3_finetuned.safetensors          # Fine-tuned speaker model
 └── narrator_ref.wav                  # Male speaker reference
 ```
@@ -155,12 +150,10 @@ produces the wrong voice (e.g., female instead of male).
 cd ~/repos/chatterbox-finetuning
 .venv/bin/python inference.py \
   --text "Stop writing if-else chains. There is a better way." \
-  --model "$WORKSPACE/voice-cloning-model/t3_finetuned.safetensors" \
-  --prompt "$WORKSPACE/voice-cloning-model/narrator_ref.wav" \
-  --output "$WORKSPACE/videos/1-object-map-short/audio/1-hook.wav"
+  --model "assets/voice-cloning-model/t3_finetuned.safetensors" \
+  --prompt "assets/voice-cloning-model/narrator_ref.wav" \
+  --output "assets/videos/1-object-map-short/audio/1-hook.wav"
 ```
-
-(`$WORKSPACE` = the project's `workspace/` absolute path)
 
 ### Override TTS parameters
 
@@ -168,8 +161,8 @@ cd ~/repos/chatterbox-finetuning
 cd ~/repos/chatterbox-finetuning
 .venv/bin/python inference.py \
   --text "Some expressive text." \
-  --model "$WORKSPACE/voice-cloning-model/t3_finetuned.safetensors" \
-  --prompt "$WORKSPACE/voice-cloning-model/narrator_ref.wav" \
+  --model "assets/voice-cloning-model/t3_finetuned.safetensors" \
+  --prompt "assets/voice-cloning-model/narrator_ref.wav" \
   --temperature 0.9 \
   --exaggeration 0.7 \
   --seed 123 \
@@ -181,10 +174,10 @@ cd ~/repos/chatterbox-finetuning
 ```bash
 cd ~/repos/chatterbox-finetuning
 .venv/bin/python batch_inference.py \
-  --script "$WORKSPACE/videos/1-object-map-short/script.json" \
-  --model "$WORKSPACE/voice-cloning-model/t3_finetuned.safetensors" \
-  --prompt "$WORKSPACE/voice-cloning-model/narrator_ref.wav" \
-  --output "$WORKSPACE/videos/1-object-map-short/audio/"
+  --script "assets/videos/1-object-map-short/script.json" \
+  --model "assets/voice-cloning-model/t3_finetuned.safetensors" \
+  --prompt "assets/voice-cloning-model/narrator_ref.wav" \
+  --output "assets/videos/1-object-map-short/audio/"
 ```
 
 ### Regenerate a failed chunk
@@ -193,9 +186,9 @@ cd ~/repos/chatterbox-finetuning
 cd ~/repos/chatterbox-finetuning
 .venv/bin/python inference.py \
   --text "The corrected sentence." \
-  --model "$WORKSPACE/voice-cloning-model/t3_finetuned.safetensors" \
-  --prompt "$WORKSPACE/voice-cloning-model/narrator_ref.wav" \
-  --output "$WORKSPACE/videos/1-object-map-short/audio/1-hook.wav" \
+  --model "assets/voice-cloning-model/t3_finetuned.safetensors" \
+  --prompt "assets/voice-cloning-model/narrator_ref.wav" \
+  --output "assets/videos/1-object-map-short/audio/1-hook.wav" \
   --seed 99
 ```
 
@@ -252,7 +245,7 @@ and TTS artifacts. Produces cleaner audio without changing duration.
 ### Denoise all chunks
 
 ```bash
-cd workspace/videos/{n}-{name}
+cd assets/videos/{n}-{name}
 
 # Back up raw TTS audio
 mkdir -p audio/raw
@@ -270,7 +263,7 @@ for wav in audio/raw/*.wav; do
 done
 ```
 
-Or use the script: `workspace/scripts/denoise.sh <video-dir>`
+Or use the script: `assets/scripts/denoise.sh <video-dir>`
 
 ### Verify duration unchanged
 
@@ -300,7 +293,7 @@ video rendering begins.
 ### Transcribe all chunks
 
 ```bash
-cd workspace/videos/{n}-{name}
+cd assets/videos/{n}-{name}
 
 for wav in audio/*.wav; do
   python3 -m whisper "$wav" --model large-v3 --language en \
@@ -308,7 +301,7 @@ for wav in audio/*.wav; do
 done
 ```
 
-Or use the script: `workspace/scripts/verify.sh <video-dir>`
+Or use the script: `assets/scripts/verify.sh <video-dir>`
 
 ### Compare against script
 
@@ -338,13 +331,13 @@ Repeat until Whisper output matches the script exactly.
 ## Step 3: Render Video Chunks (Remotion)
 
 Each chunk gets its own Remotion composition whose duration matches its
-audio chunk exactly. All Remotion code lives in `workspace/remotion/`.
+audio chunk exactly. All Remotion code lives in `assets/remotion/`.
 
 ### Get audio duration per chunk
 
 ```bash
 ffprobe -v error -show_entries format=duration -of csv=p=0 \
-  workspace/videos/{n}-{name}/audio/1-hook.wav
+  assets/videos/{n}-{name}/audio/1-hook.wav
 # Returns: 2.340 (seconds)
 ```
 
@@ -357,10 +350,10 @@ durationInFrames = Math.ceil(audioDurationSeconds * 30)   // 30 fps
 **Never adjust audio speed to fit video length. Always adjust video
 `durationInFrames` to fit audio length.**
 
-### Project structure (workspace/remotion/)
+### Project structure (assets/remotion/)
 
 ```
-workspace/remotion/
+assets/remotion/
 ├── package.json        # remotion, @remotion/cli, @remotion/bundler, react, react-dom
 ├── render-all.mjs      # Node.js batch render script
 ├── src/
@@ -407,7 +400,7 @@ export const Hook = () => {
 ### Render each chunk
 
 ```bash
-cd workspace/remotion
+cd assets/remotion
 npx remotion render src/index.js hook \
   ../videos/{n}-{name}/out/chunks/1-hook.mp4 \
   --codec h264 --image-format jpeg --crf 1
@@ -416,7 +409,7 @@ npx remotion render src/index.js hook \
 Or batch render all:
 
 ```bash
-cd workspace/remotion
+cd assets/remotion
 node render-all.mjs --video ../videos/{n}-{name}/
 ```
 
@@ -440,7 +433,7 @@ All compositions MUST be 4K at 30fps.
 ### Merge audio + video per chunk
 
 ```bash
-cd workspace/videos/{n}-{name}
+cd assets/videos/{n}-{name}
 
 for i in out/chunks/*.mp4; do
   name=$(basename "$i" .mp4)
@@ -484,7 +477,7 @@ ffmpeg -loop 1 -i out/lastframe.jpg \
 ffmpeg -f concat -safe 0 -i out/filelist.txt -c copy out/assembled.mp4
 ```
 
-Or use the script: `workspace/scripts/assemble.sh <video-dir>`
+Or use the script: `assets/scripts/assemble.sh <video-dir>`
 
 ### Add watermark + final encode
 
@@ -512,11 +505,11 @@ ffmpeg -i out/assembled.mp4 \
 | Channels | **Mono** | Stereo causes near-silent audio bug (2.3 kbps) |
 | movflags | +faststart | Enables streaming playback |
 
-## Workspace Setup
+## assets Setup
 
 ### First-time setup
 
-Before running the pipeline, ensure workspace is initialized:
+Before running the pipeline, ensure assets is initialized:
 
 ```bash
 # Verify required tools
@@ -530,7 +523,7 @@ which whisper || echo "MISSING: pip install openai-whisper"
 ### Remotion setup
 
 ```bash
-cd workspace/remotion
+cd assets/remotion
 npm install
 npx remotion preview   # Opens browser preview for development
 ```
@@ -541,14 +534,14 @@ npx remotion preview   # Opens browser preview for development
 cd ~/repos/chatterbox-finetuning
 source .venv/bin/activate
 pip install -r requirements.txt
-# Model weights: workspace/voice-cloning-model/t3_finetuned.safetensors
-# Speaker reference: workspace/voice-cloning-model/narrator_ref.wav
+# Model weights: assets/voice-cloning-model/t3_finetuned.safetensors
+# Speaker reference: assets/voice-cloning-model/narrator_ref.wav
 ```
 
 ### New video setup
 
 ```bash
-VIDEO_DIR="workspace/videos/{n}-{name}"
+VIDEO_DIR="assets/videos/{n}-{name}"
 mkdir -p "$VIDEO_DIR"/{audio/raw,out/{chunks,demucs,merged}}
 # Create script.json in $VIDEO_DIR
 ```
@@ -558,8 +551,8 @@ mkdir -p "$VIDEO_DIR"/{audio/raw,out/{chunks,demucs,merged}}
 ### Current setup
 
 - Inference repo: `~/repos/chatterbox-finetuning/` (run with `.venv/bin/python`)
-- Fine-tuned model: `workspace/voice-cloning-model/t3_finetuned.safetensors`
-- Speaker reference: `workspace/voice-cloning-model/narrator_ref.wav` (male voice)
+- Fine-tuned model: `assets/voice-cloning-model/t3_finetuned.safetensors`
+- Speaker reference: `assets/voice-cloning-model/narrator_ref.wav` (male voice)
 - Mode: Normal (uses `cfg_weight` parameter)
 - **Always pass `--model` and `--prompt` explicitly** — script defaults are wrong
 
@@ -598,18 +591,18 @@ See `knowledge/video-gen/pipeline-reference.md` for detailed parameter docs.
 - **Explicit stream mapping**: Always use `-map 0:v -map 1:a` when merging
   audio and video. Without it, ffmpeg picks the wrong stream
 - **Always pass --model and --prompt**: The inference script defaults point to
-  wrong paths. Always explicitly pass the workspace model and speaker reference.
+  wrong paths. Always explicitly pass the assets model and speaker reference.
   Wrong speaker reference = wrong voice (e.g., female instead of male)
 - **Run inference from the repo**: `cd ~/repos/chatterbox-finetuning` and use
   `.venv/bin/python` — the script imports local `src/` modules and needs the venv
 
-### Workspace hygiene
+### assets hygiene
 
-- **No git repos in workspace**: Never `git clone` into workspace. Copy files
-  directly. Workspace is a flat working directory
+- **No git repos in assets**: Never `git clone` into assets. Copy files
+  directly. assets is a flat working directory
 - **Never commit binaries**: Audio (.wav), video (.mp4, .mp3), and model files
   (.safetensors) must never be committed to git
-- **workspace/scratch/ is gitignored**: Scratch directory excluded from version control
+- **assets/scratch/ is gitignored**: Scratch directory excluded from version control
 - **Ask before creating repos**: Always confirm with the user before
   initializing or cloning any git repository
 - **Intermediates stay in out/**: Chunks, merged segments, and demucs output
@@ -622,7 +615,7 @@ See `knowledge/video-gen/pipeline-reference.md` for detailed parameter docs.
 - **Small TTS chunks**: 1-2 sentences per chunk. Smaller = fewer errors
 - **Verify tools before starting**: Check `ffmpeg`, `npx`, `demucs`, `whisper`
 - **If ffmpeg missing**: `brew install ffmpeg`
-- **Video naming**: `workspace/videos/{n}-{video-name}/` (1-indexed, no zero-padding)
+- **Video naming**: `assets/videos/{n}-{video-name}/` (1-indexed, no zero-padding)
 - **File naming**: `{n}-{chunk-id}.wav` / `{n}-{chunk-id}.mp4` (matches chunk order)
 
 ### Company isolation
@@ -637,7 +630,7 @@ See `knowledge/video-gen/pipeline-reference.md` for detailed parameter docs.
 - Per-chunk audio in `audio/` (.wav, denoised)
 - Per-chunk silent video in `out/chunks/` (.mp4)
 - Per-chunk merged video in `out/merged/` (.mp4)
-- **Final video: `workspace/videos/{n}-{name}/final.mp4`**
+- **Final video: `assets/videos/{n}-{name}/final.mp4`**
   (4K, with audio and watermark)
 - Copy to `{project}/assets/` as the deliverable
 - Summary: chunk count, total duration, resolution, file size, output path
