@@ -16,7 +16,7 @@ Create a new project with a beads epic and directory structure under a company.
 ```
 Company Epic (existing)         ← created by /new-company
 └── Project Epic (created here) ← /new-project creates this
-    └── Task (future)           ← created by /create-task
+    └── Task (future)           ← created by /plan
         ├── Subtask 1
         └── Subtask 2
 ```
@@ -139,7 +139,7 @@ Located at `companies/{company-slug}/projects/{project-slug}/knowledge/`.
 ## Tasks
 
 Create tasks under this project with:
-  /create-task {description}
+  /plan {description}
 
 View tasks:
   bd children {epic-id} --pretty
@@ -160,7 +160,7 @@ Project {project-slug} scaffolded:
   Knowledge:  companies/{company-slug}/projects/{project-slug}/knowledge/INDEX.md
 
 Next steps:
-  /create-task {description}    (create tasks under this project)
+  /plan {description}    (create tasks under this project)
   bd children {epic-id} --pretty  (view project tasks)
 ```
 

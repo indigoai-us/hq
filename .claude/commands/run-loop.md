@@ -51,7 +51,7 @@ The orchestrator is an **ultra-lean state machine**. It picks subtasks and deleg
   ```
   ERROR: Task {task-id} not found in beads.
 
-  Fix: Run /create-task to create a task with subtasks.
+  Fix: Run /plan to create a task with subtasks.
   ```
 - Fetch subtasks: `bd children {task-id} --json`
 - If no children: STOP with "Task {task-id} has no subtasks. Add subtasks with `bd create --parent {task-id}`."
@@ -334,6 +334,6 @@ COMPLETED:
 
 ## Integration
 
-- `/create-task` creates task + subtasks under a project epic -> `/run-loop {task-id}` executes the subtasks
+- `/plan` creates task + subtasks under a project epic -> `/run-loop {task-id}` executes the subtasks
 - `/execute-task {subtask-id}` runs single subtask (standalone or as sub-agent)
 - `/run-loop --resume` continues from next open subtask with fresh context

@@ -35,4 +35,4 @@ Any implementation notes, gotchas, or context for future reference.
 ---
 
 _Template: `knowledge/ghq-core/project-template.md`_
-_For task-based execution, use `/create-task` to create beads tasks._
+_For task-based execution, use `/plan` to create beads tasks._

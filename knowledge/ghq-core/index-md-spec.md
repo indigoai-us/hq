@@ -53,7 +53,7 @@ Root `INDEX.md` also exists but follows its own format.
 | `/checkpoint` | Root, threads/, + touched knowledge dirs |
 | `/handoff` | Root, threads/, orchestrator/, + touched knowledge dirs |
 | `/cleanup --reindex` | ALL INDEX.md files (full rebuild) |
-| `/create-task` | N/A (tasks in beads, not filesystem) |
+| `/plan` | N/A (tasks in beads, not filesystem) |
 | `/run-loop` | N/A (state in loops/state.jsonl) |
 
 ## qmd

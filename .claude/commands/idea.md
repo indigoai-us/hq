@@ -1,17 +1,17 @@
 ---
-description: Capture a project idea on the company board without full task planning
-allowed-tools: Read, Write, Bash, AskUserQuestion
+description: Capture a project idea as a bd task without subtask planning
+allowed-tools: Read, Bash, AskUserQuestion
 argument-hint: [idea description] [--company <slug>]
 visibility: public
 ---
 
 # /idea - Capture Project Idea
 
-Quickly add a project idea to the board. No tasks, no subtasks — just capture the thought.
+Quickly capture an idea as a beads task. No subtasks, no planning — just capture the thought.
 
 **Input:** $ARGUMENTS
 
-**Pipeline:** **`/idea`** → `/brainstorm` → `/create-task` → `/execute-task`
+**Pipeline:** **`/idea`** → `/brainstorm` → `/plan` → `/run-loop`
 
 ## Step 1: Parse Input
 
@@ -45,64 +45,52 @@ Batch all missing info into **one** AskUserQuestion call. Skip any field already
 
 If all info is provided via args, skip straight to Step 4 — no interview needed.
 
-## Step 4: Initialize Board (if needed)
+## Step 4: Find Project Epic
 
-Check if `companies/{co}/board.json` exists.
+`cd companies/{co}` then run:
 
-**If not**, create it:
-```json
-{
-  "company": "{slug}",
-  "updated_at": "{ISO8601}",
-  "projects": []
-}
+```bash
+bd list --type epic --json
 ```
 
-## Step 5: Write Board Entry
+Find the project epic for this company. If multiple project epics exist, ask the user which one. If none exist, create one using `/new-project`.
 
-1. Read `companies/{co}/board.json`
-2. **Generate ID:**
-   - Collect all `id` values from `projects` array
-   - Extract numeric suffixes from IDs matching `{prefix}-proj-{NNN}` pattern
-   - If no existing entries, derive prefix from company slug (first 2-3 chars, lowercase)
-   - Next ID = `{prefix}-proj-{max_N + 1}`, zero-padded to 3 digits
-3. **Derive title:** If description is >50 chars, derive a concise 3-6 word title. If <=50 chars, use as-is for both title and description.
-4. **Build entry:**
-   ```json
-   {
-     "id": "{prefix}-proj-{NNN}",
-     "title": "{concise title}",
-     "description": "{user's full description}",
-     "status": "idea",
-     "brainstorm_path": null,
-     "created_at": "{ISO8601}",
-     "updated_at": "{ISO8601}"
-   }
-   ```
-5. Append to `projects` array. Update root `updated_at`. Write board.json.
+## Step 5: Create bd Task
+
+**Derive title:** If description is >50 chars, derive a concise 3-6 word title. If <=50 chars, use as-is.
+
+```bash
+cd companies/{co}
+bd create "{title}" \
+  --parent {project-epic-id} \
+  --type task \
+  --description "{user's full description}" \
+  --labels "{company-label},idea" \
+  --silent
+```
+
+Capture the returned task ID (e.g. `ghq-abc`).
 
 ## Step 6: Confirm & Reindex
 
 Print:
 ```
-Idea captured: **{title}** ({id})
-Board: companies/{co}/board.json
+Idea captured: **{title}** ({task-id})
 Status: idea
 
 Next steps:
-  /brainstorm {co} {id}    → explore approaches
-  /idea                     → add another idea
-  /idea -c {co}             → add idea to same board
+  /brainstorm {co} {task-id}  → explore approaches
+  /idea                        → add another idea
+  /idea -c {co}                → add idea to same company
 ```
 
 Reindex: `qmd update 2>/dev/null || true`
 
 ## Rules
 
-- **No task creation** — this command ONLY writes to board.json
-- **No execution** — ideas are pre-planning; `/create-task` handles actionable work
+- **No subtask creation** — this command creates a single bd task only
+- **No execution** — ideas are pre-planning; `/plan` decomposes into subtasks
 - **1 AskUserQuestion max** — batch everything into one call
-- **board.json is the only file written**
-- **Follow existing ID conventions** — lowercase prefix, zero-padded 3-digit numbers
-- **Inline mode**: if all info is provided via args/flags, write the entry with zero questions
+- **bd task is the only artifact** — no files written to disk
+- **Inline mode**: if all info is provided via args/flags, create the task with zero questions
 - **Do NOT use TodoWrite or EnterPlanMode** — this command IS the quick capture

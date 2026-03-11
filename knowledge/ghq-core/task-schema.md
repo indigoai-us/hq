@@ -8,8 +8,8 @@ Tasks are stored in per-company beads databases (`companies/{slug}/.beads/`). No
 
 ```
 Company Epic                    ← created by /new-company
-└── Project Epic                ← created manually or by /create-task (if project doesn't exist)
-    └── Task                    ← created by /create-task
+└── Project Epic                ← created manually or by /plan (if project doesn't exist)
+    └── Task                    ← created by /plan
         ├── Subtask 1
         ├── Subtask 2 (depends on 1)
         └── Subtask 3
@@ -35,7 +35,7 @@ bd create "Project Name" \
   --labels "company-label"
 ```
 
-### Task (under project epic — created by /create-task)
+### Task (under project epic — created by /plan)
 
 ```bash
 bd create "Feature title" \
@@ -65,7 +65,7 @@ bd dep add {subtask-id} {depends-on-id}
 
 ## Task Fields
 
-### Task Metadata (on the task created by /create-task)
+### Task Metadata (on the task created by /plan)
 
 | Field | Description |
 |-------|-------------|

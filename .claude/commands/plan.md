@@ -1,17 +1,17 @@
 ---
-description: Plan and create a task with subtasks under a project epic
+description: Decompose a task into subtasks for execution via /run-loop
 allowed-tools: Task, Read, Glob, Grep, Write, Bash, Edit
 argument-hint: [task/feature description]
 visibility: public
 ---
 
-# /create-task - Task Planning & Creation
+# /plan - Decompose Task into Subtasks
 
-Create a task with subtasks under an existing project epic. Only companies and projects are epics — tasks are never epics.
+Break down an existing task into subtasks for execution via `/run-loop`. Only companies and projects are epics — tasks are never epics.
 
 **User's input:** $ARGUMENTS
 
-**Pipeline:** `/idea` → `/brainstorm` → **`/create-task`** → `/execute-task`
+**Pipeline:** `/idea` → `/brainstorm` → **`/plan`** → `/run-loop`
 
 **Important:** Do NOT implement. Just create the tasks.
 
@@ -20,29 +20,28 @@ Create a task with subtasks under an existing project epic. Only companies and p
 ```
 Company Epic (existing)         ← created by /new-company
 └── Project Epic (existing)     ← created manually or by project setup
-    └── Task (created here)     ← /create-task creates this
+    └── Task (created here)     ← /plan creates subtasks under this
         ├── Subtask 1
         ├── Subtask 2
         └── Subtask 3
 ```
 
-Only companies and projects should be epics. `/create-task` creates a **task** (not epic) under a project epic, then adds subtasks under that task.
+Only companies and projects should be epics. `/plan` decomposes a task into subtasks under a project epic.
 
 ## Step 1: Get Task Description
 
 If $ARGUMENTS provided, use as starting point.
 If empty, ask: "Describe what you want to build or accomplish."
 
-### Check for Brainstorm
+### Check for Existing Task / Brainstorm
 
-After resolving the description, check if a brainstorm.md exists for this topic:
-
-1. If `$ARGUMENTS` matches a company slug + project slug pattern (e.g. `launch-grid cortex-v2`), check `companies/{co}/projects/{slug}/brainstorm.md`
+1. If `$ARGUMENTS` matches a bd task ID (e.g. `ghq-abc`), read the task with `bd show {task-id} --json`
+   - Use the task's title and description as starting context
+   - Check if a brainstorm.md exists in the task's project dir
 2. If a brainstorm.md is found:
    - Read it and extract: context, recommendation, approaches, next steps
    - Announce: "Found brainstorm: **{title}** — using recommended approach (Option {X})"
    - Pre-populate the discovery interview (Step 4) with brainstorm context — skip questions already answered
-   - Also check if a board.json entry exists with `brainstorm_path` set — if so, update its `status` to `"planning"`
 
 ## Step 2: Scan GHQ Context
 
@@ -253,13 +252,13 @@ To view:
 
 - Scan GHQ first, ask questions second
 - Batch questions (don't overwhelm)
-- **Never create epics** -- only companies and projects are epics. `/create-task` creates tasks and subtasks only
+- **Never create epics** -- only companies and projects are epics. `/plan` creates subtasks only
 - **Beads is the source of truth** -- all tasks managed via `bd` CLI
 - **Do NOT use EnterPlanMode** -- this skill IS planning
 - **Do NOT use TodoWrite** -- beads subtasks track tasks
 - **Skills, not workers** -- reference skill IDs from `.claude/skills/`, not worker names
 - **Work mode: main or worktree only** -- GHQ never uses feature branches. Ask user to choose in interview
 - **Company context** -- if the task relates to a company, apply the appropriate company label
-- **HARD BLOCK: Do NOT implement** -- ONLY create beads tasks. NEVER edit target repo files during a /create-task session
-- **STOP after task creation** -- After Step 7 confirmation, end session. NEVER start executing subtasks in the same session
-- **MANDATORY: Always create beads tasks** -- Every /create-task invocation MUST produce a beads task + subtasks under a project epic. Never output a task plan to chat only
+- **HARD BLOCK: Do NOT implement** -- ONLY create beads subtasks. NEVER edit target repo files during a /plan session
+- **STOP after planning** -- After Step 7 confirmation, end session. NEVER start executing subtasks in the same session
+- **MANDATORY: Always create beads subtasks** -- Every /plan invocation MUST produce subtasks under a task. Never output a plan to chat only

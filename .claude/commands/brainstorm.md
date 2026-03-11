@@ -1,7 +1,7 @@
 ---
-description: Explore approaches and tradeoffs before committing to task creation
+description: Explore approaches and tradeoffs before decomposing into subtasks
 allowed-tools: Task, Read, Glob, Grep, Write, Bash, AskUserQuestion, WebSearch
-argument-hint: [company] <idea description or board idea ID>
+argument-hint: [company] <description or bd task ID>
 visibility: public
 ---
 
@@ -11,7 +11,7 @@ Think through a problem before committing to tasks. Research GHQ context, compar
 
 **Input:** $ARGUMENTS
 
-**Pipeline:** `/idea` → **`/brainstorm`** → `/create-task` → `/execute-task`
+**Pipeline:** `/idea` → **`/brainstorm`** → `/plan` → `/run-loop`
 
 ## Step 0: Parse Input & Company Anchor
 
@@ -25,17 +25,16 @@ Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies
 
 **If no match** → full `$ARGUMENTS` is the description text. Company resolved later.
 
-**Board ID detection:** After company check, see if remaining args match a board.json project ID pattern (`{prefix}-proj-{NNN}`). If so, this brainstorm is expanding an existing idea — read its title and description from `companies/{co}/board.json`.
+**Task ID detection:** After company check, see if remaining args match a bd task ID pattern (e.g. `ghq-abc`). If so, this brainstorm is expanding an existing idea task.
 
-## Step 1: Resolve Company + Board Idea
+## Step 1: Resolve Company + Existing Task
 
-**If board ID matched in Step 0:**
-1. If `{co}` already set: read `companies/{co}/board.json`, find entry by ID
-2. If `{co}` not set: scan all `companies/*/board.json` for the ID
-3. Extract the entry's `title` and `description` as starting context
-4. Set `source_idea_id` = matched ID
+**If task ID matched:**
+1. `cd companies/{co}` then `bd show {task-id} --json`
+2. Extract the task's title and description as starting context
+3. Set `source_task_id` = matched ID
 
-**If no board ID and no company:** infer from cwd (`companies/{slug}/` → use that slug). If still ambiguous, ask in Step 3.
+**If no match and no company:** infer from cwd (`companies/{slug}/` → use that slug). If still ambiguous, ask in Step 3.
 
 **If `$ARGUMENTS` is empty:** go straight to Step 3 (full interview).
 
@@ -106,7 +105,7 @@ Batch all missing directional info into **one** `AskUserQuestion` call. Skip any
 company: {slug}
 created_at: {ISO8601}
 status: exploring
-source_idea_id: {board ID or null}
+source_task: {task-id or null}
 ---
 
 # {Title}
@@ -178,9 +177,9 @@ source_idea_id: {board ID or null}
 - [ ] {Other prerequisite}
 
 **Promotion path:**
-- Ready to build → `/create-task {co} {slug}` (brainstorm.md pre-populates the interview)
+- Ready to build → `/plan {co} {slug}` (brainstorm.md pre-populates the interview)
 - Needs more research → edit this file, revisit later
-- Not worth pursuing → park as idea on the board
+- Not worth pursuing → leave task as idea
 ```
 
 **Approach rules:**
@@ -191,22 +190,28 @@ source_idea_id: {board ID or null}
 - Must state a recommendation — no "it depends" without a stated override condition
 - T-shirt effort: S (hours-days), M (days-week), L (week-month), XL (month+)
 
-## Step 6: Board Integration
+## Step 6: Update bd Task
 
-Read `companies/{co}/board.json` (if it exists).
+If started from an existing bd task (`source_task_id` set):
 
-**If started from existing board idea** (`source_idea_id` set):
-- Find that entry by ID
-- Update `status` → `"exploring"`
-- Add `brainstorm_path: "companies/{co}/projects/{slug}/brainstorm.md"`
-- Update `updated_at`
+```bash
+cd companies/{co}
+bd update {source_task_id} \
+  --description "{enriched description with brainstorm summary, recommendation, and link to brainstorm.md}" \
+  --labels "{company-label},exploring"
+```
 
-**If fresh brainstorm** (no existing board idea):
-- Initialize board.json if needed (same as /idea Step 4)
-- Generate next ID following existing conventions
-- Append new entry with `status: "exploring"` and `brainstorm_path` set
+If fresh brainstorm (no existing task), create a new bd task:
 
-Write updated `board.json`.
+```bash
+cd companies/{co}
+bd create "{title}" \
+  --parent {project-epic-id} \
+  --type task \
+  --description "{enriched description with brainstorm summary}" \
+  --labels "{company-label},exploring" \
+  --silent
+```
 
 ## Step 7: Confirm & Reindex
 
@@ -223,7 +228,7 @@ Approaches:
 Recommendation: Option {X}
 
 Next:
-  /create-task {co} {slug}  → create tasks (pre-populates from brainstorm)
+  /plan {co} {slug}  → create tasks (pre-populates from brainstorm)
   Edit brainstorm.md         → refine approaches before promoting
 ```
 
@@ -236,9 +241,9 @@ Reindex: `qmd update 2>/dev/null || true`
 - **2-3 approaches, no more** — present distinct options, not variations
 - **State a recommendation** — "it depends" without a stated override condition is not a recommendation
 - **No execution** — brainstorm.md is the output. Do NOT write code or modify implementation files
-- **No task creation** — this command does NOT create bd tasks. That is `/create-task`'s job
-- **board.json + brainstorm.md are the only files written**
+- **No task creation** — this command does NOT create bd tasks. That is `/plan`'s job
+- **brainstorm.md + bd task update are the only artifacts**
 - **T-shirt effort, not story points** — S (hours-days), M (days-week), L (week-month), XL (month+)
 - **Do NOT use TodoWrite or EnterPlanMode** — this command IS the thinking artifact
 - **Company isolation enforced** — if anchored, scope all searches to that company
-- **brainstorm.md is human-editable** — the user may refine it after generation. `/create-task` reads whatever is in the file
+- **brainstorm.md is human-editable** — the user may refine it after generation. `/plan` reads whatever is in the file

@@ -45,7 +45,7 @@ cp -rf source dest          # NOT: cp -r source dest
 ### Per-Company Beads
 
 Each company has its own `.beads/` database inside its directory (`companies/{slug}/.beads/`).
-Always `cd` into the company directory before running `bd` commands. The `/create-task`,
+Always `cd` into the company directory before running `bd` commands. The `/plan`,
 `/execute-task`, and `/run-loop` commands resolve the company from the task's epic prefix
 automatically.
 
