@@ -63,6 +63,45 @@ Research complete:
 - Prior art: {relevant knowledge hits or "none"}
 ```
 
+## Step 2.5: Bug Reproduction (bugs only)
+
+**Skip unless** the task description, title, or labels indicate a **bug** (e.g. label `bug`, words like "broken", "error", "crash", "regression", "doesn't work").
+
+**Goal:** Reproduce the bug with `agent-browser` to confirm behavior, capture evidence, and gather debugging context before exploring approaches.
+
+**Procedure:**
+
+1. **Identify reproduction target** from the task description — URL, app screen, or user flow
+2. **Load the browser-automation skill** (read `.claude/skills/browser-automation/SKILL.md`) for command reference
+3. **Reproduce:**
+   ```bash
+   agent-browser open <url>
+   agent-browser wait --load networkidle
+   agent-browser snapshot -ic
+   ```
+   Follow the steps described in the bug report. After each significant action, re-snapshot to observe state.
+
+4. **Capture evidence:**
+   ```bash
+   agent-browser screenshot bug-evidence.png    # Visual proof
+   agent-browser errors                         # JS errors
+   agent-browser console                        # Console output
+   ```
+
+5. **Record findings** — append to the research summary from Step 2:
+   ```
+   Bug reproduction:
+   - Reproduced: {yes / no / partial}
+   - Observed behavior: {what actually happens}
+   - Expected behavior: {from bug report}
+   - Error signals: {console errors, network failures, or "none"}
+   - Environment notes: {anything relevant — viewport, auth state, etc.}
+   ```
+
+**If reproduction fails:** Note what was tried and what differed from the report. This is still valuable context for Step 5 approaches (e.g. "may be environment-specific").
+
+**If the app requires auth or is not web-accessible:** Skip reproduction, note why, and flag it as an open question in "What We Don't Know".
+
 ## Step 3: Light Interview (1 AskUserQuestion max)
 
 Batch all missing directional info into **one** `AskUserQuestion` call. Skip any field already clear from args, board entry, or research.
