@@ -150,13 +150,22 @@ View tasks:
   bd children {epic-id} --pretty
 ```
 
-### 9. Reindex
+### 9. Lint Check
+
+Run `bd lint` from the company directory and verify the new epic passes. If it fails, fix the description to include the missing section before continuing.
+
+```bash
+cd companies/{company-slug}
+bd lint
+```
+
+### 10. Reindex
 
 ```bash
 qmd update 2>/dev/null || true
 ```
 
-### 10. Report
+### 11. Report
 
 ```
 Project {project-slug} scaffolded:

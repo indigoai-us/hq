@@ -64,14 +64,26 @@ cd companies/{co}
 bd create "{title}" \
   --parent {project-epic-id} \
   --type task \
-  --description "{user's full description}" \
+  --description "{user's full description}
+
+## Acceptance Criteria
+- TBD (refine during /brainstorm or /plan)" \
   --labels "{company-label},idea" \
   --silent
 ```
 
 Capture the returned task ID (e.g. `ghq-abc`).
 
-## Step 6: Confirm & Reindex
+## Step 6: Lint Check
+
+Run `bd lint` from the company directory and verify the new task passes. If it fails, fix the description to include the missing section before continuing.
+
+```bash
+cd companies/{co}
+bd lint
+```
+
+## Step 7: Confirm & Reindex
 
 Print:
 ```
