@@ -60,6 +60,14 @@ ensure_worktree() {
     ' | head -1)
 
   if [[ -n "$existing_wt" && -d "$existing_wt" ]]; then
+    # If the found worktree IS the main repo itself, skip worktree setup — just use in-place
+    local resolved_wt resolved_repo
+    resolved_wt=$(cd "$existing_wt" && pwd -P)
+    resolved_repo=$(cd "$repo_path" && pwd -P)
+    if [[ "$resolved_wt" == "$resolved_repo" ]]; then
+      log_info "Branch $branch_name already checked out in main repo — using in-place"
+      return 0
+    fi
     log_info "Reusing existing worktree: $existing_wt (branch: $branch_name)"
     WORKTREE_PATH="$existing_wt"
     ORIGINAL_REPO_PATH="$REPO_PATH"
@@ -104,6 +112,14 @@ ensure_worktree() {
 # Clean up worktree on project completion
 cleanup_worktree() {
   if [[ "$USING_WORKTREE" != true || -z "$WORKTREE_PATH" || -z "$ORIGINAL_REPO_PATH" ]]; then
+    return 0
+  fi
+
+  # Safety: never remove the main repo itself (happens when branchName matches current checkout)
+  local resolved_wt resolved_orig
+  resolved_wt=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P) || return 0
+  resolved_orig=$(cd "$ORIGINAL_REPO_PATH" 2>/dev/null && pwd -P) || return 0
+  if [[ "$resolved_wt" == "$resolved_orig" ]]; then
     return 0
   fi
 
@@ -2329,7 +2345,6 @@ if [[ "$SWARM_MODE" == true ]]; then
     while IFS= read -r cand_id; do
       [[ -z "$cand_id" ]] && continue
 
-      local cand_title
       cand_title=$(get_story_title "$cand_id")
       echo -e "  ${BLUE}Dispatching:${NC} $cand_id — $cand_title"
 
@@ -2344,7 +2359,7 @@ if [[ "$SWARM_MODE" == true ]]; then
 
       # Create per-story worktree
       ensure_story_worktree "$cand_id"
-      local wt_path="${STORY_WORKTREE_PATH:-}"
+      wt_path="${STORY_WORKTREE_PATH:-}"
 
       # Linear sync
       sync_linear_start "$cand_id"
@@ -2359,7 +2374,7 @@ if [[ "$SWARM_MODE" == true ]]; then
         --session-id "$SESSION_ID" || true
 
       # Launch background
-      local batch_start
+      batch_start=""
       batch_start=$(date +%s)
 
       run_story_background "$cand_id" "$wt_path"
@@ -2422,7 +2437,6 @@ else
       skip_ids=$(printf '%s\n' "${retry_queue[@]}")
     fi
     if [[ ${#checkout_skipped[@]} -gt 0 ]]; then
-      local more_skips
       more_skips=$(printf '%s\n' "${checkout_skipped[@]}")
       if [[ -n "$skip_ids" ]]; then
         skip_ids="$skip_ids"$'\n'"$more_skips"
@@ -2715,17 +2729,16 @@ if [[ "$REMAINING" -eq 0 ]]; then
   log_ok "Report: $REPORT_FILE"
 
   # 2. Update INDEX.md files (company projects + orchestrator)
-  local company
   company=$(jq -r '.metadata.company // empty' "$PRD_PATH" 2>/dev/null) || true
   if [[ -n "$company" ]]; then
-    local co_projects_index="$HQ_ROOT/companies/$company/projects/INDEX.md"
+    co_projects_index="$HQ_ROOT/companies/$company/projects/INDEX.md"
     if [[ -f "$co_projects_index" ]]; then
       # Touch updated_at — full rebuild deferred to /cleanup
       log_info "INDEX: $co_projects_index needs rebuild (deferred)"
     fi
   fi
 
-  local orch_index="$HQ_ROOT/workspace/orchestrator/INDEX.md"
+  orch_index="$HQ_ROOT/workspace/orchestrator/INDEX.md"
   if [[ -f "$orch_index" ]]; then
     log_info "INDEX: $orch_index needs rebuild (deferred)"
   fi
@@ -2739,7 +2752,7 @@ if [[ "$REMAINING" -eq 0 ]]; then
 
   # 5. Verify manifest (repos/workers created during project are registered)
   if [[ -n "$REPO_PATH" && -f "$HQ_ROOT/companies/manifest.yaml" ]]; then
-    local repo_rel="${REPO_PATH#"$HQ_ROOT/"}"
+    repo_rel="${REPO_PATH#"$HQ_ROOT/"}"
     if ! grep -q "$repo_rel" "$HQ_ROOT/companies/manifest.yaml" 2>/dev/null; then
       log_warn "Repo $repo_rel not found in manifest.yaml — verify registration"
     fi
