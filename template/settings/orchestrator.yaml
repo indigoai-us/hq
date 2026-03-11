@@ -1,0 +1,54 @@
+# Orchestrator Settings
+# Controls multi-agent coordination behavior for /run-project and /execute-task
+#
+# =============================================================================
+# state.json Schema (workspace/orchestrator/{project}/state.json)
+# =============================================================================
+#
+# {
+#   "project":          string        — project slug (matches workspace/orchestrator/{project}/)
+#   "prd_path":         string        — relative path to prd.json from HQ_ROOT
+#   "status":           string        — "in_progress" | "paused" | "completed"
+#   "started_at":       ISO8601       — when this project run began
+#   "updated_at":       ISO8601       — last mutation timestamp
+#   "completed_at":     ISO8601|null  — set when status → "completed"
+#   "orchestrator":     string        — orchestrator version identifier (e.g. "bash-v2")
+#   "progress": {
+#     "total":          number        — total story count from prd.json
+#     "completed":      number        — stories with passes=true
+#     "failed":         number        — stories in failed_tasks
+#     "in_progress":    number        — 0..N (number of concurrent stories running)
+#   },
+#   "current_tasks":    array         — [{id, started_at, pid, worktree, checkedOutBy: {pid, startedAt, sessionId}}]
+#                                       (migrated from singular current_task on first load)
+#   "completed_tasks":  array         — [{id, completed_at, commit_sha, files_changed}]
+#   "failed_tasks":     array         — [{id, error, timestamp}]
+#   "retry_queue":      array         — story IDs pending retry
+#   "regression_gates": array         — [{after_story, passed, timestamp}]
+# }
+# =============================================================================
+
+file_locking:
+  enabled: true
+
+  # hard_block: Orchestrator skips story if any declared file is locked. Picks next non-conflicting story.
+  # soft_block: Agent claims story but defers edits to locked files. Works on non-locked parts first.
+  # read_only_fallback: Agent proceeds, treats locked files as read-only. Queues deferred edits for after lock release.
+  conflict_mode: hard_block
+
+  # Locks older than this are considered stale and auto-removed (even if PID check fails)
+  stale_lock_timeout_minutes: 60
+
+checkout:
+  enabled: true
+
+  # Stories checked out by a dead PID older than this threshold are auto-released
+  stale_timeout_minutes: 30
+
+worktree:
+  enabled: true  # Always create worktree for branch isolation (set false for legacy behavior)
+
+swarm:
+  max_concurrency: 4          # Max parallel stories per batch (--swarm N overrides)
+  checkin_interval_seconds: 180  # Seconds between check-in status prints
+  require_files_declared: true   # Only swarm stories that have files[] in prd.json

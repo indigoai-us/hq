@@ -55,6 +55,8 @@ bash scripts/run-project.sh --status
 | `--timeout N` | none | Per-story wall-clock timeout in minutes |
 | `--verbose` | off | Show full claude output |
 | `--tmux` | off | Launch in tmux session with RC (observe from phone) |
+| `--swarm [N]` | off (4) | Run eligible stories in parallel (max N concurrent) |
+| `--checkin-interval N` | 180 | Seconds between check-in status prints |
 
 ## How It Works (Ralph Loop)
 
@@ -101,6 +103,33 @@ For each selected story:
 
 Every 3 completed stories: run `metadata.qualityGates` commands from prd.json.
 Interactive: retry/skip/pause/abort. Non-interactive: auto-pause on failure.
+
+### Swarm Mode (`--swarm`)
+
+When `--swarm [N]` is passed, the orchestrator dispatches eligible stories in parallel:
+
+1. **Candidate selection**: `get_swarm_candidates()` finds stories with resolved deps, declared `files[]`, no file lock conflicts, and no pairwise file overlap
+2. **Pre-acquire locks**: Orchestrator writes file locks BEFORE launching background processes (prevents race between concurrent execute-task lock acquisitions)
+3. **Per-story worktrees**: Each story gets its own git worktree for branch isolation
+4. **Background dispatch**: Each story launches as `claude -p` with `&`, tracked by PID
+5. **Monitor loop**: Polls every 15s (`kill -0`), prints check-in status every `--checkin-interval` seconds
+6. **Completion processing**: When a PID exits — validate git, codex review, orchestrator writes `passes`, update state
+7. **Sequential merge**: Cherry-pick each worktree's commits into main project worktree (no conflicts since files don't overlap)
+8. **Cleanup**: Remove worktrees, run regression gate if interval hit
+
+Falls back to sequential for single candidates or stories without `files[]` declared.
+
+**Safety**: Stories without `files[]` in prd.json are never swarmed (conservative — unknown file surface). The orchestrator (not execute-task) writes `passes: true` to prd.json, eliminating concurrent write races.
+
+**Check-ins**: Both swarm and sequential modes print periodic status (story IDs, PIDs, elapsed time, output sizes).
+
+**Config** (`settings/orchestrator.yaml`):
+```yaml
+swarm:
+  max_concurrency: 4
+  checkin_interval_seconds: 180
+  require_files_declared: true
+```
 
 ### Failure Handling
 
