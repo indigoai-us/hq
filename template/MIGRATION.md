@@ -4,6 +4,46 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v8.1.0 (from v8.0.x)
+
+### Updated run-project.sh (full replace)
+Major upgrade: 3-layer passes detection, swarm retry tracking, per-story branch isolation, project reanchor, codex autofix, macOS timeout fallback.
+```bash
+cp starter-kit/.claude/scripts/run-project.sh .claude/scripts/run-project.sh
+# or if you keep it at scripts/run-project.sh:
+cp starter-kit/.claude/scripts/run-project.sh scripts/run-project.sh
+chmod +x .claude/scripts/run-project.sh  # or scripts/run-project.sh
+```
+
+### Updated Commands (15 files)
+```bash
+for f in run-project prd audit cleanup garden model-route reanchor recover-session remember run search search-reindex startwork update-hq; do
+  cp starter-kit/.claude/commands/$f.md .claude/commands/
+done
+```
+
+### Updated CLAUDE.md
+Three changes to merge:
+1. **Token table** — `MAX_THINKING_TOKENS` → `31999`, new `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` row
+2. **Linear rules 11 & 12** — Default assignee by team + no-orphan-issues
+```bash
+diff .claude/CLAUDE.md starter-kit/.claude/CLAUDE.md
+```
+
+### `/prd` — Behavioral Change
+`/prd` now uses a 7-batch question flow (was 4-batch). The interview is more thorough with separate batches for Users/Current State, Data/Architecture, Integrations, and Quality/Shipping. No schema changes — existing prd.json files are fully compatible.
+
+### Migration Steps
+1. Replace `run-project.sh` and `chmod +x`
+2. Copy 15 updated commands
+3. Merge 3 CLAUDE.md changes (token table, Linear rules)
+4. Run `/search-reindex`
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v8.0.0 (from v7.0.0)
 
 ### Updated Commands (9 files)

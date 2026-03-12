@@ -62,7 +62,7 @@ Before asking questions, explore HQ. If company is anchored (Step 0), scope all 
 
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
-- If target repo has a qmd collection (e.g. `vyg`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `-c {collection}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 
@@ -111,44 +111,194 @@ companies/{co}/projects/{slug}/brainstorm.md
 2. If `status: "promoted"` → warn: "This brainstorm was already promoted to a PRD. Open existing prd.json instead?"
 3. **Pre-load brainstorm content** into interview context for Step 4:
    - **Batch 1** (Problem/Success): pre-fill from brainstorm's `## Context`, `## Recommendation`. Present as confirmations ("Based on brainstorm: {X}. Confirm or modify?") instead of open-ended questions
-   - **Batch 2** (Scope/Constraints): pre-fill from `## What We Don't Know` + any constraints mentioned. Surface unknowns as explicit questions to resolve
-   - **Batch 3** (Integration): pre-fill from brainstorm's identified workers, repos, and recommended approach's tech choices
-   - **Batch 4** (E2E): unchanged — brainstorm doesn't cover testing specifics
+   - **Batch 2** (Users/Current State): pre-fill audience and current solution from brainstorm context if mentioned
+   - **Batch 3** (Scope/Constraints): pre-fill from `## What We Don't Know` + any constraints mentioned. Surface unknowns as explicit questions to resolve. Pre-fill non-goals from brainstorm's rejected approaches
+   - **Batch 4** (Data/Architecture): pre-fill from brainstorm's recommended approach's tech choices, data model mentions
+   - **Batch 5** (Integrations): pre-fill from brainstorm's identified external services
+   - **Batch 6** (Quality/Shipping): pre-fill from brainstorm's identified workers, repos
+   - **Batch 7** (E2E): unchanged — brainstorm doesn't cover testing specifics
 4. **Effect**: interview batches collapse to confirmations rather than open-ended questions. User answers faster, stories are better anchored to the evaluated approach
 
 **If not found:** proceed normally (no change to existing behavior).
 
 ## Step 4: Discovery Interview
 
+Ask questions in batches. Users respond with shorthand: "1a A, 1b: build a dashboard, 1c B"
 
-Ask questions in batches. Users respond: "1A, 2C"
+Each question has lettered options for fast answers + free text override. Present one batch at a time, wait for response, then present next batch.
 
-**Batch 1: Problem & Success**
-1. Core problem or goal?
-2. What does success look like? (measurable)
-3. Who benefits?
+**Before Batch 4:** Classify project type from description + Batch 1-3 answers:
+- **Code project** (has repoPath, or code/app/API/feature keywords) → ask all batches
+- **Content/knowledge/report** → skip Batches 4, 5; skip 6g/6h. Note: "(Batch 4 skipped — non-code project)"
+- **Personal/HQ tooling** → skip 5b, 5c, 6g, 6h
 
-**Batch 2: Scope & Constraints**
-4. What's in scope for MVP?
-5. Hard constraints (time, tech, budget)?
-6. Dependencies on other projects?
+### Dynamic Question Enrichment
 
-**Batch 3: Integration & Quality**
-7. Quality gates? (detect repo from scan, suggest commands)
-   A. `pnpm typecheck && pnpm lint`
-   B. `npm run typecheck && npm run lint`
-   C. None (no automated checks)
-   D. Other: [specify]
-8. Based on scan: "Should this use {relevant workers}?"
-9. Does this need a new worker or skill?
-10. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
-11. Branch name? (default: `feature/{project-name}`)
-12. Base branch? (default: `main`, or `staging` for indigo-nx, etc.) — Pure Ralph creates feature branch from this
+Use the context gathered in Step 2 (company policies, repo policies, manifest, repo scan) to **enrich questions with specific details** rather than asking generic versions. This makes questions faster to answer and surfaces constraints the user might forget.
 
-**Batch 4: E2E Testing (recommended for deployable projects)**
+**From company policies** (`companies/{co}/policies/`):
+- Policy mentions feature flags / rollout → pre-fill 5c with the required approach, present as confirmation
+- Policy mentions PII / GDPR / compliance → always surface 5b regardless of keywords, note the policy
+- Policy mentions brand voice / design system → pre-fill 2c option C with the specific system name
+- Policy mentions specific deploy procedures → add context to 6a (quality gates)
+- Any `enforcement: hard` policy that constrains architecture, auth, or integrations → surface as a constraint in the relevant batch header (e.g. "Note: company policy requires Clerk auth for all new features")
+
+**From repo scan** (target repo's CLAUDE.md, package.json, existing patterns):
+- Repo uses specific auth (Clerk, NextAuth, Supabase Auth) → pre-fill 4b option A with: "Uses existing auth ({system}) — no changes needed"
+- Repo uses specific ORM/DB (Prisma, pgClient, Supabase) → add hint to 4a: "This repo uses {ORM}. Describe entities in those terms"
+- Repo has analytics/tracking (PostHog, Segment, Mixpanel, GA) → pre-fill 6g option B with the system name
+- Repo has monitoring (Sentry, Datadog, CloudWatch) → pre-fill 6h option B/D with the service name
+- Repo has existing test commands → pre-fill 6a with detected commands
+- Repo has existing design system / component library → mention in 2c option C
+
+**From manifest** (`companies/manifest.yaml`):
+- Company has `services: [stripe, ...]` → if project might involve payments, surface in 5a as a hint
+- Company has `vercel_team` → enrich 5c with "deploys via Vercel to {team}"
+- Company has existing integrations → list them as option B context in 5a
+
+**Presentation:** Weave enrichments into the question text naturally. Don't add a separate "detected context" dump — make each question smarter:
+```
+// Generic (bad):
+4b. Auth / permissions model?
+    A. Uses existing auth — no changes needed
+
+// Enriched (good):
+4b. Auth / permissions model? (repo uses Clerk via @clerk/nextjs)
+    A. Uses existing Clerk auth — no changes needed
+```
+
+If a policy or repo context **fully answers** a question, present it as a confirmation rather than an open question:
+```
+5c. Rollout strategy? → Company policy requires feature flags for all new features.
+    Confirming: B. Feature flag (env var)  [Y/n]
+```
+
+---
+
+**Batch 1 — Problem & Success**
+1a. Core problem or goal?
+1b. What does success look like? (measurable metric or verifiable state)
+1c. Who benefits? (list all beneficiaries)
+
+---
+
+**Batch 2 — Users & Current State**
+2a. Who are the primary users?
+    A. Internal / admin only
+    B. External customers / end users
+    C. Both internal and external
+    D. Developer tooling / no direct end user
+    (free text to specify roles and technical level, e.g. "Geoff — CEO, non-technical")
+
+2b. What exists today? (current solution, even if it's a spreadsheet or nothing)
+    A. Nothing — greenfield
+    B. Existing feature being replaced or upgraded
+    C. Manual process being automated
+    D. Third-party tool being replaced
+    (free text to describe what's being replaced and why it's insufficient)
+
+2c. Are there reference designs, mockups, or brand constraints? *(skip if non-UI)*
+    A. Figma file exists (provide file/node ID)
+    B. Visual reference / screenshot (describe or link)
+    C. Follow existing design system exactly (name which one)
+    D. No design constraints — AI chooses
+    E. Not a UI project (skip)
+    *Conditional: auto-skip with E for pure backend/CLI/data projects*
+
+---
+
+**Batch 3 — Scope & Constraints**
+3a. What's in scope for MVP?
+3b. Hard constraints (time, tech, budget)?
+3c. Dependencies on other projects?
+3d. What is explicitly NOT in scope? (non-goals — things users might ask for but we won't build)
+    (free text list, or "none")
+
+---
+
+**Batch 4 — Data & Architecture** *(conditional: code projects only)*
+*Trigger: project has repoPath or description contains DB/schema/API/model keywords. Auto-skip for content/knowledge/reports/social.*
+
+4a. Key data entities? (tables, columns, domain objects this project touches)
+    (free text, e.g. "new `depletions` table, adds `sku_id` FK to `line_items`" — or "no DB changes")
+
+4b. Auth / permissions model?
+    A. Uses existing auth — no changes needed
+    B. New role or permission level needed (describe)
+    C. New auth provider or login method
+    D. No auth (public or internal tool)
+
+4c. Architecture approach?
+    A. Follow existing patterns in the repo exactly
+    B. New pattern needed (describe)
+    C. No opinion — let workers decide
+
+4d. Performance requirements? *(conditional: only if real-time/scale/latency/throughput keywords in description)*
+    A. Standard — no special requirements
+    B. Latency target: [specify, e.g. "< 2s page load"]
+    C. Throughput target: [specify, e.g. "1000 req/s"]
+    D. Mobile / low-bandwidth optimization needed
+    *Default: A*
+
+---
+
+**Batch 5 — Integrations & Security** *(conditional: projects with external service interaction)*
+*Trigger: description contains API/webhook/OAuth/third-party/Stripe/Slack/integration keywords. Auto-skip for fully internal projects.*
+
+5a. External integrations or third-party APIs?
+    A. None — fully self-contained
+    B. Existing integrations (already wired up, just using them)
+    C. New integration needed — list: which service, what data flows, are credentials already set up?
+
+5b. Sensitive data or security considerations? *(conditional: only if user/payment/PII/customer keywords)*
+    A. No PII or sensitive data
+    B. PII handled (email, name, payment info) — existing compliance approach applies
+    C. New compliance requirement (HIPAA, GDPR, etc.)
+    D. Rate limiting or abuse protection needed
+    E. User-generated content with moderation needs
+
+5c. Rollout strategy? *(conditional: only for production-deployed projects with real users)*
+    A. Ship to all users immediately
+    B. Feature flag (specify: env var, LaunchDarkly, user segment)
+    C. Staged rollout (% of users or specific cohort)
+    D. Internal only first, then broader rollout
+    *Default: A*
+
+---
+
+**Batch 6 — Quality & Shipping**
+6a. Quality gates? (detect repo from scan, suggest commands)
+    A. `pnpm typecheck && pnpm lint`
+    B. `npm run typecheck && npm run lint`
+    C. None (no automated checks)
+    D. Other: [specify]
+
+6b. Based on scan: "Should this use {relevant workers}?"
+6c. Does this need a new worker or skill?
+6d. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
+6e. Branch name? (default: `feature/{project-name}`)
+6f. Base branch? (default: `main`, or `staging` for specific projects) — Pure Ralph creates feature branch from this
+
+6g. Analytics / event tracking needed? *(conditional: deployable UI projects only)*
+    A. No — not a user-facing feature
+    B. Yes — use existing tracking system (name it)
+    C. Yes — new tracking events needed (list key events, e.g. "depletion.filter.applied")
+    D. Not sure — include tracking stub only
+    *Default: A*
+
+6h. How do we know it's working in production? *(conditional: production-deployed projects only)*
+    A. Manual testing only
+    B. Existing monitoring covers it (no changes needed)
+    C. New health check or monitoring alert needed (describe)
+    D. Success metric visible in existing dashboard (name it)
+    *Default: B for existing repos, A for greenfield*
+
+---
+
+**Batch 7 — E2E Testing** *(recommended for deployable projects)*
 For each user story targeting a deployable repo, specify E2E tests:
 
-13. What E2E tests should verify this story works?
+7a. What E2E tests should verify each story works?
     - For UI: "Page loads", "User can complete [action]", "Form shows validation errors"
     - For API: "Endpoint returns expected response", "Error cases handled"
     - For CLI: "Command runs successfully", "Opens correct URL"
@@ -189,11 +339,24 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
     "createdAt": "{ISO8601}",
     "goal": "{Overall project goal}",
     "successCriteria": "{Measurable outcome}",
-    "qualityGates": ["{commands from Batch 3}"],
+    "qualityGates": ["{commands from Batch 6a}"],
     "repoPath": "{repos/private/repo-name or empty}",
     "baseBranch": "{main or staging or master}",
     "relatedWorkers": ["{worker-ids from scan}"],
-    "knowledge": ["{relevant knowledge paths}"]
+    "knowledge": ["{relevant knowledge paths}"],
+    "audiences": ["{from Batch 2a — user roles + technical level}"],
+    "currentSolution": "{from Batch 2b — what exists today}",
+    "designRef": "{from Batch 2c — Figma ID, reference, or empty}",
+    "nonGoals": ["{from Batch 3d — explicit out-of-scope items}"],
+    "dataModel": "{from Batch 4a — key entities/tables or empty}",
+    "authModel": "{from Batch 4b — auth approach or empty}",
+    "architectureNotes": "{from Batch 4c — approach or empty}",
+    "performanceRequirements": "{from Batch 4d — targets or empty}",
+    "integrations": ["{from Batch 5a — service name, type, credentialsReady}"],
+    "securityNotes": "{from Batch 5b — PII/compliance notes or empty}",
+    "rolloutStrategy": "{from Batch 5c — ship strategy or empty}",
+    "analyticsEvents": ["{from Batch 6g — event names or empty}"],
+    "monitoringNotes": "{from Batch 6h — prod monitoring plan or empty}"
   }
 }
 ```
@@ -216,6 +379,9 @@ Generate FROM the prd.json data. Human-friendly view.
 ## Overview
 {description}
 
+## Audiences
+{metadata.audiences — who uses this and their technical level. Omit section if empty}
+
 ## Quality Gates
 - `{metadata.qualityGates[0]}`
 
@@ -235,10 +401,20 @@ Generate FROM the prd.json data. Human-friendly view.
 - [ ] {e2eTest 2}
 
 ## Non-Goals
-{What's out of scope}
+{metadata.nonGoals — from Batch 3d answers. If empty, state "None defined"}
 
 ## Technical Considerations
-{Constraints, dependencies}
+{Enriched from interview answers:}
+- **Data model:** {metadata.dataModel — or omit if empty}
+- **Auth:** {metadata.authModel — or omit if empty}
+- **Architecture:** {metadata.architectureNotes — or omit if empty}
+- **Performance:** {metadata.performanceRequirements — or omit if empty}
+- **Integrations:** {metadata.integrations — list services, note if creds ready. Or omit if empty}
+- **Security:** {metadata.securityNotes — or omit if empty}
+- **Rollout:** {metadata.rolloutStrategy — or omit if empty}
+- **Analytics:** {metadata.analyticsEvents — list events. Or omit if empty}
+- **Monitoring:** {metadata.monitoringNotes — or omit if empty}
+{Omit any sub-bullet where the field is empty. If ALL fields empty, write general constraints/dependencies instead}
 
 ## Open Questions
 {Remaining questions}
@@ -377,6 +553,21 @@ To execute, start a new session and run:
 - `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
 - `e2eTests` (recommended for deployable projects): list of E2E test descriptions. Leave `[]` for non-code projects. Used by back-pressure in `/execute-task`
 - For deployable projects, include at least one story dedicated to E2E test infrastructure (Phase 0 pattern)
+
+### Story Complexity Budget
+
+Score each story: **(AC count x 1) + (file count x 2)**. Threshold: **<= 20**.
+
+At PRD generation, compute per-story. If score > 20:
+1. Warn: `"US-004 complexity=29. Recommend splitting."`
+2. Offer auto-split by: tab group, entity boundary, or API/UI separation
+3. If user declines split: add `"model_hint": "opus"` to the story
+
+Splitting heuristics:
+- **Tab-heavy UI**: split by tab group (tabs 1-3 / tabs 4-5)
+- **Multi-entity**: split by entity (brand detail / brand SKU)
+- **API + UI**: always split (schema/API story → UI story depends on it)
+- **12+ ACs**: almost always needs a split regardless of file count
 
 ## Rules
 

@@ -22,7 +22,7 @@ Beginning of every session. Replaces ad-hoc orientation. Much lighter than `/rea
 Determine mode from arg (first match wins):
 
 - **No arg / empty** → Resume mode
-- **Arg matches company slug** in `companies/manifest.yaml` ({company}, abacus, indigo, personal, {company}, {company}, {company}, {company}, {company}, {company}) → Company mode
+- **Arg matches company slug** in `companies/manifest.yaml` ({company-1}, {company-2}, indigo, personal, {company-3}, {company-4}, {company-5}, {company-6}, {company-7}, {company-8}) → Company mode
 - **Arg matches a directory** in `projects/` (not `_archive/`) → Project mode
 - **Arg matches a directory** in `repos/private/` or `repos/public/` → Repo mode
 - **Partial match** → arg is a substring of any company slug, project dir, or repo name (exclude `knowledge-*` repos). 1 match → use that mode. 2-5 matches → present list via AskUserQuestion, ask user to pick. >5 → ask user to be more specific
