@@ -1,0 +1,92 @@
+[
+  {
+    "id": "cortex-001",
+    "type": "broken_ref",
+    "severity": "high",
+    "confidence": "high",
+    "path": "companies/cortex/knowledge",
+    "signal": "Symlink target does not exist",
+    "detail": "companies/cortex/knowledge → ../../repos/private/knowledge-cortex. The target directory repos/private/knowledge-cortex does not exist on disk. This breaks knowledge base access for cortex company — qmd search, Grep, and Read will fail on knowledge-cortex files.",
+    "suggested_action": "create | init-repo"
+  },
+  {
+    "id": "cortex-002",
+    "type": "index_drift",
+    "severity": "high",
+    "confidence": "high",
+    "path": "companies/cortex/projects/cortex-app/prd.json",
+    "signal": "PRD describes Option A (Tauri from scratch); brainstorm recommends Option C→B",
+    "detail": "PRD.json created 2026-03-10 18:03, describes a full-stack Tauri app build (Option A) with 9 user stories. Brainstorm.md created 2026-03-10 20:11 (after PRD) evaluates three approaches and strongly recommends Option C (HQ worker) first to validate the concept, then Option B (Agent SDK + Tauri shell) for production. PRD has NOT been updated to reflect the preferred phased approach. Next steps in thread (T-20260310-220000-cortex-prd.json) still point to scaffolding the Tauri app directly.",
+    "suggested_action": "update | revise-prd"
+  },
+  {
+    "id": "cortex-003",
+    "type": "empty",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "companies/cortex/settings/",
+    "signal": "Directory is empty",
+    "detail": "settings/ has no files — no credential stubs, no config, no .gitkeep. By convention, company settings should have structure (e.g., stub .env or manifest reference).",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "cortex-004",
+    "type": "empty",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "companies/cortex/data/",
+    "signal": "Directory is empty",
+    "detail": "data/ has no files. If cortex pursues the HQ worker approach (Option C), this will hold KPI data and goal config. Currently vacant.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "cortex-005",
+    "type": "empty",
+    "severity": "low",
+    "confidence": "high",
+    "path": "companies/cortex/policies/",
+    "signal": "Directory is empty",
+    "detail": "policies/ has no company-scoped rules. No learned rules or constraints documented yet.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "cortex-006",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "workspace/threads/T-20260310-220000-cortex-prd.json",
+    "signal": "Thread file contains stale next steps that conflict with brainstorm recommendations",
+    "detail": "Thread created 2026-03-10 22:00, states next steps: 'run /execute-task cortex-app/US-001 to scaffold Tauri app' and 'Repo repos/private/cortex-app needs to be created before execution'. These steps assume Option A approach. However, brainstorm.md (created after thread, 2026-03-10 20:11) recommends Option C first. Thread should be updated with revised guidance based on brainstorm decision.",
+    "suggested_action": "update | sync-thread"
+  },
+  {
+    "id": "cortex-007",
+    "type": "duplicate",
+    "severity": "low",
+    "confidence": "medium",
+    "path": "companies/cortex/projects/cortex-app/README.md vs cortex-app/prd.json",
+    "signal": "README and PRD contain nearly identical story content",
+    "detail": "README.md appears to be a hand-formatted summary of prd.json user stories. Both describe the same 9 stories with same priority/dependencies. README has no additional insights beyond what's in the PRD. Maintains code duplication.",
+    "suggested_action": "merge | delete-readme"
+  },
+  {
+    "id": "cortex-008",
+    "type": "broken_ref",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "companies/cortex/projects/cortex-app/prd.json",
+    "signal": "PRD references non-existent repo",
+    "detail": "prd.json metadata field 'repoPath': 'repos/private/cortex-app'. This repo has not been created yet. The PRD assumes the repo exists, but `/execute-task` will fail when it tries to check out branches or commit code. Repo must be created before execution begins.",
+    "suggested_action": "fix_ref | create-repo"
+  },
+  {
+    "id": "cortex-009",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "companies/cortex/projects/cortex-app/brainstorm.md",
+    "signal": "Brainstorm checklist incomplete",
+    "detail": "brainstorm.md ends with '## Next Steps' checklist: '- [ ] Decide: validate with HQ worker first (Option C) or build product directly (Option B)?'. No decision has been made or recorded. The preferred recommendation is Option C→B, but the actual decision point remains unchecked. Unclear who will make/execute this decision.",
+    "suggested_action": "skip"
+  }
+]

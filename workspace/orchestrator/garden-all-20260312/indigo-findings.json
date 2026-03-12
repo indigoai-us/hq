@@ -1,0 +1,147 @@
+{
+  "chunk": "indigo",
+  "scanned_at": "2026-03-12T00:00:00Z",
+  "files_scanned": 13,
+  "findings": [
+    {
+      "id": "F-indigo-001",
+      "type": "index_drift",
+      "severity": "medium",
+      "confidence": "high",
+      "path": "companies/indigo/README.md",
+      "signal": "README declares 'Repos: [indigo-nx]' but links using relative path '../../repos/private/indigo-nx' which should resolve to 'repos/private/indigo-nx'. Link target path is incorrect.",
+      "detail": "Line 14 uses: `[indigo-nx](../../repos/private/indigo-nx)` but should use: `[indigo-nx](../../repos/private/indigo-nx)` or verify the correct path. From companies/indigo/ directory level, ../../repos/private/ is the correct relative path, so the link appears correct. However, the manifest declares the repo as 'repos/private/indigo-nx' which matches the relative path. No actual drift detected after verification.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-002",
+      "type": "duplicate",
+      "severity": "medium",
+      "confidence": "high",
+      "path": "companies/indigo/projects/e2e-perf/_archive/README.md vs companies/indigo/data/user-stories-draft.md",
+      "signal": "Two files contain substantially overlapping content. Archive README (105 lines) covers the same project scope as user-stories-draft (173 lines). Archive README appears to be an earlier version of the same project documentation.",
+      "detail": "Both files describe the Indigo e2e-perf project with overlapping user story descriptions. The archive README covers US-001 through US-006 with detailed acceptance criteria, while user-stories-draft expands to 60 total user stories for the Indigo app (auth, meetings, assistant, commands, etc.). The archive README is narrowly focused on e2e-perf project; user-stories-draft is broader company-level story mapping. Archive README was created 2026-03-10 17:46, user-stories-draft 2026-03-10 17:47 — only 1 minute apart, suggesting they were generated in rapid succession during same session.",
+      "suggested_action": "archive"
+    },
+    {
+      "id": "F-indigo-003",
+      "type": "index_drift",
+      "severity": "low",
+      "confidence": "high",
+      "path": "companies/indigo/projects/INDEX.md",
+      "signal": "INDEX.md lists e2e-perf with status 'Ready' (6 stories) but PRD now shows all 6 stories with 'passes: true'. This represents a state change that INDEX.md should reflect, though 'Ready' status is not technically wrong.",
+      "detail": "projects/INDEX.md line 4 shows 'e2e-perf' with status 'Ready'. The PRD was modified most recently (2026-03-10 20:14) to set all story 'passes' flags from false to true (based on git diff). This indicates the project has progressed from planning to complete, but INDEX.md status label does not capture this progression. 'Ready' typically means ready to start, not 'completed'. This is a minor documentation drift.",
+      "suggested_action": "update"
+    },
+    {
+      "id": "F-indigo-004",
+      "type": "empty",
+      "severity": "low",
+      "confidence": "high",
+      "path": "companies/indigo/data/",
+      "signal": "Directory contains only one file (user-stories-draft.md). This is expected state for a newly scaffolded company, but the draft file should ideally be moved to appropriate location once finalized.",
+      "detail": "companies/indigo/data/ currently contains only user-stories-draft.md (8.2K, dated 2026-03-10 17:47). This is a data export/staging area. The draft file is appropriately placed here while under development.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-005",
+      "type": "empty",
+      "severity": "low",
+      "confidence": "high",
+      "path": "companies/indigo/policies/",
+      "signal": "Directory is empty. No company-scoped policy files exist.",
+      "detail": "companies/indigo/policies/ has zero files. This is expected state for newly scaffolded company. Policies should be created as company-specific rules are discovered or as part of initial company setup.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-006",
+      "type": "empty",
+      "severity": "low",
+      "confidence": "high",
+      "path": "companies/indigo/settings/",
+      "signal": "Directory is empty. No API keys, credentials, or environment files.",
+      "detail": "companies/indigo/settings/ has zero files. This is expected state for newly scaffolded company. Settings directory will be populated as credentials are added during company integration work.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-007",
+      "type": "stale",
+      "severity": "low",
+      "confidence": "medium",
+      "path": "companies/indigo/data/user-stories-draft.md",
+      "signal": "File marked as 'draft' and generated from exploratory analysis (2026-03-10) but no follow-up action recorded. File is 2 days old and may represent exploratory work awaiting formalization.",
+      "detail": "File header indicates 'Generated from app mapping (agent-browser + e2e test analysis) — 2026-03-10'. This was part of initial company research. It contains comprehensive breakdown of 60 user stories across 11 categories but is not linked from any INDEX.md and has no clear owner assignment. The e2e-perf project was formally created as a PRD, but the broader app mapping was not.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-008",
+      "type": "index_drift",
+      "severity": "medium",
+      "confidence": "high",
+      "path": "companies/indigo/knowledge/INDEX.md",
+      "signal": "Knowledge base has complete INDEX.md (541B) that documents 11 markdown files, but some files are not directly referenced from parent company README.",
+      "detail": "companies/indigo/knowledge/INDEX.md lists all 11 knowledge files (README, INDEX, company-overview, product, team, traction, architecture, apps-reference, infrastructure, repo-overview, electron-e2e-testing) with descriptions. These are properly indexed within the knowledge subdirectory. The parent README at companies/indigo/README.md mentions knowledge exists but does not link to its INDEX. This is acceptable since knowledge base is meant to be self-contained git repo.",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-009",
+      "type": "broken_ref",
+      "severity": "medium",
+      "confidence": "medium",
+      "path": "companies/indigo/README.md",
+      "signal": "README lists 'None yet' for workers, but manifest.yaml declares 'workers: []' which is consistent. However, the README should be clearer about this being an empty state vs. 'not yet created'.",
+      "detail": "companies/indigo/README.md line 18 states 'None yet.' for workers. The manifest.yaml correctly shows 'workers: []' for indigo. This is not a drift — it's a redundant statement that could be more helpful if it explained 'No company-scoped workers exist; use shared workers from workers/public/ or create company-specific worker if needed.'",
+      "suggested_action": "skip"
+    },
+    {
+      "id": "F-indigo-010",
+      "type": "index_drift",
+      "severity": "low",
+      "confidence": "high",
+      "path": "companies/indigo/projects/e2e-perf/prd.json",
+      "signal": "PRD file is modified (staging area) with all user story 'passes' flags changed from false to true. This indicates project completion but no commit has been made yet.",
+      "detail": "Git status shows 'M companies/indigo/projects/e2e-perf/prd.json' with unstaged changes. All 6 user stories (US-001 through US-006) have 'passes' field changed from false to true. This is a work-in-progress state reflecting completion of development work. File needs to be committed.",
+      "suggested_action": "skip"
+    }
+  ],
+  "summary": {
+    "total_files_scanned": 13,
+    "total_findings": 10,
+    "by_type": {
+      "stale": 1,
+      "orphan": 0,
+      "index_drift": 4,
+      "duplicate": 1,
+      "broken_ref": 1,
+      "empty": 2
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 5,
+      "low": 5
+    }
+  },
+  "notes": [
+    "All files are recent (created 2026-03-10 to 2026-03-11, within 2 days)",
+    "No stale files detected beyond 60 days",
+    "Company scaffolding is complete with knowledge base (11 files), projects (1 e2e-perf), and basic infrastructure",
+    "Key drift: e2e-perf project status changed to complete (all stories 'passes: true') but not committed to git — work is in progress",
+    "Duplicate content: archive README and user-stories-draft both generated on 2026-03-10 during initial exploration; archive is narrower project scope, draft is broader app mapping",
+    "Empty directories (data, policies, settings) are expected for newly scaffolded company created 2026-03-10",
+    "No broken symlinks; knowledge base correctly symlinks to repos/private/knowledge-indigo",
+    "Manifest is accurate; repos and qmd collections registered correctly",
+    "No orphaned threads or abandoned state files in workspace/threads/"
+  ],
+  "actions_recommended": [
+    {
+      "finding_id": "F-indigo-002",
+      "action": "archive",
+      "rationale": "Archive the _archive/README.md to avoid confusion. It's redundant with the actual prd.json and user-stories-draft.md. Archive is already in _archive/ subdirectory, so consider either removing or clarifying its purpose."
+    },
+    {
+      "finding_id": "F-indigo-003",
+      "action": "update",
+      "rationale": "Update projects/INDEX.md to reflect that e2e-perf project has all stories completed (passes: true). Change status from 'Ready' to 'Completed' or 'In Flight' depending on actual execution status."
+    }
+  ]
+}

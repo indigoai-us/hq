@@ -1,0 +1,33 @@
+{
+  "chunk": "personal",
+  "scanned_at": "2026-03-12T00:00:00Z",
+  "scanned_paths": [
+    "companies/personal/",
+    "workers (personal workers): none found in registry",
+    "workspace/orchestrator: no personal-scoped dirs",
+    "projects: no personal-scoped projects in PRDs"
+  ],
+  "files_scanned": 6,
+  "findings_count": 6,
+  "by_type": {
+    "broken_ref": 1,
+    "empty": 4,
+    "index_drift": 1
+  },
+  "by_severity": {
+    "high": 1,
+    "medium": 2,
+    "low": 3
+  },
+  "summary": {
+    "status": "foundational-incomplete",
+    "critical_blocker": "Broken symlink (F-personal-001) blocks knowledge-personal repo integration. Symlink path has double repos/ — requires deletion and manual recreation with correct relative path.",
+    "incomplete_setup": "Personal company created 2026-03-09 (3 days old) but initialization unfinished. Profile template has placeholders. /personal-interview skill not implemented. Data and settings directories empty.",
+    "action_items": [
+      "HIGH: Delete broken symlink companies/personal/knowledge/personal (F-personal-001)",
+      "MEDIUM: Update INDEX.md after fixing symlink (F-personal-004)",
+      "LOW: Profile.md and archived voice-style.md are intentional placeholders—skip until /personal-interview is implemented"
+    ],
+    "notes": "Personal company is in early initialization state. Recent garden sweep (2026-03-11) moved empty voice-style.md to archive. No orphaned or stale content—all issues are initialization artifacts. Knowledge base symlink is the only critical fix needed."
+  }
+}

@@ -8,6 +8,15 @@
       "storiesComplete": 0,
       "storiesTotal": 9,
       "checkedOutFiles": []
+    },
+    {
+      "name": "e2e-perf",
+      "state": "DONE",
+      "prdPath": "companies/indigo/projects/e2e-perf/prd.json",
+      "updatedAt": "2026-03-11T00:00:00Z",
+      "storiesComplete": 6,
+      "storiesTotal": 6,
+      "checkedOutFiles": []
     }
   ]
 }

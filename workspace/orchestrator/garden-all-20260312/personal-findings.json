@@ -1,0 +1,62 @@
+[
+  {
+    "id": "F-personal-001",
+    "type": "broken_ref",
+    "severity": "high",
+    "confidence": "high",
+    "path": "companies/personal/knowledge/personal",
+    "signal": "Symlink points to ../../../repos/private/knowledge-personal but resolves to /Users/hassaansaleemmacbook2026/repos/hq/repos/private/knowledge-personal (double repos/ in path). Symlink target does not exist.",
+    "detail": "Symlink created at init (2026-03-09) with incorrect relative path. The correct target should resolve to /Users/hassaansaleemmacbook2026/repos/private/knowledge-personal. This breaks the personal knowledge base functionality referenced in INDEX.md.",
+    "suggested_action": "delete"
+  },
+  {
+    "id": "F-personal-002",
+    "type": "empty",
+    "severity": "low",
+    "confidence": "high",
+    "path": "companies/personal/data",
+    "signal": "Directory exists but is empty. No git history. Intended for data exports but never initialized.",
+    "detail": "Created as empty directory during company initialization. No files added since 2026-03-09. Metadata directory placeholder.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "F-personal-003",
+    "type": "empty",
+    "severity": "low",
+    "confidence": "high",
+    "path": "companies/personal/settings",
+    "signal": "Directory exists but is empty. No git history. Intended for credentials but never initialized.",
+    "detail": "Created as empty directory during company initialization (2026-03-09). No credentials or config files added. Placeholder only.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "F-personal-004",
+    "type": "index_drift",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "companies/personal/knowledge/INDEX.md",
+    "signal": "INDEX.md lists 'personal/' symlink repo as available knowledge base, but symlink target is broken (high severity issue F-personal-001).",
+    "detail": "INDEX.md was auto-generated (2026-03-10 00:44) and reflects the intended structure. It will display stale content until the broken symlink is fixed. The file itself is not tracked in git — it's regenerated on each session.",
+    "suggested_action": "update"
+  },
+  {
+    "id": "F-personal-005",
+    "type": "empty",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "companies/personal/knowledge/profile.md",
+    "signal": "Profile contains placeholder text '[to be filled by /personal-interview]' for 2 fields. File created 2026-03-09 (3 days old) with no substantive content beyond template.",
+    "detail": "File initialized during setup but remains incomplete. Intended to be filled by /personal-interview command which does not yet exist. Contains only 14 lines with mostly placeholders. Unfinished initialization artifact.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "F-personal-006",
+    "type": "empty",
+    "severity": "low",
+    "confidence": "high",
+    "path": "companies/personal/knowledge/_archive/voice-style.md",
+    "signal": "File in _archive directory contains only 3 lines (title + instruction to run /personal-interview). Empty placeholder moved to archive during daily sweep (2026-03-11 commit 5ac82d8).",
+    "detail": "Voice style template archived rather than deleted. File was created at init, never filled, and moved to _archive as cleanup action during garden sweep. Only 131 bytes. Intentional archival, not stale content.",
+    "suggested_action": "skip"
+  }
+]

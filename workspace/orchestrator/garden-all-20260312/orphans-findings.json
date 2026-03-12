@@ -1,0 +1,202 @@
+[
+  {
+    "id": "orchestrator-stale-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/orchestrator/garden-all-20260310-b/state.json",
+    "signal": "Completed run from 2 days ago",
+    "detail": "Run garden-all-20260310-b completed on 2026-03-10 at 00:00:00Z. Status: complete. 2 days old, within archival window (7 days).",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "orchestrator-stale-002",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/orchestrator/garden-all-20260310/state.json",
+    "signal": "Completed run from 2 days ago",
+    "detail": "Run garden-all-20260310 completed on 2026-03-10 at 02:00:00Z. Status: complete. 2 days old, within archival window (7 days).",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "orchestrator-stale-003",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/orchestrator/garden-all-20260311/state.json",
+    "signal": "Completed run from 1 day ago",
+    "detail": "Run garden-all-20260311 completed on 2026-03-11 at 00:15:00Z. Status: complete. 1 day old, within archival window (7 days).",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "threads-recent-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/threads/T-20260310-220000-cortex-prd.json",
+    "signal": "Session thread from 2 days ago",
+    "detail": "Thread created 2026-03-10 at 22:00:00Z, updated 22:15:00Z. Company: cortex. Project: cortex-app. Status: waiting for repo creation and execution. 2 days old, within 30-day freshness window.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "threads-recent-002",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/threads/T-20260310-120000-e2e-perf-prd.json",
+    "signal": "Session thread from 2 days ago",
+    "detail": "Thread created 2026-03-10 at 12:00:00Z. Company: indigo. Project: e2e-perf. Status: PRD complete, ready for execution. 2 days old, within 30-day freshness window.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "threads-active-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/threads/handoff.json",
+    "signal": "Handoff pointer from 2 days ago",
+    "detail": "Handoff created 2026-03-10 at 22:15:00Z, points to cortex-app PRD session. Describes pending repo creation. 2 days old, active handoff pointer.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "reports-active-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/reports/garden/garden-all-20260311.md",
+    "signal": "Garden sweep report from 1 day ago",
+    "detail": "Report dated 2026-03-11 (1 day old). 50 lines. Status: complete, 15 findings, 6 actioned. Within 60-day freshness window.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "reports-recent-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/reports/garden/garden-all-20260310-b.md",
+    "signal": "Garden sweep report from 2 days ago",
+    "detail": "Report dated 2026-03-10 (2 days old). 46 lines. Status: complete, 24 validated, 5 actioned. Canonical variant. Within 60-day freshness window.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "reports-archived-001",
+    "type": "stale",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/reports/garden/_archive/garden-all-20260310.md",
+    "signal": "Archived garden sweep report from 2 days ago",
+    "detail": "Report dated 2026-03-10 (2 days old). 52 lines. Archived and superseded by garden-all-20260310-b. In _archive/ subdirectory, properly categorized.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "projects-orphan-001",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/e2e-cloud-testing",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 2 files (README.md, validation-notes.md). No prd.json, no company association. Knowledge base material (128 lines README). Does not match any company project per manifest.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-002",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/hq-installer-test-env",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 145 lines). No prd.json, no company association. Infrastructure testing material. Should be moved to personal or HQ company scope.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-003",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/hq-installer",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 3 files (README.md, research, test-results). No prd.json. HQ infrastructure project. Should be scoped to personal company or documented as shared infrastructure.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-004",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/incorporate-workers-into-pure-ralph",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 54 lines). No prd.json. Ralph loop enhancement project. Should be scoped to personal or shared infrastructure.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-005",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/project-context-manager",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 84 lines). No prd.json. Context management tool for Ralph. Should be scoped to personal or shared infrastructure.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-006",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/pure-ralph-branch-isolation",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 114 lines). No prd.json. Ralph enhancement project. Should be scoped to personal or shared infrastructure.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-007",
+    "type": "orphan",
+    "severity": "medium",
+    "confidence": "high",
+    "path": "projects/purist-ralph-loop",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 148 lines). No prd.json. Ralph loop variant project. Should be scoped to personal or shared infrastructure.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-orphan-008",
+    "type": "orphan",
+    "severity": "low",
+    "confidence": "high",
+    "path": "projects/ralph-test",
+    "signal": "Project directory without prd.json",
+    "detail": "Top-level project directory with 1 file (README.md, 32 lines). No prd.json. Test/scratch project. Consider archiving or scoping to personal.",
+    "suggested_action": "move"
+  },
+  {
+    "id": "projects-archive-001",
+    "type": "orphan",
+    "severity": "low",
+    "confidence": "high",
+    "path": "projects/_archive",
+    "signal": "Archive directory with orphaned subdirectories",
+    "detail": "Archive directory contains 'distributed-tracking' subdirectory. 1 file, purpose unclear. Properly placed in _archive but contents should be validated.",
+    "suggested_action": "skip"
+  },
+  {
+    "id": "workers-missing-001",
+    "type": "broken_ref",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workers/public",
+    "signal": "Nonexistent workers/public directory",
+    "detail": "HQ documentation and learned rules reference workers/public/ directory but it does not exist. Workers are directly in workers/ directory (accessibility-auditor, content-*, dev-team, etc.). Documentation may be outdated.",
+    "suggested_action": "fix_ref"
+  },
+  {
+    "id": "reports-index-validity-001",
+    "type": "index_drift",
+    "severity": "low",
+    "confidence": "high",
+    "path": "workspace/reports/INDEX.md",
+    "signal": "INDEX.md exists and all references valid",
+    "detail": "All file references in INDEX.md point to existing files. No broken references detected. Index is current (updated 2026-03-11). Properly categorizes garden reports and archives.",
+    "suggested_action": "skip"
+  }
+]

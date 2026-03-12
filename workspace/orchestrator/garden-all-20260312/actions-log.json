@@ -1,0 +1,71 @@
+{
+  "run_id": "garden-all-20260312",
+  "generated_at": "2026-03-12T00:00:00Z",
+  "actions": [
+    {
+      "finding_id": "F-indigo-003",
+      "type": "update",
+      "path": "companies/indigo/projects/INDEX.md",
+      "description": "Updated e2e-perf status from 'Ready' to 'Complete' — all 6 stories have passes:true",
+      "status": "succeeded"
+    },
+    {
+      "finding_id": "indigo-prd-uncommitted",
+      "type": "commit",
+      "path": "companies/indigo/projects/e2e-perf/prd.json",
+      "description": "Committed prd.json with all 6 stories marked passes:true",
+      "status": "succeeded"
+    },
+    {
+      "finding_id": "indigo-data-untracked",
+      "type": "commit",
+      "path": "companies/indigo/data/user-stories-draft.md",
+      "description": "Added user-stories-draft.md to git tracking",
+      "status": "succeeded"
+    }
+  ],
+  "false_positives": [
+    {
+      "finding_id": "F-personal-001",
+      "path": "companies/personal/knowledge/personal",
+      "reason": "Symlink resolves correctly to repos/private/knowledge-personal which exists within HQ. Scout incorrectly flagged as broken."
+    },
+    {
+      "finding_id": "cortex-001",
+      "path": "companies/cortex/knowledge",
+      "reason": "This is a real directory (initialized git repo with .git/ + README.md), not a broken symlink. Scout was incorrect."
+    }
+  ],
+  "logged_not_actioned": [
+    {
+      "finding_id": "cortex-002",
+      "path": "companies/cortex/projects/cortex-app/prd.json",
+      "reason": "PRD-brainstorm mismatch (Option A vs recommended C→B). Requires user decision on approach direction before PRD revision.",
+      "severity": "high"
+    },
+    {
+      "finding_id": "cortex-006",
+      "path": "workspace/threads/T-20260310-220000-cortex-prd.json",
+      "reason": "Thread next steps conflict with brainstorm. Requires user decision before updating.",
+      "severity": "medium"
+    },
+    {
+      "finding_id": "cortex-008",
+      "path": "companies/cortex/projects/cortex-app/prd.json",
+      "reason": "PRD references non-existent repo repos/private/cortex-app. Creating the repo requires user-initiated setup.",
+      "severity": "medium"
+    },
+    {
+      "finding_id": "projects-orphan-*",
+      "path": "projects/",
+      "reason": "8 orphan projects (e2e-cloud-testing, hq-installer, pure-ralph-*, etc.) not linked to any company. Moving requires user guidance on target company assignment.",
+      "severity": "medium"
+    }
+  ],
+  "summary": {
+    "succeeded": 3,
+    "failed": 0,
+    "false_positives": 2,
+    "logged_not_actioned": 4
+  }
+}
