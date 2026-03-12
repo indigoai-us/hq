@@ -110,18 +110,18 @@ Repo context ({repo name}):
    ```
 
    **For Electron / desktop apps (CDP):**
-   - Check if the app has a CDP start script (e.g. `start:cdp` in package.json)
-   - Start the dev server (renderer) first, then the main process with CDP:
+   - Check if the app is already running: `lsof -i :9222` (CDP port) or `lsof -i :1212` (renderer port)
+   - If not running, start it:
      ```bash
-     # Start renderer dev server (if not already running)
-     pnpm run start:renderer &
-     # Wait for it, then start Electron with CDP
-     pnpm run start:cdp &
+     cd <electron-app-dir> && pnpm run start &
+     ```
+   - Wait for CDP to be ready, then connect:
+     ```bash
+     # Verify CDP is listening
+     curl -s http://localhost:9222/json
      # Connect via CDP
      agent-browser --cdp 9222 snapshot -ic
      ```
-   - If no `start:cdp` script exists, use: `electron --remote-debugging-port=9222 ./main.js`
-   - Verify connection: `curl -s http://localhost:9222/json` to list CDP targets
 
 4. **Reproduce the exact user flow:**
    - Follow the bug report steps precisely — click the same buttons, navigate the same paths
