@@ -14,7 +14,7 @@
       ],
       "e2eTests": [],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/tests/test-utils.ts"
       ],
@@ -38,7 +38,7 @@
       ],
       "e2eTests": [],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/tests/test-utils.ts"
       ],
@@ -62,7 +62,7 @@
       ],
       "e2eTests": [],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/e2e/onboarding.spec.ts",
         "apps/electron/tests/auth.spec.ts",
@@ -88,7 +88,7 @@
       ],
       "e2eTests": [],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/tests/auth.spec.ts"
       ],
@@ -110,7 +110,7 @@
       ],
       "e2eTests": [],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/project.json"
       ],
@@ -132,7 +132,7 @@
       ],
       "e2eTests": [],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "files": [
         "apps/electron/playwright.config.ts",
         "apps/electron/tests/assistant-chat.spec.ts"
