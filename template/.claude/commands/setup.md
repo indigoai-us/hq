@@ -31,7 +31,8 @@ If missing:
 ```
 qmd not found. HQ uses qmd for semantic search across knowledge, workers, and code.
 
-Install: npm install -g @tobilu/qmd
+Install: cargo install qmd
+  OR: brew install tobi/tap/qmd
 
 After install, index HQ: qmd index .
 ```

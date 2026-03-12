@@ -26,7 +26,8 @@ Env vars in `.claude/settings.json` control cost defaults:
 
 | Env var | Value | Why |
 |---------|-------|-----|
-| `MAX_THINKING_TOKENS` | `20000` | Caps extended thinking from 31,999 → 20,000 (~37% reasoning cost savings) |
+| `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
+| `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Triggers mandatory handoff at 80% context (compaction can't be blocked — handoff preserves state) |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `sonnet` | Subagents (Task tool) use Sonnet (~60% cheaper than Opus, better quality than Haiku) |
 
@@ -159,6 +160,8 @@ All {PRODUCT}/{Product}/{Company} work tracked in Linear (workspace: `voyage`). 
 8. **No retroactive sync**: Don't create Linear objects for archived/completed projects
 9. **Commenting on state changes**: When issue → In Review, comment mentioning relevant reviewer(s). When blocked/needs resolution, comment with context + @mention. Use member IDs from config.json `members` block, fall back to display name
 10. **Cross-posting guard**: NEVER use another company's Linear creds for {Product} work. Validate `workspace: "voyage"` in config before any API call
+11. **Default assignee by team**: DEV → {developer}. AGE/GTM/PROD → {your-name}. CX/OPS/LIVOPS/STYLE → unassigned. Resolved at issue creation using member IDs from config.json
+12. **No orphan issues**: Issues MUST be created with `projectId`. If project creation failed during `/prd`, backfill in `/run-project` pre-loop. All issues get `dueDate` matching project `targetDate`
 
 ### Triage
 

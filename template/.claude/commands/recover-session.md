@@ -222,15 +222,15 @@ Read the output JSON. If `{"skip": true}`, skip this session (subagent).
 
 Decode `project_dir_encoded` and inspect `cwd` + `files_edited`/`files_written`:
 
-- `cwd` contains `repos/private/{product}` → {company}
-- `cwd` contains `repos/private/{company}-` → {company}
+- `cwd` contains `repos/private/{repo}` → {company}
+- `cwd` contains `repos/private/{company-2}-` → {company-2}
 - `cwd` contains `repos/private/{company}-` → {company}
 - `files_touched` include `companies/{co}/` → that company
 - Fallback: "personal"
 
 Decode project dir for display:
 - `-Users-{your-username}-Documents-HQ` → "HQ"
-- `-Users-{your-username}-Documents-HQ-repos-private-{product}` → "{PRODUCT}"
+- `-Users-{your-username}-Documents-HQ-repos-private-{repo}` → "{repo}"
 - etc. (replace leading path + `-` with readable name)
 
 ### 5. Generate Thread JSON

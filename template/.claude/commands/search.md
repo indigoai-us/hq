@@ -17,7 +17,7 @@ Extract from $ARGUMENTS:
 - `query` — search text (everything except flags)
 - `--mode` — `search` (BM25), `vsearch` (semantic), `query` (hybrid). Default: `search`
 - `-n` — result count (default: 10)
-- `-c` — collection name (e.g. `hq`, `{product}`). Default: all collections
+- `-c` — collection name (e.g. `hq`, `{repo}`). Default: all collections
 - `--full` — show full content of top result
 
 ## Company Auto-Detection
@@ -29,8 +29,8 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available company collections: `{company}`, `{company}`, `{company}`, `personal`
-Also: `hq` (all HQ), `{product}` ({PRODUCT} codebase)
+Available company collections: `{company}`, `{company-2}`, `{company}`, `personal`
+Also: `hq` (all HQ), `{repo}` (repo codebase)
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -64,7 +64,7 @@ Results:
   1. [0.92] hq: knowledge/public/Ralph/02-core-concepts.md
      "Ralph methodology emphasizes small loops with human checkpoints..."
 
-  2. [0.84] {product}: libs/core/src/auth/middleware.ts
+  2. [0.84] {repo}: libs/core/src/auth/middleware.ts
      "export function authMiddleware..."
 
   3. [0.71] hq: workers/public/dev-team/architect/skills/design-review.md
@@ -100,15 +100,15 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                                    # BM25 keyword search (default, all collections)
 /search "how do workers execute" --mode vsearch  # Semantic across all
-/search auth middleware -c {product}                    # Search {PRODUCT} codebase only
-/search "webhook handler" -c {product} --mode vsearch  # Semantic search in {PRODUCT}
-/search {company} brand --mode query                # Hybrid with re-ranking
+/search auth middleware -c {repo}                # Search repo codebase only
+/search "webhook handler" -c {repo} --mode vsearch  # Semantic search in repo
+/search {company-2} brand --mode query           # Hybrid with re-ranking
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
-/search "brand guidelines" -c {company}             # Search {Company} knowledge only
-/search "recovery metrics" -c {company}        # Search {Company} knowledge only
-# If cwd is companies/{company}/:
-/search "case study"                             # Auto-detects → -c {company}
+/search "brand guidelines" -c {company-2}        # Search company knowledge only
+/search "recovery metrics" -c {company}          # Search company knowledge only
+# If cwd is companies/{company-2}/:
+/search "case study"                             # Auto-detects → -c {company-2}
 ```
 
 ## Notes
@@ -116,7 +116,7 @@ Display: "qmd unavailable, falling back to grep"
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `{company}`, `personal`
+- Use `-c` to scope to a collection: `hq`, `{repo}`, `{company}`, `{company-2}`, `{company}`, `personal`
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0-1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content

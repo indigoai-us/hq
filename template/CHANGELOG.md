@@ -1,5 +1,40 @@
 # Changelog
 
+## v8.1.0 (2026-03-12)
+
+Ralph loop reliability — in-session mode default, 3-layer passes detection, swarm retry tracking, per-story branch isolation, project reanchor, and 10+ reliability fixes.
+
+### Added
+
+- **`/run-project` — In-session mode default** — Stories run as Task() sub-agents within the current Claude session (faster, no process overhead). Headless bash mode via `--bash` flag.
+- **`/run-project` — `--codex-autofix` flag** — Auto-fix P1/P2 codex review findings via targeted `claude -p` agent with 300s timeout.
+- **`/run-project` — Context safety limits** — Auto-handoff after 6 stories or 70% context ceiling.
+- **`/run-project` — Project Reanchor** — Every 3 completed stories, evaluates remaining stories for spec drift. Writes reanchor report.
+- **`run-project.sh` — 3-layer passes detection** — Layer 1 (JSON parse) → Layer 2 (full-file scan for task_id+status pairs) → Layer 3 (git heuristic: commits after checkout + declared files touched). Replaces simple grep fallback.
+- **`run-project.sh` — Swarm retry tracking** — `_swarm_retry_get()`/`_swarm_retry_inc()` with max 2 retries per story. Exhausted stories filtered from new batch selection.
+- **`run-project.sh` — Per-story branch isolation** — `project-branch--story-slug` naming avoids "already checked out" conflicts in swarm mode.
+- **`run-project.sh` — Full commit-range cherry-pick** — Uses `merge-base` to capture all worktree commits, not just HEAD.
+- **`run-project.sh` — Stale PID cleanup** — Dead PIDs from crashed processes cleaned from `current_tasks` on startup.
+- **`run-project.sh` — macOS timeout fallback** — `gtimeout` → `perl -e alarm` chain for bash 3.2 compatibility.
+- **`run-project.sh` — Mandatory termination protocol** — Stricter sub-agent JSON output enforcement ("LAST output must be JSON only").
+
+### Changed
+
+- **`/prd` — 7-batch interview** — Expanded from 4 to 7 question batches (Users/Current State, Data/Architecture, Integrations, Quality/Shipping as separate batches). Dynamic question enrichment from company policies and repo scan.
+- **CLAUDE.md — Token optimization** — `MAX_THINKING_TOKENS` bumped to 31999. Added `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` env var.
+- **CLAUDE.md — Linear rules 11 & 12** — Default assignee by team + no-orphan-issues enforcement.
+- **13 commands PII-scrubbed** — audit, cleanup, garden, model-route, reanchor, recover-session, remember, run, search, search-reindex, startwork, update-hq refreshed.
+
+### Fixed
+
+- `run-project.sh` — `files_changed` JSON validation in `update_state_completed()`
+- `run-project.sh` — Empty PID → null (was crash on empty string)
+- `run-project.sh` — `date -u` flag for BSD date UTC correctness
+- `run-project.sh` — Per-story branch cleanup after worktree merge (was leaking branches)
+- `run-project.sh` — `process_swarm_completion()` receives `start_epoch` for Layer 3 git heuristic
+
+---
+
 ## v8.0.1 (2026-03-10)
 
 ### Fixed

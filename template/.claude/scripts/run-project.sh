@@ -25,6 +25,7 @@ set -euo pipefail
 # =============================================================================
 
 HQ_ROOT="~/Documents/HQ"
+export PATH="$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
 SESSION_ID="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -204,6 +205,7 @@ IN_PLACE=false
 SWARM_MODE=false
 SWARM_MAX=4
 CHECKIN_INTERVAL=180  # seconds between check-in status prints
+CODEX_AUTOFIX=false
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -247,6 +249,7 @@ while [[ $# -gt 0 ]]; do
       fi
       shift ;;
     --checkin-interval) CHECKIN_INTERVAL="$2"; shift 2 ;;
+    --codex-autofix)  CODEX_AUTOFIX=true; shift ;;
     --help|-h)
       cat <<'HELP'
 Usage: scripts/run-project.sh <project> [flags]
@@ -265,6 +268,7 @@ Flags:
   --in-place          Skip worktree creation, work directly on repo checkout
   --swarm [N]         Run eligible stories in parallel (max N concurrent, default 4)
   --checkin-interval N  Seconds between check-in status prints (default: 180)
+  --codex-autofix     Auto-fix P1/P2 codex review findings (opt-in)
 HELP
       exit 0
       ;;
@@ -564,6 +568,21 @@ if [[ -f "$STATE_FILE" ]]; then
   jq --arg ts "$(ts)" '.status = "in_progress" | .updated_at = $ts' "$STATE_FILE" > "$STATE_FILE.tmp" \
     && mv "$STATE_FILE.tmp" "$STATE_FILE"
   log_info "Resuming from state.json"
+
+  # Clean stale current_tasks from prior crashed runs (dead PIDs)
+  if [[ -f "$STATE_FILE" ]]; then
+    _stale_count=0
+    while IFS= read -r _pid; do
+      if [[ -n "$_pid" && "$_pid" != "null" ]] && ! kill -0 "$_pid" 2>/dev/null; then
+        jq --argjson pid "$_pid" \
+          '.current_tasks = [.current_tasks[] | select((.pid // .checkedOutBy.pid) != $pid)]' \
+          "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+        ((_stale_count++)) || true
+      fi
+    done < <(jq -r '.current_tasks[]? | (.pid // .checkedOutBy.pid // empty) | tostring' "$STATE_FILE" 2>/dev/null)
+    [[ $_stale_count -gt 0 ]] && log_info "Cleaned $_stale_count stale current_tasks entries from prior run"
+  fi
+
   "$AUDIT_SCRIPT" append --event project_started --project "$PROJECT" \
     ${COMPANY:+--company "$COMPANY"} \
     --action "Resuming project: $TOTAL stories, $COMPLETED completed (resume=true)" \
@@ -1145,8 +1164,14 @@ Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
 Do NOT implement directly — delegate to workers via the execute-task pipeline.
 ISOLATION: Only modify files within your assigned repo and this project's PRD. Do NOT read, modify, pause, or interfere with other projects' state files in workspace/orchestrator/. Other orchestrators may be running concurrently — ignore them.
 
-After completion, output ONLY structured JSON:
-{\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}"
+=== MANDATORY TERMINATION PROTOCOL ===
+Your ABSOLUTE FINAL message must be ONLY this JSON on its own line, with nothing after it:
+{\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}
+RULES:
+- This JSON must be your LAST output. No prose before or after.
+- Do NOT answer questions about this JSON.
+- Do NOT include this JSON mid-task and then continue talking.
+- Wrong format = task marked FAILED by orchestrator."
 
   local flags=(-p --output-format json)
 
@@ -1170,7 +1195,15 @@ After completion, output ONLY structured JSON:
   local cmd=(claude "${flags[@]}" "$prompt")
 
   if [[ -n "$TIMEOUT" ]]; then
-    cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
+    # macOS doesn't ship GNU timeout — try gtimeout (coreutils), then perl fallback
+    if command -v timeout &>/dev/null; then
+      cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
+    elif command -v gtimeout &>/dev/null; then
+      cmd=(gtimeout "${TIMEOUT}m" "${cmd[@]}")
+    else
+      # perl-based timeout fallback for macOS
+      cmd=(perl -e "alarm(${TIMEOUT}*60); exec @ARGV" "${cmd[@]}")
+    fi
   fi
 
   # Clear orchestrator's checkout lock for this story before subprocess — execute-task will acquire its own.
@@ -1223,8 +1256,15 @@ get_changed_files() {
   local story_id="$1"
   { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && echo "[]" && return
   # Files changed in last commit
-  git -C "$REPO_PATH" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
-    | jq -R -s 'split("\n") | map(select(length > 0))' || echo "[]"
+  local _result
+  _result=$(git -C "$REPO_PATH" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
+    | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null) || true
+  # Validate JSON before returning — protects --argjson in update_state_completed
+  if [[ -z "$_result" ]] || ! jq -e . <<< "$_result" &>/dev/null; then
+    echo "[]"
+  else
+    echo "$_result"
+  fi
 }
 
 # =============================================================================
@@ -1275,10 +1315,71 @@ run_codex_review() {
     if grep -qi "critical\|high.*severity\|security.*vuln\|injection" "$review_file" 2>/dev/null; then
       log_warn "Codex found potentially critical issues — see $review_file"
     fi
+    # Return severity for autofix integration
+    CODEX_REVIEW_SEVERITY=0
+    if grep -qi "P1\|critical\|high.*severity\|security.*vuln\|injection" "$review_file" 2>/dev/null; then
+      CODEX_REVIEW_SEVERITY=4
+    elif grep -qi "P2\|medium.*severity\|potential.*bug\|missing.*validation" "$review_file" 2>/dev/null; then
+      CODEX_REVIEW_SEVERITY=3
+    fi
+
+    # Codex autofix: if enabled and severity >= 3, spawn fix agent
+    if [[ "$CODEX_AUTOFIX" == "true" && "$CODEX_REVIEW_SEVERITY" -ge 3 ]]; then
+      run_codex_fix_agent "$story_id" "$review_file"
+    fi
   else
     log_info "Codex review: no findings for $story_id"
     rm -f "$review_file"
+    CODEX_REVIEW_SEVERITY=0
   fi
+}
+
+# =============================================================================
+# Codex Autofix (opt-in: --codex-autofix)
+# =============================================================================
+
+run_codex_fix_agent() {
+  local story_id="$1"
+  local review_file="$2"
+
+  log_info "Codex autofix: spawning fix agent for $story_id (severity=$CODEX_REVIEW_SEVERITY)"
+
+  local fix_prompt
+  fix_prompt="You are a targeted code fix agent. A codex review found P1/P2 issues in story $story_id.
+
+Review file contents:
+$(cat "$review_file" 2>/dev/null)
+
+Repository path: $REPO_PATH
+
+Instructions:
+1. Read each P1/P2 finding from the review
+2. Fix ONLY the specific issues flagged — do not refactor, do not add features
+3. After fixing, run the project's quality gates if available
+4. Commit fixes with message: [codex-autofix] $story_id: fix P1/P2 findings
+
+Do NOT modify the PRD. Do NOT run unrelated changes."
+
+  local fix_output="$EXEC_DIR/${story_id}.codex-fix.json"
+
+  timeout 300 claude -p "$fix_prompt" \
+    --output-format json \
+    --max-turns 15 \
+    ${NO_PERMISSIONS:+--dangerously-skip-permissions} \
+    > "$fix_output" 2>&1 || {
+    log_warn "Codex fix agent failed or timed out for $story_id (non-blocking)"
+    return 0
+  }
+
+  log_ok "Codex autofix completed for $story_id — see $fix_output"
+
+  # Re-run codex review to verify fixes (one pass only, no recursion)
+  local old_autofix="$CODEX_AUTOFIX"
+  CODEX_AUTOFIX=false  # prevent recursion
+  run_codex_review "$story_id"
+  CODEX_AUTOFIX="$old_autofix"
+
+  return 0
 }
 
 # =============================================================================
@@ -1496,6 +1597,66 @@ run_regression_gate() {
 }
 
 # =============================================================================
+# Project Reanchor
+# =============================================================================
+
+run_project_reanchor() {
+  local project_name="$1"
+  local completed_count="$2"
+  local reanchor_num=$((completed_count / 3))
+  local reanchor_file="$EXEC_DIR/reanchor-${reanchor_num}.md"
+
+  log_info "Project reanchor #${reanchor_num}: evaluating remaining stories after ${completed_count} completions"
+
+  # Build context: recent outputs + codex reviews
+  local recent_outputs=""
+  local recent_reviews=""
+  for f in "$EXEC_DIR"/*.output.json; do
+    [[ -f "$f" ]] && recent_outputs="$recent_outputs $(basename "$f")"
+  done
+  for f in "$EXEC_DIR"/*.codex-review.md; do
+    [[ -f "$f" ]] && recent_reviews="$recent_reviews $(basename "$f")"
+  done
+
+  local reanchor_prompt="You are a project reanchor agent. Your job is to evaluate whether remaining story specs are still valid after ${completed_count} stories have been completed.
+
+Read the PRD at: ${PRD_PATH}
+Read progress at: ${EXEC_DIR}/../../progress.txt (if exists)
+
+For each remaining story (passes != true), evaluate:
+1. Are acceptance criteria still accurate given what was implemented?
+2. Did a completed story partially address this story's work?
+3. Any new required work discovered from execution?
+4. Is this story now unnecessary?
+
+Output a markdown report with:
+- Summary of findings
+- Per-story assessment (keep/modify/remove recommendation)
+- Specific AC changes needed (if any)
+- New work discovered (if any)
+
+IMPORTANT: Do NOT modify the PRD. Only write your analysis report.
+Write your report to: ${reanchor_file}"
+
+  # Best-effort, non-blocking — don't fail the loop
+  timeout 300 claude -p "$reanchor_prompt" \
+    --output-format json \
+    --max-turns 10 \
+    > "$EXEC_DIR/reanchor-${reanchor_num}.output.json" 2>&1 || {
+    log_warn "Project reanchor #${reanchor_num} failed or timed out (non-blocking)"
+    return 0
+  }
+
+  if [[ -f "$reanchor_file" ]]; then
+    log_ok "Reanchor report written: $reanchor_file"
+  else
+    log_warn "Reanchor agent completed but no report file found"
+  fi
+
+  return 0
+}
+
+# =============================================================================
 # Failure Handling
 # =============================================================================
 
@@ -1594,9 +1755,9 @@ update_state_add_task() {
     .current_tasks = ((.current_tasks // []) | map(select(.id != $id))) + [{
       "id": $id,
       "started_at": $ts,
-      "pid": ($pid | tonumber),
+      "pid": (if $pid == "" then null else ($pid | tonumber) end),
       "worktree_path": $wt,
-      "checkedOutBy": {"pid": ($pid | tonumber), "startedAt": $ts, "sessionId": $sid}
+      "checkedOutBy": {"pid": (if $pid == "" then null else ($pid | tonumber) end), "startedAt": $ts, "sessionId": $sid}
     }] |
     .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
@@ -1732,42 +1893,98 @@ sync_linear_done() {
 # Parse the claude -p output JSON to determine pass/fail, then write passes: true
 orchestrator_write_passes() {
   local story_id="$1"
+  local checkout_started_at="${2:-}"  # ISO8601 timestamp when story execution began
   local output_file="$EXEC_DIR/${story_id}.output.json"
 
-  # Try to parse structured JSON from output
-  local status_from_output=""
-  if [[ -f "$output_file" ]]; then
-    # The output may contain a JSON object with "status" field, possibly wrapped in claude's output format
-    status_from_output=$(jq -r '
-      # Try direct .status field
-      if .status then .status
-      # Try .result.status (claude --output-format json wraps in result)
-      elif .result then (.result | if type == "string" then (fromjson? // {}) else . end | .status // empty)
-      else empty end
-    ' "$output_file" 2>/dev/null) || true
-
-    # Fallback: grep for status in raw output
-    if [[ -z "$status_from_output" ]]; then
-      status_from_output=$(grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' "$output_file" 2>/dev/null \
-        | tail -1 | sed 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/') || true
-    fi
-  fi
-
-  # Also check if execute-task already wrote passes (backward compat during transition)
+  # Early exit: already passed (execute-task may have written it directly)
   local already_passed
   already_passed=$(jq -r --arg id "$story_id" '
     .userStories[] | select(.id == $id) | .passes
   ' "$PRD_PATH" 2>/dev/null) || true
 
   if [[ "$already_passed" == "true" ]]; then
-    return 0  # Already set — nothing to do
+    return 0
   fi
 
+  local status_from_output=""
+  local detection_layer=""
+
+  # --- Layer 1: Parse structured JSON from claude -p output ---
+  # claude --output-format json puts the final response text in .result
+  if [[ -f "$output_file" ]]; then
+    status_from_output=$(jq -r '
+      if .status then .status
+      elif .result then (.result | if type == "string" then (fromjson? // {}) else . end | .status // empty)
+      else empty end
+    ' "$output_file" 2>/dev/null) || true
+    [[ -n "$status_from_output" ]] && detection_layer="Layer 1 (.result JSON parse)"
+  fi
+
+  # --- Layer 2: Full-file scan for task_id + status pair ---
+  # The structured JSON may have been emitted mid-conversation inside a content[].text block
+  # but not in the final .result field. Search the raw file for both markers.
+  # Note: claude -p --output-format json produces an array of conversation messages, and
+  # the task completion JSON is often inside escaped text within a message content block.
+  if [[ -z "$status_from_output" && -f "$output_file" ]]; then
+    # Search for task_id matching this story paired with completed status anywhere in the file
+    # The JSON may be inside escaped strings (e.g. \"task_id\": \"US-003\")
+    if grep -q "task_id.*${story_id}" "$output_file" 2>/dev/null \
+       && grep -q "\"status\".*\"completed\"\|status.*completed" "$output_file" 2>/dev/null; then
+      # Verify the pair appears in the same text block (within 500 chars)
+      # Extract all text content and look for the JSON object
+      local found_pair
+      found_pair=$(jq -r '
+        [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] |
+        .[] | select(test("task_id.*'"$story_id"'")) | select(test("\"status\".*\"completed\""))
+      ' "$output_file" 2>/dev/null | head -1) || true
+      if [[ -n "$found_pair" ]]; then
+        status_from_output="completed"
+        detection_layer="Layer 2 (full-file scan: task_id + status in assistant message text)"
+      fi
+    fi
+  fi
+
+  # --- Layer 3: Git heuristic — commits + declared files touched ---
+  # If the sub-agent committed work touching declared files, the story likely completed
+  if [[ -z "$status_from_output" && -n "$checkout_started_at" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
+    local recent_commits=0
+    recent_commits=$(git -C "$REPO_PATH" log --oneline --after="$checkout_started_at" 2>/dev/null | wc -l | tr -d ' ') || true
+
+    if [[ "${recent_commits:-0}" -gt 0 ]]; then
+      local story_files_json
+      story_files_json=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .files // []' "$PRD_PATH" 2>/dev/null) || true
+      local story_files_count
+      story_files_count=$(echo "$story_files_json" | jq 'length' 2>/dev/null) || true
+
+      if [[ "${story_files_count:-0}" -gt 0 ]]; then
+        local touched_count=0
+        while IFS= read -r f; do
+          [[ -z "$f" ]] && continue
+          if git -C "$REPO_PATH" log --oneline --after="$checkout_started_at" -- "$f" 2>/dev/null | grep -q .; then
+            touched_count=$((touched_count + 1))
+          fi
+        done < <(echo "$story_files_json" | jq -r '.[]' 2>/dev/null)
+
+        if [[ "$touched_count" -gt 0 ]]; then
+          status_from_output="completed"
+          detection_layer="Layer 3 (git heuristic: $recent_commits commits, $touched_count/${story_files_count} declared files touched)"
+        fi
+      elif [[ "${recent_commits:-0}" -ge 2 ]]; then
+        # No declared files but multiple commits — likely real work
+        status_from_output="completed"
+        detection_layer="Layer 3 (git heuristic: $recent_commits commits, no declared files)"
+      fi
+    fi
+  fi
+
+  # --- Write passes if any layer detected completion ---
   if [[ "$status_from_output" == "completed" ]]; then
     jq --arg id "$story_id" '
       (.userStories[] | select(.id == $id)).passes = true
     ' "$PRD_PATH" > "$PRD_PATH.tmp" && mv "$PRD_PATH.tmp" "$PRD_PATH"
-    log_ok "Orchestrator set passes=true for $story_id"
+    log_ok "Orchestrator set passes=true for $story_id [$detection_layer]"
+  else
+    log_warn "passes detection: no completion signal found for $story_id (all 3 layers failed)"
   fi
 }
 
@@ -1804,7 +2021,7 @@ print_checkin_status() {
       local elapsed_str="?"
       if [[ -n "$start_ts" ]]; then
         local start_epoch
-        start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$start_ts" "+%s" 2>/dev/null) || true
+        start_epoch=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$start_ts" "+%s" 2>/dev/null) || true
         if [[ -n "$start_epoch" ]]; then
           local elapsed=$(( now - start_epoch ))
           elapsed_str="$((elapsed / 60))m$((elapsed % 60))s"
@@ -1886,8 +2103,14 @@ Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
 Do NOT implement directly — delegate to workers via the execute-task pipeline.
 ISOLATION: Only modify files within your assigned repo and this project's PRD. Do NOT read, modify, pause, or interfere with other projects' state files in workspace/orchestrator/. Other orchestrators may be running concurrently — ignore them.
 
-After completion, output ONLY structured JSON:
-{\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}"
+=== MANDATORY TERMINATION PROTOCOL ===
+Your ABSOLUTE FINAL message must be ONLY this JSON on its own line, with nothing after it:
+{\"task_id\": \"${story_id}\", \"status\": \"completed|failed|blocked\", \"summary\": \"1-sentence\", \"workers_used\": [\"list\"]}
+RULES:
+- This JSON must be your LAST output. No prose before or after.
+- Do NOT answer questions about this JSON.
+- Do NOT include this JSON mid-task and then continue talking.
+- Wrong format = task marked FAILED by orchestrator."
 
   local flags=(-p --output-format json)
   [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions)
@@ -1901,7 +2124,16 @@ After completion, output ONLY structured JSON:
   local output_file="$EXEC_DIR/${story_id}.output.json"
   local stderr_file="$EXEC_DIR/${story_id}.stderr"
   local cmd=(claude "${flags[@]}" "$prompt")
-  [[ -n "$TIMEOUT" ]] && cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
+  # macOS doesn't ship GNU timeout — mirror the sequential fallback chain
+  if [[ -n "$TIMEOUT" ]]; then
+    if command -v timeout &>/dev/null; then
+      cmd=(timeout "${TIMEOUT}m" "${cmd[@]}")
+    elif command -v gtimeout &>/dev/null; then
+      cmd=(gtimeout "${TIMEOUT}m" "${cmd[@]}")
+    else
+      cmd=(perl -e "alarm(${TIMEOUT}*60);exec @ARGV" "${cmd[@]}")
+    fi
+  fi
 
   # Launch in background
   (cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" >"$output_file" 2>"$stderr_file") &
@@ -1909,15 +2141,20 @@ After completion, output ONLY structured JSON:
 }
 
 # Create a per-story worktree for swarm isolation. Sets STORY_WORKTREE_PATH.
+# Each story gets its own unique branch (project-branch/story-slug) to avoid
+# git's "branch already checked out" error when the project worktree exists.
 ensure_story_worktree() {
   local story_id="$1"
-  local branch_name="${BRANCH_NAME:-main}"
+  local project_branch="${BRANCH_NAME:-main}"
 
   local story_slug
   story_slug=$(echo "$story_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
-  local branch_slug="${branch_name//\//-}"
+  local branch_slug="${project_branch//\//-}"
   local base_repo="${ORIGINAL_REPO_PATH:-$REPO_PATH}"
   local wt_path="${base_repo}-wt-${branch_slug}-${story_slug}"
+  # Each story worktree gets its own branch to avoid "already checked out" conflicts
+  # Use -- separator (not /) to avoid git ref tree conflict with the project branch
+  local story_branch="${project_branch}--${story_slug}"
 
   STORY_WORKTREE_PATH=""
 
@@ -1929,19 +2166,20 @@ ensure_story_worktree() {
 
   [[ -z "$base_repo" || ! -d "$base_repo" ]] && return 1
 
-  # Create worktree on the project branch
-  if git -C "$base_repo" show-ref --verify --quiet "refs/heads/${branch_name}" 2>/dev/null; then
-    git -C "$base_repo" worktree add "$wt_path" "$branch_name" 2>/dev/null || {
-      log_err "Failed to create story worktree for $story_id at $wt_path"
-      return 1
-    }
-  else
-    local base_branch="${BASE_BRANCH:-main}"
-    git -C "$base_repo" worktree add -b "$branch_name" "$wt_path" "$base_branch" 2>/dev/null || {
-      log_err "Failed to create story worktree with new branch for $story_id"
-      return 1
-    }
+  # Determine the commit to branch from: project branch if it exists, else base branch
+  local start_point="${BASE_BRANCH:-main}"
+  if git -C "$base_repo" show-ref --verify --quiet "refs/heads/${project_branch}" 2>/dev/null; then
+    start_point="$project_branch"
   fi
+
+  # Delete stale story branch if it exists (from a previous failed run)
+  git -C "$base_repo" branch -D "$story_branch" 2>/dev/null || true
+
+  # Create worktree with unique per-story branch
+  git -C "$base_repo" worktree add -b "$story_branch" "$wt_path" "$start_point" 2>/dev/null || {
+    log_err "Failed to create story worktree for $story_id at $wt_path"
+    return 1
+  }
 
   # Install deps if needed
   if [[ -f "$wt_path/bun.lockb" || -f "$wt_path/bun.lock" ]] && command -v bun >/dev/null 2>&1; then
@@ -2010,6 +2248,7 @@ process_swarm_completion() {
   local exit_code="$2"
   local duration="$3"
   local worktree_path="${4:-}"
+  local start_epoch="${5:-}"
 
   local saved_repo="$REPO_PATH"
   [[ -n "$worktree_path" && -d "$worktree_path" ]] && REPO_PATH="$worktree_path"
@@ -2017,8 +2256,10 @@ process_swarm_completion() {
   validate_git_state "$story_id"
   run_codex_review "$story_id"
 
-  # Orchestrator writes passes based on output JSON
-  orchestrator_write_passes "$story_id"
+  # Orchestrator writes passes based on output JSON — pass checkout timestamp for Layer 3 git heuristic
+  local checkout_ts_iso=""
+  [[ -n "$start_epoch" ]] && checkout_ts_iso=$(date -u -r "$start_epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || true
+  orchestrator_write_passes "$story_id" "$checkout_ts_iso"
 
   # Check source of truth
   local passes
@@ -2032,7 +2273,11 @@ process_swarm_completion() {
     [[ -n "$worktree_path" && -d "$worktree_path" ]] && check_repo="$worktree_path"
     commit_sha=$(git -C "$check_repo" rev-parse --short HEAD 2>/dev/null || echo "n/a")
     files_changed=$(git -C "$check_repo" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
-      | jq -R -s 'split("\n") | map(select(length > 0))' || echo "[]")
+      | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null) || true
+    # Validate JSON — protects --argjson in update_state_completed from crash
+    if [[ -z "$files_changed" ]] || ! jq -e . <<< "$files_changed" &>/dev/null; then
+      files_changed="[]"
+    fi
 
     update_state_completed "$story_id" "$commit_sha" "$files_changed"
     release_checkout "$story_id"
@@ -2064,8 +2309,15 @@ process_swarm_completion() {
     update_state_failed "$story_id" "passes not set in swarm (exit=$exit_code)"
     release_checkout "$story_id"
     release_swarm_locks "$story_id"
-    retry_queue+=("$story_id")
-    echo "[$(ts)] $story_id: FAILED in swarm — queued for retry" >> "$PROGRESS_FILE"
+    _swarm_retry_inc "$story_id"
+    local retry_count
+    retry_count=$(_swarm_retry_get "$story_id")
+    if (( retry_count >= 2 )); then
+      retry_queue+=("$story_id")
+      echo "[$(ts)] $story_id: FAILED in swarm (max retries) — queued for end-of-run retry" >> "$PROGRESS_FILE"
+    else
+      echo "[$(ts)] $story_id: FAILED in swarm (attempt ${retry_count}) — will retry next batch" >> "$PROGRESS_FILE"
+    fi
 
     "$AUDIT_SCRIPT" append --event story_failed --project "$PROJECT" \
       ${COMPANY:+--company "$COMPANY"} \
@@ -2114,7 +2366,7 @@ monitor_swarm_loop() {
         local dur=$(( now - start ))
 
         log_info "Swarm member $sid exited (PID $pid, exit=$ec, ${dur}s)"
-        process_swarm_completion "$sid" "$ec" "$dur" "$wt"
+        process_swarm_completion "$sid" "$ec" "$dur" "$wt" "$start"
       else
         all_done=false
       fi
@@ -2157,17 +2409,33 @@ merge_swarm_commits() {
     # Skip if same commit (worktree was on the same branch tip)
     [[ "$wt_sha" == "$base_sha" ]] && continue
 
-    # Cherry-pick the latest commit(s) from the worktree
-    log_info "Merging swarm commits from $sid ($wt_sha) into main worktree"
-    git -C "$base_repo" cherry-pick "$wt_sha" --no-verify 2>/dev/null || {
-      # If cherry-pick fails, try merge approach
-      log_warn "Cherry-pick failed for $sid — attempting merge"
-      git -C "$base_repo" cherry-pick --abort 2>/dev/null || true
-      git -C "$base_repo" merge "$wt_sha" --no-edit --no-verify -m "[orchestrator] merge swarm: $sid" 2>/dev/null || {
-        log_err "Could not merge swarm commits for $sid — manual resolution needed"
-        log_err "  Worktree: $wt (commit: $wt_sha)"
+    # Cherry-pick the full commit range from the story worktree (not just HEAD)
+    local merge_base
+    merge_base=$(git -C "$base_repo" merge-base HEAD "$wt_sha" 2>/dev/null) || true
+    if [[ -n "$merge_base" && "$merge_base" != "$wt_sha" ]]; then
+      local commit_count
+      commit_count=$(git -C "$wt" rev-list --count "${merge_base}..HEAD" 2>/dev/null) || commit_count=1
+      log_info "Merging swarm commits from $sid ($commit_count commits: ${merge_base:0:7}..${wt_sha:0:7}) into main worktree"
+      git -C "$base_repo" cherry-pick "${merge_base}..${wt_sha}" --no-verify 2>/dev/null || {
+        log_warn "Cherry-pick range failed for $sid — attempting merge"
+        git -C "$base_repo" cherry-pick --abort 2>/dev/null || true
+        git -C "$base_repo" merge "$wt_sha" --no-edit --no-verify -m "[orchestrator] merge swarm: $sid" 2>/dev/null || {
+          log_err "Could not merge swarm commits for $sid — manual resolution needed"
+          log_err "  Worktree: $wt (commit: $wt_sha)"
+        }
       }
-    }
+    else
+      # Fallback: single commit or can't find merge-base
+      log_info "Merging swarm commit from $sid ($wt_sha) into main worktree"
+      git -C "$base_repo" cherry-pick "$wt_sha" --no-verify 2>/dev/null || {
+        log_warn "Cherry-pick failed for $sid — attempting merge"
+        git -C "$base_repo" cherry-pick --abort 2>/dev/null || true
+        git -C "$base_repo" merge "$wt_sha" --no-edit --no-verify -m "[orchestrator] merge swarm: $sid" 2>/dev/null || {
+          log_err "Could not merge swarm commits for $sid — manual resolution needed"
+          log_err "  Worktree: $wt (commit: $wt_sha)"
+        }
+      }
+    fi
   done
 }
 
@@ -2194,6 +2462,12 @@ cleanup_swarm_worktrees() {
     git -C "$base_repo" worktree remove "$wt" --force 2>/dev/null || {
       log_warn "Could not auto-remove swarm worktree $wt"
     }
+
+    # Clean up the per-story branch (e.g., feature/branch/us-001)
+    local story_slug
+    story_slug=$(echo "$sid" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+    local story_branch="${BRANCH_NAME:-main}--${story_slug}"
+    git -C "$base_repo" branch -D "$story_branch" 2>/dev/null || true
   done
 }
 
@@ -2204,6 +2478,33 @@ cleanup_swarm_worktrees() {
 completed_this_run=0
 retry_queue=()
 checkout_skipped=()
+# Bash 3.2 compat: track swarm retry counts as "id:count" entries (no assoc arrays)
+SWARM_RETRY_ENTRIES=()
+
+_swarm_retry_get() {
+  local id="$1"
+  for entry in ${SWARM_RETRY_ENTRIES[@]+"${SWARM_RETRY_ENTRIES[@]}"}; do
+    [[ "$entry" == "$id:"* ]] && echo "${entry#*:}" && return
+  done
+  echo "0"
+}
+
+_swarm_retry_inc() {
+  local id="$1"
+  local new_entries=()
+  local found=false
+  for entry in ${SWARM_RETRY_ENTRIES[@]+"${SWARM_RETRY_ENTRIES[@]}"}; do
+    if [[ "$entry" == "$id:"* ]]; then
+      local count="${entry#*:}"
+      new_entries+=("$id:$(( count + 1 ))")
+      found=true
+    else
+      new_entries+=("$entry")
+    fi
+  done
+  [[ "$found" == false ]] && new_entries+=("$id:1")
+  SWARM_RETRY_ENTRIES=("${new_entries[@]}")
+}
 
 if [[ "$SWARM_MODE" == true ]]; then
   echo -e "${BOLD}Starting execution loop (swarm mode, max $SWARM_MAX concurrent)...${NC}\n"
@@ -2222,6 +2523,20 @@ if [[ "$SWARM_MODE" == true ]]; then
     # Get all eligible stories that can run in parallel
     local_candidates=""
     local_candidates=$(get_swarm_candidates) || true
+
+    # Filter out stories that exhausted swarm retries (already in retry_queue)
+    if [[ -n "$local_candidates" && ${#retry_queue[@]} -gt 0 ]]; then
+      local filtered_candidates=""
+      while IFS= read -r _cand; do
+        [[ -z "$_cand" ]] && continue
+        local _in_retry=false
+        for _rq in "${retry_queue[@]}"; do
+          [[ "$_rq" == "$_cand" ]] && _in_retry=true && break
+        done
+        $_in_retry || filtered_candidates+="$_cand"$'\n'
+      done <<< "$local_candidates"
+      local_candidates="${filtered_candidates%$'\n'}"
+    fi
 
     if [[ -z "$local_candidates" ]]; then
       # No candidates at all — check if blocked or truly done
@@ -2286,8 +2601,10 @@ if [[ "$SWARM_MODE" == true ]]; then
       validate_git_state "$STORY_ID"
       run_codex_review "$STORY_ID"
 
-      # Orchestrator writes passes (source of truth)
-      orchestrator_write_passes "$STORY_ID"
+      # Orchestrator writes passes (source of truth) — pass checkout timestamp for Layer 3 git heuristic
+      local checkout_ts_iso
+      checkout_ts_iso=$(date -u -r "$story_start" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || checkout_ts_iso=""
+      orchestrator_write_passes "$STORY_ID" "$checkout_ts_iso"
 
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
 
@@ -2310,6 +2627,7 @@ if [[ "$SWARM_MODE" == true ]]; then
 
         if (( completed_this_run % REGRESSION_INTERVAL == 0 && completed_this_run > 0 )); then
           run_regression_gate "$STORY_ID"
+          run_project_reanchor "$PROJECT" "$completed_this_run"
         fi
       else
         log_err "$STORY_ID: passes still false (exit=$exit_code, ${duration}s)"
@@ -2410,6 +2728,7 @@ if [[ "$SWARM_MODE" == true ]]; then
     # Run pending regression gate if any
     if [[ -n "$PENDING_REGRESSION_GATE" ]]; then
       run_regression_gate "$PENDING_REGRESSION_GATE"
+      run_project_reanchor "$PROJECT" "$completed_this_run"
       PENDING_REGRESSION_GATE=""
     fi
 
@@ -2508,8 +2827,10 @@ else
       # POST-INVOCATION: Codex review safety net (best-effort)
       run_codex_review "$STORY_ID"
 
-      # Orchestrator writes passes (source of truth)
-      orchestrator_write_passes "$STORY_ID"
+      # Orchestrator writes passes (source of truth) — pass checkout timestamp for Layer 3 git heuristic
+      local checkout_ts_iso
+      checkout_ts_iso=$(date -u -r "$story_start" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || checkout_ts_iso=""
+      orchestrator_write_passes "$STORY_ID" "$checkout_ts_iso"
 
       # Check source of truth: did passes get set to true?
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
@@ -2582,6 +2903,7 @@ else
     # REGRESSION GATE: every N completed stories
     if [[ "$story_passed" == true && $((completed_this_run % REGRESSION_INTERVAL)) -eq 0 && "$completed_this_run" -gt 0 ]]; then
       run_regression_gate "$STORY_ID"
+      run_project_reanchor "$PROJECT" "$completed_this_run"
     fi
 
     # Reindex

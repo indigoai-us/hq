@@ -131,14 +131,14 @@ Questions?
 
 ## Worked Example
 
-**Input:** "I need to explore the {PRODUCT} codebase to understand how auth middleware is structured"
+**Input:** "I need to explore the {repo} codebase to understand how auth middleware is structured"
 
 **Output:**
 
 ```
 RECOMMENDED MODEL: Haiku
 
-Task: "I need to explore the {PRODUCT} codebase to understand how auth middleware is structured"
+Task: "I need to explore the {repo} codebase to understand how auth middleware is structured"
 
 Reasoning:
 - Primary task is exploration/search (understand structure, not modify)
@@ -179,8 +179,8 @@ COST OPTIMIZATION TIPS:
 NEXT STEPS:
 
 - `claude code --model haiku` → Start exploration session with Haiku
-- Read: repos/private/{product}/apps/function/src/ (Lambda code location)
-- Search: qmd vsearch "auth middleware {PRODUCT}" (explore first)
+- Read: repos/private/{repo}/apps/function/src/ (Lambda code location)
+- Search: qmd vsearch "auth middleware {repo}" (explore first)
 ```
 
 ---
