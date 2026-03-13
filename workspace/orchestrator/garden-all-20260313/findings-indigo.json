@@ -1,0 +1,43 @@
+{
+  "run_id": "garden-all-20260313",
+  "scope": "indigo",
+  "scanned_at": "2026-03-13T00:00:00Z",
+  "paths_scanned": [
+    "companies/indigo/"
+  ],
+  "total_files_scanned": 5,
+  "findings": [
+    {
+      "id": "F-I-001",
+      "type": "empty",
+      "path": "companies/indigo/settings",
+      "severity": "low",
+      "signal": "Empty settings directory — expected structure in place but no API keys or credentials configured yet",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-I-002",
+      "type": "empty",
+      "path": "companies/indigo/policies",
+      "severity": "low",
+      "signal": "Empty policies directory — expected structure in place but no company-scoped policies written yet",
+      "recommended_action": "investigate"
+    }
+  ],
+  "summary": {
+    "total_findings": 2,
+    "by_type": {
+      "stale": 0,
+      "duplicate": 0,
+      "orphan": 0,
+      "drift": 0,
+      "empty": 2,
+      "unowned": 0
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 2
+    }
+  }
+}

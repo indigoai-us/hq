@@ -1,0 +1,59 @@
+{
+  "run_id": "garden-all-20260313",
+  "scope": "personal",
+  "scanned_at": "2026-03-13T00:00:00Z",
+  "paths_scanned": [
+    "companies/personal/"
+  ],
+  "total_files_scanned": 3,
+  "findings": [
+    {
+      "id": "F-P-001",
+      "type": "empty",
+      "path": "companies/personal/settings",
+      "severity": "low",
+      "signal": "Empty settings directory with no configuration files",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-P-002",
+      "type": "empty",
+      "path": "companies/personal/data",
+      "severity": "low",
+      "signal": "Empty data directory with no exports or company data",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-P-003",
+      "type": "drift",
+      "path": "companies/personal/knowledge/INDEX.md",
+      "severity": "low",
+      "signal": "INDEX.md references voice-style.md at root level, but file is actually in _archive/ subdirectory",
+      "recommended_action": "clean"
+    },
+    {
+      "id": "F-P-004",
+      "type": "unowned",
+      "path": "companies/personal/knowledge/profile.md",
+      "severity": "low",
+      "signal": "profile.md has incomplete content: Goals section references [to be filled by /personal-interview] placeholder text",
+      "recommended_action": "investigate"
+    }
+  ],
+  "summary": {
+    "total_findings": 4,
+    "by_type": {
+      "stale": 0,
+      "duplicate": 0,
+      "orphan": 0,
+      "drift": 1,
+      "empty": 2,
+      "unowned": 1
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 4
+    }
+  }
+}

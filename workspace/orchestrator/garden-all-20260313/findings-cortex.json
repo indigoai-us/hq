@@ -1,0 +1,111 @@
+{
+  "run_id": "garden-all-20260313",
+  "scope": "cortex",
+  "scanned_at": "2026-03-13T00:00:00Z",
+  "paths_scanned": [
+    "companies/cortex/"
+  ],
+  "total_files_scanned": 5,
+  "findings": [
+    {
+      "id": "F-C-001",
+      "type": "unowned",
+      "path": "companies/cortex/projects/cortex-app",
+      "severity": "medium",
+      "signal": "Repo `repos/private/cortex-app` does not exist, but PRD references it as repoPath. Project is in READY status but blocked on repo creation. PRD created 2026-03-10, now 3+ days old without execution.",
+      "recommended_action": "Create `repos/private/cortex-app` repo and initialize from PRD scaffolding. Or start `/execute-task cortex-app/US-001` to scaffold Tauri app and trigger repo creation.",
+      "details": {
+        "prd_exists": true,
+        "repo_exists": false,
+        "prd_date": "2026-03-10T22:00:00Z",
+        "days_since_prd": 3,
+        "user_stories": 9,
+        "passed_stories": 0,
+        "status": "READY",
+        "blockers": ["repos/private/cortex-app missing"]
+      }
+    },
+    {
+      "id": "F-C-002",
+      "type": "empty",
+      "path": "companies/cortex/settings/",
+      "severity": "low",
+      "signal": "Settings directory is empty. Company has no API keys, credential configs, or environment setup. Expected: .env file with Claude API key, potential Stripe/YouTube/analytics credentials.",
+      "recommended_action": "Populate with .env template after repo creation. Required before running agent brain (US-005).",
+      "details": {
+        "dir_empty": true,
+        "expected_contents": [".env", "credentials config for agent operations"]
+      }
+    },
+    {
+      "id": "F-C-003",
+      "type": "empty",
+      "path": "companies/cortex/policies/",
+      "severity": "low",
+      "signal": "No company-scoped policies defined. Standard policies (credential-access-protocol, agent-action-sandboxing, api-cost-limits) should exist for a company running autonomous agents.",
+      "recommended_action": "Create company policies post-repo-setup. Consider: agent action sandboxing rules, API cost budgets, credential storage requirements.",
+      "details": {
+        "dir_empty": true,
+        "expected_policies": ["agent-action-sandboxing", "credential-access-protocol", "api-cost-limits"]
+      }
+    },
+    {
+      "id": "F-C-004",
+      "type": "empty",
+      "path": "companies/cortex/data/",
+      "severity": "low",
+      "signal": "Data exports directory is empty. No exported agent runs, KPI datasets, or activity feeds. Normal for a pre-execution company.",
+      "recommended_action": "Will populate after first agent cycle runs. No action needed — this is expected.",
+      "details": {
+        "dir_empty": true,
+        "expected_contents": ["agent-runs.jsonl", "kpi-history.jsonl", "activity-exports.json"]
+      }
+    },
+    {
+      "id": "F-C-005",
+      "type": "drift",
+      "path": "companies/cortex/README.md",
+      "severity": "low",
+      "signal": "README describes company as scaffolded but references 'Repos: None yet.' and 'Workers: None yet.' which are accurate but the cortex-app project is now a primary deliverable and should be mentioned.",
+      "recommended_action": "Update README to reference cortex-app project post-repo-creation, or leave as-is until project is underway.",
+      "details": {
+        "last_updated": "2026-03-10T17:46:33+0500",
+        "discrepancy": "cortex-app project exists in projects/ but not mentioned in README"
+      }
+    },
+    {
+      "id": "F-C-006",
+      "type": "orphan",
+      "path": "workspace/threads/T-20260310-220000-cortex-prd.json",
+      "severity": "low",
+      "signal": "Thread file is 3 days old (created 2026-03-10, today 2026-03-13). Session completed with next_steps documented but no follow-up execution initiated. Thread is still active (not >60d old) but eligible for archival after execution begins.",
+      "recommended_action": "Execute `/run-project cortex-app` or `/execute-task cortex-app/US-001` to move project forward, then archive thread.",
+      "details": {
+        "thread_id": "T-20260310-220000-cortex-prd",
+        "created_at": "2026-03-10T22:00:00Z",
+        "days_old": 3,
+        "status": "waiting_for_execution",
+        "next_steps_documented": true
+      }
+    }
+  ],
+  "summary": {
+    "total_findings": 6,
+    "by_type": {
+      "stale": 0,
+      "duplicate": 0,
+      "orphan": 1,
+      "drift": 1,
+      "conflict": 0,
+      "empty": 3,
+      "unowned": 1
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 1,
+      "low": 5
+    },
+    "health": "READY",
+    "notes": "Cortex company is recently scaffolded (2026-03-10) with PRD complete and structured. Primary blocker is creation of `repos/private/cortex-app` to enable execution. No stale content. Supporting infrastructure (settings, policies, data dirs) is appropriately empty pre-execution. Recommended next action: `/execute-task cortex-app/US-001` to begin Tauri app scaffolding."
+  }
+}

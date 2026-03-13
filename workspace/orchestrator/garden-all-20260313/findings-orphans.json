@@ -1,0 +1,159 @@
+{
+  "run_id": "garden-all-20260313",
+  "scope": "_orphans",
+  "scanned_at": "2026-03-13T10:06:00Z",
+  "paths_scanned": [
+    "workspace/threads/",
+    "workspace/reports/",
+    "workspace/orchestrator/",
+    "projects/",
+    "workers/"
+  ],
+  "total_files_scanned": 47,
+  "findings": [
+    {
+      "id": "F-O-001",
+      "type": "stale",
+      "path": "workspace/orchestrator/garden-all-20260310",
+      "severity": "low",
+      "signal": "Garden run >3 days old, status=complete. Run from 2026-03-10 (updated 2026-03-10T02:00:00Z). Now 2026-03-13.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-O-002",
+      "type": "stale",
+      "path": "workspace/orchestrator/garden-all-20260310-b",
+      "severity": "low",
+      "signal": "Garden run >3 days old, status=complete. Run from 2026-03-10 (updated 2026-03-10T00:00:00Z). Contains audit-report.json and company-specific findings.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-O-003",
+      "type": "stale",
+      "path": "workspace/orchestrator/garden-all-20260311",
+      "severity": "low",
+      "signal": "Garden run >2 days old, status=complete (updated 2026-03-11T00:15:00Z). Ready for archival.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-O-004",
+      "type": "stale",
+      "path": "workspace/orchestrator/garden-all-20260312",
+      "severity": "low",
+      "signal": "Garden run >1 day old, status=complete (updated 2026-03-12T00:00:00Z). Ready for archival.",
+      "recommended_action": "archive"
+    },
+    {
+      "id": "F-O-005",
+      "type": "unowned",
+      "path": "workers/registry.yaml",
+      "severity": "medium",
+      "signal": "Registry lists 44 worker IDs, but only 22 actual worker.yaml files found in /workers/. Missing: architect, backend-dev, code-reviewer, codex-coder, codex-debugger, codex-engine, codex-reviewer, content-shared, context-manager, database-dev, dev-qa-tester, garden-auditor, garden-curator, garden-scout, infra-dev, knowledge-curator, motion-designer, product-planner, project-manager, reality-checker, task-executor (21 total).",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-006",
+      "type": "orphan",
+      "path": "projects/_archive/distributed-tracking",
+      "severity": "low",
+      "signal": "Archived project with no prd.json (completed manually before PRD system was standard). No activity since 2026-01-25.",
+      "recommended_action": "clean"
+    },
+    {
+      "id": "F-O-007",
+      "type": "drift",
+      "path": "projects/e2e-cloud-testing",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json found. Last activity 2026-03-10. Completed projects should retain prd.json for reference.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-008",
+      "type": "drift",
+      "path": "projects/hq-installer",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10. Compare with hq-installer-test-env.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-009",
+      "type": "drift",
+      "path": "projects/hq-installer-test-env",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-010",
+      "type": "drift",
+      "path": "projects/incorporate-workers-into-pure-ralph",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10. Long project name suggests infrastructure work.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-011",
+      "type": "drift",
+      "path": "projects/project-context-manager",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-012",
+      "type": "drift",
+      "path": "projects/pure-ralph-branch-isolation",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-013",
+      "type": "drift",
+      "path": "projects/purist-ralph-loop",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-014",
+      "type": "drift",
+      "path": "projects/ralph-test",
+      "severity": "low",
+      "signal": "Project marked 'completed' in INDEX.md but no prd.json. Last activity 2026-03-10. Test project.",
+      "recommended_action": "investigate"
+    },
+    {
+      "id": "F-O-015",
+      "type": "empty",
+      "path": "workspace/threads/handoff.json",
+      "severity": "low",
+      "signal": "Handoff file created 2026-03-10T22:15:00Z referencing cortex-app PRD session. Not a full thread file (minimal format). OK for handoff pattern but not a session thread.",
+      "recommended_action": "clean"
+    }
+  ],
+  "summary": {
+    "total_findings": 15,
+    "by_type": {
+      "stale": 4,
+      "unowned": 1,
+      "orphan": 1,
+      "drift": 9,
+      "empty": 0,
+      "duplicate": 0,
+      "conflict": 0
+    },
+    "by_severity": {
+      "high": 0,
+      "medium": 1,
+      "low": 14
+    }
+  },
+  "notes": {
+    "thread_files": "Only 2 active session threads (both from 2026-03-10, 3+ days old). Handoff.json is expected. Recent.md is auto-generated. INDEX.md is current.",
+    "orchestrator_runs": "4 completed runs ready to archive (garden-all-20260310*, 20260311, 20260312). Current run (20260313) in progress with indigo findings.",
+    "reports": "Garden reports directory contains 3 completed runs' summary reports. _archive subdirectory present but empty.",
+    "projects": "8 completed projects all missing prd.json. All created between 2026-03-10 and updated ~2026-03-10. Suggests batch migration or incomplete PRD adoption.",
+    "workers": "Major discrepancy: 44 registered worker IDs vs 22 actual worker.yaml implementations. 21 workers in registry lack actual directories."
+  }
+}
