@@ -1,5 +1,27 @@
 # Changelog
 
+## v8.1.1 (2026-03-12)
+
+Fix missing scaffold directories — new installs now get the full canonical HQ folder structure.
+
+### Fixed
+
+- **Installer template** — Added missing directories: `repos/{public,private}`, `companies/`, `settings/`, `data/`, `modules/`, `scripts/`, `workspace/{learnings,reports}`
+- **macOS .pkg builder** — `prepare_payload()` now creates all canonical directories (was missing 9)
+- **`.ignore` file** — New installs now include ripgrep ignore for `repos/`, `node_modules/`, `**/.git/` (prevents Grep slowdowns)
+
+### Added
+
+- **`/review`** — Paranoid pre-landing code review with two-pass analysis (CRITICAL/INFORMATIONAL)
+- **`/review-plan`** — Structured plan review with scope modes (EXPANSION / HOLD / REDUCTION)
+- **`companies/_template/`** — Policy template and starter `manifest.yaml` included in new installs
+- **`repos/{public,private}/`** — Added to starter-kit repo root
+
+### Changed
+
+- **Template CLAUDE.md** — Structure section updated to show full directory tree (13 dirs, was 7)
+- **`auto-checkpoint-trigger.sh`** — Updated hook logic
+
 ## v8.1.0 (2026-03-12)
 
 Ralph loop reliability — in-session mode default, 3-layer passes detection, swarm retry tracking, per-story branch isolation, project reanchor, and 10+ reliability fixes.

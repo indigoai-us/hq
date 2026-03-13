@@ -4,6 +4,35 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v8.1.1 (from v8.1.0)
+
+### New directories (create manually)
+Existing installs need to create these directories:
+```bash
+mkdir -p repos/public repos/private
+mkdir -p companies/_template/policies
+mkdir -p settings data modules scripts
+mkdir -p workspace/learnings workspace/reports
+```
+
+### New files
+Copy from starter-kit to your HQ:
+- `companies/_template/policies/example-policy.md`
+- `companies/manifest.yaml` (if you don't already have one)
+- `.ignore` (ripgrep ignore — prevents Grep from scanning repos/)
+- `.claude/commands/review.md`
+- `.claude/commands/review-plan.md`
+- `.claude/skills/review/` (entire directory)
+- `.claude/skills/review-plan/` (entire directory)
+
+### Updated hooks
+Replace these files:
+- `.claude/hooks/auto-checkpoint-trigger.sh`
+
+### No breaking changes
+
+---
+
 ## Migrating to v8.1.0 (from v8.0.x)
 
 ### Updated run-project.sh (full replace)
