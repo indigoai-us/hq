@@ -255,9 +255,10 @@ When complete, provide JSON:
 
 IMPORTANT — discovered_work scoping:
 Only surface work that is CAUSED BY or BLOCKING the current subtask.
-Do NOT report pre-existing repo issues (lint errors, stale imports, broken tests
-that existed before this subtask). Ambient repo hygiene belongs in a separate
-task, not discovered mid-execution.
+Do NOT report pre-existing repo issues (lint errors, stale imports, broken tests,
+CI/hook failures, config drift) that existed before this subtask started.
+Pre-existing failures that don't block the current subtask should be ignored entirely.
+Ambient repo hygiene belongs in brainstorm/planning, not discovered mid-execution.
 ```
 
 #### 6c. Spawn Skill Sub-Agent
