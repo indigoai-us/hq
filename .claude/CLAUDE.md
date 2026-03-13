@@ -22,7 +22,7 @@ README.md         project overview
 - **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
 - **Sub-agent commits**: Each sub-agent MUST commit its own work before completing.
 - **No AI attribution**: Never include Co-Authored-By or AI names in commit or pull request messages.
-- **INDEX.md upkeep**: When creating or deleting files/directories inside an indexed directory, update its `INDEX.md` in the same commit.
+- **README.md index upkeep**: When creating or deleting files/directories inside an indexed directory, update the auto-generated Contents section in its `README.md` in the same commit.
 
 ## Search (qmd)
 

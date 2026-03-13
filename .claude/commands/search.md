@@ -162,7 +162,7 @@ If bd is unavailable or errors, silently skip beads results (do not fail the who
 - Use `-c` to scope to a collection; without it, searches all indexed collections
 - Scores above 0.5 are generally relevant matches
 - Beads search always searches all issues (no collection scoping) — use `--no-beads` to exclude
-- Run `/cleanup --reindex` after adding new content to rebuild INDEX.md files and reindex qmd
+- Run `/cleanup --reindex` after adding new content to rebuild README.md files and reindex qmd
 - For exact pattern matching in code (imports, function names), use the Grep tool directly
 
 ## Rules

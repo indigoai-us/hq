@@ -4,7 +4,7 @@
 
 | Name | Description |
 |------|-------------|
-| `index-md-spec.md` | INDEX.md Specification |
+| `readme-index-spec.md` | README.md Auto-Index Specification |
 | `loops-schema.md` | Loops Schema |
 | `project-template.md` | Project Template |
 | `quick-reference.md` | GHQ Quick Reference |

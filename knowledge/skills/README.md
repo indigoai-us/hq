@@ -2,6 +2,14 @@
 
 Skills are composable modules that load on demand in GHQ. They use the native Claude Code `SKILL.md` format -- a Markdown file with YAML frontmatter that Claude Code discovers automatically.
 
+## Contents
+
+> Auto-generated. Updated: 2026-03-13
+
+| Name | Description |
+|------|-------------|
+| `effective-skill-patterns.md` | Effective Skill Patterns |
+
 ## Quick Start
 
 1. Create the skill directory:

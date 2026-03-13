@@ -4,16 +4,21 @@ A comprehensive documentation of the Ralph Wiggum Loop - an autonomous AI coding
 
 ## Contents
 
-1. [Overview](./01-overview.md) - What is Ralph and why it matters
-2. [Core Concepts](./02-core-concepts.md) - Fundamental principles and terminology
-3. [How Ralph Works](./03-how-ralph-works.md) - Technical implementation details
-4. [Back Pressure Engineering](./04-back-pressure.md) - The key to successful autonomous coding
-5. [Specifications & PRDs](./05-specifications.md) - How to structure work for Ralph
-6. [agents.md Guide](./06-agents-md.md) - History, problems, and best practices
-7. [Practical Implementation](./07-implementation.md) - Setting up and running Ralph
-8. [Economic Impact](./08-economics.md) - The changing economics of software development
-9. [Resources](./09-resources.md) - Videos, articles, and further reading
-10. [Claude Code Workflow](./10-claude-code-workflow.md) - Matt Pocock's practical multi-phase workflow
+> Auto-generated. Updated: 2026-03-13
+
+| Name | Description |
+|------|-------------|
+| `01-overview.md` | Overview: What is Ralph? |
+| `02-core-concepts.md` | Core Concepts |
+| `03-how-ralph-works.md` | How Ralph Works |
+| `04-back-pressure.md` | Back Pressure Engineering |
+| `05-specifications.md` | Specifications & PRDs |
+| `06-agents-md.md` | agents.md Guide |
+| `07-implementation.md` | Practical Implementation |
+| `08-economics.md` | Economic Impact |
+| `09-resources.md` | Resources |
+| `10-claude-code-workflow.md` | Claude Code Workflow for Real Engineering |
+| `11-team-training-guide.md` | Ralph & Building AGI: Team Training Guide |
 
 ## Quick Summary
 

@@ -124,7 +124,7 @@ The symlinks keep sensitive data out of the git repo. See `knowledge/policies/co
 | Task / beads workflow | [task-schema.md](task-schema.md) |
 | Skill (SKILL.md) | [skill-schema.md](skill-schema.md) |
 | Loops state | [loops-schema.md](loops-schema.md) |
-| INDEX.md format | [index-md-spec.md](index-md-spec.md) |
+| README.md auto-index format | [readme-index-spec.md](readme-index-spec.md) |
 
 ## Ralph Loop
 
