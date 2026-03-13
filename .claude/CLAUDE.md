@@ -16,17 +16,13 @@ README.md         project overview
 
 - **Context diet**: Never pre-load. Read only what the current task requires.
 - **Skill-first**: Load `SKILL.md` before specialized tasks. Load command `.md` before running commands. Never pre-load.
+- **Company rules**: Read `companies/{slug}/RULES.md` before working on anything for that company.
 - **Git workflow**: Work on `main` or worktrees only -- never feature branches.
 - **Company isolation**: `companies/manifest.yaml` maps ownership. Never cross-contaminate credentials, knowledge, or deploy targets.
 - **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
 - **Sub-agent commits**: Each sub-agent MUST commit its own work before completing.
-- **No AI attribution**: Never include Co-Authored-By or AI names in commit messages.
+- **No AI attribution**: Never include Co-Authored-By or AI names in commit or pull request messages.
 - **INDEX.md upkeep**: When creating or deleting files/directories inside an indexed directory, update its `INDEX.md` in the same commit.
-
-## Skills
-
-Skills load on demand via `.claude/skills/*/SKILL.md`. Auto-discovered (no registry needed).
-Skill docs: `knowledge/skills/README.md`.
 
 ## Search (qmd)
 

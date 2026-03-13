@@ -12,7 +12,9 @@
 #
 # Schema per entry:
 #   symlink:          path to company data (relative to ~/Documents/GHQ/companies/)
-#   repos:            list of repo slugs owned by this company
+#   projects:         map of project slugs to project config
+#     <slug>:
+#       repos:        map of repo slug to symlink path
 #   settings:         path to company settings directory
 #   skills:           list of skill slugs owned by this company
 #   knowledge:        path to company knowledge directory
@@ -22,8 +24,13 @@
 
 launch-grid:
   symlink: launch-grid
-  repos:
-    - ghq
+  projects:
+    ghq:
+      repos:
+        ghq: companies/launch-grid/projects/ghq/repos/ghq
+    cortex:
+      repos:
+        cortex: companies/launch-grid/projects/cortex/repos/cortex
   settings: companies/launch-grid/settings/
   skills: []
   knowledge: companies/launch-grid/knowledge/
@@ -34,7 +41,9 @@ launch-grid:
 
 production-house:
   symlink: production-house
-  repos: []
+  projects:
+    ship-it-code:
+      repos: []
   settings: companies/production-house/settings/
   skills:
     - video-gen
@@ -46,7 +55,10 @@ production-house:
 
 indigo:
   symlink: indigo
-  repos: []
+  projects:
+    indigo-nx:
+      repos:
+        indigo-nx: companies/indigo/projects/indigo-nx/repos/indigo-nx
   settings: companies/indigo/settings/
   skills: []
   knowledge: companies/indigo/knowledge/
