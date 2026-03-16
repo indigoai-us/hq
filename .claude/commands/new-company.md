@@ -23,10 +23,9 @@ Validate: no spaces, lowercase only, hyphens allowed, doesn't already exist in `
 Ask (batch):
 1. Company name (human-readable)?
 2. GitHub org? (if any, or "none")
-3. Existing repos to associate? (paths or "none")
-4. Settings needed? (API keys, credentials — or "none for now")
-5. Existing skills to assign? (or "none")
-6. Success criteria? (what does success look like for this company — 2-3 bullet points)
+3. Settings needed? (API keys, credentials — or "none for now")
+4. Existing skills to assign? (or "none")
+5. Success criteria? (what does success look like for this company — 2-3 bullet points)
 
 ### 3. Scaffold Directory
 
@@ -83,7 +82,8 @@ EOF
 **manifest.yaml**: Add entry with ALL fields populated (no nulls):
 ```yaml
 {slug}:
-  repos: [{repo paths or empty array}]
+  symlink: {slug}
+  projects: {}
   settings: companies/{slug}/settings/
   skills: [{skill ids or empty array}]
   knowledge: companies/{slug}/knowledge/
@@ -116,9 +116,9 @@ Write `companies/{slug}/README.md`:
 
 Brief description of the company and its relationship to GHQ.
 
-## Repos
+## Projects
 
-{list of associated repos, or "None yet."}
+None yet. Use `/new-project` to add one.
 
 ## Skills
 

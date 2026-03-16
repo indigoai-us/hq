@@ -18,6 +18,7 @@ GHQ is a structured environment for managing multi-company work with AI agents. 
 companies/        Symlinks to ~/Documents/GHQ/companies/{slug}/
 knowledge/        Shared knowledge bases and policies
 loops/            Runtime state, active loops, checkpoints
+scripts/          Automation scripts (new-company.sh, etc.)
 ```
 
 ## Setup
