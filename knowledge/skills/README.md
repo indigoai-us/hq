@@ -4,7 +4,7 @@ Skills are composable modules that load on demand in GHQ. They use the native Cl
 
 ## Contents
 
-> Auto-generated. Updated: 2026-03-13
+> Auto-generated. Updated: 2026-03-16
 
 | Name | Description |
 |------|-------------|

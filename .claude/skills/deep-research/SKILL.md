@@ -149,7 +149,7 @@ Before writing the report, verify that all cited URLs are accessible.
 1. Ask the user where to save the report:
    - If user provides a full file path: save there
    - If user provides a directory: generate filename as `deep-research-{query-slug}-{YYYY-MM-DD}.md`
-   - If user provides nothing: save to `./deep-research-{query-slug}-{YYYY-MM-DD}.md` in cwd
+   - If user provides nothing: save to `knowledge/deep-research-reports/deep-research-{query-slug}-{YYYY-MM-DD}.md` in cwd
 2. Write each section following the outline from Phase 4, using only validated sources from Phase 5
 3. Insert inline citations as footnotes `[1]`, `[2]`, or `[1, 3]` for multiple sources
 4. Write the executive summary last, after all sections are complete

@@ -14,3 +14,4 @@ companies/*
 # Execution state (mutable runtime files)
 loops/state.jsonl
 loops/history.jsonl
+/knowledge/deep-research-reports

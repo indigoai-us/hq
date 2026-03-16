@@ -1,6 +1,6 @@
 # Skills — Index
 
-> Auto-generated. Updated: 2026-03-11
+> Auto-generated. Updated: 2026-03-16
 
 | Name | Description |
 |------|-------------|
