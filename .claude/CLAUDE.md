@@ -9,7 +9,8 @@ Personal OS for orchestrating work across companies and AI.
 companies/        {slug}/settings/, knowledge/, projects/
 knowledge/        shared knowledge (skills framework, etc.)
 loops/            execution state (state.jsonl, history.jsonl)
-README.md         project overview
+README.md         project overview (root only)
+CLAUDE.md         directory index files (auto-generated Contents section)
 ```
 
 ## Rules
@@ -22,7 +23,7 @@ README.md         project overview
 - **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
 - **Sub-agent commits**: Each sub-agent MUST commit its own work before completing.
 - **No AI attribution**: Never include Co-Authored-By or AI names in commit or pull request messages.
-- **README.md index upkeep**: When creating or deleting files/directories inside an indexed directory, update the auto-generated Contents section in its `README.md` in the same commit.
+- **CLAUDE.md index upkeep**: When creating or deleting files/directories inside an indexed directory, update the auto-generated Contents section in its `CLAUDE.md` in the same commit. Exceptions: `loops/README.md` and `knowledge/skills/README.md` keep README.md (substantial standalone docs).
 
 ## Search (qmd)
 

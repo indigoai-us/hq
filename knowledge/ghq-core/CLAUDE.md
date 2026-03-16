@@ -7,6 +7,6 @@
 | `loops-schema.md` | Loops Schema |
 | `project-template.md` | Project Template |
 | `quick-reference.md` | GHQ Quick Reference |
-| `readme-index-spec.md` | README.md Auto-Index Specification |
+| `claude-md-index-spec.md` | CLAUDE.md Auto-Index Specification |
 | `skill-schema.md` | Skill Schema (SKILL.md) |
 | `task-schema.md` | Task Schema |
