@@ -55,10 +55,10 @@ cd -
 
 **Why:** `bd init` creates a `.git` repo and `AGENTS.md` by default. Company dirs are not git repos — they're data directories symlinked into ghq. Remove both immediately after init.
 
-### 4. Create knowledge/README.md
+### 4. Create knowledge/CLAUDE.md
 
 ```bash
-cat > companies/{slug}/knowledge/README.md << 'EOF'
+cat > companies/{slug}/knowledge/CLAUDE.md << 'EOF'
 # {Name} Knowledge Index
 
 Knowledge files scoped to {Name}.
@@ -67,7 +67,7 @@ Knowledge files scoped to {Name}.
 
 | File | Description |
 |------|-------------|
-| README.md | This file — navigable map of {Name} knowledge |
+| CLAUDE.md | This file — navigable map of {Name} knowledge |
 
 ## Notes
 
@@ -149,7 +149,7 @@ qmd update 2>/dev/null || true
 Company {slug} scaffolded:
   Directory:  companies/{slug}/
   Beads:      companies/{slug}/.beads/ (bd init)
-  Knowledge:  companies/{slug}/knowledge/README.md
+  Knowledge:  companies/{slug}/knowledge/CLAUDE.md
   Policies:   companies/{slug}/policies/
   Projects:   companies/{slug}/projects/
   Settings:   companies/{slug}/settings/
@@ -161,7 +161,7 @@ Company {slug} scaffolded:
 
 - Each company is symlinked individually: `companies/{slug}` -> `~/Documents/GHQ/companies/{slug}/`. `manifest.yaml` stays in-repo.
 - All fields in manifest.yaml must be non-null (use empty arrays `[]`, not `null`)
-- Knowledge directory with README.md is mandatory — always create one
+- Knowledge directory with CLAUDE.md is mandatory — always create one
 - Always update manifest.yaml and run qmd update in the same operation
 - Never create a company that already exists in manifest.yaml
 - Validate slug: lowercase, hyphens only, no spaces

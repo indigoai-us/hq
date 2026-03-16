@@ -317,15 +317,12 @@ When all subtasks are closed:
 {"ts":"{ISO8601}","task_id":"{task-id}","duration_s":{elapsed},"stories_completed":{N},"stories_blocked":{N},"skills_invoked":{N},"blocked_stories":[]}
 ```
 
-**Close the parent task:**
+**Set parent task to in_review:**
 ```bash
-bd close {task-id}
+bd update {task-id} --status in_review
 ```
 
-**Close any eligible ancestor epics:**
-```bash
-bd epic close-eligible
-```
+The parent task stays in `in_review` until the user explicitly asks to merge/close it. Do NOT close the parent task or ancestor epics automatically.
 
 **Display completion report:**
 ```
@@ -334,6 +331,7 @@ LOOP COMPLETE: {task-id} ({parent.title})
 
 Subtasks: {completed}/{total}
 Skills used: {aggregated from session}
+Status: in_review (awaiting user merge/close)
 ════════════════════════════════════
 ```
 
@@ -345,8 +343,21 @@ Loop completed in worktree. How should we merge?
 2. Create a PR for review
 ```
 
-If merge: `git checkout main && git merge {worktree-branch}`
-If PR: `gh pr create --title "{parent.title}: all subtasks complete" --body "..."`
+If merge: `git checkout main && git merge {worktree-branch}`, then `bd close {task-id}` + `bd epic close-eligible`
+If PR:
+  1. Create PR: `gh pr create --title "{parent.title}: all subtasks complete" --body "..."`
+  2. Store PR ref on task: `bd update {task-id} --external-ref "gh-pr:{pr-number}" --set-metadata pr_url={pr-url}`
+
+**If main mode -- ask user:**
+```
+All subtasks complete. Task is now in_review.
+
+1. Close task (mark as done)
+2. Keep in review (will close later)
+```
+
+If close: `bd close {task-id}` + `bd epic close-eligible`
+If keep: task stays `in_review`
 
 **Post-loop cleanup:**
 1. `qmd update 2>/dev/null || true` -- reindex all changes

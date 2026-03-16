@@ -33,8 +33,11 @@ Collect the raw file list from all scanned directories.
 find knowledge/ -name "*.md" 2>/dev/null | sort
 find -L companies/*/knowledge/ companies/*/projects/*/knowledge/ -name "*.md" 2>/dev/null | sort
 
-# README.md files (all levels)
-find . -name "README.md" -not -path "./.git/*" -not -path "./repos/*" -not -path "./workspace/*" 2>/dev/null | sort
+# CLAUDE.md index files (all levels)
+find . -name "CLAUDE.md" -not -path "./.git/*" -not -path "./repos/*" -not -path "./workspace/*" -not -path "./.claude/CLAUDE.md" 2>/dev/null | sort
+
+# Exception README.md files (loops/, knowledge/skills/)
+find . \( -path "./loops/README.md" -o -path "./knowledge/skills/README.md" \) 2>/dev/null | sort
 
 # Beads tasks (epics)
 bd list --type epic --json 2>/dev/null || true
@@ -55,11 +58,11 @@ Store counts for the report header.
 
 **Goal:** Find content with dates older than 90 days that may be out of date.
 
-For each `README.md` found in Step 1, check the `Updated:` line:
+For each `CLAUDE.md` index file found in Step 1, check the `Updated:` line:
 
 ```bash
-grep -r "Updated:" knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ --include="README.md" -l 2>/dev/null
-grep -r "> Auto-generated. Updated:" . --include="README.md" 2>/dev/null
+grep -r "Updated:" knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ --include="CLAUDE.md" -l 2>/dev/null
+grep -r "> Auto-generated. Updated:" . --include="CLAUDE.md" 2>/dev/null
 ```
 
 For each knowledge file, look for embedded dates:
@@ -68,7 +71,7 @@ For each knowledge file, look for embedded dates:
 grep -rn "20[0-9][0-9]-[0-1][0-9]-[0-3][0-9]" knowledge/ companies/*/knowledge/ companies/*/projects/*/knowledge/ --include="*.md" -l 2>/dev/null
 ```
 
-Flag any README.md whose `Updated:` date is more than 90 days before today (2026-02-28).
+Flag any CLAUDE.md index whose `Updated:` date is more than 90 days old.
 Flag any knowledge file last modified (git log) more than 180 days ago with no recent git touches:
 
 ```bash
@@ -82,11 +85,11 @@ Collect: `stale_indexes[]`, `stale_knowledge[]`
 
 ## Step 3: Orphan Detection
 
-**Goal:** Find files that exist on disk but are not referenced in any README.md.
+**Goal:** Find files that exist on disk but are not referenced in any CLAUDE.md index.
 
 ### 3a: Knowledge orphans
 
-For each knowledge subdirectory, read its `README.md` (if any). Extract linked file/dir names. Compare against actual directory listing.
+For each knowledge subdirectory, read its `CLAUDE.md` (if any). Extract linked file/dir names. Compare against actual directory listing.
 
 ```bash
 # List actual knowledge dirs and files
@@ -94,13 +97,13 @@ ls -1 knowledge/ 2>/dev/null
 ls -1L companies/*/knowledge/ companies/*/projects/*/knowledge/ 2>/dev/null
 ```
 
-For each `knowledge/{dir}/README.md`, extract markdown links:
+For each `knowledge/{dir}/CLAUDE.md`, extract markdown links:
 
 ```bash
-grep -oP '\[.*?\]\((.*?)\)' knowledge/*/README.md 2>/dev/null | grep -oP '\((.*?)\)' | tr -d '()'
+grep -oP '\[.*?\]\((.*?)\)' knowledge/*/CLAUDE.md 2>/dev/null | grep -oP '\((.*?)\)' | tr -d '()'
 ```
 
-Any file in `knowledge/`, `companies/*/knowledge/`, or `companies/*/projects/*/knowledge/` not linked from any INDEX = orphan candidate.
+Any file in `knowledge/`, `companies/*/knowledge/`, or `companies/*/projects/*/knowledge/` not linked from any index = orphan candidate.
 
 ### 3b: Task health (beads)
 
@@ -137,9 +140,9 @@ Collect: `orphan_knowledge[]`, `stale_tasks[]`, `skill_registry_drift[]`
 
 ## Step 4: Broken Link Detection
 
-**Goal:** Find markdown links in README.md and knowledge files that point to non-existent paths.
+**Goal:** Find markdown links in CLAUDE.md index files and knowledge files that point to non-existent paths.
 
-For each `README.md` and key knowledge file, extract relative links and verify they resolve:
+For each `CLAUDE.md` index and key knowledge file, extract relative links and verify they resolve:
 
 ```bash
 # Extract all relative markdown links from INDEX files
@@ -198,12 +201,12 @@ Scanned:
   beads tasks          {N} epics, {N} open subtasks
   .claude/skills/      {N} skills
   .claude/commands/    {N} commands
-  README.md files       {N} found
+  CLAUDE.md index files  {N} found
 
 --- STALE CONTENT ---
 {if none}  No stale content found.
 {else}
-  README.md files with outdated timestamps ({count}):
+  CLAUDE.md index files with outdated timestamps ({count}):
     - {path}  (Updated: {date}, {days} days ago)
 
   Knowledge files untouched > 180 days ({count}):
@@ -212,7 +215,7 @@ Scanned:
 --- ORPHANED FILES ---
 {if none}  No orphans found.
 {else}
-  Knowledge files not referenced in any INDEX ({count}):
+  Knowledge files not referenced in any index ({count}):
     - {path}
 
   Skills in .claude/skills/ missing from registry ({count}):
@@ -256,8 +259,8 @@ Present each fixable issue group with a numbered offer. Ask once before taking a
 ```
 Fixable issues found:
 
-[1] Refresh {N} stale README.md timestamps
-    → Update "Updated: {date}" lines to today (2026-02-28)
+[1] Refresh {N} stale CLAUDE.md index timestamps
+    → Update "Updated: {date}" lines to today
     Files: {list}
 
 [2] Create {N} missing SKILL.md files
@@ -299,5 +302,5 @@ Reindex: done
 - **Minimal edits only** — fix only what is flagged; do not reformulate, rewrite, or reorganize content that is not an identified issue
 - **qmd update after every change** — always reindex after applying fixes or archiving
 - **Report first, act second** — always print the full audit report before offering fixes
-- **Stale threshold: README.md = 90 days, knowledge files = 180 days** — these are guidance thresholds, not hard deletes
+- **Stale threshold: CLAUDE.md indexes = 90 days, knowledge files = 180 days** — these are guidance thresholds, not hard deletes
 - **Skills _template is not a skill** — never flag `.claude/skills/_template/` as an orphan or registry gap

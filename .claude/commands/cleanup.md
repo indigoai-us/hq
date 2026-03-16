@@ -1,5 +1,5 @@
 ---
-description: Validate structural integrity and optionally rebuild all README.md auto-indexes
+description: Validate structural integrity and optionally rebuild all CLAUDE.md auto-indexes
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: [--reindex]
 visibility: public
@@ -7,14 +7,14 @@ visibility: public
 
 # /cleanup - GHQ Maintenance
 
-Audit GHQ for structural issues and optionally rebuild all README.md files.
+Audit GHQ for structural issues and optionally rebuild all CLAUDE.md index files.
 
 **User's input:** $ARGUMENTS
 
 ## Modes
 
 - **No args / --audit**: Report issues only (default, safe)
-- **--reindex**: Rebuild ALL README.md auto-index sections from disk + run `qmd update`
+- **--reindex**: Rebuild ALL CLAUDE.md auto-index sections from disk + run `qmd update`
 
 ---
 
@@ -40,28 +40,31 @@ done
 **Violations**:
 - Skill directory without `SKILL.md` → flag MISSING
 
-### 2. README.md Auto-Index Currency
+### 2. CLAUDE.md Auto-Index Currency
 
-**Policy**: README.md files with auto-generated Contents sections must exist at all required locations (per `knowledge/ghq-core/readme-index-spec.md`).
+**Policy**: CLAUDE.md files with auto-generated Contents sections must exist at all required locations (per `knowledge/ghq-core/claude-md-index-spec.md`).
 
 Required locations:
-- `knowledge/README.md`
-- `knowledge/ghq-core/README.md`
-- `knowledge/skills/README.md`
-- `knowledge/ralph/README.md`
-- `.claude/skills/README.md`
-- All `companies/*/knowledge/README.md` (for each company with a knowledge dir)
-- All `companies/*/projects/*/knowledge/README.md` (for each project with a knowledge dir)
+- `knowledge/CLAUDE.md`
+- `knowledge/ghq-core/CLAUDE.md`
+- `knowledge/ralph/CLAUDE.md`
+- `.claude/skills/CLAUDE.md`
+- All `companies/*/knowledge/CLAUDE.md` (for each company with a knowledge dir)
+- All `companies/*/projects/*/knowledge/CLAUDE.md` (for each project with a knowledge dir)
+
+**Exceptions (still use README.md)**:
+- `knowledge/skills/README.md` — substantial standalone skill authoring guide
+- `loops/README.md` — substantial standalone schema documentation
 
 For each expected location:
 1. Check if file exists → flag MISSING if not
 2. Check if entry count in table matches actual directory contents → flag STALE if mismatch
 
 ```bash
-# Example: count entries in knowledge/README.md vs actual dirs
-table_count=$(grep -c "^\|" knowledge/README.md 2>/dev/null || echo 0)
+# Example: count entries in knowledge/CLAUDE.md vs actual dirs
+table_count=$(grep -c "^\|" knowledge/CLAUDE.md 2>/dev/null || echo 0)
 actual_count=$(ls -d knowledge/*/ 2>/dev/null | grep -v "INDEX" | wc -l | tr -d ' ')
-[[ "$table_count" != "$actual_count" ]] && echo "STALE: knowledge/README.md ($table_count entries vs $actual_count actual)"
+[[ "$table_count" != "$actual_count" ]] && echo "STALE: knowledge/CLAUDE.md ($table_count entries vs $actual_count actual)"
 ```
 
 ### 3. Broken References
@@ -143,7 +146,7 @@ done
 
 ```bash
 # MD5 hash all .md files in knowledge dirs, flag duplicates (macOS-compatible)
-find knowledge/ -L companies/*/knowledge/ companies/*/projects/*/knowledge/ -name "*.md" -not -name "README.md" -exec md5 -r {} \; 2>/dev/null | sort | awk '{h=$1; if(seen[h]) print "DUPLICATE: " seen[h] " = " $2; else seen[h]=$2}'
+find knowledge/ -L companies/*/knowledge/ companies/*/projects/*/knowledge/ -name "*.md" -not -name "CLAUDE.md" -not -name "README.md" -exec md5 -r {} \; 2>/dev/null | sort | awk '{h=$1; if(seen[h]) print "DUPLICATE: " seen[h] " = " $2; else seen[h]=$2}'
 ```
 
 If duplicates found, show the duplicate pairs (hash + paths).
@@ -265,8 +268,8 @@ GHQ Cleanup Audit
 =================
 
 ✓ Skills registry: 8 skills indexed
-✗ README.md: 1 issue
-  - knowledge/ghq-core/README.md: 5 entries vs 6 actual (stale)
+✗ CLAUDE.md: 1 issue
+  - knowledge/ghq-core/CLAUDE.md: 5 entries vs 6 actual (stale)
 ✓ Broken references: none
 ✓ Manifest: consistent
 ✓ Git: clean
@@ -281,7 +284,7 @@ GHQ Cleanup Audit
 ✓ Ignored-but-tracked: none
 
 Summary: 3 issues found
-Run /cleanup --reindex to rebuild all README.md files
+Run /cleanup --reindex to rebuild all CLAUDE.md index files
 ```
 
 If no issues found:
@@ -290,7 +293,7 @@ GHQ Cleanup Audit
 =================
 
 ✓ Skills registry: 8 skills indexed
-✓ README.md: all current
+✓ CLAUDE.md: all current
 ✓ Broken references: none
 ✓ Manifest: consistent
 ✓ Git: clean
@@ -309,7 +312,7 @@ Summary: GHQ is healthy
 
 ---
 
-## --reindex: Rebuild All README.md Auto-Indexes
+## --reindex: Rebuild All CLAUDE.md Auto-Indexes
 
 When `--reindex` is provided (or combined with audit findings):
 
@@ -317,19 +320,19 @@ When `--reindex` is provided (or combined with audit findings):
 
 Surface issues before rebuilding so user can see what was stale.
 
-### Step 2: Rebuild each README.md location
+### Step 2: Rebuild each CLAUDE.md location
 
 For each required location (see Audit Check #2 list):
 
 1. List all files and subdirectories in the directory
-2. Skip: `README.md` itself, `.DS_Store`, `node_modules/`, dotfiles (names starting with `.`)
+2. Skip: `CLAUDE.md` itself, `README.md`, `.DS_Store`, `node_modules/`, dotfiles (names starting with `.`)
 3. Extract description per spec:
    - `.md` → first `#` heading (strip `# `)
    - `.yaml` → value of `description:` field
    - `.json` → value of `name` or `description` field
    - Directory → `{file count} files — {purpose}`
 4. Sort: directories first, then files; alphabetical within each group
-5. Write README.md using the standard template:
+5. Write CLAUDE.md using the standard template:
 
 ```markdown
 # {Directory Name} — Index
@@ -342,7 +345,7 @@ For each required location (see Audit Check #2 list):
 | `file.md` | Description |
 ```
 
-For company knowledge dirs (`companies/*/knowledge/README.md`) and project knowledge dirs (`companies/*/projects/*/knowledge/README.md`): rebuild each one that exists.
+For company knowledge dirs (`companies/*/knowledge/CLAUDE.md`) and project knowledge dirs (`companies/*/projects/*/knowledge/CLAUDE.md`): rebuild each one that exists.
 
 ### Step 3: Run qmd update
 
@@ -353,15 +356,14 @@ qmd update 2>/dev/null || true
 ### Step 4: Report
 
 ```
-README.md Rebuild
-================
+CLAUDE.md Rebuild
+=================
 
-Rebuilt 5 README.md files:
-  ✓ knowledge/README.md (3 entries)
-  ✓ knowledge/ghq-core/README.md (6 entries)
-  ✓ knowledge/skills/README.md (2 entries)
-  ✓ knowledge/ralph/README.md (10 entries)
-  ✓ .claude/skills/README.md (8 entries)
+Rebuilt 4 CLAUDE.md index files:
+  ✓ knowledge/CLAUDE.md (3 entries)
+  ✓ knowledge/ghq-core/CLAUDE.md (6 entries)
+  ✓ knowledge/ralph/CLAUDE.md (10 entries)
+  ✓ .claude/skills/CLAUDE.md (8 entries)
 
 qmd: reindexed
 ```
@@ -372,8 +374,9 @@ qmd: reindexed
 
 - **--audit is safe**: Never modifies files, only reports
 - **Always run audit before --reindex**: Surface what was stale before rebuilding
-- **Full rewrite on --reindex**: README.md is always overwritten in full — never patched incrementally
+- **Full rewrite on --reindex**: CLAUDE.md index files are always overwritten in full — never patched incrementally
 - **qmd update mandatory after --reindex**: Always run `qmd update 2>/dev/null || true` after rebuilding
 - **zsh-safe scripts**: Use `[[ ]]` (not `[ ]`), suppress glob errors with `2>/dev/null`. Never glob patterns that may match zero files without error suppression
 - **Sequential checks**: Run audit checks one at a time — do NOT fire multiple bash calls in parallel (one failure kills all siblings)
-- **No destructive actions without confirmation**: Stale thread deletion requires user confirmation; --reindex is safe (write-only on README.md files)
+- **No destructive actions without confirmation**: Stale thread deletion requires user confirmation; --reindex is safe (write-only on CLAUDE.md index files)
+- **Exception files**: `loops/README.md` and `knowledge/skills/README.md` are NOT rebuilt by --reindex — they are standalone documentation, not auto-indexes

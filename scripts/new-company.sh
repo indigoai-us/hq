@@ -90,7 +90,7 @@ if $DRY_RUN; then
   Manifest:   append $SLUG to $MANIFEST
   qmd:        $(if $QMD; then echo "collection '$SLUG'"; else echo "skipped"; fi)
   README:     $GHQ_DATA/$SLUG/README.md
-  Knowledge:  $GHQ_DATA/$SLUG/knowledge/README.md
+  Knowledge:  $GHQ_DATA/$SLUG/knowledge/CLAUDE.md
 EOF
   exit 0
 fi
@@ -109,12 +109,13 @@ if $BD; then
     cd "$GHQ_ROOT/companies/$SLUG"
     bd init -p "$SLUG" -q
     rm -rf .git AGENTS.md
+    bd config set status.custom "in_review"
   )
-  echo "  ✓ bd init (cleaned .git + AGENTS.md)"
+  echo "  ✓ bd init (cleaned .git + AGENTS.md, added in_review status)"
 fi
 
-# ── knowledge/README.md ────────────────────────────────────
-cat > "$GHQ_DATA/$SLUG/knowledge/README.md" <<EOF
+# ── knowledge/CLAUDE.md ────────────────────────────────────
+cat > "$GHQ_DATA/$SLUG/knowledge/CLAUDE.md" <<EOF
 # $NAME Knowledge Index
 
 Knowledge files scoped to $NAME.
@@ -123,7 +124,7 @@ Knowledge files scoped to $NAME.
 
 | File | Description |
 |------|-------------|
-| README.md | This file — navigable map of $NAME knowledge |
+| CLAUDE.md | This file — navigable map of $NAME knowledge |
 
 ## Notes
 
@@ -131,7 +132,7 @@ Knowledge files scoped to $NAME.
 - Never mix $NAME knowledge into other company-scoped outputs.
 EOF
 
-echo "  ✓ knowledge/README.md"
+echo "  ✓ knowledge/CLAUDE.md"
 
 # ── Company README.md ───────────────────────────────────────
 skills_md="None assigned."
@@ -202,7 +203,7 @@ echo ""
 echo "Company $SLUG scaffolded:"
 echo "  Directory:  companies/$SLUG/"
 echo "  Beads:      companies/$SLUG/.beads/ $(if $BD; then echo '(bd init)'; else echo '(skipped)'; fi)"
-echo "  Knowledge:  companies/$SLUG/knowledge/README.md"
+echo "  Knowledge:  companies/$SLUG/knowledge/CLAUDE.md"
 echo "  Policies:   companies/$SLUG/policies/"
 echo "  Projects:   companies/$SLUG/projects/"
 echo "  Settings:   companies/$SLUG/settings/"

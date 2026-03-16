@@ -100,9 +100,9 @@ bd set-state {sentinel-id} blocked
 mkdir -p companies/{company-slug}/projects/{project-slug}/knowledge
 ```
 
-### 7. Create knowledge/README.md
+### 7. Create knowledge/CLAUDE.md
 
-Write `companies/{company-slug}/projects/{project-slug}/knowledge/README.md`:
+Write `companies/{company-slug}/projects/{project-slug}/knowledge/CLAUDE.md`:
 
 ```markdown
 # {Project Name} Knowledge Index
@@ -113,7 +113,7 @@ Knowledge files scoped to {Project Name}.
 
 | File | Description |
 |------|-------------|
-| README.md | This file — navigable map of {Project Name} knowledge |
+| CLAUDE.md | This file — navigable map of {Project Name} knowledge |
 
 ## Notes
 
@@ -171,7 +171,7 @@ qmd update 2>/dev/null || true
 Project {project-slug} scaffolded:
   Epic:       {epic-id} (root, company: {company-slug})
   Directory:  companies/{company-slug}/projects/{project-slug}/
-  Knowledge:  companies/{company-slug}/projects/{project-slug}/knowledge/README.md
+  Knowledge:  companies/{company-slug}/projects/{project-slug}/knowledge/CLAUDE.md
 
 Next steps:
   /plan {description}    (create tasks under this project)
