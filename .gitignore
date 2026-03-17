@@ -15,3 +15,6 @@ companies/*
 loops/state.jsonl
 loops/history.jsonl
 /knowledge/deep-research-reports
+
+# Override global gitignore to track local permissions
+!.claude/settings.local.json

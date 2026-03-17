@@ -6,7 +6,7 @@
 |------|-------------|
 | `deep-research-reports/` | Deep research reports and investigation documents |
 | `ghq-core/` | GHQ core schemas, specifications, and quick reference |
-| `policies/` | Policies |
+| `policies/` | Policies and governance rules |
 | `ralph/` | Ralph Wiggum Loop methodology documentation |
 | `skills/` | Skill authoring guides |
 | `video-gen/` | Video generation pipeline and Remotion pattern reference |
