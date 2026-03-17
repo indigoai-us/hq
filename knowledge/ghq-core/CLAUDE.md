@@ -1,6 +1,6 @@
 # GHQ Core — Index
 
-> Auto-generated. Updated: 2026-03-16
+> Auto-generated. Updated: 2026-03-17
 
 | Name | Description |
 |------|-------------|
@@ -8,5 +8,6 @@
 | `project-template.md` | Project Template |
 | `quick-reference.md` | GHQ Quick Reference |
 | `claude-md-index-spec.md` | CLAUDE.md Auto-Index Specification |
+| `readme-index-spec.md` | README.md Auto-Index Specification (legacy) |
 | `skill-schema.md` | Skill Schema (SKILL.md) |
 | `task-schema.md` | Task Schema |

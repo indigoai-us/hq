@@ -1,9 +1,10 @@
 # Knowledge — Index
 
-> Auto-generated. Updated: 2026-03-16
+> Auto-generated. Updated: 2026-03-17
 
 | Name | Description |
 |------|-------------|
+| `deep-research-reports/` | Deep research reports and investigation documents |
 | `ghq-core/` | GHQ core schemas, specifications, and quick reference |
 | `policies/` | Policies |
 | `ralph/` | Ralph Wiggum Loop methodology documentation |
