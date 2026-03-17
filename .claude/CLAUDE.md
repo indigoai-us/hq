@@ -41,3 +41,4 @@ Add `-c <collection>` to scope searches. Use `qmd` before Grep for exploration.
 <!-- Scoped rules go in skills, not here. -->
 
 - **ALWAYS**: `companies/` contains symlinks. Use `--follow-links` (Grep tool) or `-L` (find) to traverse them.
+- **ALWAYS**: Run `cd` with relative paths from ghq root: `cd companies/{slug}/projects/{slug}/repos/{slug} && ...` — never absolute paths.

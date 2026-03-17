@@ -110,7 +110,8 @@ Which mode?
 ```
 
 Use the user's answer to determine work mode. If worktree:
-- Create a worktree using `git worktree add`
+- Detect default branch: `git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'` (fallback: `main`)
+- Create a worktree from the default branch: `git worktree add ../worktree-{task-id} {default-branch}`
 - All sub-agents work in the worktree directory
 
 If main:
@@ -347,6 +348,66 @@ If merge: `git checkout main && git merge {worktree-branch}`, then `bd close {ta
 If PR:
   1. Create PR: `gh pr create --title "{parent.title}: all subtasks complete" --body "..."`
   2. Store PR ref on task: `bd update {task-id} --external-ref "gh-pr:{pr-number}" --set-metadata pr_url={pr-url}`
+  3. Record demo video and post to PR (see §7b)
+
+### 7b. Demo Video (PR mode only)
+
+Record a short demo video of the changes in the running app and attach it to the PR as a comment.
+
+#### Prerequisites
+
+```bash
+# One-time install (skip if already installed)
+gh extension install sudosubin/gh-attach
+```
+
+#### Recording
+
+1. **Find the app window:**
+   ```bash
+   macosrec --list 2>&1 | grep -i "{app-name}"
+   ```
+
+2. **Start recording:**
+   ```bash
+   macosrec --record {window-id} &
+   RECORD_PID=$!
+   ```
+
+3. **Interact with the app** using agent-browser to demonstrate the changes:
+   - Connect: `agent-browser --cdp {port} snapshot -ic` (Electron) or `agent-browser open {url}` (web)
+   - Navigate to the changed feature
+   - Perform 2-3 key interactions that showcase the work
+   - Keep it short (10-20 seconds of meaningful interaction)
+
+4. **Stop recording:**
+   ```bash
+   kill -INT $RECORD_PID
+   sleep 2
+   ```
+
+5. **Find the output file** (macosrec saves to `~/Desktop/{timestamp}-{window-title}.mov`):
+   ```bash
+   ls -t ~/Desktop/*.mov | head -1
+   ```
+
+#### Post to PR
+
+1. **Upload the video:**
+   ```bash
+   gh attach {video-path} -R {OWNER/REPO} --browser chrome --profile Default
+   ```
+   This returns a URL like `https://github.com/user-attachments/assets/{UUID}`
+
+2. **Post as PR comment:**
+   ```bash
+   gh pr comment {PR_NUMBER} -R {OWNER/REPO} --body '<video src="{URL_FROM_UPLOAD}" controls autoplay muted></video>'
+   ```
+
+#### Skip conditions
+- Skip if the task is content-only (no UI/API changes to demo)
+- Skip if no running app is available to record
+- Skip if macosrec is not installed
 
 **If main mode -- ask user:**
 ```

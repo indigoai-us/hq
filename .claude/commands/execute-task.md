@@ -523,3 +523,4 @@ Options:
 - **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- this creates separate git worktrees per agent, scattering commits across branches. Sub-agents must work in the same directory as the orchestrator (either main or a shared worktree managed by `/run-loop`)
 - **Scope discovered work tightly** -- only surface work caused by or blocking the current subtask. Pre-existing repo issues (lint errors, stale imports, broken tests) are NOT discovered work -- they belong in a separate hygiene task
 - **NEVER close/complete bd tasks** -- execute-task must NOT run `bd close` or mark tasks as completed in beads. Only the orchestrator (`/run-loop`) may close bd tasks
+- **No branch/worktree management** -- execute-task must NEVER create, merge, delete, or switch branches or worktrees. It commits and pushes only to whatever branch/worktree it is already on. Branch and worktree lifecycle is exclusively managed by `/run-loop`

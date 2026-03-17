@@ -14,4 +14,5 @@
 | `frontend/` | React/Next.js components, pages, and client-side logic |
 | `full-stack/` | End-to-end feature delivery by chaining architect, backend, frontend, and review skills |
 | `qa/` | Testing, validation, and accessibility verification |
+| `tasks/` | Display open bd tasks for a company as a sorted, filtered table |
 | `video-gen/` | End-to-end video production pipeline |
