@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-03-17T01:00:00Z",
+  "message": null,
+  "last_thread": "T-20260317-arcade-removal",
+  "thread_path": "workspace/threads/T-20260317-arcade-removal.json",
+  "git": {
+    "branch": "main",
+    "current_commit": "3868bb1",
+    "remote_url": "https://github.com/hassaans/ghq.git"
+  },
+  "context_notes": "Completed indigo-53t.30 (Remove Arcade from email integration). PR #2829 merged into master on indigo-nx repo. Task closed in beads. Demo video was recorded but not uploaded to GitHub — still at /tmp/indigo-email-connect-demo.mp4. The indigo-nx repo default branch is master (not main). Electron app available on CDP port 9222. Settings opened via [data-user-profile-button] selector."
+}
