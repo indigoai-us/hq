@@ -4,6 +4,8 @@
       "Bash(aws *)",
       "Bash(qmd *)",
       "Bash(bd *)",
+      "Bash(cd /Users/hassaansaleemmacbook2026/repos/**)",
+      "Bash(cd /Users/hassaansaleemmacbook2026/Documents/GHQ/**)",
       "Bash(git *)",
       "Bash(gh *)",
       "Bash(agent-browser *)",
@@ -59,15 +61,19 @@
       "Skill(plan)",
       "Skill(plan:*)",
       "Skill(execute-task)",
-      "Skill(execute-task:*)"
+      "Skill(execute-task:*)",
+      "Bash(for app:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/**)",
+      "Bash(done)"
     ],
+    "deny": [],
     "ask": [
       "Bash(cd ..*)",
       "Bash(cd /*)",
       "Bash(cd ~/*)",
       "Bash(rm *)",
       "Bash(bd init *--force*)",
-
       "mcp__be1aeb4c-bd19-415d-b586-10015b39f2d8__slack_send_message"
     ]
   }
