@@ -1,6 +1,5 @@
 node_modules/
 .DS_Store
-workspace/scratch/
 # Company data lives outside repo (symlinked from ~/Documents/GHQ/companies/)
 # Track manifest.yaml but ignore individual company symlinks
 companies/*
@@ -11,10 +10,6 @@ companies/*
 .dolt/
 *.db
 
-# Execution state (mutable runtime files)
-loops/state.jsonl
-loops/history.jsonl
-/knowledge/deep-research-reports
 
 # Override global gitignore to track local permissions
 !.claude/settings.local.json

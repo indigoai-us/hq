@@ -3,4 +3,3 @@ companies/*/settings/**
 .env
 *.pem
 *.key
-.env
