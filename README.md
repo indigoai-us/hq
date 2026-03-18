@@ -1,66 +1,41 @@
-# GHQ
+# GHQ v0.2 — Knowledge-First OS
 
-Personal OS for orchestrating work across companies and AI.
+A personal operating system for orchestrating work across companies and AI,
+rebuilt around a knowledge-first architecture.
 
 ## Philosophy
 
-GHQ is a structured environment for managing multi-company work with AI agents. It provides:
+GHQ v0.2 replaces the pre-loaded skills/companies scaffolding of v1 with a
+learn-apply loop:
 
-- **Company isolation** -- each company's knowledge, credentials, and deploy targets are kept separate
-- **Skill-based agents** -- reusable skills loaded on demand via `SKILL.md`
-- **Task tracking** -- `bd` (beads) for dependency-aware, git-friendly issue management
-- **Runtime loops** -- active work sessions tracked in `loops/`
+1. **Learn** — Every session captures insights, patterns, and corrections into
+   a searchable knowledge base (`knowledge/`).
+2. **Query** — Before acting, consult existing knowledge via `qmd` search.
+3. **Apply** — Use retrieved context to inform decisions and actions.
+4. **Reflect** — After sessions, distill new learnings back into knowledge.
 
-## Directory Structure
+No content is pre-loaded. The system starts empty and accumulates intelligence
+through use.
+
+## Structure
 
 ```
-.claude/          Claude agent skills (SKILL.md), hooks
-companies/        Symlinks to ~/Documents/GHQ/companies/{slug}/
-knowledge/        Shared knowledge bases and policies
-loops/            Runtime state, active loops, checkpoints
-scripts/          Automation scripts (new-company.sh, etc.)
+.claude/          hooks/, commands/, CLAUDE.md (system rules)
+knowledge/        markdown files with YAML frontmatter, indexed by qmd
+scripts/          utility scripts
+patches/          persistent patches for global npm packages
 ```
 
-## Setup
+## Knowledge Format
 
-1. **Clone the repo:**
-   ```bash
-   git clone <repo-url> ~/repos/ghq
-   cd ~/repos/ghq
-   ```
+Each knowledge entry lives at `knowledge/{category}/{slug}.md` with YAML
+frontmatter (title, tags, created, source). The curiosity queue
+(`knowledge/.queue.jsonl`) tracks questions to research later.
 
-2. **Set up company directories:**
-   ```bash
-   mkdir -p ~/Documents/GHQ/companies/{your-company}
-   ln -s ~/Documents/GHQ/companies/your-company companies/your-company
-   ```
+## Search
 
-3. **Initialize beads per company:**
-   ```bash
-   cd companies/your-company && bd init
-   ```
-
-4. **Verify setup:**
-   ```bash
-   cd companies/your-company
-   bd ready          # Should show available work
-   ls companies/     # Should show your company symlinks
-   ```
-
-## Key Concepts
-
-### Companies
-Company data (credentials, knowledge, deploy targets) lives at `~/Documents/GHQ/companies/` and is symlinked into the repo's `companies/` directory. The `companies/` directory is gitignored except for `companies/manifest.yaml`, which maps company ownership and is tracked in git.
-
-### Skills
-Skills live in `.claude/skills/<name>/` with a `SKILL.md` file that Claude discovers on demand. Each skill encapsulates a specific capability (frontend, backend, deployment, etc.).
-
-### Task Tracking (bd)
-All task tracking uses `bd` (beads). Each company has its own `.beads/` database — always `cd` into a company directory before running `bd` commands. Never use markdown TODO lists or external trackers.
-
-### Loops
-The `loops/` directory holds runtime state for active work sessions -- checkpoints, thread context, and orchestrator state.
-
-## Security
-
-Credentials are excluded from Claude's context via `.claudeignore` patterns (`companies/*/settings/**`, `.env`, `*.pem`, `*.key`). The `companies/` directory is gitignored except for `manifest.yaml`.
+```
+qmd search "<query>" -n 10        # BM25 keyword search
+qmd vsearch "<query>" -n 10       # semantic/vector search
+qmd query "<query>" -n 10         # hybrid (best quality, slower)
+```

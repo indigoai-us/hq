@@ -1,45 +1,30 @@
-# GHQ
+# GHQ v0.2
 
-Personal OS for orchestrating work across companies and AI.
-
-## Structure
-
-```
-.claude/          commands/, skills/, hooks/
-companies/        {slug}/settings/, knowledge/, projects/
-knowledge/        shared knowledge (skills framework, etc.)
-loops/            execution state (state.jsonl, history.jsonl)
-patches/          persistent patches for global npm packages (apply-patches.sh)
-README.md         project overview (root only)
-CLAUDE.md         directory index files (auto-generated Contents section)
-```
+Knowledge-first personal OS. No pre-loaded content — intelligence accumulates through use.
 
 ## Rules
 
-- **Context diet**: Never pre-load. Read only what the current task requires.
-- **Skill-first**: Load `SKILL.md` before specialized tasks. Load command `.md` before running commands. Never pre-load.
-- **Company rules**: Read `companies/{slug}/RULES.md` before working on anything for that company.
-- **Git workflow**: Work on `main` or worktrees only -- never feature branches.
-- **Company isolation**: `companies/manifest.yaml` maps ownership. Never cross-contaminate credentials, knowledge, or deploy targets.
-- **`.claudeignore` awareness**: `companies/*/settings/**` is hidden. Never attempt to read shielded paths.
-- **Sub-agent commits**: Each sub-agent MUST commit its own work before completing.
-- **No AI attribution**: Never include Co-Authored-By or AI names in commit or pull request messages.
-- **CLAUDE.md index upkeep**: When creating or deleting files/directories inside an indexed directory, update the auto-generated Contents section in its `CLAUDE.md` in the same commit. Exceptions: `loops/README.md` and `knowledge/skills/README.md` keep README.md (substantial standalone docs).
+- **Knowledge before action**: Run `qmd query "<topic>"` before starting any task. Use retrieved context to inform decisions.
+- **Capture learnings**: After sessions, distill insights with `/learn`. New knowledge goes to `knowledge/{category}/{slug}.md`.
+- **Knowledge format**: Markdown with YAML frontmatter (title, tags, created, source) in `knowledge/{category}/{slug}.md`.
+- **Curiosity queue**: Log questions to `knowledge/.queue.jsonl` for later research. Completed items move to `.queue-done.jsonl`.
+- **Research log**: Append research session summaries to `knowledge/.research-log.jsonl`.
+- **No pre-loaded content**: No companies, skills, or scaffolded directories. Everything is earned through learning.
+- **Context diet**: Read only what the current task requires. Never pre-load.
 
 ## Search (qmd)
 
 ```
-qmd search "<query>" --json -n 10        # BM25 keyword (fast, default)
-qmd vsearch "<query>" --json -n 10       # semantic/conceptual
-qmd query "<query>" --json -n 10         # hybrid BM25 + vector (best, slower)
+qmd search "<query>" -n 10        # BM25 keyword (fast, default)
+qmd vsearch "<query>" -n 10       # semantic/conceptual
+qmd query "<query>" -n 10         # hybrid BM25 + vector (best, slower)
 ```
 
-Add `-c <collection>` to scope searches. Use `qmd` before Grep for exploration.
+## Structure
 
-## Learned Rules
-
-<!-- Max 10 rules. When full, evict the least-referenced rule. -->
-<!-- Scoped rules go in skills, not here. -->
-
-- **ALWAYS**: `companies/` contains symlinks. Use `--follow-links` (Grep tool) or `-L` (find) to traverse them.
-- **ALWAYS**: Run `cd` with relative paths from ghq root: `cd companies/{slug}/projects/{slug}/repos/{slug} && ...` — never absolute paths.
+```
+.claude/          hooks/, commands/, CLAUDE.md
+knowledge/        {category}/{slug}.md — searchable knowledge base
+scripts/          utility scripts
+patches/          persistent patches for global npm packages
+```
