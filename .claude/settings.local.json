@@ -87,5 +87,17 @@
       "Bash(bd init *--force*)",
       "mcp__be1aeb4c-bd19-415d-b586-10015b39f2d8__slack_send_message"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/consult-knowledge.sh"
+          }
+        ]
+      }
+    ]
   }
 }
