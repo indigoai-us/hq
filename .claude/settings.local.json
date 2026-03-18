@@ -79,25 +79,16 @@
       "mcp__indigo__query_collection",
       "Bash(openssl rand:*)",
       "mcp__indigo__aggregate_collection",
-      "Bash(mongosh-indigo-dev --eval 'db.channelconnections.find\\({channel: \"\"github\"\"}\\).pretty\\(\\)' --quiet)"
+      "Bash(mongosh-indigo-dev --eval 'db.channelconnections.find\\({channel: \"\"github\"\"}\\).pretty\\(\\)' --quiet)",
+      "Bash(chmod +x .claude/hooks/session-end-learn.sh)",
+      "Skill(research)",
+      "Skill(research:*)"
     ],
     "deny": [],
     "ask": [
       "Bash(rm *)",
       "Bash(bd init *--force*)",
       "mcp__be1aeb4c-bd19-415d-b586-10015b39f2d8__slack_send_message"
-    ]
-  },
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/consult-knowledge.sh"
-          }
-        ]
-      }
     ]
   }
 }
