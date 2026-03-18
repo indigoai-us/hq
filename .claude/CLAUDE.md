@@ -9,6 +9,7 @@ Personal OS for orchestrating work across companies and AI.
 companies/        {slug}/settings/, knowledge/, projects/
 knowledge/        shared knowledge (skills framework, etc.)
 loops/            execution state (state.jsonl, history.jsonl)
+patches/          persistent patches for global npm packages (apply-patches.sh)
 README.md         project overview (root only)
 CLAUDE.md         directory index files (auto-generated Contents section)
 ```

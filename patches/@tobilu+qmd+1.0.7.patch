@@ -1,0 +1,11 @@
+--- a/dist/qmd.js
++++ b/dist/qmd.js
+@@ -1197,7 +1197,7 @@
+     const allFiles = await fastGlob(globPattern, {
+         cwd: resolvedPwd,
+         onlyFiles: true,
+-        followSymbolicLinks: false,
++        followSymbolicLinks: true,
+         dot: false,
+         ignore: excludeDirs.map(d => `**/${d}/**`),
+     });
