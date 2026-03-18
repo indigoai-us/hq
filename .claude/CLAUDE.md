@@ -11,6 +11,7 @@ Knowledge-first personal OS. No pre-loaded content — intelligence accumulates 
 - **Research log**: Append research session summaries to `knowledge/.research-log.jsonl`.
 - **No pre-loaded content**: No companies, skills, or scaffolded directories. Everything is earned through learning.
 - **Context diet**: Read only what the current task requires. Never pre-load.
+- **Capture before losing context**: Before ending a session or when context is filling, run `/learn` to capture learnings.
 
 ## Search (qmd)
 
