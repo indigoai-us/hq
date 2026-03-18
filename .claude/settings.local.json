@@ -82,7 +82,8 @@
       "Bash(mongosh-indigo-dev --eval 'db.channelconnections.find\\({channel: \"\"github\"\"}\\).pretty\\(\\)' --quiet)",
       "Bash(chmod +x .claude/hooks/session-end-learn.sh)",
       "Skill(research)",
-      "Skill(research:*)"
+      "Skill(research:*)",
+      "Bash(chmod +x .claude/hooks/auto-reindex.sh)"
     ],
     "deny": [],
     "ask": [

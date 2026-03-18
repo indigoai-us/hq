@@ -12,12 +12,12 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/auto-checkpoint-trigger.sh",
-            "timeout": 5
+            "command": ".claude/hooks/auto-reindex.sh",
+            "timeout": 10
           }
         ]
       }
