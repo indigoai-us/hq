@@ -83,7 +83,10 @@
       "Bash(chmod +x .claude/hooks/session-end-learn.sh)",
       "Skill(research)",
       "Skill(research:*)",
-      "Bash(chmod +x .claude/hooks/auto-reindex.sh)"
+      "Bash(chmod +x .claude/hooks/auto-reindex.sh)",
+      "Bash(bash .claude/hooks/consult-knowledge.sh)",
+      "Bash(bash .claude/hooks/auto-reindex.sh)",
+      "Bash(bash .claude/hooks/capture-learnings.sh)"
     ],
     "deny": [],
     "ask": [

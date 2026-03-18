@@ -11,7 +11,7 @@ PROMPT="$(cat)" 2>/dev/null
 [ -z "$PROMPT" ] && exit 0
 
 # Query knowledge base with timeout, suppress all errors
-RESULTS="$(timeout 5 qmd query "$PROMPT" -n 5 --json 2>/dev/null)" || exit 0
+RESULTS="$(qmd query "$PROMPT" -n 5 --json 2>/dev/null)" || exit 0
 
 # Exit silently if no results or empty
 [ -z "$RESULTS" ] && exit 0

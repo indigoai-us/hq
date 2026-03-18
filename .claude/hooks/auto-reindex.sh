@@ -12,6 +12,7 @@ case "$TOOL_NAME" in
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
     if echo "$FILE_PATH" | grep -q '/knowledge/'; then
       npx tsx scripts/reindex.ts >/dev/null 2>&1 &
+      qmd embed >/dev/null 2>&1 &
       qmd update >/dev/null 2>&1 &
     fi
     ;;
