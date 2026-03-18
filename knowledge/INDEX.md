@@ -1,3 +1,5 @@
-# Knowledge Base
+# Knowledge Index
 
-No entries yet.
+| Category | Files | Last Updated |
+|----------|-------|--------------|
+| [meta](meta/INDEX.md) | 1 | 2026-03-19 |
