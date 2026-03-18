@@ -19,7 +19,7 @@ If no pending items exist, report **"Queue empty — nothing to research"** and 
 
 For each pending item, execute steps (a) through (h). If any step fails, set the item's status to `"failed"` with an `error` field containing the error message, write it back to `.queue.jsonl`, and continue to the next item.
 
-Track counters: `entries_created`, `entries_updated`, `errors`.
+Track counters: `entries_created`, `entries_updated`, `items_queued`, `errors`.
 
 #### a. Report Progress
 
@@ -90,7 +90,17 @@ This regenerates INDEX.md files for all knowledge categories.
 3. Append the completed item as a JSON line to `knowledge/.queue-done.jsonl`
 4. Rewrite `knowledge/.queue.jsonl` without the completed item
 
-#### h. Track Counts
+#### h. Queue Follow-up Questions
+
+While researching, you may discover new questions that weren't part of the original item. For each follow-up:
+
+```bash
+npx tsx scripts/queue-curiosity.ts --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
+```
+
+Only queue genuinely new questions — not rephrased versions of what was just answered. Increment `items_queued` counter.
+
+#### i. Track Counts
 
 Increment `entries_created` (or `entries_updated` if a duplicate was found and merged).
 
@@ -99,12 +109,12 @@ Increment `entries_created` (or `entries_updated` if a duplicate was found and m
 After all items are processed, append a single JSON line to `knowledge/.research-log.jsonl`:
 
 ```json
-{"id":"r-{unix_timestamp}","items_processed":N,"entries_created":N,"entries_updated":N,"errors":N,"completed_at":"ISO8601"}
+{"id":"r-{unix_timestamp}","items_processed":N,"entries_created":N,"entries_updated":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
 ```
 
 ### 4. Report Summary
 
-Print: `Research complete: {items_processed} processed, {entries_created} created, {entries_updated} updated, {errors} errors`
+Print: `Research complete: {items_processed} processed, {entries_created} created, {entries_updated} updated, {items_queued} follow-ups queued, {errors} errors`
 
 ## Rules
 
