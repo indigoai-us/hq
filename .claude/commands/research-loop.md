@@ -71,7 +71,7 @@ git push
 
 #### d. Check Result
 
-Re-read the queue via `npx tsx scripts/read-queue.ts --json -n 1` to verify the item was processed (it should no longer appear in the pending list).
+Re-read the queue via `npx tsx scripts/read-queue.ts --status pending -n 1` to verify the item was processed (it should no longer appear in the pending list).
 
 - If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
 - If the item was completed or failed, log: `Done: {id} — {status}`

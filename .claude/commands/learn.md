@@ -31,11 +31,21 @@ For each candidate (1-5 per session):
 Write a concise title (slug-friendly) and a one-paragraph summary capturing the insight and why it matters.
 
 ### b. Dedup check
-Run:
+Run two searches to catch duplicates regardless of phrasing:
 ```bash
-qmd vsearch "{title}" -n 1
+qmd query "{title}" -n 3 --json
+qmd query "{one-sentence summary of the insight}" -n 3 --json
 ```
-If the top result has similarity > 0.9, this is already known. Skip it and note in the report. If similarity is 0.7-0.9, consider whether the new insight adds meaningfully — if so, update the existing entry instead of creating a new one.
+
+Use the **highest similarity score** across both result sets for the same file. Then apply tiered thresholds:
+
+| Score | Action |
+|-------|--------|
+| **> 0.9** | **Duplicate.** Already known. Skip and note in the report. |
+| **0.7–0.9** | **Overlap.** Read the matching entry to confirm. If the new insight adds meaningfully, update the existing entry. Otherwise skip. |
+| **< 0.7** | **Novel.** Create a new entry. |
+
+When evaluating matches, read the top-scoring existing entry to confirm the overlap is real — don't rely solely on the similarity score.
 
 **Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
 

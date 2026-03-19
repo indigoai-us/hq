@@ -28,7 +28,7 @@ If no pending items exist, report **"Queue empty — nothing to research"** and 
 
 Execute steps (a) through (h). If any step fails, set the item's status to `"failed"` with an `error` field containing the error message, write it back to `.queue.jsonl`, and stop.
 
-Track counters: `entries_created`, `entries_updated`, `items_queued`, `errors`.
+Track counters: `entries_created`, `entries_updated`, `duplicates`, `items_queued`, `errors`.
 
 #### a. Report Progress
 
@@ -37,8 +37,8 @@ Print: `Researching: {question} (priority {priority})`
 #### b. Research via WebSearch
 
 Use the **WebSearch** tool to research the question. Perform 1-3 searches depending on complexity:
-- Simple factual questions: 1 search
-- Multi-faceted topics: 2-3 searches with different angles
+- Simple factual questions: 2-3 searches with different angles
+- Multi-faceted topics: 4-6 searches with different angles
 
 Collect the search result URLs for the `source` field.
 
@@ -71,25 +71,34 @@ Frontmatter must conform to the schema in `knowledge/meta/format-spec.md`.
 
 #### d. Check for Duplicates
 
-Before writing, run:
+Run **two** searches — one by title, one by the original question — to catch duplicates regardless of phrasing:
 
+```bash
+qmd query "{title}" -n 3 --json
+qmd query "{original question from queue item}" -n 3 --json
 ```
-qmd vsearch "{title}" -n 3
-```
 
-If any result has similarity > 0.9, **update** the existing entry instead of creating a new one. Increment `entries_updated` instead of `entries_created`.
+Use the **highest similarity score** across both result sets for the same file. Then apply tiered thresholds:
 
-**Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
+| Score | Action |
+|-------|--------|
+| **> 0.9** | **Duplicate.** The knowledge already exists. Do NOT write or update. Mark the queue item with `status: "duplicate"` and set `duplicate_of` to the matching file's `qmd://` path. Append to `.queue-done.jsonl` and remove from `.queue.jsonl`. Increment `duplicates` counter. Skip to step (g). |
+| **0.7–0.9** | **Overlap.** Update the existing entry — merge new findings into its body and union tags (never discard existing tags). Increment `entries_updated`. |
+| **< 0.7** | **Novel.** Create a new entry. Increment `entries_created`. |
+
+When evaluating matches, read the top-scoring existing entry to confirm the overlap is real — don't rely solely on the similarity score. A high score on a short or generic title can be a false positive.
 
 #### e. Write the Entry
 
-Create the category directory if needed:
+**If novel (< 0.7):** Create the category directory if needed and write the new entry:
 
 ```bash
 mkdir -p knowledge/{category}
 ```
 
 Write the entry to `knowledge/{category}/{slug}.md` with the frontmatter and body.
+
+**If overlap (0.7–0.9):** Edit the existing file in place. Update `updated_at`, merge tags, and append or revise body sections with new findings. Do not change `created_at` or `source` unless the new source is strictly better.
 
 #### f. Reindex
 
@@ -104,9 +113,11 @@ This regenerates INDEX.md files for all knowledge categories.
 #### g. Complete the Queue Item
 
 1. Read `knowledge/.queue.jsonl` (get current state)
-2. Find the processed item, change its `status` to `"completed"` and set `updated_at` to the current ISO 8601 timestamp
-3. Append the completed item as a JSON line to `knowledge/.queue-done.jsonl`
-4. Rewrite `knowledge/.queue.jsonl` without the completed item
+2. Find the processed item and update it:
+   - **If completed (novel or overlap):** Set `status` to `"completed"` and `updated_at` to the current ISO 8601 timestamp
+   - **If duplicate:** Set `status` to `"duplicate"`, `updated_at` to the current ISO 8601 timestamp, and `duplicate_of` to the matching file's `qmd://` path
+3. Append the finished item as a JSON line to `knowledge/.queue-done.jsonl`
+4. Rewrite `knowledge/.queue.jsonl` without the finished item
 
 #### h. Queue Follow-up Questions
 
@@ -127,7 +138,7 @@ Increment `entries_created` (or `entries_updated` if a duplicate was found and m
 After the item is processed, append a single JSON line to `knowledge/.research-log.jsonl`:
 
 ```json
-{"id":"r-{unix_timestamp}","items_processed":1,"entries_created":N,"entries_updated":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
+{"id":"r-{unix_timestamp}","items_processed":1,"entries_created":N,"entries_updated":N,"duplicates":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
 ```
 
 ### 4. Report Summary
@@ -137,14 +148,14 @@ Print a structured summary of everything that changed:
 ```
 Research complete:
   Question: {original question}
-  Status: {completed|failed}
-  Entry: {created|updated} knowledge/{category}/{slug}.md
+  Status: {completed|duplicate|failed}
+  Entry: {created|updated|duplicate of {qmd://path}} knowledge/{category}/{slug}.md
   Follow-ups queued: {items_queued}
   Errors: {errors}
 
 Files changed:
-  - knowledge/{category}/{slug}.md ({created|updated})
-  - knowledge/{category}/INDEX.md (reindexed)
+  - knowledge/{category}/{slug}.md ({created|updated})  # omit if duplicate
+  - knowledge/{category}/INDEX.md (reindexed)            # omit if duplicate
   - knowledge/.queue.jsonl (item removed)
   - knowledge/.queue-done.jsonl (item appended)
   - knowledge/.research-log.jsonl (log appended)
