@@ -98,7 +98,10 @@
       "Bash(chmod +x scripts/ask-claude.sh)",
       "Bash(./scripts/ask-claude.sh*)",
       "Bash(bash -x ./scripts/ask-claude.sh)",
-      "Bash(unset CLAUDECODE)"
+      "Skill(blueprint)",
+      "Skill(blueprint:*)",
+      "Skill(research-loop)",
+      "Skill(research-loop:*)"
     ],
     "deny": [
       "Agent"
