@@ -1,7 +1,7 @@
 ---
 title: "Machine-Verifiable Acceptance Criteria"
 category: ghq-core
-tags: ["agent-loop", "prd-driven-development", "acceptance-criteria", "automation"]
+tags: ["agent-loop", "prd-driven-development", "acceptance-criteria"]
 source: conversation
 confidence: 0.7
 created_at: 2026-03-19T19:35:00Z

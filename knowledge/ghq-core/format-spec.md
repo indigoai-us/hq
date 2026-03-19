@@ -1,7 +1,7 @@
 ---
 title: "Knowledge Format Specification"
 category: ghq-core
-tags: ["format", "spec", "knowledge", "schema"]
+tags: ["schema"]
 source: system
 confidence: 1.0
 created_at: 2026-03-19T00:00:00Z

@@ -1,7 +1,7 @@
 ---
 title: "All hooks belong in settings.json, not settings.local.json"
 category: ghq-core
-tags: ["hooks", "claude-code", "configuration"]
+tags: ["hooks", "claude-code"]
 source: conversation
 confidence: 0.9
 created_at: 2026-03-19T00:00:00Z

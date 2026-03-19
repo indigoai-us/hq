@@ -1,7 +1,7 @@
 ---
 title: "Running Claude Code CLI as a Subprocess via --print"
 category: tools
-tags: ["claude-code", "cli", "automation", "shell-scripting", "agent-architecture"]
+tags: ["claude-code", "cli", "shell-scripting", "agent-architecture"]
 source: conversation
 confidence: 0.9
 created_at: "2026-03-19T00:00:00Z"

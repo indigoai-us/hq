@@ -1,7 +1,7 @@
 ---
 title: "Tool Design Principles for Autonomous Agents"
 category: agent-tooling
-tags: ["tool-design", "mcp", "function-calling", "api-design", "error-handling", "agent-tooling"]
+tags: ["tool-design", "mcp", "function-calling", "api-design", "error-handling"]
 source: blueprint
 confidence: 0.5
 created_at: 2026-03-20T00:00:00Z

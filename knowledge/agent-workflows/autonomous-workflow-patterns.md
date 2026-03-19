@@ -1,7 +1,7 @@
 ---
 title: "Autonomous Workflow Patterns for GHQ"
 category: agent-workflows
-tags: ["workflows", "automation", "research-loop", "pr-review", "monitoring", "autonomous-coding"]
+tags: ["workflows", "research-loop", "pr-review", "monitoring", "autonomous-coding"]
 source: blueprint
 confidence: 0.5
 created_at: 2026-03-20T00:00:00Z

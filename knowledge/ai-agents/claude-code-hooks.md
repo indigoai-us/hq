@@ -1,7 +1,7 @@
 ---
 title: "Claude Code Hooks"
 category: ai-agents
-tags: ["claude-code", "hooks", "automation", "lifecycle", "configuration"]
+tags: ["claude-code", "hooks", "lifecycle"]
 source: "https://code.claude.com/docs/en/hooks"
 confidence: 0.95
 created_at: 2026-03-19T12:00:00Z

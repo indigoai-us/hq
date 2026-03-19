@@ -1,7 +1,7 @@
 ---
 title: "NanoClaw: Container-Isolated AI Agent Platform"
 category: ai-agents
-tags: ["ai-agents", "containers", "claude-agent-sdk", "open-source", "messaging", "security"]
+tags: ["containers", "claude-agent-sdk", "open-source", "messaging", "security"]
 source: web research
 confidence: 0.85
 created_at: 2026-03-19T12:00:00Z

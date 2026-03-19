@@ -1,7 +1,7 @@
 ---
 title: "OpenClaw vs NanoClaw vs NemoClaw: Open-Source AI Agent Platform Comparison"
 category: ai-agents
-tags: ["ai-agents", "open-source", "security", "containers", "enterprise", "nvidia"]
+tags: ["open-source", "security", "containers", "enterprise", "nvidia"]
 source: web research
 confidence: 0.8
 created_at: 2026-03-19T12:00:00Z
