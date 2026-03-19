@@ -1,0 +1,69 @@
+---
+description: Loop through the curiosity queue, researching one item at a time via ask-claude subprocesses
+allowed-tools: Bash, Read
+---
+
+# /research-loop — Automated Research Queue Drainer
+
+Continuously process pending curiosity queue items by spawning a `/research` subprocess for each one. Each item runs in a fresh Claude context to avoid context bloat.
+
+**Usage**: `/research-loop [max-items]`
+
+- `$ARGUMENTS` optionally specifies the maximum number of items to process (default: all pending items).
+
+## Procedure
+
+### 1. Read the Queue
+
+Read `knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`. Sort by `priority` descending.
+
+If no pending items exist, report **"Queue empty — nothing to research"** and stop.
+
+If `$ARGUMENTS` is a number, cap the list to that many items. Otherwise process all pending items.
+
+### 2. Loop Through Items
+
+For each pending item, in priority order:
+
+#### a. Report Progress
+
+Print: `[{current}/{total}] Researching: {question} (id: {id}, priority: {priority})`
+
+#### b. Spawn Research Subprocess
+
+Run:
+
+```bash
+./scripts/ask-claude.sh -t 10 "/research {id}"
+```
+
+This spawns a fresh Claude session that runs the `/research` command for that specific queue item.
+
+#### c. Check Result
+
+After the subprocess completes, re-read `knowledge/.queue.jsonl` to verify the item was processed (its status should no longer be `"pending"`).
+
+- If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
+- If the item was completed or failed, log: `Done: {id} — {status}`
+
+#### d. Continue or Stop
+
+Continue to the next item. If all items are processed, proceed to step 3.
+
+### 3. Final Report
+
+After the loop completes, read `knowledge/.queue.jsonl` one last time and count remaining pending items.
+
+Print:
+```
+Research loop complete:
+  Attempted: {total_attempted}
+  Remaining pending: {remaining_count}
+```
+
+## Rules
+
+- **One item per subprocess** — each `/research` call handles exactly one queue item in a fresh context.
+- **Sequential execution** — process items one at a time, not in parallel, to avoid write conflicts on the queue file.
+- **No direct research** — this command only orchestrates; all actual research happens in the subprocess.
+- **Respect queue state** — always re-read the queue file before each iteration to pick up any status changes.

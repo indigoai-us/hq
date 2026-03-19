@@ -5,19 +5,28 @@ allowed-tools: WebSearch, Read, Write, Edit, Bash, Glob, Grep
 
 # /research — Curiosity Queue Processor
 
-Process pending items from the curiosity queue, research them via web search, and write knowledge entries.
+Research a single pending item from the curiosity queue via web search and write a knowledge entry.
+
+**Usage**: `/research [queue-item-id]`
+
+- If an ID is provided, research that specific item.
+- If no ID is provided, pick the highest-priority pending item.
 
 ## Procedure
 
-### 1. Load the Queue
+### 1. Select the Item
 
-Read `knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`. Sort by `priority` descending. Take the top 3 items (max 5 per run to stay within context budget).
+Read `knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`.
+
+**If `$ARGUMENTS` is non-empty**: Find the item whose `id` matches `$ARGUMENTS`. If not found, report **"Item {id} not found in queue"** and stop.
+
+**If `$ARGUMENTS` is empty**: Sort by `priority` descending and pick the first item.
 
 If no pending items exist, report **"Queue empty — nothing to research"** and stop.
 
-### 2. Process Each Item
+### 2. Process the Item
 
-For each pending item, execute steps (a) through (h). If any step fails, set the item's status to `"failed"` with an `error` field containing the error message, write it back to `.queue.jsonl`, and continue to the next item.
+Execute steps (a) through (h). If any step fails, set the item's status to `"failed"` with an `error` field containing the error message, write it back to `.queue.jsonl`, and stop.
 
 Track counters: `entries_created`, `entries_updated`, `items_queued`, `errors`.
 
@@ -115,22 +124,21 @@ Increment `entries_created` (or `entries_updated` if a duplicate was found and m
 
 ### 3. Write Research Log
 
-After all items are processed, append a single JSON line to `knowledge/.research-log.jsonl`:
+After the item is processed, append a single JSON line to `knowledge/.research-log.jsonl`:
 
 ```json
-{"id":"r-{unix_timestamp}","items_processed":N,"entries_created":N,"entries_updated":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
+{"id":"r-{unix_timestamp}","items_processed":1,"entries_created":N,"entries_updated":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
 ```
 
 ### 4. Report Summary
 
-Print: `Research complete: {items_processed} processed, {entries_created} created, {entries_updated} updated, {items_queued} follow-ups queued, {errors} errors`
+Print: `Research complete: 1 processed, {entries_created} created, {entries_updated} updated, {items_queued} follow-ups queued, {errors} errors`
 
 ## Rules
 
-- **Max 5 items per run** to stay within context budget.
+- **One item per run** — research a single queue item, then stop.
 - **Use the WebSearch tool** for all research — Claude IS the LLM doing synthesis; do not call external APIs.
 - **Valid frontmatter** is mandatory — match the schema in `knowledge/meta/format-spec.md`.
 - **Create category directories** as needed (`mkdir -p`).
 - **Always run `npx tsx scripts/reindex.ts`** after writing entries.
 - **Never skip deduplication** — always run `qmd vsearch` before writing.
-- **Error resilience** — if one item fails, log the error and continue to the next.
