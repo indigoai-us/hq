@@ -1,14 +1,54 @@
 ---
 title: "Ralph Loop Implementation Patterns"
 category: ai-agents
-tags: ["agent-loop", "prd-driven-development", "evaluator-design", "token-optimization", "exit-conditions"]
-source: web research
-confidence: 0.8
+tags: ["agent-loop", "prd-driven-development", "evaluator-design", "token-optimization", "exit-conditions", "planning", "decision-making"]
+source: web research, https://www.signlz.co/from-prd-to-tasks-the-art-of-decomposition, https://testdouble.com/insights/youre-holding-it-wrong-the-double-loop-model-for-agentic-coding, https://ralph-wiggum.ai/
+confidence: 0.85
 created_at: 2026-03-19T19:30:00Z
-updated_at: 2026-03-19T19:30:00Z
+updated_at: 2026-03-20T14:00:00Z
 ---
 
 Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph loops.
+
+## Epic Decomposition Strategy
+
+The most consequential decision before starting a Ralph loop is not *how* to write the PRD — it's *how much* to put in it.
+
+### Right-Sizing: What Makes a Task "Loop-Sized"
+
+A loop-sized task has three properties:
+
+1. **Machine-verifiable completion** — tests pass, checkboxes are checked, lint succeeds. If "done" requires human judgment, it's not loop-sized yet.
+2. **Fits in a fresh context** — all necessary background fits in one context load without summarization. Target: codebase orientation + PRD + progress file ≤ 30% of context budget.
+3. **Converges in 3–10 iterations** — if a task typically needs 15+ iterations, the scope is too wide or the success criteria are ambiguous.
+
+### One Big Loop vs. Many Small Loops
+
+| Situation | Recommendation | Reason |
+|-----------|---------------|--------|
+| Feature touches one module | Single loop | Coordination cost > benefit |
+| Feature has independent sub-features | Multiple sequential loops | Clean commits, smaller diffs per review |
+| Sub-features can run in parallel | Multi-agent (parallel loops) | Wall-clock savings |
+| Epic spans >2 days of coding | Split into loops | Context drift and cost compound |
+| Success criteria are unclear | Single exploratory loop first | Clarify before parallelizing |
+| Tight API contracts between parts | Sequential loops in order | Worker A's output is Worker B's input |
+
+**Rule of thumb:** if you'd break it into separate PRs for a human dev, break it into separate loops.
+
+### Splitting an Epic Into Loops
+
+1. **Identify vertical slices** — decompose by user-facing behavior, not technical layer. A "backend + frontend" split requires integration overhead; an "auth flow + profile flow" split doesn't.
+2. **Make contracts first** — any shared interfaces, API schemas, or data shapes should be defined before task loops start. These become constraints in each task's PRD.
+3. **Order by dependency** — tasks that produce files/interfaces others consume must run first (or their outputs must be mocked in contracts).
+4. **Assign file ownership** — each loop owns specific files. Overlapping ownership causes merge conflicts and re-work.
+5. **Keep the PRD per loop ≤ 5 items** — more than 5 user stories/technical requirements per loop is a signal the scope is too large.
+
+### Anti-Patterns in Decomposition
+
+- **Horizontal slicing** ("do all the DB layer, then all the API layer") creates integration risk and makes each loop's output non-runnable.
+- **God PRD** — one massive PRD for an entire epic leads to context bloat, cost overruns, and agents that lose track of constraints by iteration 8.
+- **Underdefined acceptance criteria** — "make the login work" generates more loops than "login with valid credentials returns 200 + JWT; invalid returns 401 + error message".
+- **Splitting too fine** — tasks that take one iteration are better as checklist items within a larger loop. Coordination overhead exceeds value.
 
 ## PRD Structure
 

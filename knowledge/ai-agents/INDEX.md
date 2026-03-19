@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-20 |
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
 | [ralph-loop-multi-agent-orchestration.md](ralph-loop-multi-agent-orchestration.md) | Multi-Agent Ralph Loop Orchestration | Multi-agent Ralph loops compose a planner, parallel workers, and an integration agent to handle t... | 0.8 | 2026-03-20 |
 | [ralph-loop-case-studies.md](ralph-loop-case-studies.md) | Ralph Loop Case Studies and Production Lessons | Real-world production deployments of Ralph loops and autonomous coding agents — what worked, what... | 0.8 | 2026-03-19 |
@@ -9,7 +10,6 @@
 | [ralph-loop-observability.md](ralph-loop-observability.md) | Ralph Loop Observability and Monitoring | Tools and patterns for monitoring Ralph loop runs — iteration counts, cost per run, and convergen... | 0.8 | 2026-03-19 |
 | [ralph-loop-failure-modes.md](ralph-loop-failure-modes.md) | Ralph Loop Failure Modes & Debugging | Common failure patterns in Ralph loops and strategies for diagnosing them. | 0.5 | 2026-03-19 |
 | [nvidia-openshell.md](nvidia-openshell.md) | NVIDIA OpenShell | Open-source runtime for executing autonomous AI agents in sandboxed environments with kernel-leve... | 0.8 | 2026-03-19 |
-| [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-19 |
 | [ralph-loops-claude-code-integration.md](ralph-loops-claude-code-integration.md) | Ralph Loops in Claude Code | How Ralph loops integrate with Claude Code via hooks, plugins, and CLAUDE.md patterns. | 0.8 | 2026-03-19 |
 | [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.8 | 2026-03-19 |
 | [claw-platform-comparison.md](claw-platform-comparison.md) | OpenClaw vs NanoClaw vs NemoClaw: AI Agent Platform Comparison | Comparison of the three major open-source AI agent platforms in the "Claw" ecosystem as of March ... | 0.8 | 2026-03-19 |
