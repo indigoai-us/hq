@@ -61,4 +61,4 @@ Overstory (jayminwest) uses a SQLite mail system for coordination. Worktree isol
 
 ## Practical Implication for GHQ
 
-GHQ's multi-agent patterns should default to **worktree isolation** rather than in-place file locking. When spawning parallel agents via `scripts/ask-claude.sh`, assign each to a separate git worktree with a scoped task that doesn't overlap other worktrees' ownership.
+GHQ's multi-agent patterns should default to **worktree isolation** rather than in-place file locking. When spawning parallel agents via `tools/ask-claude.sh`, assign each to a separate git worktree with a scoped task that doesn't overlap other worktrees' ownership.

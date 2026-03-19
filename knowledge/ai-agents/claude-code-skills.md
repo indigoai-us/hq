@@ -20,7 +20,7 @@ my-skill/
 ├── template.md        # Template for Claude to fill in
 ├── examples/
 │   └── sample.md      # Example output
-└── scripts/
+└── tools/
     └── helper.py      # Executable script
 ```
 

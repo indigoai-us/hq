@@ -18,7 +18,7 @@ Continuously process pending curiosity queue items by spawning a `/research` sub
 Use the read-queue script to get pending items sorted by priority:
 
 ```bash
-npx tsx scripts/read-queue.ts --status pending -n 1
+npx tsx tools/read-queue.ts --status pending -n 1
 ```
 
 This fetches the single highest-priority pending item. The loop processes one item per iteration, re-reading the queue each time (step d/e).
@@ -36,7 +36,7 @@ For each pending item, in priority order:
 Re-read the full queue to get the current total of pending items:
 
 ```bash
-npx tsx scripts/read-queue.ts --json 2>/dev/null | python3 -c "import sys,json; items=json.load(sys.stdin); pending=[i for i in items if i.get('status')=='pending']; print(len(pending))"
+npx tsx tools/read-queue.ts --json 2>/dev/null | python3 -c "import sys,json; items=json.load(sys.stdin); pending=[i for i in items if i.get('status')=='pending']; print(len(pending))"
 ```
 
 Count the pending items in the result — this is `{remaining}`. Then print:
@@ -48,7 +48,7 @@ Count the pending items in the result — this is `{remaining}`. Then print:
 Run:
 
 ```bash
-./scripts/ask-claude.sh "/research {id}"
+./tools/ask-claude.sh "/research {id}"
 ```
 
 This spawns a fresh Claude session that runs the `/research` command for that specific queue item.
@@ -71,7 +71,7 @@ git push
 
 #### d. Check Result
 
-Re-read the queue via `npx tsx scripts/read-queue.ts --status pending -n 1` to verify the item was processed (it should no longer appear in the pending list).
+Re-read the queue via `npx tsx tools/read-queue.ts --status pending -n 1` to verify the item was processed (it should no longer appear in the pending list).
 
 - If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
 - If the item was completed or failed, log: `Done: {id} — {status}`
@@ -82,7 +82,7 @@ Continue to the next item. If all items are processed, proceed to step 3.
 
 ### 3. Final Report
 
-After the loop completes, run `npx tsx scripts/read-queue.ts --json` one last time and count remaining pending items.
+After the loop completes, run `npx tsx tools/read-queue.ts --json` one last time and count remaining pending items.
 
 Print:
 ```

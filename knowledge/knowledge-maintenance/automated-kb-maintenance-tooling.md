@@ -272,16 +272,16 @@ A practical weekly maintenance script for a 500-file KB:
 find knowledge/ -name "*.md" | xargs npx markdown-link-check --config .mlc.json
 
 # 2. Orphan detection
-./scripts/find-orphans.sh > reports/orphans.txt
+./tools/find-orphans.sh > reports/orphans.txt
 
 # 3. Staleness scan (frontmatter + mtime)
-./scripts/staleness-scan.sh | head -20  # top 20 stale candidates
+./tools/staleness-scan.sh | head -20  # top 20 stale candidates
 
 # 4. Tag inventory drift
-./scripts/tag-inventory.sh | awk '$1 < 2 {print "low-use tag:", $2}'
+./tools/tag-inventory.sh | awk '$1 < 2 {print "low-use tag:", $2}'
 
 # 5. Dedup check on recently added entries
-npx tsx scripts/reindex.ts && qmd query "..." --json  # spot-check via qmd
+npx tsx tools/reindex.ts && qmd query "..." --json  # spot-check via qmd
 ```
 
 Run in CI or as a weekly cron; results feed into `.queue.jsonl` as re-research items rather than automated deletion.
@@ -309,7 +309,7 @@ repos:
     hooks:
       - id: validate-frontmatter
         name: Validate KB frontmatter
-        entry: scripts/validate-frontmatter.sh
+        entry: tools/validate-frontmatter.sh
         language: script
         files: ^knowledge/.*\.md$
         exclude: INDEX\.md
@@ -319,7 +319,7 @@ repos:
 
 ```bash
 #!/usr/bin/env bash
-# scripts/validate-frontmatter.sh
+# tools/validate-frontmatter.sh
 errors=0
 for f in "$@"; do
   # Extract frontmatter between --- delimiters
@@ -369,7 +369,7 @@ jobs:
       - name: Validate frontmatter
         run: |
           changed=$(git diff --name-only origin/main...HEAD -- 'knowledge/**/*.md')
-          echo "$changed" | xargs scripts/validate-frontmatter.sh
+          echo "$changed" | xargs tools/validate-frontmatter.sh
 
       - name: Lint markdown
         run: npx markdownlint-cli2 "knowledge/**/*.md" --ignore "knowledge/**/INDEX.md"

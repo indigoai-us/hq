@@ -2,7 +2,7 @@
 /**
  * reindex.ts — Scan knowledge/ and generate INDEX.md files.
  *
- * Usage:  npx tsx scripts/reindex.ts
+ * Usage:  npx tsx tools/reindex.ts
  *
  * No external dependencies beyond Node built-ins.
  */

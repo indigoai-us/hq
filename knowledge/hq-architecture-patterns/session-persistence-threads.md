@@ -97,7 +97,7 @@ Git is **necessary but not sufficient**. Thread files should *complement* git by
 
 ### qmd Index Version
 
-The `qmd_index_version` field should be the git commit hash of the most recent `npx tsx scripts/reindex.ts` run (or a timestamp if reindex doesn't commit). This lets a resuming session detect whether the knowledge base has been modified since the thread was written, and re-run queries if needed.
+The `qmd_index_version` field should be the git commit hash of the most recent `npx tsx tools/reindex.ts` run (or a timestamp if reindex doesn't commit). This lets a resuming session detect whether the knowledge base has been modified since the thread was written, and re-run queries if needed.
 
 ### Prior Art
 

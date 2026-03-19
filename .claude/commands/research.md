@@ -52,7 +52,7 @@ From the question and search results, produce a knowledge entry:
   - **Orthogonal**: Each tag is an independent dimension. Don't duplicate the category (e.g., no `architecture` tag for entries in `knowledge/architecture/`).
   - **Controlled vocabulary**: Before assigning tags, retrieve the current inventory:
     ```bash
-    ./scripts/tag-inventory.sh
+    ./tools/tag-inventory.sh
     ```
     Pick from existing tags first. Only introduce a new tag when no existing one covers the concept, and verify it isn't a synonym of an existing tag.
   - **Stable naming**: Lowercase, hyphenated terms (`knowledge-management` not `KM`)
@@ -105,7 +105,7 @@ Write the entry to `knowledge/{category}/{slug}.md` with the frontmatter and bod
 Run:
 
 ```bash
-npx tsx scripts/reindex.ts
+npx tsx tools/reindex.ts
 ```
 
 This regenerates INDEX.md files for all knowledge categories.
@@ -124,7 +124,7 @@ This regenerates INDEX.md files for all knowledge categories.
 While researching, you may discover new questions that weren't part of the original item. For each follow-up:
 
 ```bash
-npx tsx scripts/queue-curiosity.ts --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
+npx tsx tools/queue-curiosity.ts --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
 ```
 
 Only queue genuinely new questions — not rephrased versions of what was just answered. Increment `items_queued` counter.
@@ -174,5 +174,5 @@ If follow-up questions were queued, list them:
 - **Use the WebSearch tool** for all research — Claude IS the LLM doing synthesis; do not call external APIs.
 - **Valid frontmatter** is mandatory — match the schema in `knowledge/meta/format-spec.md`.
 - **Create category directories** as needed (`mkdir -p`).
-- **Always run `npx tsx scripts/reindex.ts`** after writing entries.
+- **Always run `npx tsx tools/reindex.ts`** after writing entries.
 - **Never skip deduplication** — always run `qmd vsearch` before writing.

@@ -46,10 +46,10 @@ result=$(claude -p --max-turns 3 "Check if tests pass")
 
 ## GHQ's ask-claude.sh Wrapper
 
-GHQ wraps the raw CLI in `scripts/ask-claude.sh`, a production-ready script that solves three key problems:
+GHQ wraps the raw CLI in `tools/ask-claude.sh`, a production-ready script that solves three key problems:
 
 1. **Final-answer-only output**: Always fetches `--output-format json` internally, then extracts `.result` via `jq -r '.result // empty'`. This strips all intermediate tool-use noise and returns only the final answer text. Use `-j` flag to get the full JSON instead.
-2. **Self-recursion guard**: Uses `--disallowedTools "Bash(./scripts/ask-claude.sh*)" "Bash(ask-claude*)"` to prevent the subprocess from calling itself, avoiding infinite loops.
+2. **Self-recursion guard**: Uses `--disallowedTools "Bash(./tools/ask-claude.sh*)" "Bash(ask-claude*)"` to prevent the subprocess from calling itself, avoiding infinite loops.
 3. **CLAUDECODE env guard**: Runs `unset CLAUDECODE` before invoking `claude`, bypassing the nesting detection that would otherwise block subprocess invocation.
 
 ### Enforcing Subprocess Over Subagents

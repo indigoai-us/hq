@@ -12,7 +12,7 @@ Audit the knowledge base tag vocabulary for quality issues and fix them interact
 Run:
 
 ```bash
-./scripts/tag-inventory.sh
+./tools/tag-inventory.sh
 ```
 
 Parse the output into a tag frequency table: `{tag: count}`.
@@ -96,7 +96,7 @@ For each approved fix:
 After all fixes:
 
 ```bash
-npx tsx scripts/reindex.ts
+npx tsx tools/reindex.ts
 ```
 
 ## Step 6: Summary

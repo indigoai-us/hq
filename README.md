@@ -22,7 +22,7 @@ through use.
 ```
 .claude/          hooks/, commands/, CLAUDE.md (system rules)
 knowledge/        markdown files with YAML frontmatter, indexed by qmd
-scripts/          utility scripts
+tools/          utility scripts
 patches/          persistent patches for global npm packages
 ```
 

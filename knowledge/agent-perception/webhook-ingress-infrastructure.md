@@ -147,10 +147,10 @@ SOURCE=$(echo "$PAYLOAD" | jq -r '.source // "unknown"')
 case "$SOURCE" in
   github)
     EVENT=$(echo "$PAYLOAD" | jq -r '.event')
-    echo "$PAYLOAD" | ./scripts/ask-claude.sh "GitHub event received: $EVENT. What needs attention?"
+    echo "$PAYLOAD" | ./tools/ask-claude.sh "GitHub event received: $EVENT. What needs attention?"
     ;;
   sentry)
-    echo "$PAYLOAD" | ./scripts/ask-claude.sh "New Sentry alert. Summarize and suggest fix."
+    echo "$PAYLOAD" | ./tools/ask-claude.sh "New Sentry alert. Summarize and suggest fix."
     ;;
   *)
     echo "$PAYLOAD" >> knowledge/.webhook-inbox.jsonl  # buffer for later
