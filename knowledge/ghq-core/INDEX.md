@@ -2,6 +2,8 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [knowledge-base-scaling-patterns.md](knowledge-base-scaling-patterns.md) | Knowledge Base Scaling Patterns | How markdown-based knowledge bases behave at different scales, and what structural changes become... | 0.5 | 2026-03-20 |
+| [markdown-linking-patterns.md](markdown-linking-patterns.md) | Markdown Linking Patterns for Knowledge Bases | Strategies for creating and maintaining links between markdown knowledge entries to enable discov... | 0.5 | 2026-03-20 |
 | [machine-verifiable-acceptance-criteria.md](machine-verifiable-acceptance-criteria.md) | Machine-Verifiable Acceptance Criteria | When writing acceptance criteria for AI agent loops, criteria must be machine-parseable, not just... | 0.7 | 2026-03-19 |
 | [faceted-vs-hierarchical-classification.md](faceted-vs-hierarchical-classification.md) | Faceted vs Hierarchical Classification for Personal Knowledge Bases | Faceted classification assigns multiple independent dimensions to items; hierarchical taxonomy us... | 0.8 | 2026-03-19 |
 | [taxonomy-to-knowledge-graph-migration.md](taxonomy-to-knowledge-graph-migration.md) | Taxonomy to Knowledge Graph Migration | When and why to migrate from a taxonomy to a knowledge graph, and the practical tradeoffs involved. | 0.8 | 2026-03-19 |
