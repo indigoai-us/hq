@@ -1,11 +1,11 @@
 ---
 title: "Automated Tooling for Markdown Knowledge Base Maintenance at Scale"
 category: knowledge-maintenance
-tags: ["cli", "knowledge-management", "maintenance", "open-source", "staleness", "automation"]
-source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/
-confidence: 0.82
+tags: ["cli", "knowledge-management", "maintenance", "open-source", "staleness", "automation", "deduplication", "embeddings"]
+source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/, https://github.com/MinishLab/semhash, https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html, https://ekzhu.com/datasketch/lsh.html
+confidence: 0.85
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T00:00:00Z
+updated_at: 2026-03-20T18:00:00Z
 ---
 
 Concrete CLI tools and scripts for link checking, orphan detection, tag normalization, staleness scoring, and dedup in flat-file markdown KBs.
@@ -83,24 +83,77 @@ Vector similarity (cosine distance on embeddings) catches semantic near-duplicat
 - **False positives** on short/generic titles with high overlap
 - **Misses structural duplicates** with different phrasing but identical content
 
-**Complementary approaches:**
+**Complementary approaches by method:**
 
 | Method | Tool | Best For |
 |--------|------|----------|
 | Exact hash | `sha256sum` | Exact copies, templates applied twice |
 | Shingling + Jaccard | [datasketch](https://github.com/ekzhu/datasketch) (Python) | Near-identical text, reordered paragraphs |
-| MinHash LSH | `text-dedup`, `fastdedup` | Large corpora (1k+ files), batch detection |
+| MinHash LSH | `datasketch`, `text-dedup` | Large corpora (1k+ files), batch detection |
+| Semantic (embeddings + ANN) | [SemHash](https://github.com/MinishLab/semhash) | Near-duplicate entries with paraphrased content |
+| Clustering + cosine | [NeMo Curator SemDeDup](https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html) | Large datasets, GPU-accelerated |
 | Title/slug fuzzy match | `fzf`, Levenshtein scripts | Same concept, different slug |
 
-For a 500-file KB, a **two-pass pipeline** works well:
-1. MinHash pass for bulk near-duplicates (O(n) with LSH)
-2. Vector similarity pass on MinHash candidates (more expensive, targeted)
+### SemHash (Recommended for KB dedup)
 
-**[fastdedup](https://github.com/wapplewhite4/fastdedup)** CLI example:
-```bash
-# Requires converting .md to .jsonl first
-fastdedup fuzzy-dedup -i kb.jsonl -o deduped.jsonl --threshold 0.85 --field text
+**[SemHash](https://github.com/MinishLab/semhash)** by MinishLab is the best fit for flat-file markdown KBs:
+- Uses **Model2Vec** (lightweight static embeddings, ~30MB) + **Vicinity** (ANN search) — very fast, no GPU needed
+- Handles millions of records; sub-second on small KBs (<1k entries)
+- Supports cross-dataset dedup (e.g., deduplicate incoming entries against an existing KB)
+
+```python
+from semhash import SemHash
+
+# Load existing KB entries (list of strings or dicts)
+texts = [open(f).read() for f in kb_files]
+deduplicator = SemHash.fit(texts)
+
+# Check new entries against existing KB
+new_texts = [open(f).read() for f in new_files]
+result = deduplicator.deduplicate(new_texts, threshold=0.9)
+print(result.duplicates)    # list of (new_idx, existing_idx, score)
+print(result.deduplicated)  # unique new entries
 ```
+
+RAG-specific use case: deduplicate chunks after splitting — duplicate chunks inflate retrieval noise and force early diversification strategies.
+
+### NeMo Curator SemDeDup (Large Scale)
+
+NVIDIA's **[SemDeDup](https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html)** algorithm for GPU-scale corpora:
+1. **Embed** with any pretrained model (e.g., `sentence-transformers`)
+2. **Cluster** with k-means (clusters localize the search space)
+3. **Compute pairwise cosine similarity** within each cluster
+4. **Remove** all but one representative from pairs above a threshold
+
+Overkill for small KBs (<10k entries) but valuable for LLM training data pipelines.
+
+### datasketch MinHash LSH (Text-Level)
+
+**[datasketch](https://github.com/ekzhu/datasketch)** for character/token-level similarity (not semantic):
+
+```python
+from datasketch import MinHash, MinHashLSH
+
+lsh = MinHashLSH(threshold=0.8, num_perm=128)
+minhashes = {}
+for doc_id, text in docs.items():
+    m = MinHash(num_perm=128)
+    for shingle in set(text.split()):  # word shingles
+        m.update(shingle.encode('utf8'))
+    lsh.insert(doc_id, m)
+    minhashes[doc_id] = m
+
+# Query for near-duplicates of a new doc
+candidates = lsh.query(minhashes["new_entry"])
+```
+
+Supports Redis/Cassandra storage layers for large-scale persistent indexes. Scales to millions of documents with sub-linear query cost.
+
+### Two-Pass Pipeline for KB Maintenance
+
+For a 500-file KB, combine both approaches:
+1. **MinHash pass** — bulk near-duplicates at text level (O(n) with LSH, fast)
+2. **SemHash pass** — semantic duplicates among MinHash survivors (targets paraphrased content)
 
 ## Combining into a Maintenance Pipeline
 
