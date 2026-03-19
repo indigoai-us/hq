@@ -1,6 +1,6 @@
 ---
 title: "Knowledge Tree Best Practices"
-category: information-architecture
+category: ghq-core
 tags: ["knowledge-management", "taxonomy", "hierarchy", "ontology", "information-architecture", "personal-knowledge"]
 source: web research
 confidence: 0.8

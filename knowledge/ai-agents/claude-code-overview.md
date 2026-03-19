@@ -1,6 +1,6 @@
 ---
 title: "Claude Code Overview"
-category: claude-code
+category: ai-agents
 tags: ["cli", "agentic-coding", "mcp", "agent-sdk", "developer-tools"]
 source: "web research"
 confidence: 0.85

@@ -1,6 +1,6 @@
 ---
 title: "Claude Code Skills System"
-category: claude-code
+category: ai-agents
 tags: ["skills", "slash-commands", "extensibility", "skill-md"]
 source: "web research"
 confidence: 0.95

@@ -1,6 +1,6 @@
 ---
 title: "All hooks belong in settings.json, not settings.local.json"
-category: workflow
+category: ghq-core
 tags: ["hooks", "claude-code", "configuration"]
 source: conversation
 confidence: 0.9

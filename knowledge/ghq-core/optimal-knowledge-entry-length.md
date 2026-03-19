@@ -1,6 +1,6 @@
 ---
 title: "Optimal Knowledge Entry Length"
-category: information-architecture
+category: ghq-core
 tags: ["knowledge-management", "chunking", "retrieval", "zettelkasten", "writing"]
 source: web research
 confidence: 0.8

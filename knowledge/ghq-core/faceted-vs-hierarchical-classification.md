@@ -1,6 +1,6 @@
 ---
 title: "Faceted vs Hierarchical Classification for Personal Knowledge Bases"
-category: information-architecture
+category: ghq-core
 tags: ["faceted-classification", "taxonomy", "hierarchy", "knowledge-management", "personal-knowledge", "information-architecture"]
 source: web research
 confidence: 0.8

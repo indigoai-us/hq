@@ -1,6 +1,6 @@
 ---
 title: "Knowledge Format Specification"
-category: meta
+category: ghq-core
 tags: ["format", "spec", "knowledge", "schema"]
 source: system
 confidence: 1.0

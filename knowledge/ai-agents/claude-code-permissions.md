@@ -1,6 +1,6 @@
 ---
 title: "Claude Code Permission System"
-category: claude-code
+category: ai-agents
 tags: ["permissions", "security", "allowlist", "denylist", "sandbox"]
 source: "web research"
 confidence: 0.95

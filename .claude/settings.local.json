@@ -88,7 +88,11 @@
       "Bash(bash .claude/hooks/auto-reindex.sh)",
       "Bash(bash .claude/hooks/capture-learnings.sh)",
       "Skill(learn)",
-      "Skill(learn:*)"
+      "Skill(learn:*)",
+      "Bash(find companies/indigo/projects/indigo-nx/repos/indigo-nx/apps/langgraph-insights-agent/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(find /Users/hassaansaleemmacbook2026/repos/indigo/goclaw -type f \\\\\\(-name *.go -o -name *.ts -o -name *.js -o -name *.py \\\\\\))",
+      "Bash(for dir:*)",
+      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/knowledge/$dir/**)"
     ],
     "deny": [],
     "ask": [

@@ -1,6 +1,6 @@
 ---
 title: "Taxonomy to Knowledge Graph Migration"
-category: information-architecture
+category: ghq-core
 tags: ["taxonomy", "knowledge-graph", "ontology", "migration", "information-architecture", "tradeoffs"]
 source: web research
 confidence: 0.75

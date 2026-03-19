@@ -84,6 +84,20 @@ For questions that came up during the session but were not resolved:
 npx tsx scripts/queue-curiosity.ts --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
 ```
 
+### Queue Outcome Gaps
+
+When the session revealed that reality didn't match expectations (a tool behaved differently than documented, a pattern failed where it usually works, an assumption was proven wrong):
+
+```bash
+npx tsx scripts/queue-curiosity.ts \
+  --question "Why did {actual} happen instead of {expected}?" \
+  --source outcome_gap \
+  --priority 7 \
+  --context "Observation: {what happened}. Expected: {X}. Actual: {Y}."
+```
+
+Outcome gaps are high-value research targets (priority 7) because they reveal where mental models are wrong. The structured expected-vs-actual format helps `/research` produce targeted answers.
+
 ## Step 4: Reindex
 
 After all writes are complete:

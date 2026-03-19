@@ -19,6 +19,8 @@ const VALID_SOURCES = [
   "outcome_gap",
   "knowledge_gap",
   "conversation_insight",
+  "research_followup",
+  "trend_detection",
 ] as const;
 type Source = (typeof VALID_SOURCES)[number];
 

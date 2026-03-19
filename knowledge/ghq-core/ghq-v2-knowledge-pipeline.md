@@ -1,6 +1,6 @@
 ---
 title: "GHQ v0.2 Knowledge Pipeline Architecture"
-category: architecture
+category: ghq-core
 tags: ["ghq", "architecture", "knowledge", "hooks", "pipeline"]
 source: conversation
 confidence: 0.7
