@@ -2,7 +2,9 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
-| [ralph-loop-cross-platform.md](ralph-loop-cross-platform.md) | Ralph Loops Across Coding Agents | How the Ralph loop pattern manifests across different AI coding agents beyond Claude Code. | 0.5 | 2026-03-19 |
+| [ralph-loop-case-studies.md](ralph-loop-case-studies.md) | Ralph Loop Case Studies and Production Lessons | Real-world production deployments of Ralph loops and autonomous coding agents — what worked, what... | 0.8 | 2026-03-19 |
+| [ralph-loop-cross-platform.md](ralph-loop-cross-platform.md) | Ralph Loops Across Coding Agents | How the Ralph loop pattern manifests across different AI coding agents beyond Claude Code. | 0.8 | 2026-03-19 |
+| [ralph-loop-observability.md](ralph-loop-observability.md) | Ralph Loop Observability and Monitoring | Tools and patterns for monitoring Ralph loop runs — iteration counts, cost per run, and convergen... | 0.8 | 2026-03-19 |
 | [ralph-loop-failure-modes.md](ralph-loop-failure-modes.md) | Ralph Loop Failure Modes & Debugging | Common failure patterns in Ralph loops and strategies for diagnosing them. | 0.5 | 2026-03-19 |
 | [nvidia-openshell.md](nvidia-openshell.md) | NVIDIA OpenShell | Open-source runtime for executing autonomous AI agents in sandboxed environments with kernel-leve... | 0.8 | 2026-03-19 |
 | [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-19 |

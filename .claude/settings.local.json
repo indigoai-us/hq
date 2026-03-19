@@ -94,9 +94,15 @@
       "Bash(for dir:*)",
       "Read(//Users/hassaansaleemmacbook2026/repos/ghq/knowledge/$dir/**)",
       "Bash(chmod +x /Users/hassaansaleemmacbook2026/repos/ghq/scripts/tag-inventory.sh)",
-      "Bash(./scripts/tag-inventory.sh)"
+      "Bash(./scripts/tag-inventory.sh)",
+      "Bash(chmod +x scripts/ask-claude.sh)",
+      "Bash(./scripts/ask-claude.sh*)",
+      "Bash(bash -x ./scripts/ask-claude.sh)",
+      "Bash(unset CLAUDECODE)"
     ],
-    "deny": [],
+    "deny": [
+      "Agent"
+    ],
     "ask": [
       "Bash(rm *)",
       "Bash(bd init *--force*)",

@@ -21,6 +21,18 @@ qmd vsearch "<query>" -n 10       # semantic/conceptual
 qmd query "<query>" -n 10         # hybrid BM25 + vector (best, slower)
 ```
 
+## Subprocess, Not Subagents
+
+Never use the `Agent` tool for delegating work. Instead, use `scripts/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
+
+```bash
+./scripts/ask-claude.sh "Summarize this file"              # simple prompt
+./scripts/ask-claude.sh -m haiku "Quick question"           # model override
+cat file.txt | ./scripts/ask-claude.sh "Explain this"       # stdin + prompt
+./scripts/ask-claude.sh -t 3 "Fix the bug in src/index.ts"  # multi-turn
+./scripts/ask-claude.sh -j "List exports"                    # JSON output
+```
+
 ## Structure
 
 ```
