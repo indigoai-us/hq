@@ -31,9 +31,17 @@ If the output is `"Queue empty"` or the JSON array is empty, report **"Queue emp
 
 For each pending item, in priority order:
 
-#### a. Report Progress
+#### a. Fetch Remaining Count and Report Progress
 
-Print: `[{current}/{total}] Researching: {question} (id: {id}, priority: {priority})`
+Re-read the full queue to get the current total of pending items:
+
+```bash
+npx tsx scripts/read-queue.ts --json 2>/dev/null | python3 -c "import sys,json; items=json.load(sys.stdin); pending=[i for i in items if i.get('status')=='pending']; print(len(pending))"
+```
+
+Count the pending items in the result — this is `{remaining}`. Then print:
+
+`[{processed_so_far + 1} / {remaining} remaining] Researching: {question} (id: {id}, priority: {priority})`
 
 #### b. Spawn Research Subprocess
 
