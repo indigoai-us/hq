@@ -1,11 +1,11 @@
 ---
 title: "Ralph Loops"
 category: ai-agents
-tags: ["agent-loop", "autonomous-coding", "iteration-pattern", "context-management"]
-source: web research
-confidence: 0.85
+tags: ["agent-loop", "autonomous-coding", "iteration-pattern", "context-management", "prd-driven-development", "planning"]
+source: "web research, https://ghuntley.com/loop/, https://ghuntley.com/pressure/, https://github.com/ghuntley/how-to-ralph-wiggum, https://linearb.io/blog/ralph-loop-agentic-engineering-geoffrey-huntley, https://linearb.io/blog/dex-horthy-humanlayer-rpi-methodology-ralph-loop"
+confidence: 0.88
 created_at: 2026-03-19T18:00:00Z
-updated_at: 2026-03-19T18:00:00Z
+updated_at: 2026-03-20T15:30:00Z
 ---
 
 Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete.
@@ -79,12 +79,55 @@ Several implementations exist:
 - **Exit conditions** — the hardest part; evaluators need clear, measurable criteria
 - **Scope** — works best for well-defined, bounded tasks (feature implementation, bug fixes, migrations); struggles with ambiguous design work
 
+## Back-Pressure
+
+Back-pressure is a central design concept in Ralph: automated feedback mechanisms that **reject incomplete or incorrect work** before the loop can proceed.
+
+> "Software engineering is now about preventing failure scenarios and preventing the wheel from turning over through back pressure to the generative function." — Geoffrey Huntley
+
+### Back-Pressure Gates
+
+Concrete gates used to create back-pressure:
+
+| Gate Type | Mechanism | Appropriate For |
+|-----------|-----------|----------------|
+| **Test suite** | `pytest`, `jest`, `go test` — loop won't exit until all pass | Code correctness |
+| **Static analysis** | `tsc --noEmit`, `ruff`, `eslint` — fail = loop continues | Type/lint safety |
+| **Build gate** | Compilation succeeds | Any compiled language |
+| **Completion promise** | Agent must output `<promise>COMPLETE</promise>` | Subjective criteria |
+| **LLM-as-judge** | Second model reviews the diff, returns pass/fail | Complex feature requirements |
+
+### Why Back-Pressure Matters
+
+Without it, the agent can hallucinate completion and exit prematurely. Back-pressure shifts the exit decision from the worker agent (unreliable self-assessment) to an external evaluator (objective, consistent). Projects with strong back-pressure have been able to run agents on much longer-horizon tasks because the agent encounters its mistakes in real-time and self-corrects rather than discovering them after exit.
+
+### The AGENTS.md Learning Feedback Loop
+
+After each iteration, the agent updates AGENTS.md (or progress.md) with learnings — gotchas, discovered constraints, patterns that work. This is a softer form of back-pressure: institutional memory that guides future iterations away from dead ends the current agent already explored.
+
+## Ralph and the How-to-Ralph-Wiggum Playbook
+
+Geoffrey Huntley's canonical methodology is documented in [ghuntley/how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum). The repository defines a **three-phase workflow**:
+
+| Phase | Mode | Prompt file |
+|-------|------|------------|
+| 1. Define | Requirements / spec writing | `PROMPT_plan.md` |
+| 2. Plan | Gap analysis, IMPLEMENTATION_PLAN generation | `PROMPT_plan.md` |
+| 3. Build | Task-by-task autonomous coding | `PROMPT_build.md` |
+
+Core files: `loop.sh` (orchestrator) + `AGENTS.md` (operational guide, ≤60 lines) + `IMPLEMENTATION_PLAN.md` (auto-updated task list) + `specs/NN-kebab-case.md` (requirements, one per job-to-be-done).
+
+Various "hq-starter-kit" variants package this methodology with pre-written knowledge files (commonly 01-overview through 11-team-training-guide) covering topics like: methodology overview, PRD format, loop mechanics, evaluator design, back-pressure gates, multi-agent patterns, cost management, and team onboarding. The exact file set varies by implementation; no single canonical "hq-starter-kit" repo was found in public sources as of 2026-03-20.
+
 ## Sources
 
 - [Geoffrey Huntley — everything is a ralph loop](https://ghuntley.com/loop/)
+- [Geoffrey Huntley — don't waste your back pressure](https://ghuntley.com/pressure/)
 - [LinearB — Mastering Ralph loops](https://linearb.io/blog/ralph-loop-agentic-engineering-geoffrey-huntley)
+- [LinearB — Ralph loops make agentic coding reliable](https://linearb.io/blog/dex-horthy-humanlayer-rpi-methodology-ralph-loop)
 - [Dev Interrupted — Inventing the Ralph Wiggum Loop (podcast)](https://linearb.io/dev-interrupted/podcast/inventing-the-ralph-wiggum-loop)
 - [Alibaba Cloud — From ReAct to Ralph Loop](https://www.alibabacloud.com/blog/from-react-to-ralph-loop-a-continuous-iteration-paradigm-for-ai-agents_602799)
 - [DEV Community — 2026: The year of the Ralph Loop Agent](https://dev.to/alexandergekov/2026-the-year-of-the-ralph-loop-agent-1gkj)
 - [GitHub — snarktank/ralph](https://github.com/snarktank/ralph)
 - [GitHub — how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum)
+- [GitHub — mikeyobrien/ralph-orchestrator](https://github.com/mikeyobrien/ralph-orchestrator)

@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.9 | 2026-03-20 |
 | [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-20 |
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
 | [landlock-lsm-filesystem-sandboxing.md](landlock-lsm-filesystem-sandboxing.md) | Landlock LSM: Filesystem Sandboxing and Limitations | Landlock is an unprivileged Linux LSM for restricting filesystem and network access per-process w... | 0.9 | 2026-03-20 |
@@ -12,7 +13,6 @@
 | [ralph-loop-failure-modes.md](ralph-loop-failure-modes.md) | Ralph Loop Failure Modes & Debugging | Common failure patterns in Ralph loops and strategies for diagnosing them. | 0.5 | 2026-03-19 |
 | [nvidia-openshell.md](nvidia-openshell.md) | NVIDIA OpenShell | Open-source runtime for executing autonomous AI agents in sandboxed environments with kernel-leve... | 0.8 | 2026-03-19 |
 | [ralph-loops-claude-code-integration.md](ralph-loops-claude-code-integration.md) | Ralph Loops in Claude Code | How Ralph loops integrate with Claude Code via hooks, plugins, and CLAUDE.md patterns. | 0.8 | 2026-03-19 |
-| [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.8 | 2026-03-19 |
 | [claw-platform-comparison.md](claw-platform-comparison.md) | OpenClaw vs NanoClaw vs NemoClaw: AI Agent Platform Comparison | Comparison of the three major open-source AI agent platforms in the "Claw" ecosystem as of March ... | 0.8 | 2026-03-19 |
 | [nanoclaw.md](nanoclaw.md) | NanoClaw: Container-Isolated AI Agent Platform | Lightweight, container-isolated AI agent platform built on the Claude Agent SDK. | 0.8 | 2026-03-19 |
 | [claw-family-comparison.md](claw-family-comparison.md) | Claw Family Comparison: OpenClaw vs NanoClaw vs NemoClaw | Comparison of the three major "Claw" AI agent platforms — OpenClaw, NanoClaw, and NemoClaw — and ... | 0.8 | 2026-03-19 |
