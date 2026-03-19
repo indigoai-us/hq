@@ -20,4 +20,7 @@
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 12 | 2026-03-20 |
 | [knowledge-segregation](knowledge-segregation/INDEX.md) | 5 | 2026-03-20 |
 | [multi-agent-systems](multi-agent-systems/INDEX.md) | 2 | 2026-03-20 |
+| [qmd-architecture](qmd-architecture/INDEX.md) | 2 | 2026-03-20 |
+| [qmd-operations](qmd-operations/INDEX.md) | 2 | 2026-03-20 |
+| [qmd-sdk](qmd-sdk/INDEX.md) | 1 | 2026-03-20 |
 | [tools](tools/INDEX.md) | 2 | 2026-03-19 |
