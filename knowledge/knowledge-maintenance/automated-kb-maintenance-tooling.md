@@ -1,11 +1,11 @@
 ---
 title: "Automated Tooling for Markdown Knowledge Base Maintenance at Scale"
 category: knowledge-maintenance
-tags: ["cli", "knowledge-management", "maintenance", "open-source", "staleness", "automation", "deduplication", "embeddings"]
-source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/, https://github.com/MinishLab/semhash, https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html, https://ekzhu.com/datasketch/lsh.html
-confidence: 0.85
+tags: ["cli", "knowledge-management", "maintenance", "open-source", "staleness", "automation", "deduplication", "embeddings", "ci-cd", "hooks"]
+source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/, https://github.com/MinishLab/semhash, https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html, https://ekzhu.com/datasketch/lsh.html, https://github.com/JulianCataldo/remark-lint-frontmatter-schema, https://github.com/hashicorp/front-matter-schema, https://github.com/DavidAnson/markdownlint-cli2
+confidence: 0.87
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T18:00:00Z
+updated_at: 2026-03-20T21:00:00Z
 ---
 
 Concrete CLI tools and scripts for link checking, orphan detection, tag normalization, staleness scoring, and dedup in flat-file markdown KBs.
@@ -178,6 +178,156 @@ npx tsx scripts/reindex.ts && qmd query "..." --json  # spot-check via qmd
 ```
 
 Run in CI or as a weekly cron; results feed into `.queue.jsonl` as re-research items rather than automated deletion.
+
+## CI/CD Quality Gates
+
+### Defense-in-Depth Enforcement Model
+
+Quality enforcement works best as three layers, each progressively slower but more authoritative:
+
+| Layer | Trigger | Scope | Blocks |
+|-------|---------|-------|--------|
+| **pre-commit hook** | `git commit` | Staged `.md` files only | The commit |
+| **PR quality gate** (CI) | `pull_request` event | All changed files | Merge |
+| **Scheduled scan** | Cron (weekly) | Entire KB | Creates issues/queue items |
+
+### Layer 1: Pre-Commit Hooks (Frontmatter Validation)
+
+Use the [pre-commit](https://pre-commit.com/) framework with a custom hook:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: validate-frontmatter
+        name: Validate KB frontmatter
+        entry: scripts/validate-frontmatter.sh
+        language: script
+        files: ^knowledge/.*\.md$
+        exclude: INDEX\.md
+```
+
+**Script approach** — parse YAML frontmatter and assert required fields:
+
+```bash
+#!/usr/bin/env bash
+# scripts/validate-frontmatter.sh
+errors=0
+for f in "$@"; do
+  # Extract frontmatter between --- delimiters
+  fm=$(awk '/^---/{found++; next} found==1' "$f")
+  for field in title category tags created_at confidence; do
+    if ! echo "$fm" | grep -q "^${field}:"; then
+      echo "MISSING '$field' in $f"
+      errors=$((errors + 1))
+    fi
+  done
+done
+exit $errors
+```
+
+**Schema-based approach** — [remark-lint-frontmatter-schema](https://github.com/JulianCataldo/remark-lint-frontmatter-schema) validates against a JSON schema:
+
+```yaml
+# .remarkrc.mjs
+import remarkFrontmatter from 'remark-frontmatter'
+import rlFrontmatterSchema from 'remark-lint-frontmatter-schema'
+
+const remarkConfig = {
+  plugins: [
+    remarkFrontmatter,
+    [rlFrontmatterSchema, { schemas: { './knowledge/meta/schema.json': ['./knowledge/**/*.md'] } }]
+  ]
+}
+```
+
+[HashiCorp's `front-matter-schema` GitHub Action](https://github.com/hashicorp/front-matter-schema) provides the same as a ready-made workflow step.
+
+### Layer 2: PR Quality Gate (GitHub Actions)
+
+```yaml
+# .github/workflows/kb-quality.yml
+name: KB Quality Gate
+on:
+  pull_request:
+    paths: ['knowledge/**/*.md']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate frontmatter
+        run: |
+          changed=$(git diff --name-only origin/main...HEAD -- 'knowledge/**/*.md')
+          echo "$changed" | xargs scripts/validate-frontmatter.sh
+
+      - name: Lint markdown
+        run: npx markdownlint-cli2 "knowledge/**/*.md" --ignore "knowledge/**/INDEX.md"
+
+      - name: Check for semantic duplicates
+        run: |
+          # Run dedup check against new/changed entries only
+          changed=$(git diff --name-only origin/main...HEAD -- 'knowledge/**/*.md')
+          for f in $changed; do
+            title=$(grep '^title:' "$f" | head -1 | sed 's/title: //')
+            score=$(qmd query "$title" -n 1 --json | jq '.[0].score // 0')
+            if (( $(echo "$score > 0.9" | bc -l) )); then
+              echo "Potential duplicate: $f (score $score)"
+              exit 1
+            fi
+          done
+
+      - name: Broken link check (internal only)
+        run: find knowledge/ -name '*.md' | xargs npx markdown-link-check --config .mlc.json
+```
+
+### Layer 3: Scheduled Staleness Report (Cron)
+
+```yaml
+# .github/workflows/kb-staleness.yml
+name: KB Staleness Report
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Mondays at 9am
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate staleness report
+        run: |
+          echo "## Stale KB Entries" > staleness-report.md
+          find knowledge/ -name "*.md" -not -name "INDEX.md" -mtime +90 \
+            -exec echo "- {}" \; >> staleness-report.md
+
+      - name: Create issue if stale entries found
+        if: success()
+        run: |
+          count=$(find knowledge/ -name "*.md" -not -name "INDEX.md" -mtime +90 | wc -l)
+          if [ "$count" -gt 0 ]; then
+            gh issue create --title "KB Staleness Report: $count entries need review" \
+              --body "$(cat staleness-report.md)" --label "kb-maintenance"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### What to Block vs. Flag
+
+| Check | Action |
+|-------|--------|
+| Missing required frontmatter fields | **Block** commit/merge |
+| Frontmatter schema violation | **Block** merge |
+| Semantic duplicate score > 0.9 | **Block** merge with diff link |
+| Broken internal link | **Block** merge |
+| Broken external link | **Warn** (external URLs go stale independently) |
+| Entry not modified in 90+ days | **Flag** via scheduled issue/queue item |
+| Tag used < 2 times | **Flag** in weekly report |
+| Low confidence (< 0.5) | **Flag** for re-research |
 
 ## Key Insight
 
