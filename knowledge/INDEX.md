@@ -4,7 +4,7 @@
 |----------|-------|--------------|
 | [agent-architectures](agent-architectures/INDEX.md) | 2 | 2026-03-20 |
 | [agent-evaluation](agent-evaluation/INDEX.md) | 1 | 2026-03-20 |
-| [agent-memory](agent-memory/INDEX.md) | 1 | 2026-03-20 |
+| [agent-memory](agent-memory/INDEX.md) | 2 | 2026-03-20 |
 | [agent-tooling](agent-tooling/INDEX.md) | 1 | 2026-03-20 |
 | [ai-agents](ai-agents/INDEX.md) | 18 | 2026-03-19 |
 | [ghq-core](ghq-core/INDEX.md) | 8 | 2026-03-19 |
