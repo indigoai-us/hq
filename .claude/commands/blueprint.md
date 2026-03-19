@@ -74,7 +74,7 @@ Rules for seed entries:
 - **Confidence 0.5**: These are starting points, not authoritative. `/research` will upgrade them.
 - **Source "blueprint"**: Marks these as generated, not researched.
 - **Honest uncertainty**: Better to say "X is commonly used for Y, though specifics may vary" than to state uncertain facts as truth.
-- **3-6 tags** following existing vocabulary. Run `qmd search "tags:" -n 20` to check existing tags.
+- **3-6 tags** following existing vocabulary. Run `./scripts/tag-inventory.sh` to check existing tags.
 - **Dedup check**: Run `qmd vsearch "{title}" -n 1` before writing. Skip if similarity > 0.9.
 
 #### c. Queue curiosity items
