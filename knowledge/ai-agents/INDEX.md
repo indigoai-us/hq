@@ -3,6 +3,7 @@
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
+| [ralph-loop-multi-agent-orchestration.md](ralph-loop-multi-agent-orchestration.md) | Multi-Agent Ralph Loop Orchestration | Multi-agent Ralph loops compose a planner, parallel workers, and an integration agent to handle t... | 0.8 | 2026-03-20 |
 | [ralph-loop-case-studies.md](ralph-loop-case-studies.md) | Ralph Loop Case Studies and Production Lessons | Real-world production deployments of Ralph loops and autonomous coding agents — what worked, what... | 0.8 | 2026-03-19 |
 | [ralph-loop-cross-platform.md](ralph-loop-cross-platform.md) | Ralph Loops Across Coding Agents | How the Ralph loop pattern manifests across different AI coding agents beyond Claude Code. | 0.8 | 2026-03-19 |
 | [ralph-loop-observability.md](ralph-loop-observability.md) | Ralph Loop Observability and Monitoring | Tools and patterns for monitoring Ralph loop runs — iteration counts, cost per run, and convergen... | 0.8 | 2026-03-19 |
