@@ -2,29 +2,136 @@
 title: "Automated Tooling for Markdown Knowledge Base Maintenance at Scale"
 category: knowledge-maintenance
 tags: ["cli", "knowledge-management", "maintenance", "open-source", "staleness", "automation", "deduplication", "embeddings", "ci-cd", "hooks"]
-source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/, https://github.com/MinishLab/semhash, https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html, https://ekzhu.com/datasketch/lsh.html, https://github.com/JulianCataldo/remark-lint-frontmatter-schema, https://github.com/hashicorp/front-matter-schema, https://github.com/DavidAnson/markdownlint-cli2
-confidence: 0.87
+source: https://github.com/tcort/markdown-link-check, https://github.com/remarkjs/remark-lint, https://github.com/Canna71/obsidian-janitor, https://github.com/rjzxui/obsidian-vault-cli, https://blog.nelhage.com/post/fuzzy-dedup/, https://github.com/allenai/duplodocus, https://ragaboutit.com/the-knowledge-decay-problem-how-to-build-rag-systems-that-stay-fresh-at-scale/, https://github.com/MinishLab/semhash, https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/deduplication/semdedup.html, https://ekzhu.com/datasketch/lsh.html, https://github.com/JulianCataldo/remark-lint-frontmatter-schema, https://github.com/hashicorp/front-matter-schema, https://github.com/DavidAnson/markdownlint-cli2, https://github.com/lycheeverse/lychee, https://github.com/lycheeverse/lychee-action, https://lychee.cli.rs/recipes/excluding-links/, https://lychee.cli.rs/troubleshooting/rate-limits/, https://en.wikipedia.org/wiki/Wikipedia:Link_rot, https://libguides.thedtl.org/c.php?g=1403589
+confidence: 0.90
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T21:00:00Z
+updated_at: 2026-03-20T22:30:00Z
 ---
 
 Concrete CLI tools and scripts for link checking, orphan detection, tag normalization, staleness scoring, and dedup in flat-file markdown KBs.
 
 ## Link Checking
 
-**[markdown-link-check](https://github.com/tcort/markdown-link-check)** (Node.js) — the standard tool:
-```bash
-find knowledge/ -name "*.md" | xargs npx markdown-link-check
-```
-- Checks both internal (`[[wikilinks]]` require a wrapper script) and external URLs
-- `ignorePatterns` array for `qmd://` or custom schemes
-- Exits non-zero on broken links — CI-friendly
-- Can be run per-file or directory-wide; external checks hit network
+### Tool Comparison
 
-**[remark-lint](https://github.com/remarkjs/remark-lint)** — AST-level linting with composable rule sets:
+| Tool | Language | Speed | Best For |
+|------|----------|-------|----------|
+| **[lychee](https://github.com/lycheeverse/lychee)** | Rust | Very fast (async) | External + internal URLs, CI/scheduled |
+| **[markdown-link-check](https://github.com/tcort/markdown-link-check)** | Node.js | Moderate | Standard, widely integrated |
+| **[remark-validate-links](https://github.com/remarkjs/remark-lint)** | Node.js | Fast (AST) | Internal-only, remark pipeline |
+
+### Lychee (Recommended for External Links)
+
+**[lychee](https://github.com/lycheeverse/lychee)** is a fast async Rust link checker — checks 576 links in ~1 minute.
+
+```bash
+# Install
+cargo install lychee  # or: brew install lychee
+
+# Run across all markdown files
+lychee knowledge/**/*.md --config lychee.toml
+```
+
+**`lychee.toml` configuration:**
+```toml
+# Skip internal custom schemes (qmd://, etc.)
+exclude = ["^qmd://", "^mailto:", "^localhost"]
+
+# Rate limiting: cap concurrent requests to avoid 429s
+max_concurrency = 10
+max_retries = 2
+
+# Timeout and caching
+timeout = 20
+cache = true
+cache_file = ".lychee-cache.json"
+cache_max_age = "2d"
+```
+
+**`.lycheeignore`** — regex patterns for URLs to skip:
+```
+# Known-good but unreachable from CI (auth-gated)
+^https://internal\.corp\.example\.com
+# Sites that return 403 to bots
+^https://linkedin\.com
+```
+
+**GitHub Actions integration:**
+```yaml
+- uses: lycheeverse/lychee-action@v1
+  with:
+    args: --config lychee.toml knowledge/**/*.md
+    fail: true
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # avoids GitHub rate limits
+```
+
+### markdown-link-check (Established Alternative)
+
+**[markdown-link-check](https://github.com/tcort/markdown-link-check)** (Node.js):
+```bash
+find knowledge/ -name "*.md" | xargs npx markdown-link-check --config .mlc.json
+```
+```json
+{
+  "ignorePatterns": [{ "pattern": "^qmd://" }],
+  "retryOn429": true,
+  "aliveStatusCodes": [200, 206]
+}
+```
+- Exits non-zero on broken links — CI-friendly
+- External checks hit network; use `ignorePatterns` for custom schemes
+
+### remark-lint (Internal Links Only)
+
+**[remark-validate-links](https://github.com/remarkjs/remark-lint)** — AST-level, resolves `[text](./other-file.md)` against the filesystem:
+- Catches broken relative paths, renamed files
+- Config-driven (`.remarkrc`), composes with other remark transforms
 - `remark-lint-double-link`: flags duplicate URLs within a file
-- `remark-validate-links`: checks that internal markdown links resolve
-- Config-driven (`.remarkrc`), integrates with remark pipeline for transforms + lint in one pass
+
+### Cadence Strategy
+
+| Check Type | Trigger | Tool | Block? |
+|-----------|---------|------|--------|
+| Internal links | pre-commit / PR | remark-validate-links | Block |
+| External links (changed files only) | PR | lychee | Warn (flaky) |
+| Full external link scan | Weekly cron | lychee | Creates issues |
+
+External links should **not** block merges — URLs go stale independently of code changes and flaky 429s cause spurious failures. Use scheduled scans that file issues/queue items instead.
+
+**Weekly cron example:**
+```yaml
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Mondays 8am
+jobs:
+  linkcheck:
+    steps:
+      - uses: lycheeverse/lychee-action@v1
+        with:
+          args: --cache knowledge/**/*.md
+          fail: false  # report, don't fail
+      - name: Create issue on failures
+        run: |
+          if [ -s lychee/out.md ]; then
+            gh issue create --title "Dead links detected $(date +%Y-%m-%d)" \
+              --body-file lychee/out.md --label "kb-maintenance"
+          fi
+```
+
+### Handling Dead Links
+
+When a link is confirmed dead, apply in order of preference:
+
+1. **Find the new URL** — search for the resource; the content often moved rather than disappeared
+2. **Replace with archive snapshot** — use [Wayback Machine](https://web.archive.org/) (`https://web.archive.org/web/*/ORIGINAL_URL`) or [Perma.cc](https://perma.cc/) for academic/legal sources
+3. **Update source field** — revise the frontmatter `source:` to the working URL or archive URL
+4. **Lower confidence** — if the source can't be verified, drop `confidence` by 0.1–0.2 and queue for re-research
+5. **Do not delete content** — cited information with an unresolvable source is still valuable; annotate with `<!-- link rot: verified dead YYYY-MM -->` in the body
+
+**Wikipedia's policy** (well-tested at scale): do not delete cited information solely because the URL no longer works — the knowledge was valid when captured.
+
+**Archive proactively:** For high-confidence external sources, store an archive URL at write time. Perma.cc provides permanent, citable snapshots that don't decay.
 
 ## Orphan Detection
 
