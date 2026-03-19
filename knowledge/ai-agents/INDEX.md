@@ -4,6 +4,7 @@
 |------|-------|---------|------------|---------|
 | [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-20 |
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
+| [landlock-lsm-filesystem-sandboxing.md](landlock-lsm-filesystem-sandboxing.md) | Landlock LSM: Filesystem Sandboxing and Limitations | Landlock is an unprivileged Linux LSM for restricting filesystem and network access per-process w... | 0.9 | 2026-03-20 |
 | [ralph-loop-multi-agent-orchestration.md](ralph-loop-multi-agent-orchestration.md) | Multi-Agent Ralph Loop Orchestration | Multi-agent Ralph loops compose a planner, parallel workers, and an integration agent to handle t... | 0.8 | 2026-03-20 |
 | [ralph-loop-case-studies.md](ralph-loop-case-studies.md) | Ralph Loop Case Studies and Production Lessons | Real-world production deployments of Ralph loops and autonomous coding agents — what worked, what... | 0.8 | 2026-03-19 |
 | [ralph-loop-cross-platform.md](ralph-loop-cross-platform.md) | Ralph Loops Across Coding Agents | How the Ralph loop pattern manifests across different AI coding agents beyond Claude Code. | 0.8 | 2026-03-19 |
