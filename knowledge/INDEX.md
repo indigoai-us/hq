@@ -12,6 +12,6 @@
 | [agent-workflows](agent-workflows/INDEX.md) | 3 | 2026-03-20 |
 | [ai-agents](ai-agents/INDEX.md) | 20 | 2026-03-20 |
 | [ghq-core](ghq-core/INDEX.md) | 13 | 2026-03-20 |
-| [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 9 | 2026-03-20 |
+| [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 10 | 2026-03-20 |
 | [multi-agent-systems](multi-agent-systems/INDEX.md) | 2 | 2026-03-20 |
 | [tools](tools/INDEX.md) | 2 | 2026-03-19 |
