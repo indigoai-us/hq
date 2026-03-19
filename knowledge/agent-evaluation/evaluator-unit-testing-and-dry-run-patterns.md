@@ -1,11 +1,11 @@
 ---
 title: "Evaluator Unit Testing and Dry-Run Patterns"
 category: agent-evaluation
-tags: ["agent-loop", "evaluator-design", "testing", "golden-dataset", "dry-run", "production-patterns"]
-source: https://langfuse.com/blog/2025-10-21-testing-llm-applications, https://www.getmaxim.ai/articles/building-a-golden-dataset-for-ai-evaluation-a-step-by-step-guide/, https://deepeval.com/guides/guides-ai-agent-evaluation, https://www.confident-ai.com/docs/llm-evaluation/core-concepts/test-cases-goldens-datasets
-confidence: 0.82
+tags: ["agent-loop", "evaluator-design", "testing", "golden-dataset", "dry-run", "production-patterns", "reproducibility", "version-pinning"]
+source: https://langfuse.com/blog/2025-10-21-testing-llm-applications, https://www.getmaxim.ai/articles/building-a-golden-dataset-for-ai-evaluation-a-step-by-step-guide/, https://deepeval.com/guides/guides-ai-agent-evaluation, https://www.confident-ai.com/docs/llm-evaluation/core-concepts/test-cases-goldens-datasets, https://langfuse.com/docs/prompt-management/get-started, https://www.promptfoo.dev/docs/integrations/langfuse/, https://langfuse.com/docs/prompt-management/data-model
+confidence: 0.88
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T00:00:00Z
+updated_at: 2026-03-20T16:00:00Z
 ---
 
 Before committing to expensive loop runs, validate your evaluator with unit tests and dry-run modes.
@@ -101,10 +101,96 @@ When the evaluator itself uses an LLM (LLM-as-judge), add:
 
 Tools: [G-Eval (DeepEval)](https://deepeval.com), [LangSmith evaluators](https://www.langchain.com/langsmith/evaluation), [Braintrust](https://www.braintrust.dev).
 
+## Version-Pinning Evaluator Prompts
+
+LLM-judge scores drift when (a) the judge model is updated by the provider or (b) the evaluator prompt changes. Both silently corrupt comparisons across runs. Version-pinning addresses both.
+
+### What causes score drift
+
+| Source | Mechanism |
+|--------|-----------|
+| Model version churn | Provider silently updates `gpt-4o`; score distribution shifts |
+| Prompt edits | Even whitespace or tone changes alter judge behavior |
+| Temperature > 0 | Sampling introduces run-to-run variance |
+| Few-shot example drift | Examples hand-edited over time, rubric evolves |
+
+### Pin the judge model
+
+Use **dated model snapshots**, not aliases:
+
+```python
+# Bad — alias changes without notice
+judge_model = "gpt-4o"
+
+# Good — pinned to a specific deployed version
+judge_model = "gpt-4o-2024-11-20"   # OpenAI
+judge_model = "claude-3-5-sonnet-20241022"  # Anthropic
+```
+
+Set temperature to 0 to eliminate sampling variance.
+
+### Pin the evaluator prompt via hash
+
+Store the prompt text in a versioned file and record its SHA-256 hash in the eval run metadata:
+
+```python
+import hashlib, pathlib
+
+PROMPT_PATH = "evals/judge_prompt_v3.txt"
+prompt_text = pathlib.Path(PROMPT_PATH).read_text()
+prompt_hash = hashlib.sha256(prompt_text.encode()).hexdigest()[:12]
+
+# Log alongside eval results
+run_metadata = {
+    "judge_model": judge_model,
+    "prompt_file": PROMPT_PATH,
+    "prompt_hash": prompt_hash,
+}
+```
+
+Compare `prompt_hash` across runs to detect silent edits. Fail CI if the hash changed without a version bump.
+
+### Prompt versioning with a management tool
+
+[Langfuse](https://langfuse.com/docs/prompt-management/get-started) stores prompt versions immutably:
+
+```python
+# Reference specific version — never "production" label in eval CI
+prompt = langfuse.get_prompt("llm-judge", version=7)
+```
+
+[Promptfoo](https://www.promptfoo.dev/docs/integrations/langfuse/) integrates directly:
+
+```yaml
+# promptfoo config
+prompts:
+  - langfuse://my-judge-prompt:7  # pinned to version 7
+```
+
+### Calibration gating
+
+After any prompt or model change, run the golden dataset and assert:
+- Agreement with human labels ≥ 85%
+- Score variance on repeated inputs < 0.1
+- No regression on adversarial probes
+
+Fail the eval pipeline if any threshold drops — treat it as a breaking change.
+
+### Checklist: Stable Judge Configuration
+
+| Control | Implementation |
+|---------|---------------|
+| Pinned model version | Dated snapshot ID, not alias |
+| Temperature | Set to 0 in eval config |
+| Prompt hashed | SHA-256 logged per run |
+| Prompt in version control | Git-tracked file or versioned prompt store |
+| Golden regression | CI asserts score stability on labeled examples |
+| Change policy | Treat prompt + model as a versioned artifact; bump version on any edit |
+
 ## Ralph Loop Specifics
 
 For Ralph-style loops with machine-verifiable acceptance criteria:
 1. **Write evaluator tests before writing the evaluator** — define pass/fail cases from the PRD criteria first.
 2. **Dry-run with `max_iterations=1`** to test a single evaluator call cheaply.
 3. **Log raw evaluator output** on every call — invaluable for debugging infinite loops post-hoc.
-4. **Pin evaluator prompt version** — LLM judge drift between runs breaks reproducibility.
+4. **Pin evaluator prompt version** — log `prompt_hash` + model snapshot in every run; gate CI on golden regression.
