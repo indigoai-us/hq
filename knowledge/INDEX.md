@@ -3,7 +3,7 @@
 | Category | Files | Last Updated |
 |----------|-------|--------------|
 | [agent-architectures](agent-architectures/INDEX.md) | 3 | 2026-03-20 |
-| [agent-autonomy](agent-autonomy/INDEX.md) | 2 | 2026-03-20 |
+| [agent-autonomy](agent-autonomy/INDEX.md) | 3 | 2026-03-20 |
 | [agent-evaluation](agent-evaluation/INDEX.md) | 2 | 2026-03-20 |
 | [agent-memory](agent-memory/INDEX.md) | 2 | 2026-03-20 |
 | [agent-perception](agent-perception/INDEX.md) | 1 | 2026-03-20 |
