@@ -4,7 +4,7 @@
 |----------|-------|--------------|
 | [agent-architectures](agent-architectures/INDEX.md) | 5 | 2026-03-20 |
 | [agent-autonomy](agent-autonomy/INDEX.md) | 4 | 2026-03-20 |
-| [agent-evaluation](agent-evaluation/INDEX.md) | 3 | 2026-03-20 |
+| [agent-evaluation](agent-evaluation/INDEX.md) | 4 | 2026-03-20 |
 | [agent-memory](agent-memory/INDEX.md) | 2 | 2026-03-20 |
 | [agent-perception](agent-perception/INDEX.md) | 1 | 2026-03-20 |
 | [agent-self-improvement](agent-self-improvement/INDEX.md) | 3 | 2026-03-20 |
