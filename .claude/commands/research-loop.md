@@ -18,7 +18,7 @@ Continuously process pending curiosity queue items by spawning a `/research` sub
 Use the read-queue script to get pending items sorted by priority:
 
 ```bash
-npx tsx scripts/read-queue.ts --json -n 1
+npx tsx scripts/read-queue.ts --status pending -n 1
 ```
 
 This fetches the single highest-priority pending item. The loop processes one item per iteration, re-reading the queue each time (step d/e).
