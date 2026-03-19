@@ -39,14 +39,30 @@ Run:
 
 This spawns a fresh Claude session that runs the `/research` command for that specific queue item.
 
-#### c. Check Result
+#### c. Embed and Push
 
-After the subprocess completes, re-read `knowledge/.queue.jsonl` to verify the item was processed (its status should no longer be `"pending"`).
+After the subprocess completes, run:
+
+```bash
+qmd embed
+```
+
+Then commit and push the new/updated knowledge files:
+
+```bash
+git add knowledge/
+git commit -m "research: {short question summary}"
+git push
+```
+
+#### d. Check Result
+
+Re-read `knowledge/.queue.jsonl` to verify the item was processed (its status should no longer be `"pending"`).
 
 - If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
 - If the item was completed or failed, log: `Done: {id} — {status}`
 
-#### d. Continue or Stop
+#### e. Continue or Stop
 
 Continue to the next item. If all items are processed, proceed to step 3.
 

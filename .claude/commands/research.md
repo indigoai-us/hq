@@ -132,7 +132,30 @@ After the item is processed, append a single JSON line to `knowledge/.research-l
 
 ### 4. Report Summary
 
-Print: `Research complete: 1 processed, {entries_created} created, {entries_updated} updated, {items_queued} follow-ups queued, {errors} errors`
+Print a structured summary of everything that changed:
+
+```
+Research complete:
+  Question: {original question}
+  Status: {completed|failed}
+  Entry: {created|updated} knowledge/{category}/{slug}.md
+  Follow-ups queued: {items_queued}
+  Errors: {errors}
+
+Files changed:
+  - knowledge/{category}/{slug}.md ({created|updated})
+  - knowledge/{category}/INDEX.md (reindexed)
+  - knowledge/.queue.jsonl (item removed)
+  - knowledge/.queue-done.jsonl (item appended)
+  - knowledge/.research-log.jsonl (log appended)
+```
+
+If follow-up questions were queued, list them:
+```
+  Follow-ups:
+    - {follow-up question 1}
+    - {follow-up question 2}
+```
 
 ## Rules
 
