@@ -1,0 +1,8 @@
+# GHQ Company Manifest
+# Single source of truth for company -> resource mapping
+
+companies:
+  ghq:
+    name: "GHQ"
+    path: "companies/ghq"
+    created_at: "2026-03-20T00:00:00Z"
