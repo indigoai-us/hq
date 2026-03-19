@@ -28,7 +28,6 @@ Never use the `Agent` tool for delegating work. Instead, use `scripts/ask-claude
 ```bash
 ./scripts/ask-claude.sh "Summarize this file"              # simple prompt
 cat file.txt | ./scripts/ask-claude.sh "Explain this"       # stdin + prompt
-./scripts/ask-claude.sh -t 3 "Fix the bug in src/index.ts"  # multi-turn
 ./scripts/ask-claude.sh -j "List exports"                    # JSON output
 ```
 

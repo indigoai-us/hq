@@ -7,6 +7,7 @@
  *   npx tsx scripts/read-queue.ts              # pending items, table format
  *   npx tsx scripts/read-queue.ts --status all  # all statuses
  *   npx tsx scripts/read-queue.ts --json        # JSON output
+ *   npx tsx scripts/read-queue.ts --n 10       # limit to 10 items
  */
 
 import fs from "node:fs";
@@ -31,9 +32,10 @@ interface QueueItem {
 }
 
 // ── Arg parsing ──────────────────────────────────────────────────────
-function parseArgs(argv: string[]): { status: string; json: boolean } {
+function parseArgs(argv: string[]): { status: string; json: boolean; n: number } {
   let status = "pending";
   let json = false;
+  let n = 0;
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--json") {
@@ -41,8 +43,11 @@ function parseArgs(argv: string[]): { status: string; json: boolean } {
     } else if (arg === "--status" && i + 1 < argv.length) {
       status = argv[++i];
     }
+    if ((arg === "--n" || arg === "-n") && i + 1 < argv.length) {
+      n = parseInt(argv[++i]);
+    }
   }
-  return { status, json };
+  return { status, json, n };
 }
 
 function truncate(str: string, len: number): string {
@@ -50,7 +55,7 @@ function truncate(str: string, len: number): string {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────
-const { status: filterStatus, json: jsonOutput } = parseArgs(process.argv);
+const { status: filterStatus, json: jsonOutput, n: limit } = parseArgs(process.argv);
 
 // Handle missing / empty file
 if (!fs.existsSync(QUEUE_PATH)) {
@@ -69,7 +74,7 @@ const items: QueueItem[] = raw
   .filter(Boolean)
   .map((line) => JSON.parse(line) as QueueItem);
 
-const filtered =
+let filtered =
   filterStatus === "all"
     ? items
     : items.filter((i) => i.status === filterStatus);
@@ -81,6 +86,10 @@ if (filtered.length === 0) {
 
 // Sort by priority DESC
 filtered.sort((a, b) => b.priority - a.priority);
+
+if (limit > 0) {
+  filtered = filtered.slice(0, limit);
+}
 
 if (jsonOutput) {
   console.log(JSON.stringify(filtered, null, 2));

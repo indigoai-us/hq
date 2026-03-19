@@ -7,7 +7,6 @@
 set -euo pipefail
 
 MODEL=""
-MAX_TURNS=1
 OUTPUT_FORMAT="text"
 
 usage() {
@@ -15,7 +14,6 @@ usage() {
 Usage: $(basename "$0") [options] [prompt]
 
 Options:
-  -t, --max-turns N        Max agentic turns (default: 1)
   -j, --json               Output full JSON response (includes cost, usage, etc.)
   -h, --help               Show this help
 
@@ -28,7 +26,6 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -m|--model)      MODEL="$2"; shift 2 ;;
-    -t|--max-turns)  MAX_TURNS="$2"; shift 2 ;;
     -j|--json)       OUTPUT_FORMAT="json"; shift ;;
     -h|--help)       usage ;;
     --)              shift; break ;;
@@ -58,7 +55,6 @@ unset CLAUDECODE
 
 # Always fetch as JSON internally so we can extract just the final answer
 CMD=(claude -p
-  --max-turns "$MAX_TURNS"
   --output-format json
 )
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")

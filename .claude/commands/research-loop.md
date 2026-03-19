@@ -15,11 +15,17 @@ Continuously process pending curiosity queue items by spawning a `/research` sub
 
 ### 1. Read the Queue
 
-Read `knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`. Sort by `priority` descending.
+Use the read-queue script to get pending items sorted by priority:
 
-If no pending items exist, report **"Queue empty — nothing to research"** and stop.
+```bash
+npx tsx scripts/read-queue.ts --json -n 1
+```
 
-If `$ARGUMENTS` is a number, cap the list to that many items. Otherwise process all pending items.
+This fetches the single highest-priority pending item. The loop processes one item per iteration, re-reading the queue each time (step d/e).
+
+If `$ARGUMENTS` is a number, that's the max total items to process across all iterations. Otherwise process all pending items.
+
+If the output is `"Queue empty"` or the JSON array is empty, report **"Queue empty — nothing to research"** and stop.
 
 ### 2. Loop Through Items
 
@@ -34,7 +40,7 @@ Print: `[{current}/{total}] Researching: {question} (id: {id}, priority: {priori
 Run:
 
 ```bash
-./scripts/ask-claude.sh -t 10 "/research {id}"
+./scripts/ask-claude.sh "/research {id}"
 ```
 
 This spawns a fresh Claude session that runs the `/research` command for that specific queue item.
@@ -57,7 +63,7 @@ git push
 
 #### d. Check Result
 
-Re-read `knowledge/.queue.jsonl` to verify the item was processed (its status should no longer be `"pending"`).
+Re-read the queue via `npx tsx scripts/read-queue.ts --json -n 1` to verify the item was processed (it should no longer appear in the pending list).
 
 - If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
 - If the item was completed or failed, log: `Done: {id} — {status}`
@@ -68,7 +74,7 @@ Continue to the next item. If all items are processed, proceed to step 3.
 
 ### 3. Final Report
 
-After the loop completes, read `knowledge/.queue.jsonl` one last time and count remaining pending items.
+After the loop completes, run `npx tsx scripts/read-queue.ts --json` one last time and count remaining pending items.
 
 Print:
 ```
