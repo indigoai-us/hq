@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [backlink-implementation-patterns.md](backlink-implementation-patterns.md) | Backlink Implementation Patterns for Flat-File Markdown Knowledge Bases | How Obsidian, Dendron, Foam, and static-site tools resolve backlinks — and what patterns adapt to... | 0.8 | 2026-03-20 |
 | [chunk-size-retrieval-precision-empirical.md](chunk-size-retrieval-precision-empirical.md) | Chunk Size vs. Retrieval Precision: Empirical Findings | Longer chunks degrade retrieval precision; 256–512 tokens (~200–400 words) is the empirically sup... | 0.8 | 2026-03-20 |
 | [knowledge-base-scaling-patterns.md](knowledge-base-scaling-patterns.md) | Knowledge Base Scaling Patterns | How markdown-based knowledge bases behave at different scales, and what structural changes become... | 0.5 | 2026-03-20 |
 | [markdown-indexing-for-agent-retrieval.md](markdown-indexing-for-agent-retrieval.md) | Markdown Indexing Strategies for Agent Retrieval | How to structure markdown knowledge entries to maximize retrieval accuracy for LLM agents using B... | 0.8 | 2026-03-20 |
