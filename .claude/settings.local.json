@@ -92,7 +92,9 @@
       "Bash(find companies/indigo/projects/indigo-nx/repos/indigo-nx/apps/langgraph-insights-agent/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
       "Bash(find /Users/hassaansaleemmacbook2026/repos/indigo/goclaw -type f \\\\\\(-name *.go -o -name *.ts -o -name *.js -o -name *.py \\\\\\))",
       "Bash(for dir:*)",
-      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/knowledge/$dir/**)"
+      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/knowledge/$dir/**)",
+      "Bash(chmod +x /Users/hassaansaleemmacbook2026/repos/ghq/scripts/tag-inventory.sh)",
+      "Bash(./scripts/tag-inventory.sh)"
     ],
     "deny": [],
     "ask": [

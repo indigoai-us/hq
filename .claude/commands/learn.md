@@ -37,6 +37,8 @@ qmd vsearch "{title}" -n 1
 ```
 If the top result has similarity > 0.9, this is already known. Skip it and note in the report. If similarity is 0.7-0.9, consider whether the new insight adds meaningfully — if so, update the existing entry instead of creating a new one.
 
+**Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
+
 ### c. Write knowledge entry (if novel)
 Create `knowledge/{category}/{slug}.md` with this format:
 
@@ -56,7 +58,15 @@ updated_at: {ISO 8601 timestamp}
 
 Frontmatter must conform to the schema in `knowledge/meta/format-spec.md`.
 
-Choose an appropriate category directory. Create it if it doesn't exist. Good categories: `tools`, `patterns`, `architecture`, `workflow`, `domain/{area}`.
+#### Category validation
+
+Before choosing a category, list existing ones:
+
+```bash
+ls -d knowledge/*/
+```
+
+**Prefer an existing category.** Only create a new one when the insight genuinely doesn't fit any existing category. If the category is new, briefly justify the choice in the report summary.
 
 ### Tagging Guidelines
 
@@ -64,8 +74,18 @@ Tags are the faceted dimension of the knowledge base — they enable cross-cutti
 
 - **Orthogonal**: Each tag should represent an independent dimension. Don't duplicate the category (e.g., no `architecture` tag on entries already in `knowledge/architecture/`).
 - **3-6 tags per entry**: Enough for discovery, not so many that they lose signal.
-- **Controlled vocabulary**: Prefer reusing existing tags over inventing synonyms. Run `qmd search "tags:" -n 20` to see what's already in use.
+- **Controlled vocabulary**: Prefer reusing existing tags over inventing synonyms.
 - **Stable naming**: Use lowercase, hyphenated terms (`knowledge-management` not `KM` or `knowledgeManagement`).
+
+#### Auto-suggest tags
+
+Before assigning tags, retrieve the current vocabulary:
+
+```bash
+./scripts/tag-inventory.sh
+```
+
+From the output, **pick 3-6 existing tags that fit** the new entry. Only introduce a new tag when no existing tag covers the concept. If introducing a new tag, verify it isn't a synonym of an existing one (e.g., don't create `agent-loops` when `agent-loop` exists).
 
 ### d. Handle contradictions
 If the new insight contradicts existing knowledge, do NOT silently overwrite. Queue a curiosity item to resolve the conflict:

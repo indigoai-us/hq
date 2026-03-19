@@ -38,10 +38,14 @@ Collect the search result URLs for the `source` field.
 From the question and search results, produce a knowledge entry:
 
 - **title**: Derive a clear, specific title from the question and findings
-- **category**: Choose an existing category directory under `knowledge/`, or create a new one if nothing fits
+- **category**: Check existing categories with `ls -d knowledge/*/`. Prefer an existing category. Only create a new one when the topic genuinely doesn't fit — and note the justification in the report summary
 - **tags**: Generate 3-6 relevant tags following these guidelines:
   - **Orthogonal**: Each tag is an independent dimension. Don't duplicate the category (e.g., no `architecture` tag for entries in `knowledge/architecture/`).
-  - **Controlled vocabulary**: Prefer reusing existing tags. Run `qmd search "tags:" -n 20` to check what's in use.
+  - **Controlled vocabulary**: Before assigning tags, retrieve the current inventory:
+    ```bash
+    ./scripts/tag-inventory.sh
+    ```
+    Pick from existing tags first. Only introduce a new tag when no existing one covers the concept, and verify it isn't a synonym of an existing tag.
   - **Stable naming**: Lowercase, hyphenated terms (`knowledge-management` not `KM`)
 - **source**: Comma-separated list of search URLs used
 - **confidence**: Float from 0.0 to 1.0 based on source quality:
@@ -65,6 +69,8 @@ qmd vsearch "{title}" -n 3
 ```
 
 If any result has similarity > 0.9, **update** the existing entry instead of creating a new one. Increment `entries_updated` instead of `entries_created`.
+
+**Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
 
 #### e. Write the Entry
 
