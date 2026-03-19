@@ -9,7 +9,7 @@
 | [agent-perception](agent-perception/INDEX.md) | 1 | 2026-03-20 |
 | [agent-self-improvement](agent-self-improvement/INDEX.md) | 3 | 2026-03-20 |
 | [agent-tooling](agent-tooling/INDEX.md) | 1 | 2026-03-20 |
-| [agent-workflows](agent-workflows/INDEX.md) | 2 | 2026-03-20 |
+| [agent-workflows](agent-workflows/INDEX.md) | 3 | 2026-03-20 |
 | [ai-agents](ai-agents/INDEX.md) | 20 | 2026-03-20 |
 | [ghq-core](ghq-core/INDEX.md) | 13 | 2026-03-20 |
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 9 | 2026-03-20 |

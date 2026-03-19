@@ -3,4 +3,5 @@
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
 | [autonomous-workflow-patterns.md](autonomous-workflow-patterns.md) | Autonomous Workflow Patterns for GHQ | Autonomous workflows are end-to-end processes the agent can execute with minimal human interventi... | 0.5 | 2026-03-20 |
+| [dynamic-workflow-composition.md](dynamic-workflow-composition.md) | Dynamic Workflow Composition in Autonomous Agents | Patterns for agents that select and chain tools/skills at runtime based on the goal, rather than ... | 0.8 | 2026-03-20 |
 | [morning-briefing-patterns.md](morning-briefing-patterns.md) | Morning Briefing Patterns for Autonomous Agents | Patterns for building autonomous agents that aggregate state across multiple services into a proa... | 0.8 | 2026-03-20 |
