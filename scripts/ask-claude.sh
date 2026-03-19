@@ -3,7 +3,6 @@
 # Usage:
 #   ask-claude "What does this function do?"
 #   echo "Explain this code" | ask-claude
-#   ask-claude -m sonnet "Summarize README.md"
 #   cat file.txt | ask-claude "Explain this"
 set -euo pipefail
 
@@ -16,7 +15,6 @@ usage() {
 Usage: $(basename "$0") [options] [prompt]
 
 Options:
-  -m, --model MODEL        Model alias or full name (default: your claude config default)
   -t, --max-turns N        Max agentic turns (default: 1)
   -j, --json               Output full JSON response (includes cost, usage, etc.)
   -h, --help               Show this help
