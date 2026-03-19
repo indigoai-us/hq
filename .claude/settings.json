@@ -17,7 +17,7 @@
           {
             "type": "command",
             "command": ".claude/hooks/auto-reindex.sh",
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -29,19 +29,19 @@
           {
             "type": "command",
             "command": ".claude/hooks/capture-learnings.sh",
-            "timeout": 5
+            "timeout": 60
           }
         ]
       }
     ],
     "Stop": [
       {
-        "matcher": "auto",
         "hooks": [
           {
-            "type": "command",
-            "command": ".claude/hooks/capture-learnings.sh",
-            "timeout": 5
+            "type": "prompt",
+            "prompt": "Claude just finished responding. If this was a substantive session (code changes, research, debugging), remind Claude to run /learn before the session ends. If it was a trivial exchange (greeting, short Q&A), return nothing. Return a short nudge or empty string.",
+            "model": "claude-opus-4-6",
+            "timeout": 60
           }
         ]
       }

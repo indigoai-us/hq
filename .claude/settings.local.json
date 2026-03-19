@@ -86,7 +86,9 @@
       "Bash(chmod +x .claude/hooks/auto-reindex.sh)",
       "Bash(bash .claude/hooks/consult-knowledge.sh)",
       "Bash(bash .claude/hooks/auto-reindex.sh)",
-      "Bash(bash .claude/hooks/capture-learnings.sh)"
+      "Bash(bash .claude/hooks/capture-learnings.sh)",
+      "Skill(learn)",
+      "Skill(learn:*)"
     ],
     "deny": [],
     "ask": [

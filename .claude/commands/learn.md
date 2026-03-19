@@ -43,16 +43,29 @@ Create `knowledge/{category}/{slug}.md` with this format:
 ```markdown
 ---
 title: "{Concise Title}"
-tags: [tag1, tag2]
-created: {YYYY-MM-DD}
-source: conversation  # or "observation"
+category: {category}
+tags: ["{tag1}", "{tag2}", "{tag3}"]
+source: conversation
 confidence: {0.5|0.7|0.9}
+created_at: {ISO 8601 timestamp}
+updated_at: {ISO 8601 timestamp}
 ---
 
 {One-paragraph summary of the insight, including context and why it matters.}
 ```
 
+Frontmatter must conform to the schema in `knowledge/meta/format-spec.md`.
+
 Choose an appropriate category directory. Create it if it doesn't exist. Good categories: `tools`, `patterns`, `architecture`, `workflow`, `domain/{area}`.
+
+### Tagging Guidelines
+
+Tags are the faceted dimension of the knowledge base — they enable cross-cutting discovery that the category hierarchy cannot.
+
+- **Orthogonal**: Each tag should represent an independent dimension. Don't duplicate the category (e.g., no `architecture` tag on entries already in `knowledge/architecture/`).
+- **3-6 tags per entry**: Enough for discovery, not so many that they lose signal.
+- **Controlled vocabulary**: Prefer reusing existing tags over inventing synonyms. Run `qmd search "tags:" -n 20` to see what's already in use.
+- **Stable naming**: Use lowercase, hyphenated terms (`knowledge-management` not `KM` or `knowledgeManagement`).
 
 ### d. Handle contradictions
 If the new insight contradicts existing knowledge, do NOT silently overwrite. Queue a curiosity item to resolve the conflict:

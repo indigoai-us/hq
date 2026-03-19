@@ -39,7 +39,10 @@ From the question and search results, produce a knowledge entry:
 
 - **title**: Derive a clear, specific title from the question and findings
 - **category**: Choose an existing category directory under `knowledge/`, or create a new one if nothing fits
-- **tags**: Generate 3-6 relevant tags
+- **tags**: Generate 3-6 relevant tags following these guidelines:
+  - **Orthogonal**: Each tag is an independent dimension. Don't duplicate the category (e.g., no `architecture` tag for entries in `knowledge/architecture/`).
+  - **Controlled vocabulary**: Prefer reusing existing tags. Run `qmd search "tags:" -n 20` to check what's in use.
+  - **Stable naming**: Lowercase, hyphenated terms (`knowledge-management` not `KM`)
 - **source**: Comma-separated list of search URLs used
 - **confidence**: Float from 0.0 to 1.0 based on source quality:
   - 0.9-1.0: Multiple authoritative sources agree
