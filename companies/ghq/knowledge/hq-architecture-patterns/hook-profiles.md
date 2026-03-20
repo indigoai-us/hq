@@ -2,10 +2,10 @@
 title: "Hook Profiles: Runtime-Configurable Hook Sets"
 category: hq-architecture-patterns
 tags: ["hooks", "claude-code", "production-patterns", "configuration", "runtime-isolation"]
-source: "https://github.com/coreyepstein/hq-starter-kit"
-confidence: 0.5
+source: "https://github.com/coreyepstein/hq-starter-kit, https://code.claude.com/docs/en/hooks, https://claude-world.com/articles/hooks-development-guide/"
+confidence: 0.85
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T00:00:00Z
+updated_at: 2026-03-20T06:00:00Z
 ---
 
 ## The Pattern
@@ -45,3 +45,49 @@ A gate script would let us run `HQ_HOOK_PROFILE=minimal claude` for quick tasks 
 ## Implementation Notes
 
 The hq-starter-kit implementation uses POSIX-compatible `case` statements for profile membership checks — no arrays or associative arrays needed. The gate script reads stdin and discards it when skipping (hooks expect to consume stdin). Exit code 0 means "skip" (pass-through to Claude Code).
+
+## stdin Handling: PreToolUse vs PostToolUse
+
+The gate script does **not** need to treat stdin differently based on hook type. Both hook types deliver a JSON blob via stdin — the gate either passes it through or discards it.
+
+### Payload Differences (for inner hooks, not the gate)
+
+| Field | PreToolUse | PostToolUse |
+|-------|-----------|-------------|
+| `tool_name` | ✅ | ✅ |
+| `tool_input` | ✅ | ✅ |
+| `tool_use_id` | ✅ | ✅ |
+| `tool_response` | ❌ | ✅ (result of executed tool) |
+
+`PostToolUse` stdin is larger because it includes `tool_response`. This doesn't affect the gate's logic — only the inner hook's parsing.
+
+### Gate Stdin Patterns
+
+**When skipping** (profile doesn't include this hook):
+```bash
+cat > /dev/null   # consume and discard stdin — do NOT leave it unread
+exit 0
+```
+
+**When delegating** (pipe stdin through to inner hook):
+```bash
+INPUT=$(cat)
+echo "$INPUT" | exec ./actual-hook.sh "$@"
+```
+
+Or simpler — if stdin is not read by the gate, `exec` inherits it:
+```bash
+# Check env vars first (don't read stdin yet)
+if should_skip; then
+  cat > /dev/null; exit 0
+fi
+exec ./actual-hook.sh "$@"  # stdin automatically inherited
+```
+
+### Why stdin Must Always Be Consumed
+
+If a gate script exits without reading stdin, the pipe buffer fills and Claude Code's process blocks. Even a skip must drain stdin. The `cat > /dev/null` pattern is the safe idiom for discarding.
+
+### Can't Block from PostToolUse
+
+`PreToolUse` gates can block tool execution with `exit 2`. `PostToolUse` hooks cannot — the tool already ran. Gate scripts for PostToolUse hooks exit 0 regardless (they can only suppress observability side-effects like reindexing, not undo the tool's action).
