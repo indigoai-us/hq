@@ -23,7 +23,7 @@
 | [knowledge-segregation](knowledge-segregation/INDEX.md) | 7 | 2026-03-20 |
 | [meow-stack](meow-stack/INDEX.md) | 1 | 2026-03-20 |
 | [multi-agent-systems](multi-agent-systems/INDEX.md) | 2 | 2026-03-20 |
-| [qmd-architecture](qmd-architecture/INDEX.md) | 6 | 2026-03-20 |
+| [qmd-architecture](qmd-architecture/INDEX.md) | 7 | 2026-03-20 |
 | [qmd-operations](qmd-operations/INDEX.md) | 2 | 2026-03-20 |
 | [qmd-sdk](qmd-sdk/INDEX.md) | 1 | 2026-03-20 |
 | [tools](tools/INDEX.md) | 2 | 2026-03-19 |
