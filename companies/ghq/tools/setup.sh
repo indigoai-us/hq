@@ -93,7 +93,17 @@ find "$REPO_ROOT/.claude/hooks" -name '*.sh' -exec chmod +x {} \;
 find "$REPO_ROOT/companies" -name '*.sh' -exec chmod +x {} \;
 ok "scripts marked executable"
 
-# ── 5. Build qmd index ──────────────────────────────────────────────────────
+# ── 5. Install git hooks ──────────────────────────────────────────────────────
+
+echo ""
+echo "Installing git hooks…"
+
+GIT_HOOKS_DIR="$(git rev-parse --git-dir)/hooks"
+cp "$REPO_ROOT/companies/ghq/tools/pre-commit" "$GIT_HOOKS_DIR/pre-commit"
+chmod +x "$GIT_HOOKS_DIR/pre-commit"
+ok "pre-commit hook installed"
+
+# ── 6. Build qmd index ──────────────────────────────────────────────────────
 
 echo ""
 echo "Building knowledge index…"

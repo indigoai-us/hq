@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# pre-commit — Block commits that contain secrets or sensitive files
+set -euo pipefail
+
+BLOCKED_FILES=(.env .env.local .env.production credentials.json service-account.json .npmrc)
+SECRETS_PATTERNS=(
+  'AKIA[0-9A-Z]{16}'                    # AWS access key
+  'sk-[a-zA-Z0-9]{20,}'                 # OpenAI / Anthropic API key
+  'ghp_[a-zA-Z0-9]{36}'                 # GitHub personal access token
+  'gho_[a-zA-Z0-9]{36}'                 # GitHub OAuth token
+  'xoxb-[0-9]+-[0-9A-Za-z]+'           # Slack bot token
+  'xoxp-[0-9]+-[0-9A-Za-z]+'           # Slack user token
+  '-----BEGIN (RSA |EC )?PRIVATE KEY-----'  # Private keys
+)
+
+ERRORS=0
+
+# Check staged files against blocked filenames
+for file in $(git diff --cached --name-only --diff-filter=ACR); do
+  basename="$(basename "$file")"
+
+  for blocked in "${BLOCKED_FILES[@]}"; do
+    if [[ "$basename" == "$blocked" ]]; then
+      echo "BLOCKED: $file matches blocked filename '$blocked'" >&2
+      ERRORS=$((ERRORS + 1))
+    fi
+  done
+done
+
+# Scan staged content for secret patterns
+for file in $(git diff --cached --name-only --diff-filter=ACM); do
+  # Skip binary files
+  if git diff --cached --numstat "$file" | grep -q '^-'; then
+    continue
+  fi
+
+  content="$(git diff --cached -p "$file")"
+
+  for pattern in "${SECRETS_PATTERNS[@]}"; do
+    if echo "$content" | grep -qEi "$pattern"; then
+      echo "BLOCKED: $file appears to contain a secret matching pattern: $pattern" >&2
+      ERRORS=$((ERRORS + 1))
+      break
+    fi
+  done
+done
+
+if [[ $ERRORS -gt 0 ]]; then
+  echo "" >&2
+  echo "Commit blocked — $ERRORS secret(s) detected. Use 'git commit --no-verify' to override." >&2
+  exit 1
+fi
