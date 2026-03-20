@@ -14,7 +14,7 @@
 | [beads-architecture](beads-architecture/INDEX.md) | 2 | 2026-03-20 |
 | [beads-data-model](beads-data-model/INDEX.md) | 1 | 2026-03-20 |
 | [beads-multi-agent](beads-multi-agent/INDEX.md) | 1 | 2026-03-20 |
-| [beads-workflows](beads-workflows/INDEX.md) | 1 | 2026-03-20 |
+| [beads-workflows](beads-workflows/INDEX.md) | 2 | 2026-03-20 |
 | [ghq-core](ghq-core/INDEX.md) | 14 | 2026-03-20 |
 | [hq-architecture-patterns](hq-architecture-patterns/INDEX.md) | 6 | 2026-03-20 |
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 12 | 2026-03-20 |
