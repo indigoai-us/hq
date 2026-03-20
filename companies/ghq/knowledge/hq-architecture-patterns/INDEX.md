@@ -8,3 +8,4 @@
 | [append-only-execution-state.md](append-only-execution-state.md) | Append-Only JSONL for Execution State | Store execution state as append-only JSONL files rather than mutable JSON. Each line records a st... | 0.5 | 2026-03-20 |
 | [company-manifest-isolation.md](company-manifest-isolation.md) | Company Manifest and Credential Isolation | A single `companies/manifest.yaml` maps every company to its resources: repos, settings, skills, ... | 0.5 | 2026-03-20 |
 | [skill-composition-chains.md](skill-composition-chains.md) | Skill Composition Chains | Skills declare dependencies as ordered chains. A composition skill (e.g., `full-stack`) doesn't i... | 0.5 | 2026-03-20 |
+| [token-optimization-env-vars.md](token-optimization-env-vars.md) | Claude Code Token Optimization Environment Variables | Four env vars control Claude Code's token spend and reasoning depth — understanding their interac... | 0.9 | 2026-03-20 |
