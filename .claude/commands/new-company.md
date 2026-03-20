@@ -57,7 +57,15 @@ Create a symlink from `companies/<slug>` (relative to the GHQ repo root) pointin
 ln -s "<chosen-path>" companies/<slug>
 ```
 
-### 4c. Create or update companies/manifest.yaml
+### 4c. Create qmd collection
+
+Register the company's knowledge directory as a qmd collection so it's searchable:
+
+```bash
+qmd collection add "<chosen-path>/knowledge" --name <slug> --mask "**/*.md"
+```
+
+### 4d. Create or update companies/manifest.yaml
 
 If `companies/manifest.yaml` doesn't exist, create it with this structure:
 
@@ -92,6 +100,7 @@ Print a summary:
 - Path: <chosen-path>
 - Symlink: companies/<slug> -> <chosen-path>
 - Manifest: companies/manifest.yaml updated
+- qmd collection: <slug> -> <chosen-path>/knowledge/ (**/*.md)
 
 Folders created:
 - <chosen-path>/knowledge/
