@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Apply patches to globally installed npm packages.
-# Usage: ./patches/apply-patches.sh
+# Usage: ./companies/ghq/data/patches/apply-patches.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

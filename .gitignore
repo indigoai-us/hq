@@ -4,6 +4,7 @@ node_modules/
 # Track manifest.yaml but ignore individual company symlinks
 companies/*
 !companies/manifest.yaml
+!companies/ghq/
 
 # Beads issue tracking (per-company, not tracked in repo)
 .beads/

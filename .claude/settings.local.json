@@ -70,8 +70,8 @@
       "Bash(done)",
       "Bash(find /Users/hassaansaleemmacbook2026/repos/indigo/indigo-nx -type f \\\\\\(-name *.yaml -o -name *.yml -o -name *.json -o -name *.ts -o -name *.js -o -name *.tf \\\\\\))",
       "Bash(find /Users/hassaansaleemmacbook2026/repos/indigo/indigo-nx -maxdepth 2 -type f \\\\\\(-name *.md \\\\\\))",
-      "Bash(chmod +x /Users/hassaansaleemmacbook2026/repos/ghq/patches/apply-patches.sh)",
-      "Bash(/Users/hassaansaleemmacbook2026/repos/ghq/patches/apply-patches.sh)",
+      "Bash(chmod +x /Users/hassaansaleemmacbook2026/repos/ghq/companies/ghq/data/patches/apply-patches.sh)",
+      "Bash(/Users/hassaansaleemmacbook2026/repos/ghq/companies/ghq/data/patches/apply-patches.sh)",
       "Read(//Users/hassaansaleemmacbook2026/.config/qmd/**)",
       "Read(//Users/hassaansaleemmacbook2026/**)",
       "Bash(for id:*)",
@@ -103,7 +103,9 @@
       "Skill(research-loop)",
       "Skill(research-loop:*)",
       "Bash(for f:*)",
-      "Bash(do sed:*)"
+      "Bash(do sed:*)",
+      "Bash(./setup.sh)",
+      "Bash(companies/ghq/tools/setup.sh)"
     ],
     "deny": [
       "Agent"

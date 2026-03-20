@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # setup.sh — Bootstrap GHQ on a fresh machine
-# Usage: ./setup.sh
+# Usage: companies/ghq/tools/setup.sh
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$REPO_ROOT"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,10 +78,10 @@ fi
 echo ""
 echo "Applying patches…"
 
-if [[ -x "$REPO_ROOT/patches/apply-patches.sh" ]]; then
-  "$REPO_ROOT/patches/apply-patches.sh"
-else
+if [[ -f "$REPO_ROOT/patches/apply-patches.sh" ]]; then
   bash "$REPO_ROOT/patches/apply-patches.sh"
+else
+  skip "patches/apply-patches.sh not found"
 fi
 
 # ── 4. Make scripts executable ───────────────────────────────────────────────

@@ -60,5 +60,4 @@ companies/
   ghq/                            GHQ itself — cross-cutting knowledge + shared tools
     tools/                        shared utility scripts (reindex, queue, ask-claude, etc.)
     knowledge/                    meta-knowledge (agent patterns, GHQ architecture, etc.)
-patches/                          persistent patches for global npm packages
 ```
