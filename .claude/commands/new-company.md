@@ -18,6 +18,8 @@ Actually, since AskUserQuestion requires options, handle this conversationally:
 
 **Ask the user the company name** using `AskUserQuestion` with the question "What is the name of the company?" — provide 2-3 example placeholder options but the user will likely use "Other" to type their own.
 
+Then **ask the user for the company's #1 goal** using `AskUserQuestion` with the question "What is the #1 goal of this company?" — provide 2-3 example options (e.g. "Ship product X", "Build consulting practice", "Research & development") but the user will likely use "Other" to type their own.
+
 ## Step 2: Suggest Slug
 
 Take the company name and generate a slug (lowercase, hyphens, no special chars). Present it to the user via `AskUserQuestion`:
@@ -82,6 +84,7 @@ Then add the new company entry:
 companies:
   <slug>:
     name: "<Company Name>"
+    goal: "<#1 Goal>"
     path: "<chosen-path>"
     created_at: "<ISO 8601 timestamp>"
 ```

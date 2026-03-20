@@ -4,5 +4,6 @@
 companies:
   ghq:
     name: "GHQ"
+    goal: "Become the ultimate autonomous agent"
     path: "companies/ghq"
     created_at: "2026-03-20T00:00:00Z"
