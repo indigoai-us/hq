@@ -18,7 +18,7 @@
 | [ghq-core](ghq-core/INDEX.md) | 14 | 2026-03-20 |
 | [hq-architecture-patterns](hq-architecture-patterns/INDEX.md) | 6 | 2026-03-20 |
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 12 | 2026-03-20 |
-| [knowledge-segregation](knowledge-segregation/INDEX.md) | 6 | 2026-03-20 |
+| [knowledge-segregation](knowledge-segregation/INDEX.md) | 7 | 2026-03-20 |
 | [multi-agent-systems](multi-agent-systems/INDEX.md) | 2 | 2026-03-20 |
 | [qmd-architecture](qmd-architecture/INDEX.md) | 4 | 2026-03-20 |
 | [qmd-operations](qmd-operations/INDEX.md) | 2 | 2026-03-20 |
