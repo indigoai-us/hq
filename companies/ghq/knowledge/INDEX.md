@@ -18,7 +18,7 @@
 | [gas-town-architecture](gas-town-architecture/INDEX.md) | 2 | 2026-03-20 |
 | [gas-town-operations](gas-town-operations/INDEX.md) | 5 | 2026-03-20 |
 | [ghq-core](ghq-core/INDEX.md) | 14 | 2026-03-20 |
-| [hq-architecture-patterns](hq-architecture-patterns/INDEX.md) | 8 | 2026-03-20 |
+| [hq-architecture-patterns](hq-architecture-patterns/INDEX.md) | 9 | 2026-03-20 |
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 12 | 2026-03-20 |
 | [knowledge-segregation](knowledge-segregation/INDEX.md) | 7 | 2026-03-20 |
 | [meow-stack](meow-stack/INDEX.md) | 1 | 2026-03-20 |
