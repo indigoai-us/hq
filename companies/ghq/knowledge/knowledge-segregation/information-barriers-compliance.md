@@ -2,15 +2,64 @@
 title: "Information Barriers and Compliance for Consultants"
 category: knowledge-segregation
 tags: ["security", "compliance", "knowledge-management", "enterprise", "access-control", "rbac"]
-source: blueprint, https://learn.microsoft.com/en-us/purview/information-barriers, https://stiltsoft.com/blog/role-based-access-control-rbac-in-confluence-cloud/, https://www.notion.com/help/guides/notion-enterprise-security-provisions, https://blog.admindroid.com/how-information-barriers-strengthen-microsoft-365-security/
+source: blueprint, https://learn.microsoft.com/en-us/purview/information-barriers, https://stiltsoft.com/blog/role-based-access-control-rbac-in-confluence-cloud/, https://www.notion.com/help/guides/notion-enterprise-security-provisions, https://blog.admindroid.com/how-information-barriers-strengthen-microsoft-365-security/, https://www.intapp.com/consulting/ethical-walls/, https://www.intapp.com/walls/, https://bresslerriskblog.com/consulting-conflicts-ethical-walls-client-relationships-pitch-and-experience-management-regulatory-compliance/, https://www.mckinsey.com/about-us/overview/our-governance/client-service-policies, https://document360.com/blog/knowledge-management-in-large-consulting-firms/, https://www.theregister.com/2026/03/09/mckinsey_ai_chatbot_hacked/
 confidence: 0.85
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T22:30:00Z
+updated_at: 2026-03-20T22:45:00Z
 ---
 
 Information barriers (historically called "Chinese walls") are organizational controls that prevent the flow of confidential information between different parts of an entity. Originally from finance (preventing conflicts between advisory and trading divisions), the concept applies directly to consultants and freelancers working across competing or sensitive clients.
 
 Enterprise KM platforms implement information barriers through layered access control models — most use RBAC as the base with ABAC extensions for dynamic/attribute-sensitive policies.
+
+## How Consulting Firms Enforce Information Barriers
+
+### Intapp — The Industry Standard
+
+Most large consulting and professional services firms use **Intapp** as the purpose-built ethical wall and conflicts platform. Intapp is the dominant vendor in this space (used by Big 4, Big 3 strategy firms, and major law firms).
+
+**Intapp Walls** provides:
+- Centralized ethical wall creation and enforcement across all firm systems (DMS, email, intranet)
+- Automatic access right propagation — when a wall is established, affected users lose access across all connected platforms simultaneously
+- Audit trail: full traceability of wall management, access attempts, and breach attempts
+- User acknowledgment workflows: consultants confirm receipt of wall notifications
+- Policy enforcement without productivity friction — walls are enforced in the background, not at login
+
+**Intapp Conflicts** (the companion product):
+- Conflict-of-interest searching against internal firm data and third-party sources (Dun & Bradstreet, LexisNexis)
+- AI-assisted entity resolution — matches related entities (subsidiaries, holding companies) that a simple keyword search would miss
+- New business intake: conflict check is triggered at client/engagement creation, not after work begins
+- Ongoing monitoring: existing engagements are re-checked when new clients are added
+
+### McKinsey: KM Systems and Controls
+
+McKinsey's internal knowledge infrastructure has two layers:
+
+1. **KNOW / PD database**: McKinsey's proprietary internal document repository, containing "PDs" (practice documents). Access is controlled by client/industry sensitivity — consultants on competing engagements are restricted from documents that carry confidential client fingerprints.
+
+2. **Lilli (AI platform)**: McKinsey's internal RAG-based AI assistant (launched ~2024), indexing 100,000+ internal documents across all practices. A 2026 security audit found Lilli exposed 3.68 million RAG chunks with S3 metadata — demonstrating the **AI layer** as the new attack surface for information barrier breaches, not just the document layer.
+
+**Process controls**: McKinsey policy prohibits consultants who have acquired confidential client information from serving a competitor in a competitively sensitive engagement, for as long as that information retains competitive value. This is a judgment call by the GCSP (General Counsel) process, not a time-limited rule.
+
+### Industry-Wide Process Controls
+
+Beyond software, consulting firms rely on **process controls** as the primary mechanism:
+
+| Control | Description |
+|---------|-------------|
+| **Conflict intake check** | Conflicts search run before accepting new engagement |
+| **Staffing restrictions** | Consultants on conflicting matters restricted from each other's teams |
+| **Need-to-know access** | Project-scoped document access; no browsing across client matters |
+| **Information wall notices** | Formal documented notice to affected personnel; signed acknowledgment |
+| **Compliance training** | Annual mandatory training on confidentiality and conflicts |
+| **Chinese wall procedures** | Documented protocols for how to handle potential conflicts when they arise mid-engagement |
+
+### Known Weaknesses
+
+1. **Reliance on human judgment**: Conflict checks only catch known conflicts. Undisclosed relationships or emerging conflicts mid-engagement often slip through.
+2. **AI context layer**: Even with file-level controls, LLM context windows can inadvertently surface cross-client patterns. McKinsey's Lilli breach is the first documented case of AI exposing the KM layer.
+3. **Chinese wall adequacy**: The US House Committee investigation of McKinsey found 22 consultants simultaneously staffed at both the FDA and opioid manufacturers — evidence that process-only walls fail under commercial pressure.
+4. **Enforcement uniformity**: Walls are often enforced at the team level, not individual contributor level, creating leakage through shared leadership.
 
 ## How Enterprise Platforms Implement Barriers
 
