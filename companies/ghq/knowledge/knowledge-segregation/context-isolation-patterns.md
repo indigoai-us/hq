@@ -2,10 +2,10 @@
 title: "Context Isolation Patterns for Multi-Company AI Assistants"
 category: knowledge-segregation
 tags: ["knowledge-management", "security", "context-management", "personal-knowledge", "runtime-isolation", "claude-code", "hooks"]
-source: blueprint,https://code.claude.com/docs/en/memory,https://code.claude.com/docs/en/hooks,https://research.checkpoint.com/2026/rce-and-api-token-exfiltration-through-claude-code-project-files-cve-2025-59536/,https://joseparreogarcia.substack.com/p/claude-code-memory-explained,https://claudefa.st/blog/guide/mechanics/auto-memory
-confidence: 0.85
+source: blueprint,https://code.claude.com/docs/en/memory,https://code.claude.com/docs/en/hooks,https://research.checkpoint.com/2026/rce-and-api-token-exfiltration-through-claude-code-project-files-cve-2025-59536/,https://joseparreogarcia.substack.com/p/claude-code-memory-explained,https://claudefa.st/blog/guide/mechanics/auto-memory,https://medium.com/@richardhightower/git-worktree-isolation-in-claude-code-parallel-development-without-the-chaos-262e12b85cc5,https://code.claude.com/docs/en/common-workflows,https://www.threads.com/@boris_cherny/post/DVAAoZ3gYut,https://git-scm.com/docs/git-worktree
+confidence: 0.9
 created_at: 2026-03-20T00:00:00Z
-updated_at: 2026-03-20T06:00:00Z
+updated_at: 2026-03-20T08:30:00Z
 ---
 
 When an AI assistant (like Claude Code) works across multiple companies, context isolation prevents knowledge from one company leaking into sessions for another. This is distinct from traditional multi-tenancy — the "tenant" is the same user, but the *context boundaries* must be enforced per-company.
@@ -124,6 +124,70 @@ CLAUDE.md rules are behavioral guidance, not hard enforcement. They work by inst
 | Single session, no controls | None | None | None |
 
 The right approach combines directory-level scoping (GHQ's `companies/{slug}/` structure), user-level enforcement hooks, fresh sessions per company, and separate qmd collections — each layer compensating for the others' gaps.
+
+## Git Worktree Isolation: State of the Art (2026)
+
+Git worktrees provide the strongest practical isolation short of separate OS accounts, by giving each AI session its own working directory, staging area, and HEAD while sharing the `.git` object database.
+
+### Claude Code's `--worktree` Flag
+
+```bash
+claude --worktree feature-auth        # creates .claude/worktrees/feature-auth/
+claude --worktree bugfix-123 --tmux   # also spawns a dedicated Tmux session
+claude --worktree                     # Claude auto-names the worktree
+```
+
+Each invocation creates an isolated copy of the working tree inside `.claude/worktrees/`. Add `.claude/worktrees/` to `.gitignore` to prevent the worktree contents appearing as untracked files.
+
+**Lifecycle**: On session exit, if no changes were made the worktree and its branch are auto-removed. If commits exist, the user is prompted to keep or remove.
+
+### Per-Worktree `.claude/` Configuration
+
+| Config surface | Isolation behavior |
+|---|---|
+| Working files (source code) | Fully isolated per worktree |
+| Staging area (git index) | Fully isolated per worktree |
+| HEAD / branch | Fully isolated per worktree |
+| CLAUDE.md in codebase | Copied per worktree branch (branch-specific configs possible) |
+| `.git/hooks/` | **Shared** — all worktrees use the same hooks |
+| `.git/config` (local) | Shared by default; `extensions.worktreeConfig true` enables per-worktree overrides |
+| `~/.claude/` (global) | **Shared** — global CLAUDE.md and auto-memory still apply |
+
+**Key finding**: Per-worktree CLAUDE.md isolation is real and meaningful for project-level instructions. However, global `~/.claude/CLAUDE.md` still injects into every worktree session — this is the dominant remaining leak vector.
+
+### Subagent Worktree Isolation
+
+Subagents (`.claude/agents/*.md`) can declare worktree isolation in their frontmatter:
+
+```yaml
+---
+name: isolated-refactor
+isolation: worktree
+---
+```
+
+This tells Claude to spin up a fresh worktree per subagent invocation, with auto-cleanup on completion. Multiple parallel subagents each get independent worktrees — no file conflicts possible. Especially powerful for large batched changes and code migrations.
+
+### Limitations
+
+- **Shared git hooks**: No native per-worktree hook support. All worktrees share `.git/hooks/`. Workaround: use conditional logic inside hook scripts to vary behavior by `GIT_WORKTREE`.
+- **Shared git config by default**: Requires `extensions.worktreeConfig true` to get per-worktree `user.email`, remotes, etc.
+- **Global context still leaks**: `~/.claude/CLAUDE.md` and global auto-memory inject regardless of worktree. The worktree boundary isolates *files and git state*, not the *Claude context layer*.
+- **Dependency duplication**: Each worktree needs its own `npm install`, `pip install`, etc. Large `node_modules` directories multiply disk cost.
+- **Only one worktree can check out a given branch**: Git prevents the same branch in two worktrees simultaneously (protects against HEAD conflicts). This is a safety feature but limits certain parallel patterns.
+
+### Separate Clone vs Worktree
+
+| Criterion | Worktrees | Separate clone |
+|---|---|---|
+| Disk usage | Shared `.git` objects | Duplicated |
+| Fetch synchronization | Instant — shared refs | Manual `git fetch` needed |
+| Hook isolation | None (shared) | Full |
+| Git config isolation | Optional (`worktreeConfig`) | Full |
+| Mid-operation state isolation | Yes (per-worktree MERGE_HEAD etc.) | Full |
+| Context isolation for AI | File-layer only | File-layer only |
+
+**Verdict**: Worktrees are superior to separate clones for AI agent parallelism (shared history, no sync overhead). Separate clones only win when you need completely independent git hooks — uncommon for AI session isolation.
 
 ## Security Vulnerabilities to Know
 
