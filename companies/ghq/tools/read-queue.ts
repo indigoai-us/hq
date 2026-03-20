@@ -4,10 +4,10 @@
  * Reads and displays items from knowledge/.queue.jsonl
  *
  * Usage:
- *   npx tsx tools/read-queue.ts              # pending items, table format
- *   npx tsx tools/read-queue.ts --status all  # all statuses
- *   npx tsx tools/read-queue.ts --json        # JSON output
- *   npx tsx tools/read-queue.ts --n 10       # limit to 10 items
+ *   npx tsx companies/ghq/tools/read-queue.ts              # pending items, table format
+ *   npx tsx companies/ghq/tools/read-queue.ts --status all  # all statuses
+ *   npx tsx companies/ghq/tools/read-queue.ts --json        # JSON output
+ *   npx tsx companies/ghq/tools/read-queue.ts --n 10       # limit to 10 items
  */
 
 import fs from "node:fs";

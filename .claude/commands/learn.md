@@ -92,7 +92,7 @@ Tags are the faceted dimension of the knowledge base — they enable cross-cutti
 Before assigning tags, retrieve the current vocabulary:
 
 ```bash
-./tools/tag-inventory.sh
+./companies/ghq/tools/tag-inventory.sh
 ```
 
 From the output, **pick 3-6 existing tags that fit** the new entry. Only introduce a new tag when no existing tag covers the concept. If introducing a new tag, verify it isn't a synonym of an existing one (e.g., don't create `agent-loops` when `agent-loop` exists).
@@ -101,7 +101,7 @@ From the output, **pick 3-6 existing tags that fit** the new entry. Only introdu
 If the new insight contradicts existing knowledge, do NOT silently overwrite. Queue a curiosity item to resolve the conflict:
 
 ```bash
-npx tsx tools/queue-curiosity.ts --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
+npx tsx companies/ghq/tools/queue-curiosity.ts --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
 ```
 
 Contradictions are valuable signals — never ignore them.
@@ -111,7 +111,7 @@ Contradictions are valuable signals — never ignore them.
 For questions that came up during the session but were not resolved:
 
 ```bash
-npx tsx tools/queue-curiosity.ts --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
+npx tsx companies/ghq/tools/queue-curiosity.ts --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
 ```
 
 ### Queue Outcome Gaps
@@ -119,7 +119,7 @@ npx tsx tools/queue-curiosity.ts --question "{question}" --source knowledge_gap 
 When the session revealed that reality didn't match expectations (a tool behaved differently than documented, a pattern failed where it usually works, an assumption was proven wrong):
 
 ```bash
-npx tsx tools/queue-curiosity.ts \
+npx tsx companies/ghq/tools/queue-curiosity.ts \
   --question "Why did {actual} happen instead of {expected}?" \
   --source outcome_gap \
   --priority 7 \
@@ -133,7 +133,7 @@ Outcome gaps are high-value research targets (priority 7) because they reveal wh
 After all writes are complete:
 
 ```bash
-npx tsx tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts
 ```
 
 ## Step 5: Report Summary
@@ -163,6 +163,6 @@ If nothing was worth capturing, say so honestly — an empty report is better th
 - **Quality over quantity**: One high-confidence insight beats five vague ones.
 - **User corrections are gold**: Always confidence 0.9. The user knows their own system.
 - **No sensitive data**: Never capture API keys, passwords, tokens, or personal data.
-- **Always reindex**: Run `npx tsx tools/reindex.ts` after writing entries.
+- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts` after writing entries.
 - **Contradictions are signals**: Queue them for resolution, don't suppress them.
 - **Integration**: The PreCompact hook should suggest running `/learn` before context is lost. If context is filling up, prioritize capturing learnings before they disappear.

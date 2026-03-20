@@ -74,7 +74,7 @@ Rules for seed entries:
 - **Confidence 0.5**: These are starting points, not authoritative. `/research` will upgrade them.
 - **Source "blueprint"**: Marks these as generated, not researched.
 - **Honest uncertainty**: Better to say "X is commonly used for Y, though specifics may vary" than to state uncertain facts as truth.
-- **3-6 tags** following existing vocabulary. Run `./tools/tag-inventory.sh` to check existing tags.
+- **3-6 tags** following existing vocabulary. Run `./companies/ghq/tools/tag-inventory.sh` to check existing tags.
 - **Dedup check**: Run `qmd vsearch "{title}" -n 1` before writing. Skip if similarity > 0.9.
 
 #### c. Queue curiosity items
@@ -82,7 +82,7 @@ Rules for seed entries:
 For each knowledge gap, queue a research item:
 
 ```bash
-npx tsx tools/queue-curiosity.ts \
+npx tsx companies/ghq/tools/queue-curiosity.ts \
   --question "{specific research question}" \
   --source knowledge_gap \
   --priority {6-8} \
@@ -99,7 +99,7 @@ Aim for 5-8 curiosity items per blueprint.
 #### d. Reindex
 
 ```bash
-npx tsx tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts
 ```
 
 ### 4. Report Summary
@@ -132,5 +132,5 @@ Next step: Run `/research` to start filling in the gaps.
 - **Seed entries are stubs**: Confidence 0.5, source "blueprint". They exist to give `/research` something to upgrade.
 - **Curiosity items drive learning**: The real value is the research queue, not the seed entries.
 - **Follow existing format**: Frontmatter schema from `knowledge/meta/format-spec.md`. Tags from existing vocabulary.
-- **Always reindex**: Run `npx tsx tools/reindex.ts` after all writes.
+- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts` after all writes.
 - **Max scope**: Cap at 5 categories, 10 entries, 8 curiosity items per blueprint to stay focused.

@@ -4,7 +4,7 @@
  * Appends a curiosity item to knowledge/.queue.jsonl
  *
  * Usage:
- *   npx tsx tools/queue-curiosity.ts \
+ *   npx tsx companies/ghq/tools/queue-curiosity.ts \
  *     --question "How does X work?" \
  *     --context "Encountered during Y task" \
  *     --source knowledge_gap \

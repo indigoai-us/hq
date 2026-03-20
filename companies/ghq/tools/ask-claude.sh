@@ -60,7 +60,7 @@ CMD=(claude -p
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
 # --disallowedTools is variadic (<tools...>) so it must come last, right before
 # the prompt is piped via stdin to avoid it swallowing positional args.
-CMD+=(--disallowedTools "Bash(./tools/ask-claude.sh*)" "Bash(ask-claude*)")
+CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
 RAW=$(echo "$PROMPT" | "${CMD[@]}")
 

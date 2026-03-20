@@ -23,19 +23,19 @@ qmd query "<query>" -n 10         # hybrid BM25 + vector (best, slower)
 
 ## Subprocess, Not Subagents
 
-Never use the `Agent` tool for delegating work. Instead, use `tools/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
+Never use the `Agent` tool for delegating work. Instead, use `companies/ghq/tools/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
 
 ```bash
-./tools/ask-claude.sh "Summarize this file"              # simple prompt
-cat file.txt | ./tools/ask-claude.sh "Explain this"       # stdin + prompt
-./tools/ask-claude.sh -j "List exports"                    # JSON output
+./companies/ghq/tools/ask-claude.sh "Summarize this file"              # simple prompt
+cat file.txt | ./companies/ghq/tools/ask-claude.sh "Explain this"       # stdin + prompt
+./companies/ghq/tools/ask-claude.sh -j "List exports"                    # JSON output
 ```
 
 ## Structure
 
 ```
-.claude/          hooks/, commands/, CLAUDE.md
-knowledge/        {category}/{slug}.md — searchable knowledge base
-tools/          utility scripts
-patches/          persistent patches for global npm packages
+.claude/              hooks/, commands/, CLAUDE.md
+knowledge/            {category}/{slug}.md — searchable knowledge base
+companies/ghq/tools/  utility scripts
+patches/              persistent patches for global npm packages
 ```

@@ -11,7 +11,7 @@ case "$TOOL_NAME" in
   Write|Edit)
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
     if echo "$FILE_PATH" | grep -q '/knowledge/.*\.md$'; then
-      npx tsx tools/reindex.ts >/dev/null &&
+      npx tsx companies/ghq/tools/reindex.ts >/dev/null &&
       qmd update >/dev/null
     fi
     ;;
