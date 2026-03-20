@@ -11,7 +11,7 @@
 | [agent-tooling](agent-tooling/INDEX.md) | 1 | 2026-03-20 |
 | [agent-workflows](agent-workflows/INDEX.md) | 3 | 2026-03-20 |
 | [ai-agents](ai-agents/INDEX.md) | 21 | 2026-03-20 |
-| [beads-architecture](beads-architecture/INDEX.md) | 3 | 2026-03-20 |
+| [beads-architecture](beads-architecture/INDEX.md) | 4 | 2026-03-20 |
 | [beads-data-model](beads-data-model/INDEX.md) | 1 | 2026-03-20 |
 | [beads-multi-agent](beads-multi-agent/INDEX.md) | 2 | 2026-03-20 |
 | [beads-workflows](beads-workflows/INDEX.md) | 2 | 2026-03-20 |
