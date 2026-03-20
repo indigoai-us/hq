@@ -1,10 +1,11 @@
 #!/usr/bin/env npx tsx
 /**
  * queue-curiosity.ts
- * Appends a curiosity item to knowledge/.queue.jsonl
+ * Appends a curiosity item to companies/{slug}/knowledge/.queue.jsonl
  *
  * Usage:
  *   npx tsx companies/ghq/tools/queue-curiosity.ts \
+ *     -c ghq \
  *     --question "How does X work?" \
  *     --context "Encountered during Y task" \
  *     --source knowledge_gap \
@@ -13,6 +14,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
+
+const repoRoot = execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim();
 
 const VALID_SOURCES = [
   "user_interaction",
@@ -24,12 +28,13 @@ const VALID_SOURCES = [
 ] as const;
 type Source = (typeof VALID_SOURCES)[number];
 
-const QUEUE_PATH = path.resolve(
-  import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname),
-  "..",
-  "knowledge",
-  ".queue.jsonl",
-);
+function getCompanySlug(argv: string[]): string {
+  const idx = argv.indexOf("-c");
+  return idx !== -1 && argv[idx + 1] ? argv[idx + 1] : "ghq";
+}
+
+const COMPANY = getCompanySlug(process.argv);
+const QUEUE_PATH = path.join(repoRoot, "companies", COMPANY, "knowledge", ".queue.jsonl");
 
 // ── Arg parsing ──────────────────────────────────────────────────────
 function parseArgs(argv: string[]): Record<string, string> {

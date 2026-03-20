@@ -7,6 +7,15 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 Reflect on the current conversation and distill durable insights into the knowledge base. Quality over quantity — aim for 1-5 entries per session, never capture trivial or ephemeral information.
 
+## Company Context
+
+All knowledge is scoped to a company. Determine the target company:
+
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `ghq` (cross-cutting / meta knowledge).
+
+Set `COMPANY` to the resolved slug. All paths below use `companies/{COMPANY}/knowledge/`.
+
 ## Step 1: Reflect on the Session
 
 Review what has been discussed, decided, discovered, or corrected. Identify candidates in these categories:
@@ -33,8 +42,8 @@ Write a concise title (slug-friendly) and a one-paragraph summary capturing the 
 ### b. Dedup check
 Run two searches to catch duplicates regardless of phrasing:
 ```bash
-qmd query "{title}" -n 3 --json
-qmd query "{one-sentence summary of the insight}" -n 3 --json
+qmd query "{title}" -n 3 --json -c {COMPANY}
+qmd query "{one-sentence summary of the insight}" -n 3 --json -c {COMPANY}
 ```
 
 Use the **highest similarity score** across both result sets for the same file. Then apply tiered thresholds:
@@ -50,7 +59,7 @@ When evaluating matches, read the top-scoring existing entry to confirm the over
 **Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
 
 ### c. Write knowledge entry (if novel)
-Create `knowledge/{category}/{slug}.md` with this format:
+Create `companies/{COMPANY}/knowledge/{category}/{slug}.md` with this format:
 
 ```markdown
 ---
@@ -66,14 +75,14 @@ updated_at: {ISO 8601 timestamp}
 {One-paragraph summary of the insight, including context and why it matters.}
 ```
 
-Frontmatter must conform to the schema in `knowledge/meta/format-spec.md`.
+Frontmatter must conform to the schema in `companies/ghq/knowledge/meta/format-spec.md`.
 
 #### Category validation
 
 Before choosing a category, list existing ones:
 
 ```bash
-ls -d knowledge/*/
+ls -d companies/{COMPANY}/knowledge/*/
 ```
 
 **Prefer an existing category.** Only create a new one when the insight genuinely doesn't fit any existing category. If the category is new, briefly justify the choice in the report summary.
@@ -92,7 +101,7 @@ Tags are the faceted dimension of the knowledge base — they enable cross-cutti
 Before assigning tags, retrieve the current vocabulary:
 
 ```bash
-./companies/ghq/tools/tag-inventory.sh
+./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
 ```
 
 From the output, **pick 3-6 existing tags that fit** the new entry. Only introduce a new tag when no existing tag covers the concept. If introducing a new tag, verify it isn't a synonym of an existing one (e.g., don't create `agent-loops` when `agent-loop` exists).
@@ -101,7 +110,7 @@ From the output, **pick 3-6 existing tags that fit** the new entry. Only introdu
 If the new insight contradicts existing knowledge, do NOT silently overwrite. Queue a curiosity item to resolve the conflict:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
+npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
 ```
 
 Contradictions are valuable signals — never ignore them.
@@ -111,7 +120,7 @@ Contradictions are valuable signals — never ignore them.
 For questions that came up during the session but were not resolved:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
+npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
 ```
 
 ### Queue Outcome Gaps
@@ -133,7 +142,7 @@ Outcome gaps are high-value research targets (priority 7) because they reveal wh
 After all writes are complete:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
 ```
 
 ## Step 5: Report Summary
@@ -144,10 +153,10 @@ Output a structured summary:
 ## Session Learnings Captured
 
 Knowledge entries written:
-- {title} -> knowledge/{category}/{slug}.md (confidence: {N})
+- {title} -> companies/{COMPANY}/knowledge/{category}/{slug}.md (confidence: {N})
 
 Knowledge entries updated:
-- {title} -> knowledge/{category}/{slug}.md (reason: {what changed})
+- {title} -> companies/{COMPANY}/knowledge/{category}/{slug}.md (reason: {what changed})
 
 Curiosity items queued:
 - {question} (source: {source}, priority: {N})
@@ -163,6 +172,6 @@ If nothing was worth capturing, say so honestly — an empty report is better th
 - **Quality over quantity**: One high-confidence insight beats five vague ones.
 - **User corrections are gold**: Always confidence 0.9. The user knows their own system.
 - **No sensitive data**: Never capture API keys, passwords, tokens, or personal data.
-- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts` after writing entries.
+- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}` after writing entries.
 - **Contradictions are signals**: Queue them for resolution, don't suppress them.
 - **Integration**: The PreCompact hook should suggest running `/learn` before context is lost. If context is filling up, prioritize capturing learnings before they disappear.

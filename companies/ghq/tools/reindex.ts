@@ -2,7 +2,7 @@
 /**
  * reindex.ts — Scan knowledge/ and generate INDEX.md files.
  *
- * Usage:  npx tsx companies/ghq/tools/reindex.ts
+ * Usage:  npx tsx companies/ghq/tools/reindex.ts [-c <company-slug>]
  *
  * No external dependencies beyond Node built-ins.
  */
@@ -10,9 +10,18 @@
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import { join, relative, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const KNOWLEDGE_DIR = join(__dirname, "..", "knowledge");
+const repoRoot = execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim();
+
+function getCompanySlug(): string {
+  const idx = process.argv.indexOf("-c");
+  return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1] : "ghq";
+}
+
+const COMPANY = getCompanySlug();
+const KNOWLEDGE_DIR = join(repoRoot, "companies", COMPANY, "knowledge");
 
 // ── Frontmatter parsing (hand-rolled, no yaml library) ──────────────────────
 
@@ -182,13 +191,13 @@ async function generateRootIndex(
 
   lines.push("");
   await writeFile(join(KNOWLEDGE_DIR, "INDEX.md"), lines.join("\n"), "utf-8");
-  console.log(`  wrote knowledge/INDEX.md (${categories.length} categories)`);
+  console.log(`  wrote ${COMPANY}/knowledge/INDEX.md (${categories.length} categories)`);
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("reindex: scanning knowledge/...");
+  console.log(`reindex: scanning companies/${COMPANY}/knowledge/...`);
   const entries = await discoverEntries();
   console.log(`reindex: found ${entries.length} entries`);
 

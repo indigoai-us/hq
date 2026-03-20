@@ -7,9 +7,18 @@ allowed-tools: Bash, Read
 
 Continuously process pending curiosity queue items by spawning a `/research` subprocess for each one. Each item runs in a fresh Claude context to avoid context bloat.
 
-**Usage**: `/research-loop [max-items]`
+**Usage**: `/research-loop [max-items] [-c <company-slug>]`
 
 - `$ARGUMENTS` optionally specifies the maximum number of items to process (default: all pending items).
+
+## Company Context
+
+All knowledge is scoped to a company. Determine the target company:
+
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `ghq`.
+
+Set `COMPANY` to the resolved slug.
 
 ## Procedure
 
@@ -18,7 +27,7 @@ Continuously process pending curiosity queue items by spawning a `/research` sub
 Use the read-queue script to get pending items sorted by priority:
 
 ```bash
-npx tsx companies/ghq/tools/read-queue.ts --status pending -n 1
+npx tsx companies/ghq/tools/read-queue.ts -c {COMPANY} --status pending -n 1
 ```
 
 This fetches the single highest-priority pending item. The loop processes one item per iteration, re-reading the queue each time (step d/e).
@@ -36,7 +45,7 @@ For each pending item, in priority order:
 Re-read the full queue to get the current total of pending items:
 
 ```bash
-npx tsx companies/ghq/tools/read-queue.ts --json 2>/dev/null | python3 -c "import sys,json; items=json.load(sys.stdin); pending=[i for i in items if i.get('status')=='pending']; print(len(pending))"
+npx tsx companies/ghq/tools/read-queue.ts -c {COMPANY} --json 2>/dev/null | python3 -c "import sys,json; items=json.load(sys.stdin); pending=[i for i in items if i.get('status')=='pending']; print(len(pending))"
 ```
 
 Count the pending items in the result — this is `{remaining}`. Then print:
@@ -48,7 +57,7 @@ Count the pending items in the result — this is `{remaining}`. Then print:
 Run:
 
 ```bash
-./companies/ghq/tools/ask-claude.sh "/research {id}"
+./companies/ghq/tools/ask-claude.sh "/research {id} -c {COMPANY}"
 ```
 
 This spawns a fresh Claude session that runs the `/research` command for that specific queue item.
@@ -64,14 +73,14 @@ qmd embed
 Then commit and push the new/updated knowledge files:
 
 ```bash
-git add knowledge/
+git add companies/{COMPANY}/knowledge/
 git commit -m "research: {short question summary}"
 git push
 ```
 
 #### d. Check Result
 
-Re-read the queue via `npx tsx companies/ghq/tools/read-queue.ts --status pending -n 1` to verify the item was processed (it should no longer appear in the pending list).
+Re-read the queue via `npx tsx companies/ghq/tools/read-queue.ts -c {COMPANY} --status pending -n 1` to verify the item was processed (it should no longer appear in the pending list).
 
 - If the item is still pending, log a warning: `Warning: item {id} still pending after research — skipping`
 - If the item was completed or failed, log: `Done: {id} — {status}`
@@ -82,11 +91,12 @@ Continue to the next item. If all items are processed, proceed to step 3.
 
 ### 3. Final Report
 
-After the loop completes, run `npx tsx companies/ghq/tools/read-queue.ts --json` one last time and count remaining pending items.
+After the loop completes, run `npx tsx companies/ghq/tools/read-queue.ts -c {COMPANY} --json` one last time and count remaining pending items.
 
 Print:
 ```
 Research loop complete:
+  Company: {COMPANY}
   Attempted: {total_attempted}
   Remaining pending: {remaining_count}
 ```

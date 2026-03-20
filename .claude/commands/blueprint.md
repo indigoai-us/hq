@@ -11,10 +11,19 @@ Given a domain or topic, generate a full knowledge bootstrap: categories, initia
 
 The user provides a domain description as the argument. Examples:
 - `/blueprint Kubernetes networking`
-- `/blueprint goclaw platform internals`
+- `/blueprint goclaw platform internals -c indigo`
 - `/blueprint React Server Components`
 
 If no argument is provided, ask the user what domain to bootstrap.
+
+## Company Context
+
+All knowledge is scoped to a company. Determine the target company:
+
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `ghq`.
+
+Set `COMPANY` to the resolved slug.
 
 ## Procedure
 
@@ -23,7 +32,7 @@ If no argument is provided, ask the user what domain to bootstrap.
 Check what's already known:
 
 ```bash
-qmd query "{domain}" -n 10
+qmd query "{domain}" -n 10 -c {COMPANY}
 ```
 
 Note any existing categories, entries, and gaps. The blueprint should complement — not duplicate — what exists.
@@ -49,7 +58,7 @@ For each sub-topic, determine:
 For each identified category:
 
 ```bash
-mkdir -p knowledge/{category}
+mkdir -p companies/{COMPANY}/knowledge/{category}
 ```
 
 #### b. Write seed knowledge entries
@@ -74,15 +83,15 @@ Rules for seed entries:
 - **Confidence 0.5**: These are starting points, not authoritative. `/research` will upgrade them.
 - **Source "blueprint"**: Marks these as generated, not researched.
 - **Honest uncertainty**: Better to say "X is commonly used for Y, though specifics may vary" than to state uncertain facts as truth.
-- **3-6 tags** following existing vocabulary. Run `./companies/ghq/tools/tag-inventory.sh` to check existing tags.
-- **Dedup check**: Run `qmd vsearch "{title}" -n 1` before writing. Skip if similarity > 0.9.
+- **3-6 tags** following existing vocabulary. Run `./companies/ghq/tools/tag-inventory.sh -c {COMPANY}` to check existing tags.
+- **Dedup check**: Run `qmd vsearch "{title}" -n 1 -c {COMPANY}` before writing. Skip if similarity > 0.9.
 
 #### c. Queue curiosity items
 
 For each knowledge gap, queue a research item:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts \
+npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} \
   --question "{specific research question}" \
   --source knowledge_gap \
   --priority {6-8} \
@@ -99,20 +108,20 @@ Aim for 5-8 curiosity items per blueprint.
 #### d. Reindex
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
 ```
 
 ### 4. Report Summary
 
 ```
-## Blueprint: {Domain}
+## Blueprint: {Domain} ({COMPANY})
 
 Categories created:
-- knowledge/{category1}/ — {description}
-- knowledge/{category2}/ — {description}
+- companies/{COMPANY}/knowledge/{category1}/ — {description}
+- companies/{COMPANY}/knowledge/{category2}/ — {description}
 
 Seed entries written:
-- {title} → knowledge/{category}/{slug}.md (confidence: 0.5)
+- {title} → companies/{COMPANY}/knowledge/{category}/{slug}.md (confidence: 0.5)
 
 Curiosity items queued ({N} items):
 - [P8] {question}
@@ -122,7 +131,7 @@ Curiosity items queued ({N} items):
 Existing knowledge found:
 - {title} (already known, skipped)
 
-Next step: Run `/research` to start filling in the gaps.
+Next step: Run `/research -c {COMPANY}` to start filling in the gaps.
 ```
 
 ## Rules
@@ -131,6 +140,6 @@ Next step: Run `/research` to start filling in the gaps.
 - **Honesty over coverage**: Better to write 2 honest entries than 5 speculative ones.
 - **Seed entries are stubs**: Confidence 0.5, source "blueprint". They exist to give `/research` something to upgrade.
 - **Curiosity items drive learning**: The real value is the research queue, not the seed entries.
-- **Follow existing format**: Frontmatter schema from `knowledge/meta/format-spec.md`. Tags from existing vocabulary.
-- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts` after all writes.
+- **Follow existing format**: Frontmatter schema from `companies/ghq/knowledge/meta/format-spec.md`. Tags from existing vocabulary.
+- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}` after all writes.
 - **Max scope**: Cap at 5 categories, 10 entries, 8 curiosity items per blueprint to stay focused.

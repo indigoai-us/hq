@@ -7,12 +7,23 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 Audit the knowledge base tag vocabulary for quality issues and fix them interactively.
 
+**Usage**: `/tag-audit [-c <company-slug>]`
+
+## Company Context
+
+All knowledge is scoped to a company. Determine the target company:
+
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `ghq`.
+
+Set `COMPANY` to the resolved slug.
+
 ## Step 1: Extract Full Tag Inventory
 
 Run:
 
 ```bash
-./companies/ghq/tools/tag-inventory.sh
+./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
 ```
 
 Parse the output into a tag frequency table: `{tag: count}`.
@@ -44,14 +55,14 @@ Tags that are so generic they add no signal: `knowledge`, `automation`, `configu
 
 ### d. Category-duplicating tags
 
-Tags that match their entry's category directory name (e.g., `ai-agents` tag on a file in `knowledge/ai-agents/`). These add no discovery value.
+Tags that match their entry's category directory name (e.g., `ai-agents` tag on a file in `companies/{COMPANY}/knowledge/ai-agents/`). These add no discovery value.
 
 ## Step 3: Present Findings
 
 Output a structured report:
 
 ```
-## Tag Audit Report
+## Tag Audit Report ({COMPANY})
 
 ### Near-duplicates (merge recommended)
 | Keep | Merge into it | Affected files |
@@ -96,13 +107,13 @@ For each approved fix:
 After all fixes:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
 ```
 
 ## Step 6: Summary
 
 ```
-## Tag Audit Complete
+## Tag Audit Complete ({COMPANY})
 
 Changes applied:
 - Merged {N} near-duplicate tags

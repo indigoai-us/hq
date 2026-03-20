@@ -7,16 +7,25 @@ allowed-tools: WebSearch, Read, Write, Edit, Bash, Glob, Grep
 
 Research a single pending item from the curiosity queue via web search and write a knowledge entry.
 
-**Usage**: `/research [queue-item-id]`
+**Usage**: `/research [queue-item-id] [-c <company-slug>]`
 
 - If an ID is provided, research that specific item.
 - If no ID is provided, pick the highest-priority pending item.
+
+## Company Context
+
+All knowledge is scoped to a company. Determine the target company:
+
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `ghq` (cross-cutting / meta knowledge).
+
+Set `COMPANY` to the resolved slug. All paths below use `companies/{COMPANY}/knowledge/`.
 
 ## Procedure
 
 ### 1. Select the Item
 
-Read `knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`.
+Read `companies/{COMPANY}/knowledge/.queue.jsonl`. Parse each line as JSON. Filter to items where `status` equals `"pending"`.
 
 **If `$ARGUMENTS` is non-empty**: Find the item whose `id` matches `$ARGUMENTS`. If not found, report **"Item {id} not found in queue"** and stop.
 
@@ -47,12 +56,12 @@ Collect the search result URLs for the `source` field.
 From the question and search results, produce a knowledge entry:
 
 - **title**: Derive a clear, specific title from the question and findings
-- **category**: Check existing categories with `ls -d knowledge/*/`. Prefer an existing category. Only create a new one when the topic genuinely doesn't fit — and note the justification in the report summary
+- **category**: Check existing categories with `ls -d companies/{COMPANY}/knowledge/*/`. Prefer an existing category. Only create a new one when the topic genuinely doesn't fit — and note the justification in the report summary
 - **tags**: Generate 3-6 relevant tags following these guidelines:
   - **Orthogonal**: Each tag is an independent dimension. Don't duplicate the category (e.g., no `architecture` tag for entries in `knowledge/architecture/`).
   - **Controlled vocabulary**: Before assigning tags, retrieve the current inventory:
     ```bash
-    ./companies/ghq/tools/tag-inventory.sh
+    ./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
     ```
     Pick from existing tags first. Only introduce a new tag when no existing one covers the concept, and verify it isn't a synonym of an existing tag.
   - **Stable naming**: Lowercase, hyphenated terms (`knowledge-management` not `KM`)
@@ -67,15 +76,15 @@ From the question and search results, produce a knowledge entry:
 
 The slug is derived from the title: lowercase, replace spaces and non-alphanumeric chars with hyphens, collapse consecutive hyphens, max 80 chars. Drop category-name prefixes for brevity.
 
-Frontmatter must conform to the schema in `knowledge/meta/format-spec.md`.
+Frontmatter must conform to the schema in `companies/ghq/knowledge/meta/format-spec.md`.
 
 #### d. Check for Duplicates
 
 Run **two** searches — one by title, one by the original question — to catch duplicates regardless of phrasing:
 
 ```bash
-qmd query "{title}" -n 3 --json
-qmd query "{original question from queue item}" -n 3 --json
+qmd query "{title}" -n 3 --json -c {COMPANY}
+qmd query "{original question from queue item}" -n 3 --json -c {COMPANY}
 ```
 
 Use the **highest similarity score** across both result sets for the same file. Then apply tiered thresholds:
@@ -93,10 +102,10 @@ When evaluating matches, read the top-scoring existing entry to confirm the over
 **If novel (< 0.7):** Create the category directory if needed and write the new entry:
 
 ```bash
-mkdir -p knowledge/{category}
+mkdir -p companies/{COMPANY}/knowledge/{category}
 ```
 
-Write the entry to `knowledge/{category}/{slug}.md` with the frontmatter and body.
+Write the entry to `companies/{COMPANY}/knowledge/{category}/{slug}.md` with the frontmatter and body.
 
 **If overlap (0.7–0.9):** Edit the existing file in place. Update `updated_at`, merge tags, and append or revise body sections with new findings. Do not change `created_at` or `source` unless the new source is strictly better.
 
@@ -105,26 +114,26 @@ Write the entry to `knowledge/{category}/{slug}.md` with the frontmatter and bod
 Run:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts
+npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
 ```
 
 This regenerates INDEX.md files for all knowledge categories.
 
 #### g. Complete the Queue Item
 
-1. Read `knowledge/.queue.jsonl` (get current state)
+1. Read `companies/{COMPANY}/knowledge/.queue.jsonl` (get current state)
 2. Find the processed item and update it:
    - **If completed (novel or overlap):** Set `status` to `"completed"` and `updated_at` to the current ISO 8601 timestamp
    - **If duplicate:** Set `status` to `"duplicate"`, `updated_at` to the current ISO 8601 timestamp, and `duplicate_of` to the matching file's `qmd://` path
-3. Append the finished item as a JSON line to `knowledge/.queue-done.jsonl`
-4. Rewrite `knowledge/.queue.jsonl` without the finished item
+3. Append the finished item as a JSON line to `companies/{COMPANY}/knowledge/.queue-done.jsonl`
+4. Rewrite `companies/{COMPANY}/knowledge/.queue.jsonl` without the finished item
 
 #### h. Queue Follow-up Questions
 
 While researching, you may discover new questions that weren't part of the original item. For each follow-up:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
+npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
 ```
 
 Only queue genuinely new questions — not rephrased versions of what was just answered. Increment `items_queued` counter.
@@ -135,7 +144,7 @@ Increment `entries_created` (or `entries_updated` if a duplicate was found and m
 
 ### 3. Write Research Log
 
-After the item is processed, append a single JSON line to `knowledge/.research-log.jsonl`:
+After the item is processed, append a single JSON line to `companies/{COMPANY}/knowledge/.research-log.jsonl`:
 
 ```json
 {"id":"r-{unix_timestamp}","items_processed":1,"entries_created":N,"entries_updated":N,"duplicates":N,"items_queued":N,"errors":N,"completed_at":"ISO8601"}
@@ -148,17 +157,18 @@ Print a structured summary of everything that changed:
 ```
 Research complete:
   Question: {original question}
+  Company: {COMPANY}
   Status: {completed|duplicate|failed}
-  Entry: {created|updated|duplicate of {qmd://path}} knowledge/{category}/{slug}.md
+  Entry: {created|updated|duplicate of {qmd://path}} companies/{COMPANY}/knowledge/{category}/{slug}.md
   Follow-ups queued: {items_queued}
   Errors: {errors}
 
 Files changed:
-  - knowledge/{category}/{slug}.md ({created|updated})  # omit if duplicate
-  - knowledge/{category}/INDEX.md (reindexed)            # omit if duplicate
-  - knowledge/.queue.jsonl (item removed)
-  - knowledge/.queue-done.jsonl (item appended)
-  - knowledge/.research-log.jsonl (log appended)
+  - companies/{COMPANY}/knowledge/{category}/{slug}.md ({created|updated})  # omit if duplicate
+  - companies/{COMPANY}/knowledge/{category}/INDEX.md (reindexed)            # omit if duplicate
+  - companies/{COMPANY}/knowledge/.queue.jsonl (item removed)
+  - companies/{COMPANY}/knowledge/.queue-done.jsonl (item appended)
+  - companies/{COMPANY}/knowledge/.research-log.jsonl (log appended)
 ```
 
 If follow-up questions were queued, list them:
@@ -172,7 +182,7 @@ If follow-up questions were queued, list them:
 
 - **One item per run** — research a single queue item, then stop.
 - **Use the WebSearch tool** for all research — Claude IS the LLM doing synthesis; do not call external APIs.
-- **Valid frontmatter** is mandatory — match the schema in `knowledge/meta/format-spec.md`.
+- **Valid frontmatter** is mandatory — match the schema in `companies/ghq/knowledge/meta/format-spec.md`.
 - **Create category directories** as needed (`mkdir -p`).
-- **Always run `npx tsx companies/ghq/tools/reindex.ts`** after writing entries.
+- **Always run `npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}`** after writing entries.
 - **Never skip deduplication** — always run `qmd vsearch` before writing.

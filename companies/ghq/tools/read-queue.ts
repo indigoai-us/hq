@@ -1,24 +1,28 @@
 #!/usr/bin/env npx tsx
 /**
  * read-queue.ts
- * Reads and displays items from knowledge/.queue.jsonl
+ * Reads and displays items from companies/{slug}/knowledge/.queue.jsonl
  *
  * Usage:
- *   npx tsx companies/ghq/tools/read-queue.ts              # pending items, table format
- *   npx tsx companies/ghq/tools/read-queue.ts --status all  # all statuses
- *   npx tsx companies/ghq/tools/read-queue.ts --json        # JSON output
- *   npx tsx companies/ghq/tools/read-queue.ts --n 10       # limit to 10 items
+ *   npx tsx companies/ghq/tools/read-queue.ts [-c <company-slug>]
+ *   npx tsx companies/ghq/tools/read-queue.ts -c ghq --status all
+ *   npx tsx companies/ghq/tools/read-queue.ts --json
+ *   npx tsx companies/ghq/tools/read-queue.ts --n 10
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
-const QUEUE_PATH = path.resolve(
-  import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname),
-  "..",
-  "knowledge",
-  ".queue.jsonl",
-);
+const repoRoot = execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim();
+
+function getCompanySlug(argv: string[]): string {
+  const idx = argv.indexOf("-c");
+  return idx !== -1 && argv[idx + 1] ? argv[idx + 1] : "ghq";
+}
+
+const COMPANY = getCompanySlug(process.argv);
+const QUEUE_PATH = path.join(repoRoot, "companies", COMPANY, "knowledge", ".queue.jsonl");
 
 interface QueueItem {
   id: string;
