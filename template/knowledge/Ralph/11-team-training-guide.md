@@ -1,7 +1,15 @@
+---
+type: guide
+domain: [engineering, operations]
+status: canonical
+tags: [ralph, team-training, onboarding, {company}, best-practices, workshops]
+relates_to: []
+---
+
 # Ralph & Building AGI: Team Training Guide
 
-*Synthesized from {Company-3} Dev Standups (Jan 13-26, 2026), Zoom sessions, and HQ Ralph Knowledge Base*
-*Sources: 80+ signals from {Company-3} MCP, 12 Ralph knowledge files, 15 meetings*
+*Synthesized from {Product} Dev Standups (Jan 13-26, 2026), Zoom sessions, and HQ Ralph Knowledge Base*
+*Sources: 80+ signals from {Product} MCP, 12 Ralph knowledge files, 15 meetings*
 
 ---
 
@@ -79,7 +87,7 @@ tmux new-session -d -s ralph && tmux send-keys -t ralph './ralph.sh 100' Enter
 nohup ./ralph.sh 100 > ralph.log 2>&1 &
 ```
 
-{your-name} on this topic (Jan 21 Zoom): *"Your goal is to get it where you can set up your computer overnight and let it just run."*
+Corey on this topic (Jan 21 Zoom): *"Your goal is to get it where you can set up your computer overnight and let it just run."*
 
 ### Monitoring
 ```bash
@@ -96,7 +104,7 @@ echo "Remaining: $(grep -c '"passes": false' plans/prd.json)"
 
 ```json
 {
-  "project": "{company-3}-desktop",
+  "project": "{company}-desktop",
   "version": "1.0",
   "features": [
     {
@@ -165,7 +173,7 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 
 **Speed is critical**: TypeScript + ESLint + Jest = ~10 seconds. Rust compilation = 5-30 minutes (problematic for rapid iteration). Optimize for fast feedback.
 
-**From the team** (Jan 16): {your-name} emphasized speed optimization for testing -- *"start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
+**From the team** (Jan 16): Corey emphasized speed optimization for testing -- *"start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
 
 **From the team** (Jan 16): {Team-Member} integrated Playwright MCP server for browser automation testing -- *"Your cloud will use the same Playwright MCP server that I have integrated in the application."*
 
@@ -176,7 +184,7 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 ### Jan 13 Standup: Exploring Frameworks
 
 **Decision: Try multiple agent frameworks**
-- {your-name}: Explore Ralph TUI, Cursor Grind Mode, etc.
+- Corey: Explore Ralph TUI, Cursor Grind Mode, etc.
 - *"Cursor also just added a new mode that's supposedly a loop mode. It's called Grind."*
 - Goal: find what works, get things cleaned up and running
 
@@ -219,14 +227,14 @@ What makes autonomous coding reliable. Without it, hallucinations compound, bugs
 
 ### Jan 16 Standup: Training Deep Dive
 
-This was the richest training session. {your-name} laid out the approach for the whole team:
+This was the richest training session. Corey laid out the approach for the whole team:
 
 **Decision: Start with a single feature per dev**
-- {your-name}: *"For devs, the best way to do that with an active project is to choose a single feature and build a Ralph pipeline just for that feature."*
+- Corey: *"For devs, the best way to do that with an active project is to choose a single feature and build a Ralph pipeline just for that feature."*
 - *"Kind of what {Team-Member} did with Auth."* -- referencing the proof of concept
 
 **Action: End-to-end testing with Ralph Loop**
-- {your-name}: *"Get the Ralph Loop on this. Get a loop on end-to-end agent testing. Find some... start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
+- Corey: *"Get the Ralph Loop on this. Get a loop on end-to-end agent testing. Find some... start... maybe have a small one so it's a little bit faster, but speed is another thing that we should try and optimize."*
 
 **{Team-Member}'s learning approach**
 - *"I'm using it as a quick, safe sandbox to tune in... start using the screwdriver on Ralph, and learn the principles, and set up my own workflow."*
@@ -234,10 +242,10 @@ This was the richest training session. {your-name} laid out the approach for the
 - *"I think once I get that in... I think we're gonna start seeing better results on bookmarks."*
 
 **Decision: Study and fork Loom for their environment**
-- {your-name}: *"I don't think it's adopting it exactly, it's like, trying to figure out what's going on in there, and then once you understand everything, start stripping out what's not for us."*
+- Corey: *"I don't think it's adopting it exactly, it's like, trying to figure out what's going on in there, and then once you understand everything, start stripping out what's not for us."*
 
 **Decision: Fix deep agent issues before new features**
-- {your-name}: *"That's what I need you focused on now"* -- prioritizing stability over new features
+- Corey: *"That's what I need you focused on now"* -- prioritizing stability over new features
 
 **{Team-Member}: Playwright MCP integration completed**
 - Browser automation testing now available for the agent pipeline
@@ -245,11 +253,11 @@ This was the richest training session. {your-name} laid out the approach for the
 ### Jan 19 Standup: Architecture Decisions
 
 **Decision: Clean codebase = 10x Ralph speed**
-- {your-name}: *"I think the only thing we need to focus on right now is just getting everything cleaned out of the {Company-3} codebase that's messy. And not relevant, so that Ralph just starts moving 10 times faster."*
+- Corey: *"I think the only thing we need to focus on right now is just getting everything cleaned out of the {Product} codebase that's messy. And not relevant, so that Ralph just starts moving 10 times faster."*
 - This became the team's #1 priority
 
 **Decision: Single environment architecture**
-- {your-name}: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."*
+- Corey: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."*
 - {Team-Member}: *"Yeah, I think we can start from cleaning up staging for now."*
 - Eliminate unnecessary intermediate environments to reduce key management complexity
 
@@ -261,8 +269,8 @@ This was the richest training session. {your-name} laid out the approach for the
 ### Jan 20 Standup: HQ Adoption
 
 **Decision: {Team-Member} should implement HQ system**
-- {your-name} recommended HQ for managing projects and tasks since {Team-Member} was working solo
-- *"{your-name} recommended that {Team-Member} implement the HQ system to manage projects and tasks since he's working solo"*
+- Corey recommended HQ for managing projects and tasks since {Team-Member} was working solo
+- *"Corey recommended that {Team-Member} implement the HQ system to manage projects and tasks since he's working solo"*
 
 **Action items:**
 - Install and set up HQ locally
@@ -282,7 +290,7 @@ This was the richest training session. {your-name} laid out the approach for the
 **{Team-Member} reran Ralph on planning mode** feature after cleanup was complete -- demonstrating the iterative pattern
 
 **Decision: Use HQ as central system**
-- {your-name} pushed team to adopt HQ setup repo for project tracking
+- Corey pushed team to adopt HQ setup repo for project tracking
 - Both {Team-Member} and {Team-Member} to start using it, even beyond work projects
 
 **{Team-Member}: Developed system for launching terminals** with predefined context for Claude Code sessions -- workflow optimization
@@ -302,25 +310,25 @@ This was the richest training session. {your-name} laid out the approach for the
 - Standard shimmer animation, button styling
 - Multiple-choice UI based on Claude's implementation
 
-### Jan 26: {Team-Member}/{Company-3} Meeting
+### Jan 26: {Team-Member}/{Product} Meeting
 
 **Positive feedback on design work** -- one-pager received well
-- {your-name}: *"Everyone's really happy with the stuff you're doing. The one-pager is way better."*
+- Corey: *"Everyone's really happy with the stuff you're doing. The one-pager is way better."*
 
 **Decision: Redesign product flow** to horizontal/linear timeline layout
-- {your-name}: *"Try putting it linear according to how it makes sense to you, and then we'll clean up from there."*
+- Corey: *"Try putting it linear according to how it makes sense to you, and then we'll clean up from there."*
 
 ### Jan 21 Zoom (Late Night): AGI & AI Automation Demo
 
-**{your-name} demonstrated AI-powered website migration from Webflow** -- completed in under one hour
+**Corey demonstrated AI-powered website migration from Webflow** -- completed in under one hour
 - *"5:19 PM, V1 is up, and I've given him a repo, and now he can take it over, you just woke up. And it's already... our site is basically cloned."*
 - This demonstrated the practical power of autonomous AI coding in a real-world scenario
 
 **Hardware for overnight AI automation**
-- {your-name}: *"Your goal is to get it where you can set up your computer overnight and let it just run."*
+- Corey: *"Your goal is to get it where you can set up your computer overnight and let it just run."*
 
 **AI tools to automate project asset creation**
-- {your-name}: *"This will guide us through that too. It'll be like, okay, now go create an X account for you. Okay, I'm gonna go do this for you."*
+- Corey: *"This will guide us through that too. It'll be like, okay, now go create an X account for you. Okay, I'm gonna go do this for you."*
 
 ---
 
@@ -434,7 +442,7 @@ Instead of managing staging/dev/prod:
 - Alpha-beta release channels
 - Single set of API keys
 
-Why: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."* -- {your-name}
+Why: *"I really like the no staging and potentially even no dev environment complications. Move towards feature flagging or alpha-beta releases, and just have single environment, single set of keys."* -- Corey
 
 ### Separate Ralph Instances
 
@@ -543,4 +551,4 @@ Running 24/7: ~$250/day or ~$7,500/month
 
 ---
 
-*Compiled from: 80+ signals via {Company-3} Signals MCP, 15 completed meetings (Jan 5-26 2026), Ralph knowledge base (12 files). Covers {Company-3} Dev Standups, David/{your-name}/{Team-Member} syncs, {Team-Member}/{your-name} 1:1, and late-night Zoom sessions.*
+*Compiled from: 80+ signals via {Product} Signals MCP, 15 completed meetings (Jan 5-26 2026), Ralph knowledge base (12 files). Covers {Product} Dev Standups, David/Corey/{Team-Member} syncs, {Team-Member}/Corey 1:1, and late-night Zoom sessions.*

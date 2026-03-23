@@ -23,5 +23,6 @@ Run the `/review-plan` skill to review a plan, PRD, or proposal with configurabl
 ## Scope Modes
 
 - **EXPANSION** — push scope up, find the 10x version, identify delight opportunities
+- **SELECTIVE EXPANSION** — identify which parts should grow and which should stay tight; expand selectively
 - **HOLD** — accept scope, make it bulletproof, catch every failure mode
 - **REDUCTION** — cut to minimum viable value, defer everything else

@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering, operations]
+status: canonical
+tags: [audit-logging, configuration, monitoring, security, observability]
+relates_to: []
+---
+
 # Audit Logging Configuration
 
 > What to log, how to log it, and how to use logs for security
@@ -31,7 +39,7 @@ Every AI action should capture:
 | Field | Description | Example |
 |-------|-------------|---------|
 | `agent_id` | Which AI agent | `claude-chrome-main` |
-| `user_id` | Human associated | `user@example.com` |
+| `user_id` | Human associated | `corey@example.com` |
 | `request_id` | Unique action ID | `req_xyz789` |
 | `duration_ms` | Time to complete | `1234` |
 | `input_summary` | What was requested | `"Navigate to docs"` |

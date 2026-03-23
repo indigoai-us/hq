@@ -4,6 +4,61 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v8.2.0 (from v8.1.x)
+
+### New Commands
+Copy these files from starter-kit to your HQ:
+- `.claude/commands/document-release.md`
+- `.claude/commands/investigate.md`
+- `.claude/commands/retro.md`
+
+### New Hook
+Copy to your HQ:
+- `.claude/hooks/block-inline-story-impl.sh` — run `chmod +x` after copying
+
+### Updated Commands
+Review and merge changes to these 19 commands:
+- `audit.md`, `brainstorm.md`, `cleanup.md`, `execute-task.md`, `garden.md`
+- `harness-audit.md`, `model-route.md`, `prd.md`, `reanchor.md`, `recover-session.md`
+- `remember.md`, `review-plan.md`, `run-project.md`, `run.md`, `search-reindex.md`
+- `search.md`, `startwork.md`, `update-hq.md`, `review.md`, `understand-project.md`
+
+### Updated Hooks
+Replace these hooks (run `chmod +x` after copying):
+- `.claude/hooks/auto-checkpoint-trigger.sh`
+- `.claude/hooks/hook-gate.sh`
+- `.claude/hooks/observe-patterns.sh`
+
+### Updated Scripts
+Replace:
+- `.claude/scripts/run-project.sh` — adds story test runner + codex model hints
+
+### New Workers
+Copy these directories to `workers/`:
+- `workers/impeccable-designer/`
+- `workers/paper-designer/`
+
+Update `workers/registry.yaml` — version bumped to v10.0 with 45 public workers.
+
+### New Knowledge
+Copy these to `knowledge/`:
+- `knowledge/impeccable/` (new knowledge base)
+- `knowledge/design-styles/formulas/` (new subtree)
+- `knowledge/agent-browser/tauri-testing.md`
+- `knowledge/hq/handoff-templates.md`
+- `knowledge/hq/knowledge-taxonomy.md`
+
+### Removed
+- Delete `.claude/commands/imessage.md` if present (personal command, removed from starter-kit)
+
+### PII Scrub
+This release scrubbed all company-specific references. If you forked from an earlier version, review your files for any {REPO}/{Company}/{Company} references and replace with generic placeholders.
+
+### Breaking Changes
+- None
+
+---
+
 ## Migrating to v8.1.1 (from v8.1.0)
 
 ### New directories (create manually)
@@ -474,7 +529,7 @@ Copy to `.claude/commands/`:
 - `garden.md` — Multi-worker HQ content audit & cleanup
 - `startwork.md` — Lightweight session entry
 - `newcompany.md` — Scaffold new company infrastructure
-- `bootcamp-student.md` — Student onboarding pipeline
+- `{custom-command}.md` — Student onboarding pipeline
 
 ### Updated Commands
 Review and merge changes to all existing commands — 22 commands were refreshed. Key ones:

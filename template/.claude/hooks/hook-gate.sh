@@ -51,7 +51,7 @@ is_in_minimal_profile() {
 # Standard: minimal + checkpoint/handoff + pattern learning
 is_in_standard_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl)
       return 0
       ;;
     *)
@@ -63,7 +63,7 @@ is_in_standard_profile() {
 # Strict: standard + future quality hooks (reserved for expansion)
 is_in_strict_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl)
       return 0
       ;;
     *)

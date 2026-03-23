@@ -1,3 +1,11 @@
+---
+type: overview
+domain: [engineering, operations]
+status: canonical
+tags: [ralph, orchestrator, autonomous-coding, context-window, ai-agent]
+relates_to: []
+---
+
 # Overview: What is Ralph?
 
 ## Definition

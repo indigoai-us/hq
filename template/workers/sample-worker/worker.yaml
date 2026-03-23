@@ -1,103 +1,174 @@
-# Sample Worker
-# Copy this directory and customize for your own worker.
-# See knowledge/workers/ for the full worker framework docs.
-
-worker:
-  id: sample-worker
-  name: "Sample Worker"
-  type: CodeWorker           # CodeWorker, ContentWorker, SocialWorker, ResearchWorker, OpsWorker
-  version: "1.0"
-  # team: dev-team           # Optional: group workers into teams
-
-identity:
-  # voice_guide: companies/{company}/knowledge/voice-style.md
+---
+name: sample-worker
+slug: sample-worker
+description: |
+  Template worker demonstrating best practices for worker documentation and worked examples.
+  This worker serves as a reference for other worker authors showing how to structure
+  instructions, skills, and execution expectations. Not intended for actual task execution.
+type: utility
+visibility: public
+status: active
 
 execution:
-  mode: on-demand            # on-demand, scheduled, event-triggered
-  max_runtime: 15m
-  retry_attempts: 1
-  spawn_method: task_tool    # task_tool (sub-agent) or inline
+  model: sonnet
 
 context:
-  base:
-    - knowledge/Ralph/       # methodology
-    # - workers/sample-worker/skills/    # this worker's skills
-    # - knowledge/dev-team/patterns/     # shared patterns
-  dynamic:
-    # - pattern: "{target_repo}/src/"
-    #   when: always
-    # - pattern: "{target_repo}/package.json"
-    #   when: always
-  exclude:
-    - node_modules/
-    - dist/
-    - "*.log"
-    - "*.lock"
+  base: []
 
 skills:
-  - id: example
-    file: skills/example.md
+  installed:
+    - generate-report
+    - analyze-data
+
+instructions: |
+  You are a sample worker demonstrating template best practices.
+
+  Your role is to serve as a reference for how workers should be structured and documented.
+  This includes clear skill definitions, proper handoff context, and executable verification steps.
 
 verification:
   post_execute:
-    - check: output_valid
-    # - check: typescript
-    #   command: npm run typecheck
-    # - check: lint
-    #   command: npm run lint
-    # - check: test
-    #   command: npm test
-  approval_required: false
-  # human_checkpoints:
-  #   - before_feature_implementation
-  #   - on_breaking_changes
+    - npm test
+    - npm run lint
 
-# MCP Integration (optional)
-# Connect external AI tools via Model Context Protocol
-# mcp:
-#   server:
-#     command: node
-#     args: [path/to/mcp-server.js]
-#     cwd: workers/sample-worker
-#   tools:
-#     - tool_name
+---
 
-tasks:
-  source: projects/{project}/prd.json
-  format: prd
-  one_at_a_time: true
+## Worked Example: Complete Skill Execution Walkthrough
 
-output:
-  format: git_commit
-  # destination: workspace/reports/
-  # naming: "{date}-{worker-id}-{skill}.{ext}"
+This section demonstrates what successful skill execution looks like from input to output.
 
-reporting:
-  on_complete:
-    - extract_learnings
-  # metrics:
-  #   - execution_time
-  #   - files_created
-  #   - back_pressure_pass_rate
+### Scenario
+An orchestrator needs to execute the `generate-report` skill on a Node.js project analytics task.
 
-state_machine:
-  enabled: true
-  max_retries: 1
-  hooks:
-    post_execute:
-      - auto_checkpoint
-      - log_metrics
-    on_error:
-      - log_error
-      - checkpoint_error_state
+### Input (from orchestrator)
 
-instructions: |
-  This is a sample worker. Replace these instructions with your own.
+```json
+{
+  "task_id": "analytics-001",
+  "task_title": "Generate Q1 Performance Report",
+  "task_description": "Analyze quarterly metrics and produce a summary report",
+  "skill": "generate-report",
+  "skill_params": {
+    "data_source": "workspace/data/q1-metrics.json",
+    "report_format": "markdown",
+    "include_charts": true,
+    "output_path": "workspace/reports/q1-performance.md"
+  },
+  "cwd": "~/Documents/HQ",
+  "files_context": [
+    "workspace/data/q1-metrics.json",
+    "knowledge/public/analytics/reporting-style.md"
+  ]
+}
+```
 
-  Protocol:
-  1. Read the task requirements
-  2. Implement the solution
-  3. Verify your work passes checks
-  4. Write a checkpoint
+### Processing (What the worker does)
 
-  Build your own workers with: /newworker
+#### Phase 1: Load Input & Validate
+```
+✓ Task loaded: analytics-001
+✓ Skill verified: generate-report exists
+✓ Parameters validated: data_source readable, output_path writable
+✓ Context files loaded: 2 files, 45KB total
+```
+
+#### Phase 2: Execute generate-report Skill
+```bash
+# Step 1: Load and parse input data
+$ node -e "const data = require('./workspace/data/q1-metrics.json');
+  console.log('Loaded:', data.period, '—', data.metrics.length, 'metrics')"
+Loaded: Q1-2026 — 24 metrics
+
+# Step 2: Load reporting style guide
+$ cat knowledge/public/analytics/reporting-style.md | head -20
+# Analytics Reporting Style Guide
+- Use clear section headers
+- Include "Key Findings" callout box
+- Format numbers with thousand separators
+- Use markdown h2/h3 hierarchy
+
+# Step 3: Generate report using loaded style
+$ generate-report \
+  --data workspace/data/q1-metrics.json \
+  --format markdown \
+  --style knowledge/public/analytics/reporting-style.md \
+  --output workspace/reports/q1-performance.md
+[INFO] Generating report...
+[INFO] Parsing metrics...
+[INFO] Applying style guide...
+[INFO] Rendering output...
+✓ Report written: 2847 bytes
+```
+
+#### Phase 3: Post-Execution Verification
+```bash
+# Back pressure check: verify output exists and has content
+$ test -f workspace/reports/q1-performance.md && wc -l workspace/reports/q1-performance.md
+42 workspace/reports/q1-performance.md
+
+# Lint/format check
+$ markdownlint workspace/reports/q1-performance.md
+✓ No formatting issues
+
+# Content validation
+$ grep -c "^## " workspace/reports/q1-performance.md
+5 sections found ✓
+```
+
+### Output (Worker returns)
+
+```json
+{
+  "summary": "Generated Q1 performance report with 24 metrics analyzed, 5-section markdown output with charts",
+  "files_created": [
+    "workspace/reports/q1-performance.md"
+  ],
+  "files_modified": [],
+  "key_decisions": [
+    "Used markdown format with embedded chart metadata for later rendering",
+    "Organized by business unit to show regional performance variance",
+    "Added trend analysis comparing Q4-2025 to Q1-2026 growth rates"
+  ],
+  "context_for_next": "Report contains month-by-month breakdown. Next reviewer should verify Q1 definitions match fiscal calendar.",
+  "back_pressure": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "skipped",
+    "build": "skipped"
+  },
+  "issues": []
+}
+```
+
+### Next Worker Receives
+
+The output becomes the context for the next phase (e.g., a reviewer):
+
+```
+## Context from Previous Phase
+
+Worker: sample-worker (generate-report skill)
+Status: success
+
+Key outputs:
+- Created: workspace/reports/q1-performance.md (42 lines, 2847 bytes)
+- Decisions: Organized by business unit for regional variance analysis
+- Focus for review: Month-by-month breakdown accuracy vs fiscal calendar
+
+Your job: Validate report content, check numbers, verify chart metadata
+```
+
+---
+
+## How This Worker Scales
+
+This worker demonstrates the key practices:
+
+1. **Clear skill definitions** — `generate-report` has well-documented input expectations
+2. **Validation before work** — Checks files exist and are readable
+3. **Modular execution** — Breaks work into phases (load → execute → verify)
+4. **Back pressure enforcement** — Post-execution checks prevent shipping broken output
+5. **Handoff context** — Next worker knows exactly what was done and what to focus on
+6. **Structured output** — JSON format allows orchestrator to parse results without reading full context
+
+When creating your own worker, follow this pattern: describe inputs clearly, show execution phases, include verification checks, and structure output for next-worker handoff.

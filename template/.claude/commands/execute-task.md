@@ -190,6 +190,7 @@ schema_change:
   - product-planner (if spec unclear)
   - database-dev
   - backend-dev
+  - acceptance-test-writer (if e2eTests non-empty)
   - code-reviewer
   - codex-reviewer
   - dev-qa-tester
@@ -198,6 +199,7 @@ api_development:
   - product-planner (if spec unclear)
   - backend-dev
   - codex-coder (optional, if worker_hints include codex)
+  - acceptance-test-writer (if e2eTests non-empty)
   - code-reviewer
   - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
@@ -208,6 +210,7 @@ ui_component:
   - frontend-dev
   - codex-coder (optional, if worker_hints include codex)
   - motion-designer
+  - acceptance-test-writer (if e2eTests non-empty)
   - code-reviewer
   - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
@@ -220,6 +223,7 @@ full_stack:
   - backend-dev
   - frontend-dev
   - codex-coder (optional, if worker_hints include codex)
+  - acceptance-test-writer (if e2eTests non-empty)
   - code-reviewer
   - codex-reviewer
   - codex-debugger (optional, before QA if back-pressure issues)
@@ -230,6 +234,7 @@ codex_fullstack:
   - architect
   - database-dev
   - codex-coder
+  - acceptance-test-writer (if e2eTests non-empty)
   - codex-reviewer
   - dev-qa-tester
 
@@ -241,6 +246,7 @@ content:
 
 enhancement:
   - (relevant dev based on files)
+  - acceptance-test-writer (if e2eTests non-empty)
   - code-reviewer
   - codex-reviewer
   - codex-debugger (optional, if auto-fix needed)
@@ -263,6 +269,7 @@ enhancement:
 | motion-designer | Add animations and motion |
 | code-reviewer | Review changes (Claude-based) |
 | codex-reviewer | Mandatory second-opinion review via Codex AI |
+| acceptance-test-writer | Write story-level acceptance tests from e2eTests |
 | codex-debugger | Auto-fix issues via Codex AI |
 | dev-qa-tester | Verify implementation |
 
@@ -416,12 +423,19 @@ Read `workers/public/dev-team/{worker-id}/worker.yaml` (or `companies/*/workers/
 - `skills.installed` - Worker's skills
 - `verification.post_execute` - Back pressure checks
 - `execution.model` - Model tier for this worker (opus/sonnet/haiku)
+- `execution.codex_model` - OpenAI model for Codex CLI invocations (codex workers only)
 
 **Resolve model for this phase:**
 ```
 model = task.model_hint || worker.execution.model || "opus"
 ```
 Story-level `model_hint` (from prd.json) overrides worker default. Fallback: opus.
+
+**Resolve Codex model (for codex workers only):**
+```
+codex_model = task.codex_model_hint || worker.execution.codex_model || "gpt-5.4"
+```
+Story-level `codex_model_hint` overrides worker default. Fallback: gpt-5.4.
 
 #### 6b. Build Worker Prompt
 
@@ -446,6 +460,9 @@ If the target repo has a qmd collection (check `qmd status`), prefer `qmd vsearc
 
 ### Applicable Policies
 {policies loaded in step 5.6, if any}
+
+### Codex CLI Model (codex workers only)
+{worker.execution.codex_model || "gpt-5.4"} — pass via `-c model="{codex_model}"` to all codex exec/review commands
 
 ### Your Instructions
 {worker.instructions}
@@ -495,7 +512,7 @@ Task({
 1. Collect `files_modified` + `context_for_next` from previous worker's handoff (code-reviewer)
 2. Run Codex CLI review:
    ```bash
-   cd {target_repo} && codex review --uncommitted \
+   cd {target_repo} && codex review --uncommitted -c model="{codex_model}" \
      "Review changed files for: security, correctness, performance, style. Focus: {context_for_next from code-reviewer}" 2>&1
    ```
 3. Capture full output (markdown-formatted review)
@@ -517,6 +534,79 @@ When iterating through the worker sequence in step 6, check if current worker is
 - If yes → execute 6c.5 inline, then jump to 6e (skip 6c and 6d for this phase)
 - If no → proceed with normal 6c → 6d flow
 
+#### 6c.7 Acceptance Test Writer (when worker == acceptance-test-writer)
+
+**Purpose:** Write executable acceptance tests from the story's `e2eTests` descriptions. These tests persist across stories — when story N+1 runs the full test suite, story N's acceptance tests act as regression guards.
+
+**Skip conditions** (do NOT add this worker to the sequence if any are true):
+- `task.e2eTests` is empty, absent, or `[]`
+- Task type is `content`
+
+**When this worker runs:**
+
+1. **Read `task.e2eTests`** from prd.json — array of test descriptions
+2. **Read all existing story test files** in `{repo}/__tests__/stories/` to understand the established pattern (imports, helpers, framework)
+3. **Detect test framework**: Check `package.json` for vitest/jest/bun test. Check `qualityGates` for test runner command. Fall back to `bun test`
+4. **Spawn sub-agent** with this prompt:
+
+```markdown
+## You are: acceptance-test-writer
+## Task: Write acceptance tests for {task.id} - {task.title}
+
+### Test Descriptions (from PRD)
+{task.e2eTests as numbered list}
+
+### Acceptance Criteria
+{task.acceptanceCriteria as checklist}
+
+### Context from Previous Phase
+{handoff_context — what was implemented and where}
+
+### Test Convention
+- Write tests to: `{repo}/__tests__/stories/{task.id}.test.ts`
+- One `describe("{task.id}: {task.title}")` block per story
+- One `it()` or `test()` per e2eTests entry
+- Import from the actual implementation — use real modules, not mocks
+- Tests must verify the BEHAVIOR described in e2eTests, not implementation details
+- Tests must be deterministic and fast (no network calls, no timers)
+- If the story involves API endpoints: test request/response contracts
+- If the story involves UI: test component rendering + user interactions
+- If the story involves data: test transformations and edge cases
+
+### Existing Story Tests (follow this pattern)
+{contents of existing __tests__/stories/*.test.ts files, if any}
+
+### Test Framework
+{detected framework: vitest | jest | bun:test}
+
+### Back Pressure
+After writing tests, run them:
+{test runner command, e.g. "bun test __tests__/stories/{task.id}.test.ts"}
+
+All tests MUST pass before this phase completes. If a test fails, fix the test
+(if the test is wrong) or flag the issue (if the implementation is wrong).
+
+Also run ALL existing story tests to verify no regressions:
+{test runner command, e.g. "bun test __tests__/stories/"}
+
+### Output Requirements
+{
+  "summary": "Tests written for {task.id}",
+  "files_created": ["__tests__/stories/{task.id}.test.ts"],
+  "files_modified": [],
+  "test_count": N,
+  "all_story_tests_pass": true|false,
+  "context_for_next": "Acceptance tests added: {N} tests in __tests__/stories/{task.id}.test.ts",
+  "back_pressure": { "tests": "pass|fail" },
+  "issues": []
+}
+```
+
+5. **Process output**: If `all_story_tests_pass` is false, this is a regression — the current story broke a prior story's behavior. Handle like a back-pressure failure (6d auto-recovery flow).
+6. **Continue to code-reviewer** with the test files included in the review scope.
+
+**Key principle:** The test-writer runs AFTER implementation but BEFORE review. Tests validate the implementation against the spec. If they fail, the implementation is wrong — not the tests.
+
 #### 6d. Process Worker Output
 
 Parse worker's JSON output.
@@ -526,7 +616,7 @@ If back pressure failed:
    - Check `codex_debug_attempts` — skip if this phase already had a codex-debugger intervention
    - **If `codex_available == true`:** Run Codex debugger inline via CLI:
      ```bash
-     cd {target_repo_path} && codex exec --full-auto --cd {target_repo_path} \
+     cd {target_repo_path} && codex exec --full-auto -c model="{codex_model}" --cd {target_repo_path} \
        "Diagnose and fix back-pressure failure. Check: {failed_check_name}. Error: {stdout_stderr_from_failed_check}. Then re-run: {verification.post_execute commands}" 2>&1
      ```
    - **If `codex_available == false`:** Spawn Claude-based debugger sub-agent:

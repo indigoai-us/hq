@@ -176,3 +176,7 @@ users.forEach(user => {
 3. **Serialize minimally** - Pass only needed data across RSC boundaries
 4. **Defer non-critical work** - Use after(), Suspense, Transitions
 5. **Measure first** - Don't optimize prematurely
+
+## Learnings
+
+- **CSS Modules pure selector rule**: NEVER use the universal `*` selector (or bare element selectors like `body`, `html`) in `.module.css` files — Turbopack throws `"Selector * is not pure (must contain at least one local class or id)"` at build time. To handle `prefers-reduced-motion` or other global concerns: implement a `useReducedMotion()` JS hook and apply transition suppression via inline styles, not CSS module rules. <!-- 2026-02-20 -->

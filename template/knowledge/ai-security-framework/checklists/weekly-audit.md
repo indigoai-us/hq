@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations]
+status: canonical
+tags: [weekly-audit, checklist, security-hygiene, review, maintenance]
+relates_to: []
+---
+
 # Weekly Security Audit Checklist
 
 > 15-minute weekly review to maintain security hygiene

@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, state-machine, event-driven, agent, conversation-flow]
+relates_to: []
+---
+
 # Agent State Machine
 
 The core of Loom is an explicit, event-driven state machine that manages conversation flow and tool execution.

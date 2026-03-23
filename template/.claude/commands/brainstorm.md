@@ -28,6 +28,17 @@ Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies
 
 **Board ID detection:** After company check, see if remaining args match a board.json project ID pattern (`{prefix}-proj-{NNN}`). If so, this brainstorm is expanding an existing idea — proceed to Step 1 with that ID.
 
+## Step 0.5: Mode Selection
+
+Infer the brainstorm mode from context — no question needed:
+
+- **STARTUP** — early-stage idea, no existing solution, exploring whether worth building. Default when: no existing board entry with `prd_path`, no prior art in HQ, greenfield domain
+- **BUILDER** — existing product/system, designing a feature or extension. Default when: expanding existing project, board entry has `prd_path`, target repo already exists
+
+Announce mode: `Mode: **STARTUP**` or `Mode: **BUILDER**`
+
+Mode affects Steps 2-4 (premise challenge depth, question framing, research scope).
+
 ## Step 1: Resolve Company + Board Idea
 
 **If board ID matched in Step 0:**
@@ -70,36 +81,70 @@ Research complete:
 - Prior art: {relevant knowledge hits or "none"}
 ```
 
+### Premise Challenge (always run, both modes)
+
+After research, before asking the user anything, challenge the premise:
+
+1. **Is this the right problem?** What assumption must be true for this to matter?
+2. **What happens if we do nothing?** Is inaction a viable option?
+3. **What simpler/cheaper solution might already solve 80%?** Existing tool, manual process, or minor tweak?
+
+State a position. Don't hedge. If the premise is weak, say so before exploring approaches. This may eliminate the need for a full brainstorm.
+
+Present as:
+```
+Premise check:
+- Core assumption: {what must be true}
+- Inaction cost: {what happens if we skip this}
+- 80% solution: {simpler alternative, or "none — this requires dedicated work"}
+- Verdict: {STRONG / QUESTIONABLE / WEAK}
+```
+
+If verdict is WEAK: flag it and ask the user if they want to continue or reconsider.
+
 ## Step 3: Light Interview (1 AskUserQuestion max)
 
 Batch all missing directional info into **one** `AskUserQuestion` call. Skip any field already clear from args, board entry, or research.
 
-**Questions (include only what's missing):**
+### STARTUP mode questions (include only what's missing):
+
+1. **Demand Reality** — Who has this problem badly enough to hack a workaround today? Can you name a specific person or group?
+2. **Status Quo** — What do they do right now? Why isn't that good enough?
+3. **Narrowest Wedge** — What's the smallest starting point that delivers real value to one specific person?
+4. **Direction + constraints** — Speed vs quality? Hard constraints? (timeline, must-use-tech, budget ceiling)
+5. **Which company?** (only if not anchored and not inferrable from context)
+
+### BUILDER mode questions (include only what's missing):
 
 1. **What's the core problem or opportunity?** (skip if description is >15 words with clear intent)
-
 2. **Which direction matters most?**
    - A. Speed to ship (MVP fast, iterate later)
    - B. Quality/durability (build it right once)
    - C. Exploration (prove or disprove a hypothesis first)
    - D. Cost minimization (cheapest viable path)
-
 3. **Hard constraints?** (timeline, must-use-tech, budget ceiling, avoid-tech) — optional, free text
-
 4. **Which company?** (only if not anchored and not inferrable from context)
 
 **If all info is already clear** (description + company + direction obvious from context), skip the interview entirely.
 
-## Step 4: Optional Web Research
+## Step 4: 3-Layer Landscape Gate
 
-**Only run if:**
-- Idea involves external services, APIs, or tools the AI isn't confident about
-- User is exploring an unfamiliar domain (new-to-them technology, market)
-- A specific "research X first" constraint was stated
+Research in layers — stop as soon as you have enough signal. Don't research for thoroughness.
 
-**If warranted:** 1-2 `WebSearch` calls. Extract relevant tools/APIs, known tradeoffs, pricing. Summarize in 3-5 bullets max.
+**Layer 1 — HQ (always, already done in Step 2):**
+qmd, workers, policies, existing projects. Already complete.
 
-**If HQ context is sufficient** (internal tooling, known platforms — the common case): skip entirely.
+**Layer 2 — Reasoning (always, free):**
+Competitive landscape, known tools, pricing, market context from training data. No API calls needed. Run this as part of your analysis — identify alternatives, comparable tools, known pricing tiers, and market dynamics. 2-3 bullets.
+
+**Layer 3 — Live Web (conditional, privacy-gated):**
+**Only if:** idea involves a new API/service you're not confident about, unfamiliar domain, or user explicitly requested research.
+
+Before searching: announce what you'll search for and why. `"Will search web for [topic] — [reason]. OK?"` — proceed only after implicit or explicit approval (user continuing the conversation counts as approval).
+
+**If warranted:** 1-2 `WebSearch` calls. Extract tools/APIs, pricing, tradeoffs. 3-5 bullets max.
+
+**If Layer 2 is sufficient** (internal tooling, known platforms — the common case): skip Layer 3 entirely.
 
 ## Step 5: Generate brainstorm.md
 
@@ -136,6 +181,14 @@ source_idea_id: {board ID or null}
 - {Assumption that needs validating}
 - {Missing info that blocks confident decision-making}
 - ...
+
+## Premise Check
+
+{Position on whether the core assumption holds. State verdict: STRONG / QUESTIONABLE / WEAK}
+
+## Narrowest Wedge *(STARTUP mode only)*
+
+{Smallest version that delivers real value to one specific person. What can you ship in days, not weeks?}
 
 ## Approaches
 
@@ -269,3 +322,4 @@ Reindex: `qmd update 2>/dev/null || true`
 - **Company isolation enforced** — if anchored, scope all searches to that company. Never mix company knowledge in approaches
 - **brainstorm.md is human-editable** — the user may refine it after generation. `/prd` reads whatever is in the file, not just what was machine-generated
 - **Do not create README.md** — brainstorm.md is self-contained. README comes with `/prd`
+- **Anti-sycophancy** — Never say "that's interesting," "great idea," "excellent question." Take a position immediately. If the premise is weak, say so before exploring approaches. State which approach you'd actually build and why. Brainstorm is for honest analysis, not validation

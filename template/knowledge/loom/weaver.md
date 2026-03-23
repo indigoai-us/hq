@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, weaver, kubernetes, remote-execution, ephemeral-pods]
+relates_to: []
+---
+
 # Weaver (Remote Execution)
 
 Weavers are ephemeral Kubernetes pods for running remote Loom REPL sessions.

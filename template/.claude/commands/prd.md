@@ -62,7 +62,7 @@ Before asking questions, explore HQ. If company is anchored (Step 0), scope all 
 
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
-- If target repo has a qmd collection (e.g. `-c {collection}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `{repo}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 
@@ -277,7 +277,7 @@ If a policy or repo context **fully answers** a question, present it as a confir
 6c. Does this need a new worker or skill?
 6d. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 6e. Branch name? (default: `feature/{project-name}`)
-6f. Base branch? (default: `main`, or `staging` for specific projects) — Pure Ralph creates feature branch from this
+6f. Base branch? (default: `main`, or `staging` for {company}-nx, etc.) — Pure Ralph creates feature branch from this
 
 6g. Analytics / event tracking needed? *(conditional: deployable UI projects only)*
     A. No — not a user-facing feature
@@ -551,7 +551,11 @@ To execute, start a new session and run:
 - Every story starts with `passes: false`
 - `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
 - `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
-- `e2eTests` (recommended for deployable projects): list of E2E test descriptions. Leave `[]` for non-code projects. Used by back-pressure in `/execute-task`
+- `e2eTests` (recommended for deployable projects): list of executable test descriptions that verify each acceptance criterion. Leave `[]` for non-code projects. These drive the `acceptance-test-writer` phase in `/execute-task` which generates real test files (`__tests__/stories/{story-id}.test.ts`) — cumulative back-pressure that protects completed stories from regression by later stories
+  - Format each entry as a Given/When/Then assertion: `"Given [context], when [action], then [expected]"`
+  - At least 1 test per acceptance criterion for code stories
+  - Tests should verify BEHAVIOR, not implementation details
+  - Examples: `"Given a logged-in user, when they pull to refresh, then the list reloads with fresh data"`, `"Given the settings form, when email is cleared and submitted, then a validation error shows"`
 - For deployable projects, include at least one story dedicated to E2E test infrastructure (Phase 0 pattern)
 
 ### Story Complexity Budget

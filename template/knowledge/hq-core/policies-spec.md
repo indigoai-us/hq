@@ -57,7 +57,7 @@ Optional. Concrete examples of correct and incorrect behavior under this policy.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique identifier: `{prefix}-{slug}` (e.g. `{company}-docs-update`, `hq-git-branch-verify`, `{product}-staging-first`) |
+| `id` | string | Unique identifier: `{prefix}-{slug}` (e.g. `{company}-docs-update`, `hq-git-branch-verify`, `{repo}-staging-first`) |
 | `title` | string | Human-readable title |
 | `scope` | enum | `company`, `repo`, `command`, `global`, `team`, `worker`, `project` |
 | `trigger` | string | When the policy applies (e.g. "before any task execution", "when deploying", "before any git commit") |
@@ -85,7 +85,7 @@ Optional. Concrete examples of correct and incorrect behavior under this policy.
 | Scope | Prefix | Example |
 |-------|--------|---------|
 | Company | `{company}-` | `{company}-docs-update` |
-| Repo | `{repo-slug}-` | `{product}-staging-first` |
+| Repo | `{repo-slug}-` | `{repo}-staging-first` |
 | Command | `hq-cmd-{name}-` | `hq-cmd-prd-question-batching` |
 | Global | `hq-` | `hq-git-branch-verify` |
 
@@ -118,7 +118,7 @@ Repos can have their own policies at:
 repos/{pub|priv}/{repo}/.claude/policies/*.md
 ```
 
-Repo-level policies use the same format as company policies. The `id` field uses `{repo-slug}-{policy-slug}` format (e.g. `{product}-no-force-push`).
+Repo-level policies use the same format as company policies. The `id` field uses `{repo-slug}-{policy-slug}` format (e.g. `{repo}-no-force-push`).
 
 Agents check repo-level policies when working within that repo. The `/learn` command auto-creates this directory when writing a repo-scoped policy.
 

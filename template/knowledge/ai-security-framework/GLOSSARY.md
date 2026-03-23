@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [operations, engineering]
+status: canonical
+tags: [glossary, terminology, security, definitions]
+relates_to: []
+---
+
 # Glossary
 
 > Key terms used in this security framework

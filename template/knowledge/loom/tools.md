@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, tools, file-operations, commands, web-search, agent]
+relates_to: []
+---
+
 # Tool System
 
 Tools extend the agent's capabilities to perform file operations, execute commands, and search the web.

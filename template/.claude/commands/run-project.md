@@ -7,7 +7,7 @@ visibility: public
 
 # /run-project - Ralph Loop Project Orchestrator
 
-Ralph loop orchestrator. **Default: in-session mode** — stories run as Task() sub-agents within the current Claude session, bypassing Bash timeout constraints. Headless mode (`--tmux` or direct bash) uses `scripts/run-project.sh` with `claude -p` process isolation.
+Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` — the single spawner for `claude -p` process isolation, worktree management, swarm mode, codex autofix, regression gates, and retry queues.
 
 **Arguments:** $ARGUMENTS
 
@@ -15,7 +15,7 @@ Ralph loop orchestrator. **Default: in-session mode** — stories run as Task() 
 
 "Pick a task, complete it, commit it."
 
-- Fresh context per task (sub-agent isolation)
+- Fresh context per task (`claude -p` process isolation)
 - Sub-agents do heavy lifting via `/execute-task`
 - Back pressure keeps code on rails
 - Handoffs preserve context between workers
@@ -24,51 +24,75 @@ Ralph loop orchestrator. **Default: in-session mode** — stories run as Task() 
 
 | Mode | When | How |
 |------|------|-----|
-| **In-session** (default) | `/run-project` invoked interactively | Task() sub-agents within current session |
-| **Headless bash** | `--tmux` flag, direct `bash scripts/run-project.sh`, CI/nohup | Independent `claude -p` processes |
-
-**Decision tree:**
-- Interactive Claude session → **in-session mode** (this is the default)
-- `--tmux` flag or `--bash` flag → headless bash orchestrator
-- External (CI, nohup, cron) → `bash scripts/run-project.sh` directly
+| **Default** | `/run-project` invoked interactively | `run-project.sh` in background, Claude polls state files |
+| **tmux** | `--tmux` flag | `run-project.sh` in tmux session (observe from phone) |
+| **direct** | `bash scripts/run-project.sh` (CI/nohup/cron) | Direct shell execution |
 
 ## In-Session Execution (Default)
 
-When `/run-project` is invoked in an interactive Claude session:
+When `/run-project` is invoked in an interactive Claude session, it launches `run-project.sh` as a background OS process and monitors progress via state file polling.
 
-### Loop
+### Step 1 — Parse Arguments
 
-1. Read prd.json → filter: `passes != true`, `dependsOn` resolved, `priority` order
-2. Load policies (see Pre-Loop section below)
-3. For each eligible story:
-   a. Announce: `=== {id}: {title} === ({n}/{total})`
-   b. Update `state.json`: add to `current_tasks` with timestamp
-   c. Spawn Task() sub-agent: `/execute-task {project}/{story-id}`
-   d. After return: `git status` in REPO_PATH
-   e. If dirty: auto-commit `[orchestrator] {id}: uncommitted work`
-   f. Re-read prd.json `passes` field (execute-task sets this directly in-session)
-   g. If passes still false: run fallback detection (Layer 1-3, same as bash `orchestrator_write_passes()`)
-   h. Update `state.json` + `progress.txt`
-   i. Run codex review (best-effort, non-blocking)
-4. Every 3 stories: run regression gates from `metadata.qualityGates`
-5. Every 3 stories: run project reanchor step (see Project Reanchor section)
+Parse `$ARGUMENTS` into project name + passthrough flags:
+- `--status`: delegate synchronously via `bash scripts/run-project.sh --status` (display + exit)
+- `--dry-run`: delegate synchronously via `bash scripts/run-project.sh --dry-run {project}` (display + exit)
+- `--help`: display flags table + exit
+- Empty (no project name): error — project name required
+- All other flags pass through verbatim to `run-project.sh`
 
-### Context Safety
+### Step 2 — Validate PRD + Display Summary
 
-- After **6 completed stories** OR estimated **70% context**: write `handoff.json` and **STOP**
-- Never continue past the safety net — next session picks up via `--resume`
-- `handoff.json` captures: project, completed stories, next story, blockers
-- High turn count (>80 turns) is a signal to proactively checkpoint
+1. Resolve PRD path: `companies/{co}/projects/{project}/prd.json` (use qmd search if needed)
+2. Read prd.json → display: project name, total stories, completed, remaining
+3. Ensure `workspace/orchestrator/{project}/` dir exists (create if not)
 
-### In-Session Failure Handling
+### Step 3 — Launch Background
 
-- Sub-agent returns with `passes: false` → prompt user: retry / skip / abort
-- Sub-agent times out (no return after extended wait) → auto-commit any dirty state, skip to next
-- Build/lint regression gate fails → prompt user: retry / fix manually / skip / abort
+```bash
+# Bash tool with run_in_background: true
+cd ~/Documents/HQ && \
+  nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
+  > workspace/orchestrator/{project}/run.log 2>&1 &
+echo "PID:$!"
+```
+
+Capture the PID from output. Announce to user:
+> Launched `run-project.sh` for **{project}** (PID {pid}). Monitoring progress...
+
+### Step 4 — Poll Loop
+
+Execute sequential Bash calls every ~30 seconds. Each poll:
+
+1. **Read state**: `jq -r '.status' workspace/orchestrator/{project}/state.json`
+2. **Read progress delta**: `tail -n +{last_line_count} workspace/orchestrator/{project}/progress.txt`
+3. **Check PID alive**: `kill -0 {pid} 2>/dev/null && echo "ALIVE" || echo "DEAD"`
+4. **Print new progress lines** to user (only lines not yet shown)
+5. **Branch on status**:
+   - `in_progress` + PID alive → sleep 30, continue polling
+   - `paused` → read last 20 lines of `run.log`, surface pause reason. Prompt user: **resume** (`bash scripts/run-project.sh --resume {project} --no-permissions`) / **abort** (kill PID)
+   - `completed` → exit poll loop → Step 5
+   - PID dead + status not `completed` → tail `run.log` for error context, report to user
+
+**Poll ceiling:** After 4 hours (480 cycles), warn user and offer to detach monitoring. Script keeps running — reattach with `/run-project --status`.
+
+### Step 5 — Completion Summary
+
+1. Read final `state.json` → stories completed/failed, regression gate results
+2. Read `progress.txt` → full run log
+3. Read `workspace/reports/{project}-summary.md` (if generated by completion flow)
+4. Display formatted summary to user
+
+### Failure / Pause Handling
+
+The script runs headless (no tty) — it takes non-interactive paths automatically:
+- **Story failure**: auto-retry once, then skip to retry queue
+- **Regression gate failure**: auto-pause (sets `state.json` status to `paused`)
+- Claude's poll loop detects `paused` state and surfaces the choice to the user
 
 ## Headless Bash Execution
 
-Launch the bash orchestrator for long-running, unattended execution:
+Launch the bash orchestrator directly for long-running, unattended execution:
 
 ```bash
 # Start or resume (auto-detected)
@@ -81,7 +105,7 @@ bash scripts/run-project.sh --resume {project} --no-permissions
 bash scripts/run-project.sh --dry-run {project}
 
 # With options
-bash scripts/run-project.sh {project} --max-budget 10 --model sonnet --no-permissions --verbose
+bash scripts/run-project.sh {project} --model sonnet --no-permissions --verbose
 
 # Check all project statuses
 bash scripts/run-project.sh --status
@@ -94,10 +118,8 @@ bash scripts/run-project.sh --status
 | `--resume` | auto-detected | Resume from next incomplete story |
 | `--status` | — | Show all project statuses, exit |
 | `--dry-run` | — | Show story order without executing |
-| `--bash` | off | Force headless bash mode (skip in-session) |
-| `--max-budget N` | 5 | Per-story cost cap in USD |
 | `--model MODEL` | (worker default) | Override model for all stories |
-| `--no-permissions` | off | Pass `--dangerously-skip-permissions` to claude |
+| `--no-permissions` | off | Pass `--dangerously-skip-permissions` to claude (auto-set in-session) |
 | `--retry-failed` | off | Re-run previously failed stories only |
 | `--timeout N` | none | Per-story wall-clock timeout in minutes |
 | `--verbose` | off | Show full claude output |
@@ -164,7 +186,7 @@ Every 3 completed stories (same cadence as regression gates), **after** the gate
    - New required work discovered? (missing routes, data bugs from codex review)
    - Any story now unnecessary?
 4. Write reanchor report: `workspace/orchestrator/{project}/reanchor-{n}.md`
-5. **Interactive (in-session):** Surface report to user — apply suggestions / skip / review each
+5. **In-session (poll loop):** When Claude's poll detects a reanchor report file, surface it to user — apply suggestions / skip / review each
 6. **Headless:** Write report, log summary, continue (never auto-modify PRD)
 
 **Must NOT:** Auto-rewrite stories (breaks execute-task's "never rewrite PRD" invariant). Run per-story (too expensive). Block headless execution.
@@ -245,16 +267,6 @@ If $ARGUMENTS is `--status`:
 1. Run `bash scripts/run-project.sh --status`
 2. Display formatted output
 
-## Bash Fallback (in-session)
-
-If in-session mode encounters issues (e.g., sub-agent failures, permission problems), fall back to:
-
-```bash
-bash scripts/run-project.sh $ARGUMENTS
-```
-
-This launches the headless bash orchestrator. Note: Bash tool has a 10-minute timeout — stories taking longer will be killed. Use `--tmux` for long-running projects.
-
 ## Rules
 
 - **prd.json required** — never fall back to README.md
@@ -284,7 +296,7 @@ This example shows `/run-project campaign-migration` executing through multiple 
   "name": "campaign-migration",
   "metadata": {
     "company": "{company}",
-    "repoPath": "repos/private/{repo}",
+    "repoPath": "repos/private/{your-repo}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [

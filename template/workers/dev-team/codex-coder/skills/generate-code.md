@@ -26,7 +26,7 @@ Optional:
 3. **Run Codex Exec for Generation**
    - Build prompt with task description and context:
      ```bash
-     cd {cwd} && codex exec --full-auto --cd {cwd} \
+     cd {cwd} && codex exec --full-auto -c model="gpt-5.4-mini" --cd {cwd} \
        "Generate code for: {task_description}. Follow existing patterns in the repo. Context files: {context_summary}" 2>&1
      ```
    - If `--output-schema` provided, add `--output-schema {file}` flag

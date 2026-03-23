@@ -29,8 +29,8 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available company collections: `{company}`, `{company-2}`, `{company}`, `personal`
-Also: `hq` (all HQ), `{repo}` (repo codebase)
+Available company collections: `{company}`, `{company}`, `{company}`, `personal`
+Also: `hq` (all HQ), `{repo}` ({REPO} codebase)
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -100,15 +100,15 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                                    # BM25 keyword search (default, all collections)
 /search "how do workers execute" --mode vsearch  # Semantic across all
-/search auth middleware -c {repo}                # Search repo codebase only
-/search "webhook handler" -c {repo} --mode vsearch  # Semantic search in repo
-/search {company-2} brand --mode query           # Hybrid with re-ranking
+/search auth middleware -c {collection}                    # Search {REPO} codebase only
+/search "webhook handler" -c {collection} --mode vsearch  # Semantic search in {REPO}
+/search {company} brand --mode query                # Hybrid with re-ranking
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
-/search "brand guidelines" -c {company-2}        # Search company knowledge only
-/search "recovery metrics" -c {company}          # Search company knowledge only
-# If cwd is companies/{company-2}/:
-/search "case study"                             # Auto-detects → -c {company-2}
+/search "brand guidelines" -c {company}             # Search {Company} knowledge only
+/search "recovery metrics" -c {collection}        # Search {Company} knowledge only
+# If cwd is companies/{company}/:
+/search "case study"                             # Auto-detects → -c {company}
 ```
 
 ## Notes
@@ -116,7 +116,7 @@ Display: "qmd unavailable, falling back to grep"
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{repo}`, `{company}`, `{company-2}`, `{company}`, `personal`
+- Use `-c` to scope to a collection: `hq`, `{repo}`, `{company}`, `{company}`, `{company}`, `personal`
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0-1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content

@@ -30,6 +30,17 @@ dimensions:
       - growth         # Channels, campaigns, partnerships, acquisition
       - operations     # Workflows, tools, compliance, team processes
 
+    # Maps each domain value to its canonical knowledge/ subdir
+    # Used by workers, gardeners, and taxonomy tools to route files correctly
+    canonical_subdir:
+      product: product/
+      engineering: engineering/
+      data: data/
+      brand: brand/
+      market: market/
+      growth: growth/
+      operations: operations/
+
   status:
     description: "Content maturity"
     required: true

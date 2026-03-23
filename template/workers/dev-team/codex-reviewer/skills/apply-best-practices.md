@@ -32,7 +32,7 @@ Optional:
 3. **Run Codex Exec with Goals**
    - For each goal, run Codex in sequence (sequential ensures no conflicts):
      ```bash
-     cd {cwd} && codex exec --full-auto --cd {cwd} \
+     cd {cwd} && codex exec --full-auto -c model="gpt-5.4" --cd {cwd} \
        "Apply {goal} best practices to: {file_list}. Make minimal, targeted changes. Do not modify unrelated code." 2>&1
      ```
    - After each goal pass, verify files are still valid (quick syntax check)

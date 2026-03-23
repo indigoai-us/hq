@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, code-style, rust, formatting, conventions]
+relates_to: []
+---
+
 # Code Style & Conventions
 
 ## Rust Formatting

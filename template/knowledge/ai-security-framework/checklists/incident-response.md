@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations, engineering]
+status: canonical
+tags: [incident-response, checklist, security, recovery, ai-automation]
+relates_to: []
+---
+
 # Incident Response Checklist
 
 > What to do when something goes wrong with AI automation

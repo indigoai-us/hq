@@ -1134,6 +1134,10 @@ run_story() {
   local model_hint
   model_hint=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .model_hint // empty' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
 
+  # Read codex_model_hint from story (Codex CLI model override)
+  local codex_model_hint
+  codex_model_hint=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .codex_model_hint // empty' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
+
   # Read story metadata for enriched prompt
   local story_title story_labels story_files
   story_title=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .title' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
@@ -1159,6 +1163,7 @@ Story: ${story_id} — ${story_title}
 Labels: ${story_labels}
 Files: ${story_files}
 PRD: ${prd_path}
+Codex model hint: ${codex_model_hint:-none}
 
 Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
 Do NOT implement directly — delegate to workers via the execute-task pipeline.
@@ -1219,10 +1224,11 @@ RULES:
   fi
 
   # Execute (unset CLAUDECODE to allow nested claude sessions)
+  # HQ_EXECUTING_STORY=1 signals to block-inline-story-impl hook that this is a legitimate sub-agent context
   if [[ "$VERBOSE" == true ]]; then
-    cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
+    cd "$HQ_ROOT" && env -u CLAUDECODE HQ_EXECUTING_STORY=1 "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
   else
-    cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
+    cd "$HQ_ROOT" && env -u CLAUDECODE HQ_EXECUTING_STORY=1 "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
   fi
 
   return $exit_code
@@ -1383,6 +1389,105 @@ Do NOT modify the PRD. Do NOT run unrelated changes."
 }
 
 # =============================================================================
+# Story Acceptance Tests (cumulative regression guard)
+# =============================================================================
+
+run_story_tests() {
+  local current_story="$1"
+
+  # Only run for repos with code changes
+  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && return 0
+
+  # Detect story test directory — convention: __tests__/stories/ or tests/stories/
+  local test_dir=""
+  if [[ -d "$REPO_PATH/__tests__/stories" ]]; then
+    test_dir="__tests__/stories"
+  elif [[ -d "$REPO_PATH/tests/stories" ]]; then
+    test_dir="tests/stories"
+  else
+    # No story tests exist yet — skip silently
+    return 0
+  fi
+
+  # Count test files
+  local test_count
+  test_count=$(find "$REPO_PATH/$test_dir" -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | wc -l | tr -d ' ')
+  [[ "$test_count" -eq 0 ]] && return 0
+
+  log_info "Running $test_count story acceptance test(s) after $current_story..."
+
+  # Detect test runner from qualityGates or package.json
+  local test_cmd=""
+  local gates
+  gates=$(jq -r '.metadata.qualityGates // [] | .[]' "$PRD_PATH" 2>/dev/null) || true
+  if echo "$gates" | grep -q "bun test\|bun run test"; then
+    test_cmd="bun test $test_dir/"
+  elif echo "$gates" | grep -q "vitest"; then
+    test_cmd="npx vitest run $test_dir/"
+  elif echo "$gates" | grep -q "jest"; then
+    test_cmd="npx jest $test_dir/"
+  elif [[ -f "$REPO_PATH/bun.lock" || -f "$REPO_PATH/bun.lockb" ]]; then
+    test_cmd="bun test $test_dir/"
+  elif [[ -f "$REPO_PATH/package.json" ]]; then
+    # Check for vitest or jest in devDependencies
+    if jq -e '.devDependencies.vitest // .dependencies.vitest' "$REPO_PATH/package.json" &>/dev/null; then
+      test_cmd="npx vitest run $test_dir/"
+    elif jq -e '.devDependencies.jest // .dependencies.jest' "$REPO_PATH/package.json" &>/dev/null; then
+      test_cmd="npx jest $test_dir/"
+    else
+      test_cmd="bun test $test_dir/"
+    fi
+  else
+    test_cmd="bun test $test_dir/"
+  fi
+
+  local output
+  local exit_code=0
+  output=$(cd "$REPO_PATH" && eval "$test_cmd" 2>&1) || exit_code=$?
+
+  if [[ $exit_code -eq 0 ]]; then
+    log_ok "All $test_count story acceptance test(s) pass after $current_story"
+    return 0
+  fi
+
+  log_err "Story acceptance tests FAILED after $current_story"
+  log_err "A prior story's behavior may have been regressed."
+  log_err "Output (last 30 lines):"
+  echo "$output" | tail -30
+
+  # Record failure
+  jq --arg story "$current_story" --arg ts "$(ts)" '
+    .story_test_failures = ((.story_test_failures // []) + [{"after_story": $story, "timestamp": $ts}])
+  ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+
+  # Handle like regression gate failure
+  if [[ "$HEADLESS" == true ]]; then
+    log_warn "Story test regression detected (headless) — pausing project"
+    jq --arg ts "$(ts)" '.status = "paused" | .updated_at = $ts | .pause_reason = "story_test_regression"' \
+      "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+    return 1
+  else
+    log_warn "Story test regression detected. Options:"
+    echo "  1) Retry (re-run story to fix regression)"
+    echo "  2) Continue (accept regression, proceed)"
+    echo "  3) Pause (stop orchestrator)"
+    read -r -p "Choice [1-3]: " choice
+    case "$choice" in
+      1) return 1 ;;  # caller will retry
+      2) return 0 ;;  # continue despite failure
+      3)
+        jq --arg ts "$(ts)" '.status = "paused" | .updated_at = $ts' "$STATE_FILE" > "$STATE_FILE.tmp" \
+          && mv "$STATE_FILE.tmp" "$STATE_FILE"
+        log_warn "Paused. Resume: scripts/run-project.sh --resume $PROJECT"
+        exit 0
+        ;;
+    esac
+  fi
+
+  return 1
+}
+
+# =============================================================================
 # Doc Sweep (post-project: update 4 documentation layers)
 # =============================================================================
 
@@ -1513,7 +1618,7 @@ run_regression_gate() {
     # Gate failed — check if errors are pre-existing (baseline comparison)
     # Count error lines (heuristic: lines containing "error" case-insensitive)
     local err_count
-    err_count=$(echo "$output" | grep -ci "error" 2>/dev/null || echo "0")
+    err_count=$(echo "$output" | grep -ci "error" 2>/dev/null) || err_count=0
     local gate_key
     gate_key=$(echo "$gate" | tr ' ' '_')
 
@@ -1545,7 +1650,7 @@ run_regression_gate() {
         [[ "$stashed" == true ]] && (cd "$REPO_PATH" && git stash pop -q 2>/dev/null) || true
       fi
       if [[ $base_exit -ne 0 ]]; then
-        base_err_count=$(echo "$base_output" | grep -ci "error" 2>/dev/null || echo "0")
+        base_err_count=$(echo "$base_output" | grep -ci "error" 2>/dev/null) || base_err_count=0
       fi
       # Initialize baseline file
       echo "{}" > "$baseline_file"
@@ -2282,6 +2387,7 @@ process_swarm_completion() {
     update_state_completed "$story_id" "$commit_sha" "$files_changed"
     release_checkout "$story_id"
     release_swarm_locks "$story_id"
+    run_story_tests "$story_id" || true  # non-blocking in swarm — logged + state recorded
 
     local story_title
     story_title=$(get_story_title "$story_id")
@@ -2599,10 +2705,11 @@ if [[ "$SWARM_MODE" == true ]]; then
       duration=$(( story_end - story_start ))
 
       validate_git_state "$STORY_ID"
+      run_story_tests "$STORY_ID" || true  # non-blocking in sequential — logged + state recorded
       run_codex_review "$STORY_ID"
 
       # Orchestrator writes passes (source of truth) — pass checkout timestamp for Layer 3 git heuristic
-      local checkout_ts_iso
+      checkout_ts_iso=""
       checkout_ts_iso=$(date -u -r "$story_start" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || checkout_ts_iso=""
       orchestrator_write_passes "$STORY_ID" "$checkout_ts_iso"
 
@@ -2828,7 +2935,7 @@ else
       run_codex_review "$STORY_ID"
 
       # Orchestrator writes passes (source of truth) — pass checkout timestamp for Layer 3 git heuristic
-      local checkout_ts_iso
+      checkout_ts_iso=""
       checkout_ts_iso=$(date -u -r "$story_start" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || checkout_ts_iso=""
       orchestrator_write_passes "$STORY_ID" "$checkout_ts_iso"
 
@@ -2899,6 +3006,11 @@ else
         esac
       fi
     done
+
+    # STORY ACCEPTANCE TESTS: after every completed story (cumulative regression guard)
+    if [[ "$story_passed" == true ]]; then
+      run_story_tests "$STORY_ID" || true  # non-blocking — logged + state recorded
+    fi
 
     # REGRESSION GATE: every N completed stories
     if [[ "$story_passed" == true && $((completed_this_run % REGRESSION_INTERVAL)) -eq 0 && "$completed_this_run" -gt 0 ]]; then
@@ -3045,6 +3157,13 @@ if [[ "$REMAINING" -eq 0 ]]; then
       echo "## Regression Gates"
       echo ""
       jq -r '.regression_gates[] | "- After \(.after_story): \(if .passed then "✅ passed" else "❌ failed" end)"' "$STATE_FILE"
+      echo ""
+    fi
+
+    if [[ $(jq '(.story_test_failures // []) | length' "$STATE_FILE") -gt 0 ]]; then
+      echo "## Story Acceptance Test Failures"
+      echo ""
+      jq -r '(.story_test_failures // [])[] | "- After \(.after_story): ❌ regression detected (\(.timestamp))"' "$STATE_FILE"
       echo ""
     fi
   } > "$REPORT_FILE"

@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations, engineering]
+status: canonical
+tags: [browser-security, checklist, chrome, hardening, ai-agent]
+relates_to: []
+---
+
 # Browser Security Checklist
 
 > Hardening Claude in Chrome and other browser-based AI agents

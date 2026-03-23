@@ -1,3 +1,11 @@
+---
+type: analysis
+domain: [operations, data]
+status: canonical
+tags: [ralph, economics, cost-structure, roi, developer-productivity]
+relates_to: []
+---
+
 # Economic Impact
 
 ## The New Economics of Software Development

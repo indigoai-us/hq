@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [engineering]
+status: canonical
+tags: [claude-code, workflow, best-practices, matt-pocock, engineering]
+relates_to: []
+---
+
 # Claude Code Workflow for Real Engineering
 
 *Based on Matt Pocock's "How I use Claude Code for real engineering" video*

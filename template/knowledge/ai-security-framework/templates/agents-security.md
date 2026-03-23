@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [operations, engineering]
+status: canonical
+tags: [template, agents-md, security-boundaries, configuration]
+relates_to: []
+---
+
 # agents.md Security Template
 
 > Copy and customize this template to define AI security boundaries

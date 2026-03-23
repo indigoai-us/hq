@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, threads, persistence, conversation-snapshot, git-context]
+relates_to: []
+---
+
 # Thread System
 
 Threads persist complete conversation snapshots including messages, agent state, and git context.

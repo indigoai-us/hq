@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations, engineering]
+status: canonical
+tags: [quick-start, security, setup, onboarding, hardening]
+relates_to: []
+---
+
 # Quick Start Guide
 
 > Get secure in 30 minutes

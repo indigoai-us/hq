@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations, engineering]
+status: canonical
+tags: [pre-flight, checklist, security, setup, system-access]
+relates_to: []
+---
+
 # Pre-Flight Security Checklist
 
 > Complete before enabling AI automation with system access

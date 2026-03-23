@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [ralph, core-concepts, mallocing, context-management, terminology]
+relates_to: []
+---
+
 # Core Concepts
 
 ## Key Terminology

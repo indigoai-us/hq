@@ -12,6 +12,7 @@ execution:
   retry_attempts: 1
   spawn_method: task_tool
   model: haiku
+  codex_model: gpt-5.4
 
 context:
   base:
@@ -57,8 +58,8 @@ verification:
 cli:
   binary: /opt/homebrew/bin/codex
   commands:
-    - codex review --uncommitted
-    - codex exec --full-auto
+    - codex review --uncommitted -c model="gpt-5.4"
+    - codex exec --full-auto -c model="gpt-5.4"
 
 # State Machine (Loom pattern)
 state_machine:

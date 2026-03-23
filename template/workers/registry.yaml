@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "10.0"
-updated: "2026-03-10"
+version: "10.1"
+updated: "2026-03-23"
 
 workers:
   # ===================
@@ -26,8 +26,20 @@ workers:
     description: "Example worker — copy and customize for your own"
 
   # ===================
-  # Standalone Workers (9)
+  # Standalone Workers (11)
   # ===================
+
+  - id: paper-designer
+    path: workers/paper-designer/
+    type: OpsWorker
+    status: active
+    description: "Bidirectional Paper Desktop design bridge — extract specs, preview components, edit designs via MCP"
+
+  - id: impeccable-designer
+    path: workers/impeccable-designer/
+    type: OpsWorker
+    status: active
+    description: "Quality-obsessed design — audit, polish, typeset, animate, and the full Impeccable skill chain"
 
   - id: frontend-designer
     path: workers/frontend-designer/

@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [engineering]
+status: canonical
+tags: [ralph, implementation, setup, prerequisites, getting-started]
+relates_to: []
+---
+
 # Practical Implementation
 
 ## Prerequisites

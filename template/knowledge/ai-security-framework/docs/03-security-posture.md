@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations]
+status: canonical
+tags: [security-posture, self-assessment, maturity-model, ai-automation]
+relates_to: []
+---
+
 # Your Security Posture
 
 > Self-assessment guide for AI automation security

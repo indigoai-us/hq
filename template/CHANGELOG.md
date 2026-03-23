@@ -1,5 +1,41 @@
 # Changelog
 
+## v8.2.0 (2026-03-23)
+
+New commands, workers, knowledge, and a comprehensive PII/company scrub across all files.
+
+### Added
+- `/document-release` — Post-ship documentation sync for README, CLAUDE.md, architecture docs
+- `/investigate` — Iron Law debugging with structured root cause analysis
+- `/retro` — Project/session retrospective with pattern surfacing
+- `block-inline-story-impl.sh` hook — prevents inline story implementation outside `/execute-task`
+- `impeccable-designer` worker — quality-obsessed design with full Impeccable skill chain
+- `paper-designer` worker — bidirectional Paper Desktop design bridge via MCP
+- `knowledge/impeccable/` — Impeccable design system knowledge base
+- `knowledge/design-styles/formulas/` — design formula templates (app, print, slides, social)
+- `knowledge/hq/handoff-templates.md` + `knowledge-taxonomy.md`
+- `knowledge/agent-browser/tauri-testing.md` — Tauri app testing guide
+- Story test runner in `run-project.sh` — cumulative regression guard after each story
+
+### Changed
+- 19 commands updated with latest improvements
+- `review.md` + `understand-project.md` synced from upstream
+- `auto-checkpoint-trigger.sh`, `hook-gate.sh`, `observe-patterns.sh` updated
+- `run-project.sh` — codex model hints, story test runner, HQ_EXECUTING_STORY env var
+- All Ralph, ai-security-framework, agent-browser, design-styles, dev-team, gemini-cli, loom knowledge updated
+- Registry bumped to v10.0 with 45 public workers
+
+### Removed
+- `/imessage` command (personal, not generic)
+- All {REPO}/{Company}/{Company} references scrubbed from CLAUDE.md, commands, workers, knowledge
+- {Company} Linear Integration section removed from CLAUDE.md
+- {REPO} Project Repos commit rules section removed from CLAUDE.md
+- All company-specific examples replaced with generic placeholders
+
+### Security
+- Full PII scrub pass across 753 files
+- ggshield secret scan — zero findings
+
 ## v8.1.1 (2026-03-12)
 
 Fix missing scaffold directories — new installs now get the full canonical HQ folder structure.
@@ -293,7 +329,7 @@ Major release: 5 worker teams (39 workers), gardener audit system, new commands.
 - **`/garden`** — Multi-worker audit pipeline for detecting stale content, duplicates, orphans, INDEX drift, and conflicts. Three-phase (scout→audit→curate) with human approval gates. Scope by company, directory, or full HQ sweep.
 - **`/startwork`** — Lightweight session entry point: pick company or project, gather minimal context.
 - **`/newcompany`** — Scaffold a new company with full infrastructure (dirs, manifest, knowledge repo, qmd collection).
-- **`/bootcamp-student`** — Onboard new students with full pipeline (DB, PRD, deck).
+- **`/{custom-command}`** — Onboard new students with full pipeline (DB, PRD, deck).
 
 ### Changed
 

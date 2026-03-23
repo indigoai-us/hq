@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations]
+status: canonical
+tags: [contributing, open-source, security-framework, guidelines]
+relates_to: []
+---
+
 # Contributing to the AI Security Framework
 
 > Help make AI automation safer for everyone

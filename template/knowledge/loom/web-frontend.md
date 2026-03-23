@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, web-frontend, svelte, sveltekit, tailwind, xstate]
+relates_to: []
+---
+
 # Web Frontend
 
 Svelte 5 web application with SvelteKit, Tailwind CSS 4, and xstate state machines.

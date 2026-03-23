@@ -51,6 +51,8 @@ Read the task description and classify by **primary work type**:
 | **Security analysis** | Opus | Threat modeling, vulnerability analysis | $0.50–3.00 |
 | **Complex reasoning** | Opus | Multi-step logic, edge cases, novel problems | $1.00–5.00 |
 | **Research/Decisions** | Opus | Synthesizing options, novel approaches | $0.50–3.00 |
+| **Codex generation** | GPT-5.4 Mini (via Codex CLI) | Fast code gen, 54.4% SWE-Bench Pro, 2x faster than GPT-5 mini | ~$0.02–0.10 |
+| **Codex review/debug** | GPT-5.4 (via Codex CLI) | Full reasoning for review and root-cause analysis | ~$0.05–0.30 |
 
 **Decision logic:**
 1. Scan for keywords: search/read/explore → Haiku; code/debug/refactor → Sonnet; architecture/security/novel → Opus
@@ -66,6 +68,8 @@ Read the task description and classify by **primary work type**:
 **Sonnet signals:** code, build, fix, refactor, test, review, implement, API, component, pattern
 
 **Opus signals:** architecture, design system, security, threat, novel, complex, tradeoff, research, strategy, reasoning
+
+**Codex signals:** codex, scaffold, generate via codex, codex review, codex debug — routes to Codex CLI (GPT-5.4 mini for generation, GPT-5.4 for review/debug)
 
 ## Step 4: Output Recommendation
 
@@ -131,14 +135,14 @@ Questions?
 
 ## Worked Example
 
-**Input:** "I need to explore the {repo} codebase to understand how auth middleware is structured"
+**Input:** "I need to explore the {REPO} codebase to understand how auth middleware is structured"
 
 **Output:**
 
 ```
 RECOMMENDED MODEL: Haiku
 
-Task: "I need to explore the {repo} codebase to understand how auth middleware is structured"
+Task: "I need to explore the {REPO} codebase to understand how auth middleware is structured"
 
 Reasoning:
 - Primary task is exploration/search (understand structure, not modify)
@@ -179,8 +183,8 @@ COST OPTIMIZATION TIPS:
 NEXT STEPS:
 
 - `claude code --model haiku` → Start exploration session with Haiku
-- Read: repos/private/{repo}/apps/function/src/ (Lambda code location)
-- Search: qmd vsearch "auth middleware {repo}" (explore first)
+- Read: repos/private/{your-repo}/apps/function/src/ (Lambda code location)
+- Search: qmd vsearch "auth middleware {REPO}" (explore first)
 ```
 
 ---

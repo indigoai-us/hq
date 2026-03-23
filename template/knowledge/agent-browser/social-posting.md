@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [growth, operations]
+status: canonical
+tags: [social-posting, agent-browser, twitter, linkedin, automation]
+relates_to: []
+---
+
 # Social Posting with agent-browser
 
 ## X/Twitter — Regular Post

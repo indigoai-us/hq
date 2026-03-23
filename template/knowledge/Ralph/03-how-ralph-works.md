@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [engineering]
+status: canonical
+tags: [ralph, loop, bash-script, autonomous-coding, workflow]
+relates_to: []
+---
+
 # How Ralph Works
 
 ## The Basic Loop

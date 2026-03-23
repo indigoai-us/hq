@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [ralph, back-pressure, validation, testing, code-quality]
+relates_to: []
+---
+
 # Back Pressure Engineering
 
 ## What is Back Pressure?
@@ -220,3 +228,65 @@ Based on back pressure speed and reliability:
 
 > "Any discipline where you can mechanically verify it is going to be automated. That's absolutely certain - when you can mechanically verify it, it's going to be automated."
 > — Geoffrey Huntley
+
+## Story-Level Acceptance Tests (Cumulative Regression Guard)
+
+### The Problem
+
+Project-global back-pressure (typecheck, lint, test suite) catches structural errors but misses **semantic regressions** — when sub-agent B undoes sub-agent A's work in a way that no existing test covers. Each sub-agent gets fresh context and has zero awareness of prior stories' changes.
+
+The `passes: true` flag is never re-verified. Once a story is marked complete, the loop skips it forever. If a later story regresses its behavior, nothing catches it — unless a test specifically covers that behavior.
+
+### The Solution
+
+Each story's `e2eTests` field in prd.json drives the creation of **executable acceptance tests** that persist across stories.
+
+### Convention
+
+```
+{repo}/__tests__/stories/{story-id}.test.ts
+```
+
+- One `describe("{story-id}: {title}")` block per story
+- One `it()` / `test()` per `e2eTests` entry from prd.json
+- Import from real modules — no mocks for behavior under test
+- Tests must be deterministic and fast
+
+### How It Works
+
+1. `/prd` generates `e2eTests` entries in Given/When/Then format for each story
+2. `/execute-task` includes an `acceptance-test-writer` phase (after dev, before code-reviewer) that writes test files from these descriptions
+3. The test-writer runs ALL existing story tests as back-pressure — catching regressions immediately
+4. `run-project.sh` runs `run_story_tests()` after EVERY completed story (not every 3 like the regression gate)
+5. If a prior story's test fails, the orchestrator logs the failure and can pause/retry
+
+### Flow
+
+```
+Story US-001 completes:
+  → acceptance-test-writer creates __tests__/stories/US-001.test.ts
+  → 3 tests pass ✅
+  → committed with story
+
+Story US-002 completes:
+  → acceptance-test-writer creates __tests__/stories/US-002.test.ts
+  → runs US-002 tests: 2 tests pass ✅
+  → runs US-001 tests: 3 tests still pass ✅  ← regression guard
+  → committed with story
+
+Story US-003 completes:
+  → acceptance-test-writer creates __tests__/stories/US-003.test.ts
+  → runs US-003 tests: 4 tests pass ✅
+  → runs US-001 tests: 2 pass, 1 FAILS ❌  ← regression detected!
+  → orchestrator pauses — US-003 broke US-001's behavior
+```
+
+### Backwards Compatibility
+
+- Empty `e2eTests` (`[]`) = no test-writer phase, no story tests written
+- If `__tests__/stories/` directory doesn't exist, `run_story_tests()` returns 0 silently
+- Existing projects without `e2eTests` are completely unaffected
+
+### Key Principle
+
+The test suite IS the regression check — but only if it covers each story's acceptance criteria. Story-level acceptance tests close the gap between "all tests pass" and "all stories still work."

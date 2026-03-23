@@ -12,6 +12,7 @@ execution:
   retry_attempts: 2
   spawn_method: task_tool
   model: haiku
+  codex_model: gpt-5.4-mini
 
 context:
   base:
@@ -56,7 +57,7 @@ verification:
 cli:
   binary: /opt/homebrew/bin/codex
   commands:
-    - codex exec --full-auto
+    - codex exec --full-auto -c model="gpt-5.4-mini"
 
 # State Machine (Loom pattern)
 state_machine:
@@ -112,9 +113,9 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{product}
-  /run codex-coder implement-feature --story US-001 --repo repos/private/{product}
-  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{product}
+  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{your-repo}
+  /run codex-coder implement-feature --story US-001 --repo repos/private/{your-repo}
+  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{your-repo}
   ```
 
   ## Patterns

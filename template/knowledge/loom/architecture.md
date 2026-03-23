@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, architecture, workspace-layout, crate-structure, rust]
+relates_to: []
+---
+
 # Loom Architecture
 
 ## Workspace Layout

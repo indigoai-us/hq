@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [skill-schema, worker-skills, interface, tooling, discovery]
+relates_to: []
+---
+
 # Skill Interface Schema
 
 Formalized skill structure for consistent tooling and discovery. Inspired by Loom's tool system.

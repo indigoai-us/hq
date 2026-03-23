@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering, operations]
+status: canonical
+tags: [ralph-loop, context-preservation, task-execution, sub-agents, orchestrator]
+relates_to: []
+---
+
 # Ralph Loop Pattern: Context-Preserving Task Execution
 
 ## Problem

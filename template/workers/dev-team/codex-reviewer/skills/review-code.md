@@ -36,7 +36,7 @@ Optional:
      - Default (standalone invocation): `codex review --uncommitted`
    - Add custom focus as prompt argument:
      ```bash
-     cd {cwd} && codex review --uncommitted \
+     cd {cwd} && codex review --uncommitted -c model="gpt-5.4" \
        "Focus on {focus_area}. Review files: {file_list}. Flag issues by severity: critical, high, medium, low, info." 2>&1
      ```
    - Capture full output (markdown-formatted review)

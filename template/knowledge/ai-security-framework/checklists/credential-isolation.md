@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [operations, engineering]
+status: canonical
+tags: [credentials, isolation, keychain, secrets, checklist]
+relates_to: []
+---
+
 # Credential Isolation Checklist
 
 > Protecting your keychain and secrets from AI access

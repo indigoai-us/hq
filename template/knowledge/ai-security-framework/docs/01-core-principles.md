@@ -1,3 +1,11 @@
+---
+type: strategy
+domain: [operations, engineering]
+status: canonical
+tags: [security-principles, ai-automation, threat-model, least-privilege]
+relates_to: []
+---
+
 # Core Security Principles for AI Automation
 
 > The mental model for securing autonomous AI systems

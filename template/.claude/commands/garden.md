@@ -14,8 +14,8 @@ Multi-worker audit pipeline: Scout → Auditor → Curator. Detects stale conten
 ## Usage
 
 ```
-/garden {company}                      # Audit one company (all its dirs)
-/garden companies/{company}/knowledge/ # Audit specific directory
+/garden {company}                    # Audit one company (all its dirs)
+/garden companies/{company}/knowledge/    # Audit specific directory
 /garden projects/                      # Audit all projects
 /garden all                            # Full HQ sweep (chunked by company + orphan sweep)
 /garden --resume {run-id}              # Resume interrupted run

@@ -1,3 +1,11 @@
+---
+type: guide
+domain: [engineering, operations]
+status: canonical
+tags: [agents-md, claude-md, configuration, project-context, ai-agent]
+relates_to: []
+---
+
 # agents.md Guide
 
 ## What is agents.md?

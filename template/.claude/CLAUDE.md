@@ -42,7 +42,7 @@ Runtime-configurable hook execution via environment variables (no settings.json 
 | Profile | Hooks | Use Case |
 |---------|-------|----------|
 | `minimal` | block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets | Critical safety only (no checkpoint nudges) |
-| `standard` | All minimal + auto-checkpoint-trigger, auto-handoff-trigger, observe-patterns | Default (all current hooks active) |
+| `standard` | All minimal + auto-checkpoint-trigger, auto-handoff-trigger, observe-patterns, block-inline-story-impl | Default (all current hooks active) |
 | `strict` | All standard + future quality/format hooks | Development/testing (reserved) |
 
 **Default:** `standard` (all hooks active)
@@ -90,7 +90,7 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Companies
 
-{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, hpo. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
+{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, tonal, {company}, {company}, {company}, hpo, amass, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -125,47 +125,6 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, workers, kn
 ## Sensitive Path Deny Lists
 
 Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
-
-## {Product} Linear Integration
-
-All {PRODUCT}/{Product}/{Company} work tracked in Linear (workspace: `voyage`). Same hierarchy: Initiatives > Projects > Issues > Sub-issues.
-
-**Creds:** `companies/{company}/settings/linear/credentials.json`
-**Config:** `companies/{company}/settings/linear/config.json` (team IDs, state IDs, initiative IDs, members)
-**Teams:** DEV (Development), AGE (Agent-Ops), GTM, PROD (Product), CX, OPS, LIVOPS (Live Ops), STYLE (Design), HR
-**API:** `https://api.linear.app/graphql` — queries at `knowledge/private/linear/graphql-queries.md`
-
-### Team Routing
-
-| Work type | Team |
-|-----------|------|
-| Platform/infra/Lambda/DB/SST/ECS/code | DEV |
-| Agent-ops/HQ tooling/dashboards | AGE |
-| GTM/marketing/analytics/pixels/CAPI | GTM |
-| Product specs/features/roadmap | PROD |
-| Customer support/CX dashboards | CX |
-| Operations/billing/TAM/finance | OPS |
-| Live ops/monitoring/incidents | LIVOPS |
-| Design/UI/brand | STYLE |
-
-### Rules
-
-1. **`/prd` → create Linear project + issues**: On {Company}/{Product} PRD creation, create Linear project (linked to best-fit initiative), create issue per story, store IDs in prd.json
-2. **`/execute-task` → sync state + comment**: Set issue In Progress on start, Done on completion. Comment with status + @mention reviewers when done
-3. **`/run-project` → sync project state + comment**: Set Linear project "started" on first task. Comment on state transitions
-4. **Team routing**: Use table above. When in doubt, default to DEV
-5. **Initiative grouping**: Reuse existing (CDP Migration, {PRODUCT}.ai, Build Faster, Deliver More Value, Capture TAM, Automate Internal Ops, Grow Wallet Share). Only create new for genuinely new strategic themes
-6. **prd.json fields**: `metadata.linearProjectId`, `metadata.linearCredentials` (must point to `companies/{company}/...`), per-story `linearIssueId`
-7. **Best-effort**: Linear sync never blocks execution. Log errors, skip on failure
-8. **No retroactive sync**: Don't create Linear objects for archived/completed projects
-9. **Commenting on state changes**: When issue → In Review, comment mentioning relevant reviewer(s). When blocked/needs resolution, comment with context + @mention. Use member IDs from config.json `members` block, fall back to display name
-10. **Cross-posting guard**: NEVER use another company's Linear creds for {Product} work. Validate `workspace: "voyage"` in config before any API call
-11. **Default assignee by team**: DEV → {developer}. AGE/GTM/PROD → {your-name}. CX/OPS/LIVOPS/STYLE → unassigned. Resolved at issue creation using member IDs from config.json
-12. **No orphan issues**: Issues MUST be created with `projectId`. If project creation failed during `/prd`, backfill in `/run-project` pre-loop. All issues get `dueDate` matching project `targetDate`
-
-### Triage
-
-`/check-linear-voyage` — interactive triage for {Product} workspace. Enforces company isolation.
 
 ## Infrastructure-First
 
@@ -264,7 +223,7 @@ Use a bridge instead of copying files:
 
 HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
 
-**Collections:** `hq` (all HQ), `{product}` ({PRODUCT} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
+**Collections:** `hq` (all HQ), `{repo}` ({REPO} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
 
 **When to search:** Before any planning, research, or context-gathering task, search with `qmd` first. This includes codebase exploration — use qmd for conceptual search instead of Grep.
 
@@ -272,7 +231,7 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
 - `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
 - `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
-- Add `-c {collection}` to scope to a specific collection (e.g. `-c {product}`)
+- Add `-c {collection}` to scope to a specific collection (e.g. `-c {collection}`)
 
 **Slash commands:** `/search <query>`, `/search-reindex`
 
@@ -281,11 +240,11 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 | Need | Tool | Example |
 |------|------|---------|
 | Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about Stripe integration" |
-| Find code by concept | `qmd vsearch -c {product}` | "where auth middleware is defined" |
+| Find code by concept | `qmd vsearch -c {collection}` | "where auth middleware is defined" |
 | Find project PRD | `qmd search` or direct `Read` | `qmd search "project-name prd.json" --json -n 5` |
 | Find worker yaml | `Read workers/registry.yaml` → path | Never Glob — registry has all paths |
 | Find companies | `Read companies/manifest.yaml` | Never Glob — manifest lists all companies |
-| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{product}/apps/"` |
+| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{your-repo}/apps/"` |
 | Exact pattern match in code | `Grep` (works from HQ root) | `import.*AuthService` with `glob: "*.ts"` |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
@@ -336,30 +295,6 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 - Prefer merge over rebase when a branch is significantly behind (50+ commits).
 - If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
-
-## Project Repos - Commit Rules
-
-### {PRODUCT} (`repos/private/{product}`)
-**MANDATORY before any PR (enforced by hook):**
-1. `bun run test` — must pass
-2. `bun check` — must pass (TypeScript)
-3. `bun lint` — must pass
-
-**Use `/{product}-pr` command** (in {PRODUCT} repo's `.claude/commands/`) — direct `gh pr create` is blocked by PreToolUse hook.
-
-**Code location rules:**
-- Lambda code → `apps/function/src/` (NOT libs)
-- Use `pgClient` with raw SQL (NOT Prisma) for Lambda db queries
-- Use DynamoDB for ephemeral state (migration state, dead-letter)
-
-**Parallel agent cleanup:** When running parallel agents for large-scale code removal, they miss files outside their assigned scope (e.g. schema files, session handling, component props, infra configs). ALWAYS run a comprehensive grep for all removed identifiers after parallel agents finish and before committing.
-
-**Sub-agent import paths:** Sub-agents consistently get relative import paths wrong when creating files in unfamiliar directory structures (e.g. `../../hooks/` instead of `../hooks/`). ALWAYS run `bun check` after sub-agent edits to catch broken imports before proceeding.
-
-**Integration deprecation:** Removing an integration ID from `libs/db/src/constants/integration.ts` causes cascading TS errors — the `DatabaseEntity['integrations']['id']` union type flows through Supabase `.eq()` filters across many files. Fully remove the constant from the `Integration` object; `@deprecated` JSDoc on a const value still includes it in the union type.
-
-**Full rules:** `repos/private/{product}/.claude/CLAUDE.md`
-Repo: https://github.com/{org}/{repo}
 
 ## Vercel Deployments
 
@@ -442,6 +377,7 @@ A PreCompact hook fires at 80% context. Autocompact cannot be fully disabled in 
 3. **Context is precious** - Checkpoint often, don't let work evaporate
 4. **Test before ship** - If you can't verify it works, you can't ship it
 5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
+6. **Completeness is near-zero cost** - AI makes the marginal cost of doing the complete thing close to zero. Always do the complete thing when achievable (a "lake"), not the shortcut. Reserve shortcuts for genuinely unbounded scope (an "ocean")
 
 ## E2E Testing Standards
 

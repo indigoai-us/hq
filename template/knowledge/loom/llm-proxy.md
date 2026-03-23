@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [loom, llm-proxy, api-keys, server-side, anthropic]
+relates_to: []
+---
+
 # LLM Proxy Architecture
 
 Loom uses a server-side proxy for all LLM interactions. API keys stay on the server; clients communicate through proxy endpoints.

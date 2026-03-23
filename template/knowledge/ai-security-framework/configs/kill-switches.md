@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering, operations]
+status: canonical
+tags: [kill-switch, emergency-controls, circuit-breaker, safety, ai-agent]
+relates_to: []
+---
+
 # Kill Switch Patterns
 
 > Emergency controls to stop AI agents when things go wrong

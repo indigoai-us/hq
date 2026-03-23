@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering, product]
+status: canonical
+tags: [ralph, specifications, prd, acceptance-criteria, story-format]
+relates_to: []
+---
+
 # Specifications & PRDs
 
 ## The Role of Specifications

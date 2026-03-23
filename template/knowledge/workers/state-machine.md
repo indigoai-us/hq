@@ -1,3 +1,11 @@
+---
+type: reference
+domain: [engineering]
+status: canonical
+tags: [worker, state-machine, execution-flow, lifecycle, fsm]
+relates_to: []
+---
+
 # Worker State Machine
 
 Workers follow an explicit state machine for predictable execution. Inspired by Loom's agent FSM.
