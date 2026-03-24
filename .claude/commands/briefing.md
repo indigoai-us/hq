@@ -21,12 +21,18 @@ Parse the YAML to extract all company slugs (keys under `companies:`).
 
 ### 2. Collect State for Each Company
 
-For each company slug, gather the following. Run commands from the repo root. If a command returns no results, note "none" — do not error.
+First, resolve the repo root:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+```
+
+For each company slug, gather the following. **Always run commands from `$REPO_ROOT`** — never `cd` into symlinked company directories (they may resolve outside the repo, breaking git). If a command returns no results, note "none" — do not error.
 
 #### a. bd Tasks
 
 ```bash
-cd companies/{slug} && bd list --json 2>/dev/null
+(cd "$REPO_ROOT/companies/{slug}" && bd list --json 2>/dev/null)
 ```
 
 Extract: total open tasks, any blocked tasks, any with `priority: 1` (urgent). If bd has no database or returns empty, report "no tasks".
@@ -34,7 +40,7 @@ Extract: total open tasks, any blocked tasks, any with `priority: 1` (urgent). I
 #### b. bd Epics
 
 ```bash
-cd companies/{slug} && bd epic status 2>/dev/null
+(cd "$REPO_ROOT/companies/{slug}" && bd epic status 2>/dev/null)
 ```
 
 Extract: epic names and completion percentages. If none, report "no epics".
