@@ -14,7 +14,7 @@
 | [beads-architecture](beads-architecture/INDEX.md) | 4 | 2026-03-20 |
 | [beads-data-model](beads-data-model/INDEX.md) | 1 | 2026-03-20 |
 | [beads-multi-agent](beads-multi-agent/INDEX.md) | 2 | 2026-03-20 |
-| [beads-workflows](beads-workflows/INDEX.md) | 2 | 2026-03-20 |
+| [beads-workflows](beads-workflows/INDEX.md) | 3 | 2026-03-24 |
 | [gas-town-architecture](gas-town-architecture/INDEX.md) | 5 | 2026-03-20 |
 | [gas-town-operations](gas-town-operations/INDEX.md) | 5 | 2026-03-20 |
 | [ghq-core](ghq-core/INDEX.md) | 14 | 2026-03-20 |
