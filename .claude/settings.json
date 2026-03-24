@@ -55,6 +55,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/guard-claude-dir.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

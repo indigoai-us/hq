@@ -25,6 +25,7 @@ Auto-generated index of `companies/ghq/tools/`.
 |-----------|----------|
 | [aws/](aws/) | [aws-helper.sh](aws/aws-helper.sh) — AWS CLI wrapper with ergonomic defaults |
 | [bd/](bd/) | [bd-helper.sh](bd/bd-helper.sh) — Beads issue tracker wrapper |
+| [file/](file/) | [edit-file.sh](file/edit-file.sh) — Exact string replacement in files (replaces built-in Edit tool), [write-file.sh](file/write-file.sh) — Write content to a file (replaces built-in Write tool) |
 | [git/](git/) | [gh-helper.sh](git/gh-helper.sh) — GitHub CLI wrapper with bd integration, [git-helper.sh](git/git-helper.sh) — Git workflow wrapper enforcing GHQ conventions |
 | [http/](http/) | [http-request.sh](http/http-request.sh) — HTTP request wrapper with JSON defaults |
 | [indigo/](indigo/) | [indigo-helper.sh](indigo/indigo-helper.sh) — Indigo CLI wrapper with ergonomic defaults |

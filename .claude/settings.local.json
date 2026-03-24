@@ -115,12 +115,12 @@
       "Bash(tools/*)",
       "Bash(./tools/*)",
       "Bash(chmod +x *)",
-      "Write",
-      "Edit",
       "Skill(new-company)",
       "Skill(new-company:*)",
       "Bash(for d:*)",
-      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/$d/**)"
+      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/$d/**)",
+      "Write",
+      "Edit"
     ],
     "deny": [
       "Agent"
