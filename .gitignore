@@ -12,5 +12,8 @@ companies/*
 *.db
 
 
+# Async agent run artifacts
+.agents/
+
 # Override global gitignore to track local permissions
 !.claude/settings.local.json
