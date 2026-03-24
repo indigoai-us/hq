@@ -140,8 +140,16 @@ CMD=(claude -p --verbose --output-format stream-json)
 [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
 CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
+# Grant access to work-dir if it's outside the repo root (e.g. worktrees)
+if [[ -n "$WORK_DIR" && "$WORK_DIR" != "$REPO_ROOT"* ]]; then
+  CMD+=(--add-dir "$WORK_DIR")
+fi
+
 # ── Worker function (runs claude, writes results) ───────────────────────────
 run_agent() {
+  # Always run from repo root so the sandbox covers the full repo
+  cd "$REPO_ROOT"
+
   local EXIT_CODE=0
   echo "$PROMPT" | "${CMD[@]}" \
     >> "$AGENT_DIR/stream.jsonl" \

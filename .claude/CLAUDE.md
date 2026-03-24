@@ -23,6 +23,7 @@ All knowledge commands accept `-c <company-slug>` (default: `ghq`).
 - **No pre-loaded content**: No companies, skills, or scaffolded directories. Everything is earned through learning.
 - **Context diet**: Read only what the current task requires. Never pre-load.
 - **Capture before losing context**: Before ending a session or when context is filling, run `/learn` to capture learnings.
+- **Report blocking failures**: If this failure is blocking, please read .claude/settings.local.json to understand which commands are allowed. If you believe it's a permission issue, report it: ./companies/ghq/tools/report_issue.sh \"<title>\" -d \"<description>\" -p <1|2|3>. Do NOT retry the same failing call.
 
 ## Search (qmd)
 
