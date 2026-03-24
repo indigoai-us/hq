@@ -108,7 +108,9 @@
       "Bash(companies/ghq/tools/setup.sh)",
       "Bash(bash companies/*/tools/*)",
       "Bash(chmod +x companies/ghq/tools/qmd-search.sh companies/ghq/tools/report_issue.sh)",
-      "Bash(chmod +x *)"
+      "Bash(chmod +x *)",
+      "Write",
+      "Edit"
     ],
     "deny": [
       "Agent"
