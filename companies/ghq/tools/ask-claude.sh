@@ -10,6 +10,8 @@ set -euo pipefail
 MODEL=""
 OUTPUT_FORMAT="text"
 ASYNC=false
+TEMPLATE=""
+COMPANY=""
 
 usage() {
   cat <<EOF
@@ -19,6 +21,11 @@ Options:
   -j, --json               Output full JSON response (sync only)
   -a, --async              Run in background; prints agent info immediately.
                            Output streams live to .agents/<id>/stream.jsonl
+  -t, --template NAME      Load .agents/templates/NAME.md as system prompt.
+                           Template variables ({{VAR}}) are replaced from
+                           the prompt and --company flag.
+  -c, --company SLUG       Company slug. Sets {{WORK_DIR}} to companies/SLUG/
+                           and adds company context to the prompt.
   -h, --help               Show this help
 
 Prompt can be passed as an argument or piped via stdin.
@@ -32,6 +39,8 @@ while [[ $# -gt 0 ]]; do
     -m|--model)      MODEL="$2"; shift 2 ;;
     -j|--json)       OUTPUT_FORMAT="json"; shift ;;
     -a|--async)      ASYNC=true; shift ;;
+    -t|--template)   TEMPLATE="$2"; shift 2 ;;
+    -c|--company)    COMPANY="$2"; shift 2 ;;
     -h|--help)       usage ;;
     --)              shift; break ;;
     -*)              echo "Unknown option: $1" >&2; exit 1 ;;
@@ -55,12 +64,41 @@ if [[ -z "$PROMPT" ]]; then
   exit 1
 fi
 
+# ── Resolve company path ───────────────────────────────────────────────────────
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+COMPANY_DIR=""
+if [[ -n "$COMPANY" ]]; then
+  COMPANY_DIR="$REPO_ROOT/companies/$COMPANY"
+  if [[ ! -d "$COMPANY_DIR" ]]; then
+    echo "Error: company directory not found: $COMPANY_DIR" >&2
+    exit 1
+  fi
+fi
+
+# ── Resolve template ──────────────────────────────────────────────────────────
+SYSTEM_PROMPT=""
+if [[ -n "$TEMPLATE" ]]; then
+  TEMPLATE_FILE="$REPO_ROOT/.agents/templates/${TEMPLATE}.md"
+  if [[ ! -f "$TEMPLATE_FILE" ]]; then
+    echo "Error: template not found: $TEMPLATE_FILE" >&2
+    exit 1
+  fi
+  SYSTEM_PROMPT="$(cat "$TEMPLATE_FILE")"
+
+  # Replace template variables
+  WORK_DIR="${COMPANY_DIR:-$(pwd)}"
+  SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{WORK_DIR\}\}/$WORK_DIR}"
+
+  # Replace {{TASK_ID}} with the prompt (for executor-style templates where
+  # the prompt IS the task ID)
+  SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{TASK_ID\}\}/$PROMPT}"
+fi
+
 # Unset guard variable so claude can run as a subprocess
 unset CLAUDECODE
 
 # ── Async mode ────────────────────────────────────────────────────────────────
 if [[ "$ASYNC" == true ]]; then
-  REPO_ROOT="$(git rev-parse --show-toplevel)"
   AGENT_ID="$(date +%Y%m%d_%H%M%S)_$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4 || true)"
   AGENT_DIR="$REPO_ROOT/.agents/runs/$AGENT_ID"
   mkdir -p "$AGENT_DIR"
@@ -80,6 +118,7 @@ JSON
   # Build claude command (stream-json for live output)
   CMD=(claude -p --verbose --output-format stream-json)
   [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
+  [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
   CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
   # Launch background worker
@@ -127,6 +166,7 @@ CMD=(claude -p
   --output-format json
 )
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
+[[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
 # --disallowedTools is variadic (<tools...>) so it must come last, right before
 # the prompt is piped via stdin to avoid it swallowing positional args.
 CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
