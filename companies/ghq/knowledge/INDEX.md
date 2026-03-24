@@ -26,4 +26,4 @@
 | [qmd-architecture](qmd-architecture/INDEX.md) | 7 | 2026-03-20 |
 | [qmd-operations](qmd-operations/INDEX.md) | 2 | 2026-03-20 |
 | [qmd-sdk](qmd-sdk/INDEX.md) | 1 | 2026-03-20 |
-| [tools](tools/INDEX.md) | 4 | 2026-03-25 |
+| [tools](tools/INDEX.md) | 5 | 2026-03-25 |
