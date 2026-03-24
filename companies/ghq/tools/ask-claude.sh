@@ -61,8 +61,8 @@ unset CLAUDECODE
 # ── Async mode ────────────────────────────────────────────────────────────────
 if [[ "$ASYNC" == true ]]; then
   REPO_ROOT="$(git rev-parse --show-toplevel)"
-  AGENT_ID="$(date +%Y%m%d_%H%M%S)_$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4)"
-  AGENT_DIR="$REPO_ROOT/.agents/$AGENT_ID"
+  AGENT_ID="$(date +%Y%m%d_%H%M%S)_$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4 || true)"
+  AGENT_DIR="$REPO_ROOT/.agents/runs/$AGENT_ID"
   mkdir -p "$AGENT_DIR"
 
   # Write prompt and metadata immediately
@@ -78,7 +78,7 @@ if [[ "$ASYNC" == true ]]; then
 JSON
 
   # Build claude command (stream-json for live output)
-  CMD=(claude -p --output-format stream-json)
+  CMD=(claude -p --verbose --output-format stream-json)
   [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
   CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 

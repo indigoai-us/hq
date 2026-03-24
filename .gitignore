@@ -12,7 +12,7 @@ companies/*
 
 
 # Async agent run artifacts
-.agents/
+.agents/runs/
 
 # Override global gitignore to track local permissions
 !.claude/settings.local.json
