@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [prompt-chaining-for-reviewer-agents.md](prompt-chaining-for-reviewer-agents.md) | Prompt Chaining for Reviewer Agent Templates | Restructuring monolithic reviewer prompts into two-phase chains (research → review) improves accu... | 0.8 | 2026-03-25 |
 | [enforcing-multi-step-procedure-compliance.md](enforcing-multi-step-procedure-compliance.md) | Enforcing Multi-Step Procedure Compliance in Agent Prompts | LLM agents reliably skip later steps in long multi-step prompts due to positional bias and attent... | 0.8 | 2026-03-24 |
 | [worktree-lifecycle-management.md](worktree-lifecycle-management.md) | Worktree Lifecycle Management for Parallel Agent Loops | How Ralph-style parallel loops create, assign, and clean up git worktrees per worker — including ... | 0.8 | 2026-03-20 |
 | [langgraph-state-reducer-runtime.md](langgraph-state-reducer-runtime.md) | LangGraph Runtime: State Management, Reducers, and Graph Execution | LangGraph implements dynamic graph execution via a Pregel-inspired superstep model with typed, re... | 0.9 | 2026-03-20 |
