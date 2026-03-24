@@ -110,6 +110,10 @@ if [[ -n "$TEMPLATE" ]]; then
   # Replace {{TASK_ID}} with the prompt (for executor-style templates where
   # the prompt IS the task ID)
   SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{TASK_ID\}\}/$PROMPT}"
+
+  # Replace {{AGENT_RUN_ID}} with the prompt (for reviewer-style templates
+  # where the prompt is a run ID, not a bd task)
+  SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{AGENT_RUN_ID\}\}/$PROMPT}"
 fi
 
 # Unset guard variable so claude can run as a subprocess

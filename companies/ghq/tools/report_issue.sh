@@ -48,8 +48,13 @@ fi
 SEARCH_RESULTS=$(cd "$SCRIPT_DIR/.." && bd search "$TITLE" --status all --json 2>/dev/null || echo "[]")
 
 # Normalize text to lowercase words for comparison
+# Strips agent run IDs (YYYYMMDD_HHMMSS_xxxx) and mol IDs (ghq-mol-xxxx) so
+# issues about the same root cause with different run IDs are caught as duplicates
 normalize() {
-  echo "$1" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | sort -u
+  echo "$1" \
+    | sed -E 's/[0-9]{8}_[0-9]{6}_[a-z0-9]{4}//g' \
+    | sed -E 's/ghq-mol-[a-z0-9]+//g' \
+    | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | sort -u
 }
 
 TITLE_WORDS=$(normalize "$TITLE")

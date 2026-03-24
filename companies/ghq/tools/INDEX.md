@@ -14,6 +14,7 @@ Auto-generated index of `companies/ghq/tools/`.
 | [read-queue.ts](read-queue.ts) | Reads and displays items from companies/{slug}/knowledge/.queue.jsonl |
 | [reindex.ts](reindex.ts) | Scan knowledge/ and generate INDEX.md files. |
 | [report_issue.sh](report_issue.sh) | Create a bd issue with duplicate detection |
+| [reviewable-runs.sh](reviewable-runs.sh) | List agent runs eligible for review |
 | [setup.sh](setup.sh) | Bootstrap GHQ on a fresh machine |
 | [tag-inventory.sh](tag-inventory.sh) | Show frequency-ranked tag vocabulary from the knowledge base |
 

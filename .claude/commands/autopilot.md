@@ -5,7 +5,7 @@ allowed-tools: Read, Bash, Glob, Grep
 
 # /autopilot — Run All Companies
 
-Process every company in the manifest by spawning a bd-manager agent for each one. Tasks are executed sequentially, one company at a time.
+Process every company in the manifest by spawning agents. Reviews previous runs in parallel with new work.
 
 ## Procedure
 
@@ -17,23 +17,53 @@ cat companies/manifest.yaml
 
 Parse the YAML to extract all company slugs (the keys under `companies:`).
 
-### 2. Process each company
-
-For each company slug from the manifest, run a bd-manager agent:
+### 2. Resolve repo root
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -c <SLUG> -w "$(pwd)" -t bd-manager "<SLUG>"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 ```
 
-Process companies **one at a time, sequentially**. Wait for each bd-manager to finish before starting the next.
+Use `REPO_ROOT` for all `-w` flags below. Never use `$(pwd)`.
 
-Capture stdout from each run for the final report. Note whether the manager succeeded, failed, or had partial results.
+### 3. Start retrospective loop (async)
 
-If a bd-manager fails or errors out, log the failure and continue to the next company. Do not abort the entire run.
+Kick off the retrospective loop first — it reviews previous unreviewed runs while new work proceeds:
 
-### 3. Print summary
+```bash
+./companies/ghq/tools/ask-claude.sh -a -c ghq -w <REPO_ROOT> -t bd-retrospective-loop ""
+```
 
-After all companies have been processed, print a structured report:
+Note the agent ID from stderr for later.
+
+### 4. Process each company (async)
+
+For each company slug from the manifest, spawn a bd-manager agent asynchronously:
+
+```bash
+./companies/ghq/tools/ask-claude.sh -a -c <SLUG> -w <REPO_ROOT> -t bd-manager "<SLUG>"
+```
+
+Spawn all companies. Note each agent ID.
+
+If a bd-manager fails to spawn, log the failure and continue to the next company.
+
+### 5. Wait for all agents to complete
+
+Poll each agent (retro loop + all bd-managers) until all are done:
+
+```bash
+cat <REPO_ROOT>/.agents/runs/<AGENT_ID>/status
+```
+
+Check every 30 seconds. An agent is complete when status is `done` or `error`.
+
+Once all agents have finished, read each one's result:
+
+```bash
+cat <REPO_ROOT>/.agents/runs/<AGENT_ID>/result.txt
+```
+
+### 6. Print summary
 
 ```
 ## Autopilot Summary
@@ -44,9 +74,7 @@ Companies processed: <N>
 
 #### <Company Name> (<slug>)
 - Status: success | partial | failed
-- Tasks found: <N>
-- Completed: <N>
-- Failed: <N>
+- Agent: <agent-id>
 - Details: <brief summary from bd-manager output>
 
 #### <Next Company> (<slug>)
@@ -55,6 +83,13 @@ Companies processed: <N>
 ### Errors
 - <slug>: <error description> (if any)
 
+### Retrospective
+- Agent: <retro-agent-id>
+- Runs reviewed: <N>
+- Pass: <N>
+- Fail: <N>
+- Issues filed: <list>
+
 ### Notes
 <any observations, assumptions, or issues encountered>
 ```
@@ -62,6 +97,6 @@ Companies processed: <N>
 ## Rules
 
 - **No file modifications.** This command only coordinates — bd-manager and its sub-agents handle all file changes.
-- **Sequential execution.** One company at a time, never parallel.
-- **Fail-forward.** If one company's bd-manager fails, log it and continue to the next.
+- **Async everything.** All agents run via `ask-claude.sh -a`. Poll for completion.
+- **Fail-forward.** If one company's bd-manager fails, log it and continue.
 - **No arguments required.** `/autopilot` processes all companies from the manifest automatically.
