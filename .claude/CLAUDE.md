@@ -33,6 +33,10 @@ qmd vsearch "<query>" -n 10       # semantic/conceptual
 qmd query "<query>" -n 10         # hybrid BM25 + vector (best, slower)
 ```
 
+## Tools Reference
+
+See [`companies/ghq/tools/INDEX.md`](companies/ghq/tools/INDEX.md) for the auto-generated tool index. The index is regenerated automatically on every write to `companies/ghq/tools/`.
+
 ## Subprocess, Not Subagents
 
 Never use the `Agent` tool for delegating work. Instead, use `companies/ghq/tools/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
