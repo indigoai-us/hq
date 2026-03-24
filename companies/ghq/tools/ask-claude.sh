@@ -126,7 +126,8 @@ if [[ "$ASYNC" == true ]]; then
   "id": "$AGENT_ID",
   "start_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "model": "${MODEL:-default}",
-  "output_format": "stream-json"
+  "output_format": "stream-json",
+  "workdir": "$(pwd)"
 }
 JSON
 
