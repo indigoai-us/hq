@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [subprocess-instruction-following-failure.md](subprocess-instruction-following-failure.md) | Why Subprocess Agents Ignore CLAUDE.md Fallback Instructions When Blocked | Subprocess agents load CLAUDE.md but deprioritize its fallback instructions when blocked by permi... | 0.8 | 2026-03-24 |
 | [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.9 | 2026-03-20 |
 | [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-20 |
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
