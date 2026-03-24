@@ -10,7 +10,7 @@
 | [agent-self-improvement](agent-self-improvement/INDEX.md) | 3 | 2026-03-20 |
 | [agent-tooling](agent-tooling/INDEX.md) | 5 | 2026-03-25 |
 | [agent-workflows](agent-workflows/INDEX.md) | 8 | 2026-03-25 |
-| [ai-agents](ai-agents/INDEX.md) | 25 | 2026-03-24 |
+| [ai-agents](ai-agents/INDEX.md) | 26 | 2026-03-25 |
 | [beads-architecture](beads-architecture/INDEX.md) | 4 | 2026-03-20 |
 | [beads-data-model](beads-data-model/INDEX.md) | 1 | 2026-03-20 |
 | [beads-multi-agent](beads-multi-agent/INDEX.md) | 2 | 2026-03-20 |

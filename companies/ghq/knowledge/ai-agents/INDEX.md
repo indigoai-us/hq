@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) | Sandbox-Safe Bash Patterns for Agent Templates | Practical workarounds for Claude Code sandbox and permission blocks that agent templates commonly... | 0.8 | 2026-03-25 |
 | [subprocess-instruction-following-failure.md](subprocess-instruction-following-failure.md) | Why Subprocess Agents Ignore CLAUDE.md Fallback Instructions When Blocked | Subprocess agents load CLAUDE.md but deprioritize its fallback instructions when blocked by permi... | 0.8 | 2026-03-24 |
 | [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) | Git Worktree Sandbox Write Permissions in Claude Code | Claude Code's sandbox blocks writes to `.worktrees/` subpaths even when they're inside the repo r... | 0.8 | 2026-03-24 |
 | [sandbox-path-resolution-and-worktrees.md](sandbox-path-resolution-and-worktrees.md) | Claude Code Sandbox Path Resolution and Worktree Compatibility | Claude Code's sandbox enforces filesystem write restrictions at the OS level via Seatbelt (macOS)... | 0.8 | 2026-03-24 |
