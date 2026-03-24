@@ -24,11 +24,10 @@ Create an isolated git worktree from the target repo for all work:
 cd {{WORK_DIR}}
 BRANCH="bd/{{TASK_ID}}"
 git worktree add -b "$BRANCH" ".worktrees/$BRANCH" HEAD
-WORKTREE="{{WORK_DIR}}/.worktrees/$BRANCH"
-cd "$WORKTREE"
+cd ".worktrees/$BRANCH"
 ```
 
-All subsequent work happens inside the worktree. Use `$WORKTREE` (the absolute path) when passing `--workdir` to subprocesses.
+All subsequent work happens inside the worktree. Store the worktree path — you'll need it for cleanup.
 
 ### Step 3: Get subtasks
 
@@ -50,7 +49,7 @@ For each non-gate subtask:
 #### 4a. Run bd-worker
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -t bd-worker -w "$WORKTREE" "SUBTASK_ID"
+./companies/ghq/tools/ask-claude.sh -t bd-worker "SUBTASK_ID"
 ```
 
 This runs in **sync** mode — wait for it to complete.
@@ -81,7 +80,7 @@ git clean -fd
 ```
 Then re-run bd-worker with additional instructions appended to the prompt explaining what was wrong and what to fix. For example:
 ```bash
-./companies/ghq/tools/ask-claude.sh -t bd-worker -w "$WORKTREE" "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
+./companies/ghq/tools/ask-claude.sh -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
 ```
 
 If all retries are exhausted, log the failure and move on to the next subtask.

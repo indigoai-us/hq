@@ -12,7 +12,6 @@ OUTPUT_FORMAT="text"
 ASYNC=false
 TEMPLATE=""
 COMPANY=""
-WORKDIR=""
 
 usage() {
   cat <<EOF
@@ -27,8 +26,6 @@ Options:
                            the prompt and --company flag.
   -c, --company SLUG       Company slug. Sets {{WORK_DIR}} to companies/SLUG/
                            and adds company context to the prompt.
-  -w, --workdir DIR        Run claude subprocess in this directory.
-                           Useful for worktrees or out-of-tree execution.
   -h, --help               Show this help
 
 Prompt can be passed as an argument or piped via stdin.
@@ -44,7 +41,6 @@ while [[ $# -gt 0 ]]; do
     -a|--async)      ASYNC=true; shift ;;
     -t|--template)   TEMPLATE="$2"; shift 2 ;;
     -c|--company)    COMPANY="$2"; shift 2 ;;
-    -w|--workdir)    WORKDIR="$2"; shift 2 ;;
     -h|--help)       usage ;;
     --)              shift; break ;;
     -*)              echo "Unknown option: $1" >&2; exit 1 ;;
@@ -68,19 +64,8 @@ if [[ -z "$PROMPT" ]]; then
   exit 1
 fi
 
-# ── Resolve repo root before any cd (worktrees change --show-toplevel) ────────
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-
-# ── Change to workdir if specified ─────────────────────────────────────────────
-if [[ -n "$WORKDIR" ]]; then
-  if [[ ! -d "$WORKDIR" ]]; then
-    echo "Error: workdir not found: $WORKDIR" >&2
-    exit 1
-  fi
-  cd "$WORKDIR"
-fi
-
 # ── Resolve company path ───────────────────────────────────────────────────────
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 COMPANY_DIR=""
 if [[ -n "$COMPANY" ]]; then
   COMPANY_DIR="$REPO_ROOT/companies/$COMPANY"
@@ -147,16 +132,11 @@ JSON
 
     printf '%d' "$EXIT_CODE" > "$AGENT_DIR/exit_code"
 
-    # Extract final result text and session ID from the stream
+    # Extract final result text from the stream
     if [[ -s "$AGENT_DIR/stream.jsonl" ]]; then
       jq -r 'select(.type == "result") | .result // empty' \
         "$AGENT_DIR/stream.jsonl" \
         > "$AGENT_DIR/result.txt" 2>/dev/null || true
-      SESSION_ID="$(jq -r 'select(.session_id != null) | .session_id' \
-        "$AGENT_DIR/stream.jsonl" 2>/dev/null | tail -1)"
-      if [[ -n "$SESSION_ID" ]]; then
-        printf '%s' "$SESSION_ID" > "$AGENT_DIR/session_id"
-      fi
     fi
 
     if [[ "$EXIT_CODE" -eq 0 ]]; then
@@ -178,7 +158,6 @@ Agent started: $AGENT_ID
 Monitor:  tail -f $AGENT_DIR/stream.jsonl
 Status:   cat $AGENT_DIR/status
 Result:   cat $AGENT_DIR/result.txt
-Resume:   claude --resume \$(cat $AGENT_DIR/session_id)
 INFO
   exit 0
 fi
@@ -194,11 +173,6 @@ CMD=(claude -p
 CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
 RAW=$(echo "$PROMPT" | "${CMD[@]}")
-
-SESSION_ID="$(echo "$RAW" | jq -r '.session_id // empty')"
-if [[ -n "$SESSION_ID" ]]; then
-  echo "Resume:   claude --resume $SESSION_ID" >&2
-fi
 
 if [[ "$OUTPUT_FORMAT" == "json" ]]; then
   echo "$RAW"
