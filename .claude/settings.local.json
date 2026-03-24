@@ -116,7 +116,9 @@
       "Bash(./tools/*)",
       "Bash(chmod +x *)",
       "Write",
-      "Edit"
+      "Edit",
+      "Skill(new-company)",
+      "Skill(new-company:*)"
     ],
     "deny": [
       "Agent"

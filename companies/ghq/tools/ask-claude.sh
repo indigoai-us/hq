@@ -138,7 +138,6 @@ JSON
 CMD=(claude -p --verbose --output-format stream-json)
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
 [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
-CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
 # Grant access to work-dir if it's outside the repo root (e.g. worktrees)
 if [[ -n "$WORK_DIR" && "$WORK_DIR" != "$REPO_ROOT"* ]]; then

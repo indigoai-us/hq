@@ -87,7 +87,7 @@ Then re-run bd-worker with additional instructions appended to the prompt explai
 ./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
 ```
 
-If all retries are exhausted, log the failure and move on to the next subtask.
+If all retries are exhausted, **stop execution immediately**. Do not continue to the next subtask. Jump to Step 5 to create a PR with whatever work was completed, and clearly report the failure in the PR body and final output.
 
 ### Step 5: Create a Pull Request
 
@@ -147,8 +147,9 @@ Print a final summary:
 
 ## Constraints
 
+- **Never modify files directly.** The orchestrator coordinates — only bd-worker makes file changes. If you find yourself editing, creating, or deleting files in the worktree, stop. That's bd-worker's job.
 - Only work inside the worktree. Never modify the main working tree.
-- Each subtask gets at most 2 retry attempts before being skipped.
+- Each subtask gets at most 2 retry attempts. If retries are exhausted, **stop and report failure** — do not skip and continue.
 - Gates are not executable work — they are coordination/review points.
 - When a gate blocks remaining tasks, stop and create a PR for human review.
 - Keep the worktree alive if a gate is pending; clean up only when all work is done.
