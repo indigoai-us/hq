@@ -131,11 +131,14 @@ printf '%s' "$PROMPT" > "$AGENT_DIR/prompt.txt"
 printf 'running' > "$AGENT_DIR/status"
 PARENT_JSON=""
 [[ -n "$PARENT_ID" ]] && PARENT_JSON="\"parent_id\": \"$PARENT_ID\","
+TEMPLATE_JSON=""
+[[ -n "$TEMPLATE" ]] && TEMPLATE_JSON="\"template\": \"$TEMPLATE\","
 
 cat > "$AGENT_DIR/meta.json" <<JSON
 {
   "id": "$AGENT_ID",
   ${PARENT_JSON}
+  ${TEMPLATE_JSON}
   "start_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "model": "${MODEL:-default}",
   "mode": "$MODE",

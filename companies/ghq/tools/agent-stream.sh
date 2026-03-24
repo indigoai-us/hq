@@ -121,11 +121,14 @@ def print_tree(rid, prefix='', is_last=True):
     icon = status_icon(rid)
     meta = nodes.get(rid, {})
     model = meta.get('model', '?')
+    template = meta.get('template', '')
     prompt = prompt_summary(rid)
     connector = '└── ' if prefix else ''
     if prefix:
         connector = '└── ' if is_last else '├── '
     label = f'{icon} {rid}  ({model})'
+    if template:
+        label += f'  [{template}]'
     if prompt:
         label += f'  \"{prompt}\"'
     print(f'{prefix}{connector}{label}')
