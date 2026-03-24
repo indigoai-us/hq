@@ -55,5 +55,5 @@ Outputs a reminder to check `.claude/settings.local.json` for allowed commands a
 ## Design Principles
 
 - **Fail-safe:** All hooks exit 0 on error to avoid blocking the agent. The knowledge pipeline is best-effort — a failed search should never prevent work.
-- **All in settings.json:** Hooks belong in `settings.json` (version-controlled), not `settings.local.json` (machine-specific). This is a learned rule documented in `hooks-in-settings-json.md`.
+- **All in settings.json:** Hooks belong in `.claude/settings.json` (version-controlled, portable across machines) rather than `.claude/settings.local.json` (user-local, gitignored). `settings.local.json` should only contain permissions and user-specific overrides. When multiple hook events need the same behavior (e.g. PreCompact and Stop both triggering learning capture), use a single shared script rather than duplicating.
 - **Minimal latency:** Hooks use timeouts (5-60s) to prevent hangs. The consult-knowledge hook is the most latency-sensitive since it fires on every prompt.
