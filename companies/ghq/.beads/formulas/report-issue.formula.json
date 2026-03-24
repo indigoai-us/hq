@@ -1,0 +1,50 @@
+{
+  "formula": "report-issue",
+  "description": "Report and resolve an issue with duplicate detection and human review gate",
+  "version": 1,
+  "type": "workflow",
+  "vars": {
+    "title": {
+      "description": "Issue title",
+      "required": true
+    },
+    "description": {
+      "description": "Issue description",
+      "default": ""
+    },
+    "priority": {
+      "description": "Priority (0-4)",
+      "default": "2"
+    },
+    "labels": {
+      "description": "Comma-separated labels",
+      "default": ""
+    }
+  },
+  "steps": [
+    {
+      "id": "investigate",
+      "title": "Investigate: {{title}}",
+      "description": "Research the issue, identify root cause, and develop a fix.",
+      "type": "task"
+    },
+    {
+      "id": "implement",
+      "title": "Implement fix for: {{title}}",
+      "description": "Write the code changes and tests.",
+      "type": "task",
+      "depends_on": ["investigate"]
+    },
+    {
+      "id": "human-review",
+      "title": "Human review: {{title}}",
+      "description": "Final human code review and PR approval before merging.",
+      "type": "task",
+      "gate": {
+        "type": "human",
+        "timeout": "72h"
+      },
+      "depends_on": ["implement"]
+    }
+  ]
+}
