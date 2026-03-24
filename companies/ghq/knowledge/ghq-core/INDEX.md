@@ -2,6 +2,12 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [company-workspace-architecture.md](company-workspace-architecture.md) | Company Workspace Architecture | GHQ organizes all work into company-scoped workspaces. Each company gets its own knowledge base, ... | 1.0 | 2026-03-25 |
+| [ghq-overview.md](ghq-overview.md) | GHQ v0.2 Overview | GHQ is a knowledge-first personal operating system built on top of Claude Code. Intelligence accu... | 1.0 | 2026-03-25 |
+| [hooks-system.md](hooks-system.md) | GHQ Hooks System | GHQ uses six Claude Code hooks defined in `.claude/settings.json` to automate the knowledge lifec... | 1.0 | 2026-03-25 |
+| [slash-commands.md](slash-commands.md) | GHQ Slash Commands | GHQ defines six slash commands in `.claude/commands/`. Each is a markdown file with YAML frontmat... | 1.0 | 2026-03-25 |
+| [subprocess-pattern.md](subprocess-pattern.md) | Subprocess Pattern: ask-claude.sh | GHQ delegates work by spawning Claude CLI subprocesses via `ask-claude.sh` rather than using the ... | 1.0 | 2026-03-25 |
+| [tools-ecosystem.md](tools-ecosystem.md) | GHQ Tools Ecosystem | GHQ's shared tools live in `companies/ghq/tools/` and are auto-indexed — any write to that direct... | 1.0 | 2026-03-25 |
 | [worktree-claude-directory-setup.md](worktree-claude-directory-setup.md) | Worktree .claude/ Directory Setup Strategies | Claude Code worktrees only copy settings.local.json — agents, skills, docs, and rules must be set... | 0.8 | 2026-03-24 |
 | [curiosity-queue-source-enum-extensibility.md](curiosity-queue-source-enum-extensibility.md) | Curiosity Queue Source Enum Extensibility | GHQ's queue-curiosity.ts uses a closed enum for source types; new agent roles should map to exist... | 0.8 | 2026-03-24 |
 | [backlink-implementation-patterns.md](backlink-implementation-patterns.md) | Backlink Implementation Patterns for Flat-File Markdown Knowledge Bases | How Obsidian, Dendron, Foam, and static-site tools resolve backlinks — and what patterns adapt to... | 0.8 | 2026-03-20 |
