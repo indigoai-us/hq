@@ -67,6 +67,12 @@ Initialize the beads issue tracker for the company so `/autopilot` can manage ta
 cd companies/<slug> && bd init -p <slug> --skip-agents --skip-hooks
 ```
 
+Then untrack the credential key file that `bd init` commits by default:
+
+```bash
+cd companies/<slug> && git rm --cached .beads/.beads-credential-key && git commit -m "Untrack credential key file"
+```
+
 ### 4d. Create qmd collection
 
 Register the company's knowledge directory as a qmd collection so it's searchable:

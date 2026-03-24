@@ -15,12 +15,14 @@ Arguments:
 Options:
   --errors          Show only errors and flagged results
   --tools           Show only tool calls (no assistant text)
+  --tree            Show agent and all subagents in a recursive tree
   --full            Show full output (don't truncate)
   -h, --help        Show this help
 
 Examples:
   $(basename "$0") 20260324_173522_ihao
   $(basename "$0") --errors 20260324_173522_ihao
+  $(basename "$0") --tree 20260324_173522_ihao
   $(basename "$0") .agents/runs/20260324_173522_ihao/stream.jsonl
 EOF
   exit 0
@@ -28,11 +30,13 @@ EOF
 
 FILTER=""
 TRUNCATE=200
+TREE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --errors)  FILTER="errors"; shift ;;
     --tools)   FILTER="tools"; shift ;;
+    --tree)    TREE=true; shift ;;
     --full)    TRUNCATE=0; shift ;;
     -h|--help) usage ;;
     --)        shift; break ;;
@@ -48,15 +52,117 @@ if [[ -z "$TARGET" ]]; then
   exit 1
 fi
 
-# Resolve to stream.jsonl path
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+GHQ_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# ── Tree mode ────────────────────────────────────────────────────────────────
+if [[ "$TREE" == true ]]; then
+  RUNS_DIR="$GHQ_ROOT/.agents/runs"
+
+  # Resolve root run ID from TARGET
+  if [[ -f "$TARGET" ]]; then
+    ROOT_ID="$(basename "$(dirname "$TARGET")")"
+  elif [[ -d "$TARGET" ]]; then
+    ROOT_ID="$(basename "$TARGET")"
+  else
+    ROOT_ID="$TARGET"
+  fi
+
+  if [[ ! -d "$RUNS_DIR/$ROOT_ID" ]]; then
+    echo "Error: run directory not found: $RUNS_DIR/$ROOT_ID" >&2
+    exit 1
+  fi
+
+  python3 -c "
+import json, os, sys
+from pathlib import Path
+
+runs_dir = Path('$RUNS_DIR')
+root_id = '$ROOT_ID'
+
+# Build parent->children map
+children = {}  # parent_id -> [child_id, ...]
+nodes = {}     # id -> meta dict
+
+for run_dir in sorted(runs_dir.iterdir()):
+    meta_file = run_dir / 'meta.json'
+    if not meta_file.exists():
+        continue
+    try:
+        meta = json.loads(meta_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        continue
+    rid = meta.get('id', run_dir.name)
+    nodes[rid] = meta
+    parent = meta.get('parent_id', '')
+    if parent:
+        children.setdefault(parent, []).append(rid)
+
+def status_icon(rid):
+    status_file = runs_dir / rid / 'status'
+    try:
+        st = status_file.read_text().strip()
+    except OSError:
+        st = '?'
+    icons = {'done': '✓', 'running': '►', 'error': '✗'}
+    return icons.get(st, '?')
+
+def prompt_summary(rid, max_len=60):
+    prompt_file = runs_dir / rid / 'prompt.txt'
+    try:
+        txt = prompt_file.read_text().strip().replace('\n', ' ')
+    except OSError:
+        return ''
+    if len(txt) > max_len:
+        txt = txt[:max_len] + '...'
+    return txt
+
+def print_tree(rid, prefix='', is_last=True):
+    icon = status_icon(rid)
+    meta = nodes.get(rid, {})
+    model = meta.get('model', '?')
+    prompt = prompt_summary(rid)
+    connector = '└── ' if prefix else ''
+    if prefix:
+        connector = '└── ' if is_last else '├── '
+    label = f'{icon} {rid}  ({model})'
+    if prompt:
+        label += f'  \"{prompt}\"'
+    print(f'{prefix}{connector}{label}')
+
+    kids = children.get(rid, [])
+    for i, kid in enumerate(kids):
+        if prefix:
+            child_prefix = prefix + ('    ' if is_last else '│   ')
+        else:
+            child_prefix = '    '
+        print_tree(kid, child_prefix, i == len(kids) - 1)
+
+if root_id not in nodes:
+    print(f'Error: run {root_id} not found in {runs_dir}', file=sys.stderr)
+    sys.exit(1)
+
+print_tree(root_id)
+
+total = 0
+def count(rid):
+    global total
+    total += 1
+    for kid in children.get(rid, []):
+        count(kid)
+count(root_id)
+if total > 1:
+    print(f'\n({total} agents total)')
+"
+  exit 0
+fi
+
+# ── Resolve stream.jsonl path ────────────────────────────────────────────────
 if [[ -f "$TARGET" ]]; then
   STREAM="$TARGET"
 elif [[ -f "$TARGET/stream.jsonl" ]]; then
   STREAM="$TARGET/stream.jsonl"
 else
-  # Try as run ID under .agents/runs/
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  GHQ_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
   STREAM="$GHQ_ROOT/.agents/runs/$TARGET/stream.jsonl"
   if [[ ! -f "$STREAM" ]]; then
     echo "Error: cannot find stream.jsonl for '$TARGET'" >&2
@@ -64,6 +170,7 @@ else
   fi
 fi
 
+# ── Stream mode ──────────────────────────────────────────────────────────────
 python3 -c "
 import sys, json
 

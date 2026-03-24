@@ -13,6 +13,7 @@ ASYNC=false
 TEMPLATE=""
 COMPANY=""
 WORK_DIR=""
+PARENT_ID="${ASK_CLAUDE_PARENT_ID:-}"
 
 usage() {
   cat <<EOF
@@ -124,9 +125,13 @@ MODE="sync"
 
 printf '%s' "$PROMPT" > "$AGENT_DIR/prompt.txt"
 printf 'running' > "$AGENT_DIR/status"
+PARENT_JSON=""
+[[ -n "$PARENT_ID" ]] && PARENT_JSON="\"parent_id\": \"$PARENT_ID\","
+
 cat > "$AGENT_DIR/meta.json" <<JSON
 {
   "id": "$AGENT_ID",
+  ${PARENT_JSON}
   "start_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "model": "${MODEL:-default}",
   "mode": "$MODE",
@@ -134,13 +139,18 @@ cat > "$AGENT_DIR/meta.json" <<JSON
 }
 JSON
 
+# Export so child ask-claude calls auto-inherit parentage
+export ASK_CLAUDE_PARENT_ID="$AGENT_ID"
+
 # Build claude command — identical for both modes
 CMD=(claude -p --verbose --output-format stream-json)
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
 [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
 
-# Grant access to work-dir if it's outside the repo root (e.g. worktrees)
-if [[ -n "$WORK_DIR" && "$WORK_DIR" != "$REPO_ROOT"* ]]; then
+# Grant access to work-dir if it's outside the repo root or inside a worktree
+# Worktrees inside .worktrees/ need --add-dir even though they're under REPO_ROOT,
+# because the Claude sandbox doesn't automatically grant access to worktree subdirs.
+if [[ -n "$WORK_DIR" && ( "$WORK_DIR" != "$REPO_ROOT"* || "$WORK_DIR" == *"/.worktrees/"* ) ]]; then
   CMD+=(--add-dir "$WORK_DIR")
 fi
 
@@ -175,12 +185,17 @@ run_agent() {
 
 # ── Print run info (both modes) ─────────────────────────────────────────────
 print_info() {
+  TOOLS_DIR="$(cd "$(dirname "$0")" && pwd)"
   cat >&2 <<INFO
-Agent: $AGENT_ID
-Dir:    $AGENT_DIR
-Stream: tail -f $AGENT_DIR/stream.jsonl
-Status: cat $AGENT_DIR/status
-Result: cat $AGENT_DIR/result.txt
+Agent:    $AGENT_ID
+Dir:      $AGENT_DIR
+Status:   cat $AGENT_DIR/status
+Result:   cat $AGENT_DIR/result.txt
+
+Progress: $TOOLS_DIR/agent-stream.sh $AGENT_ID
+Errors:   $TOOLS_DIR/agent-stream.sh --errors $AGENT_ID
+Tree:     $TOOLS_DIR/agent-stream.sh --tree $AGENT_ID
+Live:     tail -f $AGENT_DIR/stream.jsonl | $TOOLS_DIR/agent-stream.sh /dev/stdin
 INFO
 }
 

@@ -87,7 +87,14 @@ Then re-run bd-worker with additional instructions appended to the prompt explai
 ./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
 ```
 
-If all retries are exhausted, **stop execution immediately**. Do not continue to the next subtask. Jump to Step 5 to create a PR with whatever work was completed, and clearly report the failure in the PR body and final output.
+If all retries are exhausted, **stop execution immediately**. Do not continue to the next subtask. Report the failure, then jump to Step 5 to create a PR with whatever work was completed, and clearly report the failure in the PR body and final output.
+
+**If a subtask fails due to sandbox/permission errors** (e.g. `mkdir` blocked, command denied, permission not granted), report it immediately — do not retry:
+```bash
+./companies/ghq/tools/report_issue.sh "bd-worker sandbox failure on SUBTASK_ID" \
+  -d "Subtask SUBTASK_ID failed with permission/sandbox error: <paste error message>. Worktree: $WORKTREE_DIR" \
+  -p 2
+```
 
 ### Step 5: Create a Pull Request
 
