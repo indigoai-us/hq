@@ -5,7 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/consult-knowledge.sh"
+            "command": ".claude/hooks/consult-knowledge.sh",
+            "timeout": 1200
           }
         ]
       }

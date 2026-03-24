@@ -10,7 +10,28 @@ PROMPT="$(cat)" 2>/dev/null
 # Exit silently if prompt is empty
 [ -z "$PROMPT" ] && exit 0
 
-# Query knowledge base with timeout, suppress all errors
+# Concurrency guard — only one qmd query at a time to prevent memory spikes
+# (autopilot spawns many sub-agents, each triggering this hook)
+LOCKDIR="/tmp/consult-knowledge.lock"
+cleanup() { rmdir "$LOCKDIR" 2>/dev/null; }
+
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  # Another instance is running — check for stale lock (>60s)
+  if [ -d "$LOCKDIR" ]; then
+    LOCK_AGE=$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))
+    if [ "$LOCK_AGE" -gt 60 ]; then
+      rmdir "$LOCKDIR" 2>/dev/null
+      mkdir "$LOCKDIR" 2>/dev/null || exit 0
+    else
+      exit 0
+    fi
+  else
+    exit 0
+  fi
+fi
+trap cleanup EXIT
+
+# Query knowledge base, suppress all errors
 RESULTS="$(qmd query "$PROMPT" -n 5 --json 2>/dev/null)" || exit 0
 
 # Exit silently if no results or empty

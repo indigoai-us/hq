@@ -121,7 +121,9 @@
       "Read(//Users/hassaansaleemmacbook2026/repos/ghq/$d/**)",
       "Write",
       "Edit",
-      "Bash(command -v bd)"
+      "Bash(command -v bd)",
+      "Bash(/tmp/consult-knowledge-new.sh:*)",
+      "Bash(cp /tmp/consult-knowledge-new.sh .claude/hooks/consult-knowledge.sh)"
     ],
     "deny": [
       "Agent"
