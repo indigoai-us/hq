@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "A Bash tool call just failed. Check if the failure is because a CLI command lacks a dedicated tool wrapper in companies/ghq/tools/. If so, return exactly: 'Run this now: cd companies/ghq && bd create \"<tool-name>-tool: <description>\" -t task --parent ghq-6gh -d \"<what the tool should do>\" --acceptance \"<done criteria>\"' replacing the placeholders with appropriate values. If the failure is unrelated to missing tooling (e.g. typo, wrong args, network error), return nothing.",
+            "prompt": "A Bash tool call just failed. Check if the failure is because a CLI command lacks a dedicated tool wrapper in companies/ghq/tools/. If so, return exactly: 'Run this now: cd companies/ghq && bd create \"<tool-name>-tool: <description>\" -t task --parent ghq-6gh -d \"<what the tool should do>\" --acceptance \"<done criteria>\"' replacing the placeholders with appropriate values. If the failure is unrelated to missing tooling (e.g. typo, wrong args, network error), return nothing."
           }
         ]
       }
