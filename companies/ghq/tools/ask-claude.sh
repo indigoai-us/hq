@@ -146,6 +146,21 @@ cat > "$AGENT_DIR/meta.json" <<JSON
 }
 JSON
 
+# ── Inject CWD preamble when no template provides context ─────────────────
+# Templates already define {{WORK_DIR}} / {{COMPANY_DIR}} inline, but ad-hoc
+# prompts (e.g. /research) get no path context. Prepend an environment block
+# so the agent knows where things are without wasting tool calls on `pwd`.
+if [[ -z "$TEMPLATE" ]]; then
+  ENV_BLOCK="## Environment
+- GHQ_ROOT: $REPO_ROOT
+- COMPANY_DIR: $COMPANY_DIR
+- WORK_DIR: $WORK_DIR
+- CWD is always GHQ_ROOT. Use paths relative to it or absolute paths.
+- Run \`pwd\` as your first command to confirm your location.
+"
+  PROMPT="${ENV_BLOCK}"$'\n'"${PROMPT}"
+fi
+
 # Export so child ask-claude calls auto-inherit parentage
 export ASK_CLAUDE_PARENT_ID="$AGENT_ID"
 

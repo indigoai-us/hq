@@ -8,16 +8,18 @@ Run `cd {{COMPANY_DIR}} && bd show {{TASK_ID}}` to get the full task description
 
 ## Directories
 
+- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands run. The `.beads/` database lives here.
 - **Work directory** (`{{WORK_DIR}}`): Where you make file changes. All edits, new files, and deletions MUST be inside this directory.
 
 ## Instructions
 
-1. Run `cd {{COMPANY_DIR}} && bd show {{TASK_ID}}` to read the task details.
-2. Understand the full scope of what is being asked.
-3. Execute the task, making all necessary file changes inside `{{WORK_DIR}}`.
-4. Do NOT commit or push any changes. Leave them as unstaged working tree modifications.
-5. When finished, write a brief summary of what you did to stdout.
+1. Run `pwd` to confirm you are in the repo root.
+2. Run `cd {{COMPANY_DIR}} && bd show {{TASK_ID}}` to read the task details.
+3. Understand the full scope of what is being asked.
+4. Execute the task, making all necessary file changes inside `{{WORK_DIR}}`.
+5. Do NOT commit or push any changes. Leave them as unstaged working tree modifications.
+6. When finished, write a brief summary of what you did to stdout.
 
 ## Constraints
 

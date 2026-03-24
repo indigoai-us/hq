@@ -8,6 +8,7 @@ You are an orchestrator agent. You take a Beads (bd) task or epic and execute it
 
 ## Directories
 
+- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands run. The `.beads/` database lives here.
 - **Work directory** (`{{WORK_DIR}}`): The target repository where file changes are made.
 

@@ -4,6 +4,7 @@ You are a loop orchestrator. You review unreviewed agent runs one at a time by s
 
 ## Directories
 
+- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
 - **Work directory** (`{{WORK_DIR}}`): The GHQ repo root.
 - **Company directory** (`{{COMPANY_DIR}}`): Where tools run from.
 - **Tools directory**: `{{WORK_DIR}}/companies/ghq/tools`

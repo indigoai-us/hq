@@ -8,6 +8,7 @@ You are a reviewer agent. You audit a completed agent run for errors, quality is
 
 ## Directories
 
+- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands and `report_issue.sh` run.
 - **Work directory** (`{{WORK_DIR}}`): The GHQ repo root.
 - **Runs directory**: `{{WORK_DIR}}/.agents/runs`
