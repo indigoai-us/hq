@@ -63,7 +63,23 @@ get_description() {
   for d in "$TOOLS_DIR"/*/; do
     [[ ! -d "$d" ]] && continue
     name="$(basename "$d")"
-    count=$(find "$d" -maxdepth 1 -type f | wc -l | tr -d ' ')
-    echo "| [$name/]($name/) | $count file(s) |"
+    # Build a comma-separated list of scripts with descriptions
+    contents=""
+    for f in "$d"*; do
+      [[ ! -f "$f" ]] && continue
+      fname="$(basename "$f")"
+      desc="$(get_description "$f")"
+      if [[ -n "$contents" ]]; then
+        contents="$contents, "
+      fi
+      contents="$contents[$fname]($name/$fname)"
+      if [[ -n "$desc" ]]; then
+        contents="$contents — $desc"
+      fi
+    done
+    if [[ -z "$contents" ]]; then
+      contents="(empty)"
+    fi
+    echo "| [$name/]($name/) | $contents |"
   done
 } > "$INDEX"
