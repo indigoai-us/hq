@@ -32,7 +32,7 @@ fi
 trap cleanup EXIT
 
 # Query knowledge base, suppress all errors
-RESULTS="$(qmd query "$PROMPT" -n 5 --json 2>/dev/null)" || exit 0
+RESULTS="$(qmd query "$PROMPT" -n 10 --json 2>/dev/null)" || exit 0
 
 # Exit silently if no results or empty
 [ -z "$RESULTS" ] && exit 0
