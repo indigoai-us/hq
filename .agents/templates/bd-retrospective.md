@@ -111,7 +111,21 @@ Track queued items for the summary in Step 9.
 
 ### Step 7: File issues
 
-For each hard failure or quality issue, file an issue:
+For each hard failure or quality issue:
+
+#### a. Check for existing issues
+
+Before filing, search for existing issues about the same root cause:
+
+```bash
+cd {{COMPANY_DIR}} && bd search "<root cause description without run ID>" --status all 2>/dev/null
+```
+
+Use a **generic description** of the root cause (e.g., "sensitive file write permission" not "agent failed to write autopilot.md in run 20260324_184533_qb0g"). If an existing issue covers the same root cause, **do not file a new one** — log "Existing issue covers this: <issue-id>" and continue.
+
+#### b. File the issue
+
+Only if no existing issue covers the root cause:
 
 ```bash
 {{WORK_DIR}}/companies/ghq/tools/report_issue.sh "<title>" \

@@ -44,8 +44,35 @@ if [ -z "$TITLE" ]; then
 fi
 
 # --- Duplicate detection ---
-# Search existing issues (all statuses) and check word overlap
+# Strip run IDs and prefixes for a broader search
+STRIPPED_TITLE=$(echo "$TITLE" \
+  | sed -E 's/[0-9]{8}_[0-9]{6}_[a-z0-9]{4}//g' \
+  | sed -E 's/\([[:space:]]*\)//g' \
+  | sed -E 's/^agent-review:[[:space:]]*//' \
+  | sed -E 's/[[:space:]]+/ /g' \
+  | sed 's/^ *//;s/ *$//')
+
+# Search with both original and stripped title to catch more matches
 SEARCH_RESULTS=$(cd "$SCRIPT_DIR/.." && bd search "$TITLE" --status all --json 2>/dev/null || echo "[]")
+if [ -n "$STRIPPED_TITLE" ] && [ "$STRIPPED_TITLE" != "$TITLE" ]; then
+  EXTRA_RESULTS=$(cd "$SCRIPT_DIR/.." && bd search "$STRIPPED_TITLE" --status all --json 2>/dev/null || echo "[]")
+  # Merge results (python dedupes by id)
+  SEARCH_RESULTS=$(python3 -c "
+import sys, json
+a = json.loads(sys.argv[1])
+b = json.loads(sys.argv[2])
+items_a = a if isinstance(a, list) else a.get('issues', a.get('results', []))
+items_b = b if isinstance(b, list) else b.get('issues', b.get('results', []))
+seen = set()
+merged = []
+for item in items_a + items_b:
+    iid = item.get('id', '')
+    if iid not in seen:
+        seen.add(iid)
+        merged.append(item)
+print(json.dumps(merged))
+" "$SEARCH_RESULTS" "$EXTRA_RESULTS" 2>/dev/null || echo "$SEARCH_RESULTS")
+fi
 
 # Normalize text to lowercase words for comparison
 # Strips agent run IDs (YYYYMMDD_HHMMSS_xxxx) and mol IDs (ghq-mol-xxxx) so

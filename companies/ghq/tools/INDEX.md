@@ -17,6 +17,7 @@ Auto-generated index of `companies/ghq/tools/`.
 | [reviewable-runs.sh](reviewable-runs.sh) | List agent runs eligible for review |
 | [setup.sh](setup.sh) | Bootstrap GHQ on a fresh machine |
 | [tag-inventory.sh](tag-inventory.sh) | Show frequency-ranked tag vocabulary from the knowledge base |
+| [tool-usage-report.sh](tool-usage-report.sh) | Analyze tool call usage across .agents/runs |
 
 ## Tool Groups (subdirectories)
 
