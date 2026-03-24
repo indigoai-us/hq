@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [worktree-claude-directory-setup.md](worktree-claude-directory-setup.md) | Worktree .claude/ Directory Setup Strategies | Claude Code worktrees only copy settings.local.json — agents, skills, docs, and rules must be set... | 0.8 | 2026-03-24 |
 | [curiosity-queue-source-enum-extensibility.md](curiosity-queue-source-enum-extensibility.md) | Curiosity Queue Source Enum Extensibility | GHQ's queue-curiosity.ts uses a closed enum for source types; new agent roles should map to exist... | 0.8 | 2026-03-24 |
 | [backlink-implementation-patterns.md](backlink-implementation-patterns.md) | Backlink Implementation Patterns for Flat-File Markdown Knowledge Bases | How Obsidian, Dendron, Foam, and static-site tools resolve backlinks — and what patterns adapt to... | 0.8 | 2026-03-20 |
 | [chunk-size-retrieval-precision-empirical.md](chunk-size-retrieval-precision-empirical.md) | Chunk Size vs. Retrieval Precision: Empirical Findings | Longer chunks degrade retrieval precision; 256–512 tokens (~200–400 words) is the empirically sup... | 0.8 | 2026-03-20 |
