@@ -105,7 +105,8 @@
       "Bash(for f:*)",
       "Bash(do sed:*)",
       "Bash(./setup.sh)",
-      "Bash(companies/ghq/tools/setup.sh)"
+      "Bash(companies/ghq/tools/setup.sh)",
+      "Bash(bash companies/*/tools/*)"
     ],
     "deny": [
       "Agent"
