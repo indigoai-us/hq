@@ -49,10 +49,9 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Claude just finished responding. Remind Claude to run /learn to capture any learnings before the session ends. Return a single short nudge line.",
-            "model": "claude-haiku-4-5-20251001",
-            "timeout": 120
+            "type": "command",
+            "command": ".claude/hooks/learn-reminder.sh",
+            "timeout": 10
           }
         ]
       }
