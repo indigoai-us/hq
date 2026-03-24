@@ -2,6 +2,7 @@
 
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
+| [claw-platform-comparison.md](claw-platform-comparison.md) | OpenClaw vs NanoClaw vs NemoClaw: AI Agent Platform Comparison | Comparison of the three major open-source AI agent platforms in the "Claw" ecosystem as of March ... | 0.8 | 2026-03-25 |
 | [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) | Sandbox-Safe Bash Patterns for Agent Templates | Practical workarounds for Claude Code sandbox and permission blocks that agent templates commonly... | 0.8 | 2026-03-25 |
 | [subprocess-instruction-following-failure.md](subprocess-instruction-following-failure.md) | Why Subprocess Agents Ignore CLAUDE.md Fallback Instructions When Blocked | Subprocess agents load CLAUDE.md but deprioritize its fallback instructions when blocked by permi... | 0.8 | 2026-03-24 |
 | [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) | Git Worktree Sandbox Write Permissions in Claude Code | Claude Code's sandbox blocks writes to `.worktrees/` subpaths even when they're inside the repo r... | 0.8 | 2026-03-24 |
@@ -18,12 +19,9 @@
 | [ralph-loop-failure-modes.md](ralph-loop-failure-modes.md) | Ralph Loop Failure Modes & Debugging | Common failure patterns in Ralph loops and strategies for diagnosing them. | 0.5 | 2026-03-19 |
 | [nvidia-openshell.md](nvidia-openshell.md) | NVIDIA OpenShell | Open-source runtime for executing autonomous AI agents in sandboxed environments with kernel-leve... | 0.8 | 2026-03-19 |
 | [ralph-loops-claude-code-integration.md](ralph-loops-claude-code-integration.md) | Ralph Loops in Claude Code | How Ralph loops integrate with Claude Code via hooks, plugins, and CLAUDE.md patterns. | 0.8 | 2026-03-19 |
-| [claw-platform-comparison.md](claw-platform-comparison.md) | OpenClaw vs NanoClaw vs NemoClaw: AI Agent Platform Comparison | Comparison of the three major open-source AI agent platforms in the "Claw" ecosystem as of March ... | 0.8 | 2026-03-19 |
 | [nanoclaw.md](nanoclaw.md) | NanoClaw: Container-Isolated AI Agent Platform | Lightweight, container-isolated AI agent platform built on the Claude Agent SDK. | 0.8 | 2026-03-19 |
-| [claw-family-comparison.md](claw-family-comparison.md) | Claw Family Comparison: OpenClaw vs NanoClaw vs NemoClaw | Comparison of the three major "Claw" AI agent platforms — OpenClaw, NanoClaw, and NemoClaw — and ... | 0.8 | 2026-03-19 |
 | [autonomous-agents-landscape-2026.md](autonomous-agents-landscape-2026.md) | Autonomous AI Agents Landscape 2026 | Overview of the autonomous AI agent ecosystem as of early 2026 — frameworks, protocols, architect... | 0.8 | 2026-03-19 |
 | [claude-code-hooks.md](claude-code-hooks.md) | Claude Code Hooks | Shell commands, HTTP endpoints, or LLM prompts that run at specific lifecycle points in Claude Code. | 0.9 | 2026-03-19 |
-| [openclaw-vs-nanoclaw-vs-nemoclaw.md](openclaw-vs-nanoclaw-vs-nemoclaw.md) | OpenClaw vs NanoClaw vs NemoClaw: Open-Source AI Agent Platform Comparison | Three-way comparison of the leading open-source AI agent platforms as of March 2026. | 0.8 | 2026-03-19 |
 | [claude-code-permissions.md](claude-code-permissions.md) | Claude Code Permission System | Claude Code uses a tiered permission system balancing autonomy and safety. | 0.9 | 2026-03-19 |
 | [claude-code-skills.md](claude-code-skills.md) | Claude Code Skills System | Skills extend Claude Code's capabilities via SKILL.md files with YAML frontmatter and markdown in... | 0.9 | 2026-03-19 |
 | [claude-code-overview.md](claude-code-overview.md) | Claude Code Overview | Anthropic's agentic coding tool — reads codebases, edits files, runs commands, and connects to ex... | 0.8 | 2026-03-19 |

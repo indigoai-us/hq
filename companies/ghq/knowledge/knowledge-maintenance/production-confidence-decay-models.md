@@ -75,6 +75,23 @@ This concept informs domain-aware decay in KM systems: high-volatility domains (
 
 A formal exponential model exists but is not universally validated — knowledge doesn't guarantee exponential decay; the curve depends heavily on domain disruption patterns.
 
+## Staleness Detection Indicators
+
+Beyond confidence decay, these signals suggest an entry needs review:
+
+- **Confidence erosion**: Blueprint stubs (confidence 0.5) never upgraded by research
+- **Source decay**: Entries citing dead links or deprecated docs
+- **Contradiction by newer entries**: When a newer entry disagrees with an older one
+- **Zero retrieval**: Entries that never appear in search results — possibly poorly written or miscategorized
+- **Event-triggered**: Major events (new tool versions, paradigm shifts) should trigger re-evaluation of affected entries
+
+### Practical Implementation for GHQ
+
+1. **Staleness query**: Filter entries where `updated_at` > threshold (e.g., 90 days for high-volatility tags)
+2. **Confidence audit**: List entries with confidence < 0.6 not recently updated
+3. **Dead link check**: Scan `## Sources` sections for HTTP URLs and verify they resolve
+4. **Review queue**: Feed stale entries into a prioritized queue, ordered by confidence x retrieval frequency
+
 ## Key Takeaways
 
 1. **No platform publishes a mathematical decay formula.** Guru, Tettra, and similar tools use step-function/workflow models, not continuous decay.

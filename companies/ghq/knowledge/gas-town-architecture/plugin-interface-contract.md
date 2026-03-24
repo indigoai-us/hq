@@ -76,6 +76,25 @@ Plugins like `dolt-snapshots` ship a standalone `main.go`. The binary:
 
 There is **no formal Go plugin interface** (no `type Plugin interface{...}`). Integration is entirely via CLI conventions and file-based event coordination.
 
+## How Plugins Relate to Patrols
+
+Patrols are ephemeral wisp workflows (TOML formulas instantiated each cycle). Plugins are injected as discrete steps within the patrol formula:
+
+- **Witness patrol**: `check polecat wellbeing → check refineries → peek at Deacon → **run rig-level plugins**`
+- **Deacon patrol**: `**run town-level plugins** → manage handoff protocol → delegate to Dogs`
+
+Each step has an `id`, `title`, `description`, and `needs` (dependency list) — plugins are named steps that the patrol formula depends on completing.
+
+### Formula → Molecule → Wisp Pipeline
+
+```
+formulas/*.formula.toml   (source definition, embedded in gt binary)
+         ↓ "cooked"
+     Protomolecule         (template class — structure without specific work items)
+         ↓ instantiated
+   Molecule (persistent)   OR   Wisp (ephemeral, patrol cycles)
+```
+
 ## Town-Level vs Rig-Level Scope
 
 - **Town-level plugins** live in `~/gt/plugins/` and apply to the entire workspace
