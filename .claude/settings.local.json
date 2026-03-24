@@ -120,7 +120,8 @@
       "Bash(for d:*)",
       "Read(//Users/hassaansaleemmacbook2026/repos/ghq/$d/**)",
       "Write",
-      "Edit"
+      "Edit",
+      "Bash(command -v bd)"
     ],
     "deny": [
       "Agent"
