@@ -73,3 +73,10 @@ For orchestrators that spawn executor agents into worktrees:
 - [#23960](https://github.com/anthropics/claude-code/issues/23960): Sandbox allowlist doesn't resolve symlinks
 - [#22320](https://github.com/anthropics/claude-code/issues/22320): bubblewrap fails when `.git` is a file (worktree)
 - [#2841](https://github.com/anthropics/claude-code/issues/2841): Cannot work with git worktrees due to directory restriction
+
+## See Also
+
+- [sandbox-path-resolution-and-worktrees.md](sandbox-path-resolution-and-worktrees.md) — Seatbelt/bubblewrap path resolution logic and `allowWrite` config
+- [sandbox-command-validation-false-positives.md](sandbox-command-validation-false-positives.md) — quote/brace heuristic failures in command validation
+- [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) — practical workarounds for agent templates
+- [cli-working-directory-flags-for-agents.md](../agent-tooling/cli-working-directory-flags-for-agents.md) — eliminating compound commands via `-C` flags

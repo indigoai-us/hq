@@ -131,3 +131,10 @@ When writing agent templates or subprocess scripts:
 - **macOS Seatbelt**: Filesystem restrictions enforced at kernel level; no userspace bypass possible
 - **Linux bubblewrap**: Same enforcement via namespace isolation
 - Both apply to **all subprocesses** spawned by the command, not just the top-level shell
+
+## See Also
+
+- [sandbox-command-validation-false-positives.md](sandbox-command-validation-false-positives.md) — quote/brace heuristic failures in command validation
+- [sandbox-path-resolution-and-worktrees.md](sandbox-path-resolution-and-worktrees.md) — Seatbelt/bubblewrap path resolution and worktree compatibility
+- [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) — worktree-specific write blocks
+- [cli-working-directory-flags-for-agents.md](../agent-tooling/cli-working-directory-flags-for-agents.md) — eliminating compound commands via `-C` flags

@@ -98,3 +98,10 @@ For GHQ agent templates that need to write JSON:
 - **v2.1.63**: Quote-in-comment warnings introduced
 - **v2.1.71**: Regression — consecutive-quote detection added, increased false positives on heredocs
 - Ongoing: No fix planned for heredoc permission matching (issue #11006)
+
+## See Also
+
+- [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) — practical workarounds for cd chaining and heredoc issues
+- [sandbox-path-resolution-and-worktrees.md](sandbox-path-resolution-and-worktrees.md) — Seatbelt/bubblewrap path resolution and worktree compatibility
+- [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) — worktree-specific write blocks
+- [cli-working-directory-flags-for-agents.md](../agent-tooling/cli-working-directory-flags-for-agents.md) — eliminating compound commands via `-C` flags

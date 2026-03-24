@@ -2,10 +2,10 @@
 title: "Ralph Loops"
 category: ai-agents
 tags: ["agent-loop", "autonomous-coding", "iteration-pattern", "context-management", "prd-driven-development", "planning"]
-source: "web research, https://ghuntley.com/loop/, https://ghuntley.com/pressure/, https://github.com/ghuntley/how-to-ralph-wiggum, https://linearb.io/blog/ralph-loop-agentic-engineering-geoffrey-huntley, https://linearb.io/blog/dex-horthy-humanlayer-rpi-methodology-ralph-loop"
+source: "web research, https://ghuntley.com/loop/, https://ghuntley.com/pressure/, https://github.com/ghuntley/how-to-ralph-wiggum, https://linearb.io/blog/ralph-loop-agentic-engineering-geoffrey-huntley, https://linearb.io/blog/dex-horthy-humanlayer-rpi-methodology-ralph-loop, https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum"
 confidence: 0.88
 created_at: 2026-03-19T18:00:00Z
-updated_at: 2026-03-20T15:30:00Z
+updated_at: 2026-03-25T00:00:00Z
 ---
 
 Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete.
@@ -119,6 +119,68 @@ Core files: `loop.sh` (orchestrator) + `AGENTS.md` (operational guide, ≤60 lin
 
 Various "hq-starter-kit" variants package this methodology with pre-written knowledge files (commonly 01-overview through 11-team-training-guide) covering topics like: methodology overview, PRD format, loop mechanics, evaluator design, back-pressure gates, multi-agent patterns, cost management, and team onboarding. The exact file set varies by implementation; no single canonical "hq-starter-kit" repo was found in public sources as of 2026-03-20.
 
+## Claude Code Integration
+
+Claude Code ships with an official Ralph Wiggum plugin at `plugins/ralph-wiggum/`. It implements the loop via a **Stop hook** that intercepts session exit attempts.
+
+### Stop Hook Mechanism
+
+```
+1. Claude receives the task prompt
+2. Claude works on the task
+3. Claude tries to exit (session end)
+4. Stop hook intercepts — checks for completion promise in output
+5. No promise found → block exit (exit code 2), agent re-prompts
+6. Promise found → allow exit, loop ends
+```
+
+Claude doesn't know it's in a loop; it just keeps getting the same task. The stop hook is configured in `settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{ "type": "command", "command": ".claude/hooks/ralph-stop.sh" }]
+  }
+}
+```
+
+### Completion Promise
+
+Use exact string matching with a simple, unambiguous token: `COMPLETE`, `DONE`, or `<promise>COMPLETE</promise>`. Always pair with max-iterations as a safety net.
+
+### State Management via Files
+
+Since each iteration gets fresh context, all state must live in files:
+
+| File | Purpose |
+|------|---------|
+| `prd.md` | Task specification (read-only) |
+| `progress.md` | Running log of completions + learnings |
+| `.claude/ralph-iteration-count` | Iteration counter |
+| Git history | Full audit trail of changes |
+
+### CLAUDE.md for Ralph Loops
+
+Keep it focused — the agent reads it every iteration:
+- Read `prd.md` for the task spec
+- Read `progress.md` for what's been done
+- Find the next unchecked item and implement it
+- Update `progress.md` with results and learnings
+- Commit with a descriptive message
+- Output `<promise>COMPLETE</promise>` when ALL items are done
+
+### Advanced: Dual-Agent Review
+
+Use a PostToolUse hook to inject a review step after each commit, feeding review output back into `progress.md` for the next iteration.
+
+### Practical Tips
+
+1. **Start with the official plugin** — don't reinvent the stop hook
+2. **Keep CLAUDE.md focused** — don't overload it
+3. **Max iterations = your budget ceiling** — always set this
+4. **Git is your undo button** — `git reset` to before the loop started
+5. **Run overnight for big tasks** — set max_iterations high, review in the morning
+
 ## Sources
 
 - [Geoffrey Huntley — everything is a ralph loop](https://ghuntley.com/loop/)
@@ -131,3 +193,9 @@ Various "hq-starter-kit" variants package this methodology with pre-written know
 - [GitHub — snarktank/ralph](https://github.com/snarktank/ralph)
 - [GitHub — how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum)
 - [GitHub — mikeyobrien/ralph-orchestrator](https://github.com/mikeyobrien/ralph-orchestrator)
+- [Claude Code Plugins — ralph-wiggum](https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum)
+- [Awesome Claude — Ralph Wiggum Technique](https://awesomeclaude.ai/ralph-wiggum)
+- [ClaudeFast — Run Autonomously Overnight](https://claudefa.st/blog/guide/mechanics/ralph-wiggum-technique)
+- [ClaudeFast — Stop Hook Task Enforcement](https://claudefa.st/blog/tools/hooks/stop-hook-task-enforcement)
+- [GitHub — frankbria/ralph-claude-code](https://github.com/frankbria/ralph-claude-code)
+- [GitHub — alfredolopez80/multi-agent-ralph-loop](https://github.com/alfredolopez80/multi-agent-ralph-loop)

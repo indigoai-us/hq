@@ -3,12 +3,12 @@
 | File | Title | Summary | Confidence | Updated |
 |------|-------|---------|------------|---------|
 | [claw-platform-comparison.md](claw-platform-comparison.md) | OpenClaw vs NanoClaw vs NemoClaw: AI Agent Platform Comparison | Comparison of the three major open-source AI agent platforms in the "Claw" ecosystem as of March ... | 0.8 | 2026-03-25 |
+| [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.9 | 2026-03-25 |
 | [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) | Sandbox-Safe Bash Patterns for Agent Templates | Practical workarounds for Claude Code sandbox and permission blocks that agent templates commonly... | 0.8 | 2026-03-25 |
 | [subprocess-instruction-following-failure.md](subprocess-instruction-following-failure.md) | Why Subprocess Agents Ignore CLAUDE.md Fallback Instructions When Blocked | Subprocess agents load CLAUDE.md but deprioritize its fallback instructions when blocked by permi... | 0.8 | 2026-03-24 |
 | [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) | Git Worktree Sandbox Write Permissions in Claude Code | Claude Code's sandbox blocks writes to `.worktrees/` subpaths even when they're inside the repo r... | 0.8 | 2026-03-24 |
 | [sandbox-path-resolution-and-worktrees.md](sandbox-path-resolution-and-worktrees.md) | Claude Code Sandbox Path Resolution and Worktree Compatibility | Claude Code's sandbox enforces filesystem write restrictions at the OS level via Seatbelt (macOS)... | 0.8 | 2026-03-24 |
 | [sandbox-command-validation-false-positives.md](sandbox-command-validation-false-positives.md) | Claude Code Sandbox Command Validation: Quote and Brace False Positives | Claude Code's sandbox applies heuristic command validation that frequently false-positives on leg... | 0.8 | 2026-03-24 |
-| [ralph-loops.md](ralph-loops.md) | Ralph Loops | Autonomous agent iteration pattern where AI keeps working until tasks are verifiably complete. | 0.9 | 2026-03-20 |
 | [ralph-loop-implementation-patterns.md](ralph-loop-implementation-patterns.md) | Ralph Loop Implementation Patterns | Deep dive into PRD structure, evaluator design, exit strategies, and cost optimization for Ralph ... | 0.8 | 2026-03-20 |
 | [agent-safety-guardrails.md](agent-safety-guardrails.md) | Agent Safety & Guardrails: Production Patterns | Production-proven patterns for keeping autonomous agents safe: sandboxing, least-privilege permis... | 0.8 | 2026-03-20 |
 | [landlock-lsm-filesystem-sandboxing.md](landlock-lsm-filesystem-sandboxing.md) | Landlock LSM: Filesystem Sandboxing and Limitations | Landlock is an unprivileged Linux LSM for restricting filesystem and network access per-process w... | 0.9 | 2026-03-20 |
@@ -18,7 +18,6 @@
 | [ralph-loop-observability.md](ralph-loop-observability.md) | Ralph Loop Observability and Monitoring | Tools and patterns for monitoring Ralph loop runs — iteration counts, cost per run, and convergen... | 0.8 | 2026-03-19 |
 | [ralph-loop-failure-modes.md](ralph-loop-failure-modes.md) | Ralph Loop Failure Modes & Debugging | Common failure patterns in Ralph loops and strategies for diagnosing them. | 0.5 | 2026-03-19 |
 | [nvidia-openshell.md](nvidia-openshell.md) | NVIDIA OpenShell | Open-source runtime for executing autonomous AI agents in sandboxed environments with kernel-leve... | 0.8 | 2026-03-19 |
-| [ralph-loops-claude-code-integration.md](ralph-loops-claude-code-integration.md) | Ralph Loops in Claude Code | How Ralph loops integrate with Claude Code via hooks, plugins, and CLAUDE.md patterns. | 0.8 | 2026-03-19 |
 | [nanoclaw.md](nanoclaw.md) | NanoClaw: Container-Isolated AI Agent Platform | Lightweight, container-isolated AI agent platform built on the Claude Agent SDK. | 0.8 | 2026-03-19 |
 | [autonomous-agents-landscape-2026.md](autonomous-agents-landscape-2026.md) | Autonomous AI Agents Landscape 2026 | Overview of the autonomous AI agent ecosystem as of early 2026 — frameworks, protocols, architect... | 0.8 | 2026-03-19 |
 | [claude-code-hooks.md](claude-code-hooks.md) | Claude Code Hooks | Shell commands, HTTP endpoints, or LLM prompts that run at specific lifecycle points in Claude Code. | 0.9 | 2026-03-19 |

@@ -77,3 +77,10 @@ The sandbox only applies to **Bash commands and their child processes**. Built-i
 | `/` | Absolute from filesystem root | `/tmp/build` |
 | `~/` | Relative to home directory | `~/.kube` |
 | `./` or bare | Relative to project root (project settings) or `~/.claude` (user settings) | `./output` |
+
+## See Also
+
+- [worktree-sandbox-write-permissions.md](worktree-sandbox-write-permissions.md) — worktree-specific write blocks and symlink resolution
+- [sandbox-command-validation-false-positives.md](sandbox-command-validation-false-positives.md) — quote/brace heuristic failures in command validation
+- [sandbox-safe-agent-patterns.md](sandbox-safe-agent-patterns.md) — practical workarounds for agent templates
+- [cli-working-directory-flags-for-agents.md](../agent-tooling/cli-working-directory-flags-for-agents.md) — eliminating compound commands via `-C` flags
