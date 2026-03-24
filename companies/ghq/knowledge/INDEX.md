@@ -8,7 +8,7 @@
 | [agent-memory](agent-memory/INDEX.md) | 2 | 2026-03-20 |
 | [agent-perception](agent-perception/INDEX.md) | 2 | 2026-03-20 |
 | [agent-self-improvement](agent-self-improvement/INDEX.md) | 3 | 2026-03-20 |
-| [agent-tooling](agent-tooling/INDEX.md) | 4 | 2026-03-24 |
+| [agent-tooling](agent-tooling/INDEX.md) | 5 | 2026-03-25 |
 | [agent-workflows](agent-workflows/INDEX.md) | 8 | 2026-03-25 |
 | [ai-agents](ai-agents/INDEX.md) | 25 | 2026-03-24 |
 | [beads-architecture](beads-architecture/INDEX.md) | 4 | 2026-03-20 |
