@@ -17,7 +17,7 @@
 | [beads-workflows](beads-workflows/INDEX.md) | 3 | 2026-03-24 |
 | [gas-town-architecture](gas-town-architecture/INDEX.md) | 5 | 2026-03-20 |
 | [gas-town-operations](gas-town-operations/INDEX.md) | 5 | 2026-03-20 |
-| [ghq-core](ghq-core/INDEX.md) | 14 | 2026-03-20 |
+| [ghq-core](ghq-core/INDEX.md) | 15 | 2026-03-24 |
 | [hq-architecture-patterns](hq-architecture-patterns/INDEX.md) | 10 | 2026-03-20 |
 | [knowledge-maintenance](knowledge-maintenance/INDEX.md) | 12 | 2026-03-20 |
 | [knowledge-segregation](knowledge-segregation/INDEX.md) | 7 | 2026-03-20 |
