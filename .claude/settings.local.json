@@ -118,7 +118,9 @@
       "Write",
       "Edit",
       "Skill(new-company)",
-      "Skill(new-company:*)"
+      "Skill(new-company:*)",
+      "Bash(for d:*)",
+      "Read(//Users/hassaansaleemmacbook2026/repos/ghq/$d/**)"
     ],
     "deny": [
       "Agent"
