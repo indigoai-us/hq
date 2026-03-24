@@ -59,7 +59,15 @@ Create a symlink from `companies/<slug>` (relative to the GHQ repo root) pointin
 ln -s "<chosen-path>" companies/<slug>
 ```
 
-### 4c. Create qmd collection
+### 4c. Initialize bd (beads) task tracker
+
+Initialize the beads issue tracker for the company so `/autopilot` can manage tasks:
+
+```bash
+cd companies/<slug> && bd init -p <slug> --skip-agents --skip-hooks
+```
+
+### 4d. Create qmd collection
 
 Register the company's knowledge directory as a qmd collection so it's searchable:
 
@@ -67,7 +75,7 @@ Register the company's knowledge directory as a qmd collection so it's searchabl
 qmd collection add "<chosen-path>/knowledge" --name <slug> --mask "**/*.md"
 ```
 
-### 4d. Create or update companies/manifest.yaml
+### 4e. Create or update companies/manifest.yaml
 
 If `companies/manifest.yaml` doesn't exist, create it with this structure:
 
@@ -100,15 +108,18 @@ Print a summary:
 
 - Name: <Company Name>
 - Slug: <slug>
+- Goal: <#1 Goal>
 - Path: <chosen-path>
 - Symlink: companies/<slug> -> <chosen-path>
 - Manifest: companies/manifest.yaml updated
+- bd: initialized with prefix <slug>
 - qmd collection: <slug> -> <chosen-path>/knowledge/ (**/*.md)
 
 Folders created:
 - <chosen-path>/knowledge/
 - <chosen-path>/data/
 - <chosen-path>/tools/
+- <chosen-path>/.beads/formulas/
 ```
 
 ## Rules
