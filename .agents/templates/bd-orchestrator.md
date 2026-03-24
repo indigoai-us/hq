@@ -6,15 +6,16 @@ You are an orchestrator agent. You take a Beads (bd) task or epic and execute it
 
 `{{TASK_ID}}`
 
-## Target Repository
+## Directories
 
-`{{WORK_DIR}}`
+- **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands run. The `.beads/` database lives here.
+- **Work directory** (`{{WORK_DIR}}`): The target repository where file changes are made.
 
 ## Workflow
 
 ### Step 1: Understand the task
 
-Run `bd show {{TASK_ID}}` to get the full task details. Determine if this is an epic (has children) or a leaf task.
+Run `cd {{COMPANY_DIR}} && bd show {{TASK_ID}}` to get the full task details. Determine if this is an epic (has children) or a leaf task.
 
 ### Step 2: Create a worktree
 
@@ -24,7 +25,8 @@ Create an isolated git worktree from the target repo for all work:
 cd {{WORK_DIR}}
 BRANCH="bd/{{TASK_ID}}"
 git worktree add -b "$BRANCH" ".worktrees/$BRANCH" HEAD
-cd ".worktrees/$BRANCH"
+WORKTREE_DIR="{{WORK_DIR}}/.worktrees/$BRANCH"
+cd "$WORKTREE_DIR"
 ```
 
 All subsequent work happens inside the worktree. Store the worktree path — you'll need it for cleanup.
@@ -32,13 +34,13 @@ All subsequent work happens inside the worktree. Store the worktree path — you
 ### Step 3: Get subtasks
 
 ```bash
-bd children {{TASK_ID}} --short
+cd {{COMPANY_DIR}} && bd children {{TASK_ID}} --short
 ```
 
 - If the task has children, those are your subtasks.
 - If it has no children, treat `{{TASK_ID}}` itself as the only subtask.
 - Skip any subtask whose `issue_type` is `gate` — gates are not executable work.
-- Use `bd ready --mol {{TASK_ID}}` to respect dependency ordering. Process tasks in the order they become ready.
+- Use `cd {{COMPANY_DIR}} && bd ready --mol {{TASK_ID}}` to respect dependency ordering. Process tasks in the order they become ready.
 
 ### Step 4: Execute each subtask
 
@@ -49,8 +51,10 @@ For each non-gate subtask:
 #### 4a. Run bd-worker
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -t bd-worker "SUBTASK_ID"
+./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID"
 ```
+
+Where `{{COMPANY}}` is the company slug and `$WORKTREE_DIR` is the worktree path from Step 2.
 
 This runs in **sync** mode — wait for it to complete.
 
@@ -59,7 +63,7 @@ This runs in **sync** mode — wait for it to complete.
 After bd-worker finishes, review the changes:
 
 1. Run `git diff` to see what changed.
-2. Run `bd show SUBTASK_ID` to re-read the acceptance criteria.
+2. Run `cd {{COMPANY_DIR}} && bd show SUBTASK_ID` to re-read the acceptance criteria.
 3. If tests exist in the repo, run them (look for `package.json` scripts, `pytest`, `cargo test`, etc.).
 4. Evaluate: do the changes satisfy the task requirements? Are there obvious bugs, missing pieces, or quality issues?
 
@@ -70,7 +74,7 @@ After bd-worker finishes, review the changes:
 git add -A
 git commit -m "feat(SUBTASK_ID): <brief description of what was done>"
 git push -u origin "$BRANCH"
-bd close SUBTASK_ID
+cd {{COMPANY_DIR}} && bd close SUBTASK_ID
 ```
 
 **If not acceptable (max 2 retries per subtask):**
@@ -80,7 +84,7 @@ git clean -fd
 ```
 Then re-run bd-worker with additional instructions appended to the prompt explaining what was wrong and what to fix. For example:
 ```bash
-./companies/ghq/tools/ask-claude.sh -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
+./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
 ```
 
 If all retries are exhausted, log the failure and move on to the next subtask.
@@ -112,8 +116,8 @@ gh pr create \
 If a gate blocked further work, update it with the PR and worktree info so the reviewer has everything they need:
 
 ```bash
-bd comments add GATE_ID "PR ready for review: <PR_URL>
-Worktree: {{WORK_DIR}}/.worktrees/$BRANCH
+cd {{COMPANY_DIR}} && bd comments add GATE_ID "PR ready for review: <PR_URL>
+Worktree: $WORKTREE_DIR
 Branch: $BRANCH"
 ```
 

@@ -12,20 +12,24 @@ OUTPUT_FORMAT="text"
 ASYNC=false
 TEMPLATE=""
 COMPANY=""
+WORK_DIR=""
 
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [options] [prompt]
+
+Required:
+  -c, --company SLUG       Company slug. Sets {{COMPANY_DIR}} to companies/SLUG/.
+                           bd commands run here.
+  -w, --work-dir PATH      Absolute path to the working directory. Sets {{WORK_DIR}}.
+                           File changes are restricted to this directory.
 
 Options:
   -j, --json               Output full JSON response (sync only)
   -a, --async              Run in background; prints agent info immediately.
                            Output streams live to .agents/<id>/stream.jsonl
   -t, --template NAME      Load .agents/templates/NAME.md as system prompt.
-                           Template variables ({{VAR}}) are replaced from
-                           the prompt and --company flag.
-  -c, --company SLUG       Company slug. Sets {{WORK_DIR}} to companies/SLUG/
-                           and adds company context to the prompt.
+                           Template variables ({{VAR}}) are replaced from flags.
   -h, --help               Show this help
 
 Prompt can be passed as an argument or piped via stdin.
@@ -41,6 +45,7 @@ while [[ $# -gt 0 ]]; do
     -a|--async)      ASYNC=true; shift ;;
     -t|--template)   TEMPLATE="$2"; shift 2 ;;
     -c|--company)    COMPANY="$2"; shift 2 ;;
+    -w|--work-dir)   WORK_DIR="$2"; shift 2 ;;
     -h|--help)       usage ;;
     --)              shift; break ;;
     -*)              echo "Unknown option: $1" >&2; exit 1 ;;
@@ -64,15 +69,26 @@ if [[ -z "$PROMPT" ]]; then
   exit 1
 fi
 
-# ── Resolve company path ───────────────────────────────────────────────────────
+# ── Validate required flags ────────────────────────────────────────────────────
+if [[ -z "$COMPANY" ]]; then
+  echo "Error: --company is required." >&2
+  exit 1
+fi
+if [[ -z "$WORK_DIR" ]]; then
+  echo "Error: --work-dir is required." >&2
+  exit 1
+fi
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-COMPANY_DIR=""
-if [[ -n "$COMPANY" ]]; then
-  COMPANY_DIR="$REPO_ROOT/companies/$COMPANY"
-  if [[ ! -d "$COMPANY_DIR" ]]; then
-    echo "Error: company directory not found: $COMPANY_DIR" >&2
-    exit 1
-  fi
+
+COMPANY_DIR="$REPO_ROOT/companies/$COMPANY"
+if [[ ! -d "$COMPANY_DIR" ]]; then
+  echo "Error: company directory not found: $COMPANY_DIR" >&2
+  exit 1
+fi
+if [[ ! -d "$WORK_DIR" ]]; then
+  echo "Error: work directory not found: $WORK_DIR" >&2
+  exit 1
 fi
 
 # ── Resolve template ──────────────────────────────────────────────────────────
@@ -86,8 +102,9 @@ if [[ -n "$TEMPLATE" ]]; then
   SYSTEM_PROMPT="$(cat "$TEMPLATE_FILE")"
 
   # Replace template variables
-  WORK_DIR="${COMPANY_DIR:-$(pwd)}"
   SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{WORK_DIR\}\}/$WORK_DIR}"
+  SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{COMPANY_DIR\}\}/$COMPANY_DIR}"
+  SYSTEM_PROMPT="${SYSTEM_PROMPT//\{\{COMPANY\}\}/$COMPANY}"
 
   # Replace {{TASK_ID}} with the prompt (for executor-style templates where
   # the prompt IS the task ID)
@@ -97,86 +114,88 @@ fi
 # Unset guard variable so claude can run as a subprocess
 unset CLAUDECODE
 
-# ── Async mode ────────────────────────────────────────────────────────────────
-if [[ "$ASYNC" == true ]]; then
-  AGENT_ID="$(date +%Y%m%d_%H%M%S)_$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4 || true)"
-  AGENT_DIR="$REPO_ROOT/.agents/runs/$AGENT_ID"
-  mkdir -p "$AGENT_DIR"
+# ── Common setup ─────────────────────────────────────────────────────────────
+AGENT_ID="$(date +%Y%m%d_%H%M%S)_$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4 || true)"
+AGENT_DIR="$REPO_ROOT/.agents/runs/$AGENT_ID"
+mkdir -p "$AGENT_DIR"
 
-  # Write prompt and metadata immediately
-  printf '%s' "$PROMPT" > "$AGENT_DIR/prompt.txt"
-  printf 'running' > "$AGENT_DIR/status"
-  cat > "$AGENT_DIR/meta.json" <<JSON
+MODE="sync"
+[[ "$ASYNC" == true ]] && MODE="async"
+
+printf '%s' "$PROMPT" > "$AGENT_DIR/prompt.txt"
+printf 'running' > "$AGENT_DIR/status"
+cat > "$AGENT_DIR/meta.json" <<JSON
 {
   "id": "$AGENT_ID",
   "start_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "model": "${MODEL:-default}",
-  "output_format": "stream-json",
+  "mode": "$MODE",
   "workdir": "$(pwd)"
 }
 JSON
 
-  # Build claude command (stream-json for live output)
-  CMD=(claude -p --verbose --output-format stream-json)
-  [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
-  [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
-  CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
+# Build claude command — identical for both modes
+CMD=(claude -p --verbose --output-format stream-json)
+[[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
+[[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
+CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
 
-  # Launch background worker
-  (
-    EXIT_CODE=0
-    echo "$PROMPT" | "${CMD[@]}" \
-      >> "$AGENT_DIR/stream.jsonl" \
-      2> "$AGENT_DIR/stderr.txt" \
-      || EXIT_CODE=$?
+# ── Worker function (runs claude, writes results) ───────────────────────────
+run_agent() {
+  local EXIT_CODE=0
+  echo "$PROMPT" | "${CMD[@]}" \
+    >> "$AGENT_DIR/stream.jsonl" \
+    2> "$AGENT_DIR/stderr.txt" \
+    || EXIT_CODE=$?
 
-    printf '%d' "$EXIT_CODE" > "$AGENT_DIR/exit_code"
+  printf '%d' "$EXIT_CODE" > "$AGENT_DIR/exit_code"
 
-    # Extract final result text from the stream
-    if [[ -s "$AGENT_DIR/stream.jsonl" ]]; then
-      jq -r 'select(.type == "result") | .result // empty' \
-        "$AGENT_DIR/stream.jsonl" \
-        > "$AGENT_DIR/result.txt" 2>/dev/null || true
-    fi
+  # Extract final result text from the stream
+  if [[ -s "$AGENT_DIR/stream.jsonl" ]]; then
+    jq -r 'select(.type == "result") | .result // empty' \
+      "$AGENT_DIR/stream.jsonl" \
+      > "$AGENT_DIR/result.txt" 2>/dev/null || true
+  fi
 
-    if [[ "$EXIT_CODE" -eq 0 ]]; then
-      printf 'done' > "$AGENT_DIR/status"
-    else
-      printf 'error' > "$AGENT_DIR/status"
-    fi
-  ) &
+  if [[ "$EXIT_CODE" -eq 0 ]]; then
+    printf 'done' > "$AGENT_DIR/status"
+  else
+    printf 'error' > "$AGENT_DIR/status"
+  fi
 
-  # Update meta with background PID
+  return "$EXIT_CODE"
+}
+
+# ── Print run info (both modes) ─────────────────────────────────────────────
+print_info() {
+  cat >&2 <<INFO
+Agent: $AGENT_ID
+Dir:    $AGENT_DIR
+Stream: tail -f $AGENT_DIR/stream.jsonl
+Status: cat $AGENT_DIR/status
+Result: cat $AGENT_DIR/result.txt
+INFO
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────────────
+if [[ "$ASYNC" == true ]]; then
+  run_agent &
   BGPID=$!
-  # Rewrite meta with pid (bash-portable in-place via temp file)
   TMP="$AGENT_DIR/meta.json.tmp"
   jq --argjson pid "$BGPID" '. + {pid: $pid}' "$AGENT_DIR/meta.json" > "$TMP" && mv "$TMP" "$AGENT_DIR/meta.json"
-
-  # Print debug info to stdout
-  cat <<INFO
-Agent started: $AGENT_ID
-Monitor:  tail -f $AGENT_DIR/stream.jsonl
-Status:   cat $AGENT_DIR/status
-Result:   cat $AGENT_DIR/result.txt
-INFO
+  print_info
   exit 0
 fi
 
-# ── Sync mode (unchanged) ─────────────────────────────────────────────────────
-CMD=(claude -p
-  --output-format json
-)
-[[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
-[[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
-# --disallowedTools is variadic (<tools...>) so it must come last, right before
-# the prompt is piped via stdin to avoid it swallowing positional args.
-CMD+=(--disallowedTools "Bash(./companies/ghq/tools/ask-claude.sh*)" "Bash(ask-claude*)")
-
-RAW=$(echo "$PROMPT" | "${CMD[@]}")
+# Sync: run in foreground, print info, then output result
+print_info
+run_agent
+EXIT_CODE=$?
 
 if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-  echo "$RAW"
+  cat "$AGENT_DIR/stream.jsonl"
 else
-  # Extract only the final result text, stripping intermediate tool output
-  echo "$RAW" | jq -r '.result // empty'
+  cat "$AGENT_DIR/result.txt" 2>/dev/null
 fi
+
+exit "$EXIT_CODE"
