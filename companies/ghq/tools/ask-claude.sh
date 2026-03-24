@@ -7,7 +7,7 @@
 #   ask-claude --async "Long running task"   # fire-and-forget
 set -euo pipefail
 
-MODEL=""
+MODEL="claude-opus-4-6"
 OUTPUT_FORMAT="text"
 ASYNC=false
 TEMPLATE=""
