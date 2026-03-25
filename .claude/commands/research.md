@@ -43,13 +43,19 @@ Track counters: `entries_created`, `entries_updated`, `duplicates`, `items_queue
 
 Print: `Researching: {question} (priority {priority})`
 
-#### b. Research via WebSearch
+#### b. Research via Available Sources
 
-Use the **WebSearch** tool to research the question. Perform 1-3 searches depending on complexity:
-- Simple factual questions: 2-3 searches with different angles
-- Multi-faceted topics: 4-6 searches with different angles
+First, check the company's available sources by reading `companies/manifest.yaml` and looking at the `sources` list for `{COMPANY}`.
 
-Collect the search result URLs for the `source` field.
+**Source priority** (use all available, in this order):
+
+1. **Company-specific MCP tools** — If the company has MCP sources (e.g. `indigo-mcp`, `slack`, `gmail`, `linear`), query those first. These provide authoritative internal data. Use the corresponding MCP tool calls (e.g. `mcp__indigo__query_collection`, `mcp__be1aeb4c__slack_search_public`, etc.).
+2. **GitHub** — If `github` is listed, check repos for relevant code, issues, or docs via `gh` CLI.
+3. **WebSearch** — Always available as a fallback. Perform 1-3 searches depending on complexity:
+   - Simple factual questions: 2-3 searches with different angles
+   - Multi-faceted topics: 4-6 searches with different angles
+
+Collect all source references (URLs, MCP tool names, Slack channels, etc.) for the `source` field.
 
 #### c. Synthesize into a Knowledge Entry
 

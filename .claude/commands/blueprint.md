@@ -37,6 +37,13 @@ qmd query "{domain}" -n 10 -c {COMPANY}
 
 Note any existing categories, entries, and gaps. The blueprint should complement — not duplicate — what exists.
 
+### 1b. Check Available Sources
+
+Read `companies/manifest.yaml` and look at the `sources` list for `{COMPANY}`. Available sources inform:
+- **What to seed**: If the company has Slack/Linear/GitHub, seed entries can reference internal tooling and workflows
+- **What to queue**: Curiosity items should note which source to consult (e.g. "Check Slack #engineering for context on X")
+- **Research strategy**: When `/research` processes queued items, it will use these sources automatically
+
 ### 2. Analyze the Domain
 
 Think through the domain and identify:

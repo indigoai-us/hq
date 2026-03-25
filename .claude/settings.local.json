@@ -28,6 +28,7 @@
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(mkdir *)",
+      "Bash(mkdir -p *)",
       "Bash(cp *)",
       "Bash(cat *)",
       "Bash(head *)",
@@ -123,7 +124,9 @@
       "Edit",
       "Bash(command -v bd)",
       "Bash(/tmp/consult-knowledge-new.sh:*)",
-      "Bash(cp /tmp/consult-knowledge-new.sh .claude/hooks/consult-knowledge.sh)"
+      "Bash(cp /tmp/consult-knowledge-new.sh .claude/hooks/consult-knowledge.sh)",
+      "mcp__indigo__collection_info",
+      "mcp__indigo__list_collections"
     ],
     "deny": [
       "Agent"

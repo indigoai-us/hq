@@ -20,6 +20,10 @@ Actually, since AskUserQuestion requires options, handle this conversationally:
 
 Then **ask the user for the company's #1 goal** using `AskUserQuestion` with the question "What is the #1 goal of this company?" — provide 2-3 example options (e.g. "Ship product X", "Build consulting practice", "Research & development") but the user will likely use "Other" to type their own.
 
+Then **ask the user for the company's URL** using `AskUserQuestion` with the question "What is the company's website URL? (leave blank if none)" — provide 2-3 example placeholder options (e.g. "https://example.com", "No website yet") but the user will likely use "Other" to type their own. If the user selects "No website yet" or leaves it blank, store `url: null` in the manifest.
+
+Then **ask the user for the company's data sources** using `AskUserQuestion` (multiSelect: true) with the question "Which data sources does this company use?" — provide options for common sources: "Slack", "GitHub", "Gmail", "Linear", "Figma". The user can select multiple or use "Other" to add custom sources. These are stored in the manifest so skills like `/research` and `/blueprint` know which tools are available for gathering information.
+
 ## Step 2: Suggest Slug
 
 Take the company name and generate a slug (lowercase, hyphens, no special chars). Present it to the user via `AskUserQuestion`:
@@ -99,9 +103,13 @@ companies:
   <slug>:
     name: "<Company Name>"
     goal: "<#1 Goal>"
+    url: "<Company URL or null>"
     path: "<chosen-path>"
+    sources: [<comma-separated source slugs>]
     created_at: "<ISO 8601 timestamp>"
 ```
+
+Source slugs are lowercase, hyphenated identifiers (e.g. `slack`, `github`, `gmail`, `linear`, `figma`, `indigo-mcp`). If no sources selected, use an empty list: `sources: []`.
 
 If the manifest already exists, append the new company entry under the `companies:` key. Do NOT overwrite existing entries.
 
@@ -115,8 +123,10 @@ Print a summary:
 - Name: <Company Name>
 - Slug: <slug>
 - Goal: <#1 Goal>
+- URL: <company URL or "none">
 - Path: <chosen-path>
 - Symlink: companies/<slug> -> <chosen-path>
+- Sources: <comma-separated sources or "none">
 - Manifest: companies/manifest.yaml updated
 - bd: initialized with prefix <slug>
 - qmd collection: <slug> -> <chosen-path>/knowledge/ (**/*.md)
