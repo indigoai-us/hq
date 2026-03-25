@@ -11,7 +11,7 @@ Think through a problem before committing to tasks. Research GHQ context, compar
 
 **Input:** $ARGUMENTS
 
-**Pipeline:** `/idea` → **`/brainstorm`** → `/plan` → `/run-loop`
+**Pipeline:** `/idea` → **`/brainstorm`** → `/plan-project` → `/run-project`
 
 ## Step 0: Parse Input & Company Anchor
 
@@ -286,7 +286,7 @@ Approaches:
 Recommendation: Option {X}
 
 Next:
-  /plan {co} {task-id}  → create subtasks
+  /plan-project {co} {task-id}  → create subtasks
   bd show {task-id}      → review brainstorm in task description
 ```
 

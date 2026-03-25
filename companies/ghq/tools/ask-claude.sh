@@ -165,7 +165,8 @@ fi
 export ASK_CLAUDE_PARENT_ID="$AGENT_ID"
 
 # Build claude command — identical for both modes
-CMD=(claude -p --verbose --output-format stream-json)
+CMD=(claude -p --verbose --output-format stream-json --dangerously-skip-permissions)
+CMD+=(--disallowedTools "Agent" "Bash(rm *)" "Bash(bd init *--force*)" "mcp__be1aeb4c-bd19-415d-b586-10015b39f2d8__slack_send_message")
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
 [[ -n "$SYSTEM_PROMPT" ]] && CMD+=(--append-system-prompt "$SYSTEM_PROMPT")
 

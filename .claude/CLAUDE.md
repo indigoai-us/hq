@@ -60,8 +60,7 @@ companies/
       .research-log.jsonl         research session summaries
     data/                         company-specific data files
     tools/                        company-specific scripts
-    projects/                     project directories
-      {project}/repos/{repo}/     project repos (symlinks)
+    repos/                        repo symlinks
   ghq/                            GHQ itself — cross-cutting knowledge + shared tools
     tools/                        shared utility scripts (reindex, queue, ask-claude, etc.)
     knowledge/                    meta-knowledge (agent patterns, GHQ architecture, etc.)

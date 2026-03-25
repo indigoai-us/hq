@@ -118,7 +118,7 @@ The hook then uses `git ls-files --others --ignored --exclude-from=.worktreeincl
 
 GHQ's `companies/` directory with symlinks adds complexity:
 
-1. **Symlinked repos**: Worktrees for repos under `companies/{slug}/projects/{project}/repos/{repo}/` (which are symlinks) need the symlink targets resolved before `git worktree add`.
+1. **Symlinked repos**: Worktrees for repos under `companies/{slug}/repos/{repo}/` (which are symlinks) need the symlink targets resolved before `git worktree add`.
 2. **Shared tools**: `companies/ghq/tools/` should be accessible from worktrees. Since these live in the main repo (not `.claude/`), they're included in the git checkout automatically.
 3. **CLAUDE.md**: Already committed to the repo, so it's present in worktrees by default.
 

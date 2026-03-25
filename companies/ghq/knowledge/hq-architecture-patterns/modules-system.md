@@ -2,7 +2,7 @@
 title: "hq-starter-kit Modules System: merge/link/copy Distribution Strategies"
 category: hq-architecture-patterns
 tags: ["configuration", "cli", "production-patterns", "coordination", "open-source"]
-source: "companies/indigo/projects/indigo-nx/repos/indigo-nx/../../../hq-starter-kit/modules/modules.yaml, companies/indigo/projects/indigo-nx/repos/indigo-nx/../../../hq-starter-kit/modules/cli/src/commands/modules-sync.ts"
+source: "companies/indigo/repos/indigo-nx/../hq-starter-kit/modules/modules.yaml, companies/indigo/repos/indigo-nx/../hq-starter-kit/modules/cli/src/commands/modules-sync.ts"
 confidence: 0.95
 created_at: 2026-03-20T08:45:00Z
 updated_at: 2026-03-20T08:45:00Z

@@ -25,8 +25,7 @@ companies/
       .research-log.jsonl           # research session summaries
     data/                           # company-specific data files
     tools/                          # company-specific scripts
-    projects/
-      {project}/repos/{repo}/       # project repos (symlinks)
+    repos/{repo}/                   # repo symlinks
 ```
 
 ## Symlinks
@@ -70,6 +69,6 @@ The `/new-company` command handles full scaffolding:
 
 All knowledge commands (`/learn`, `/research`, `qmd`) accept `-c <company-slug>` to target a specific company. Default is `ghq`. The `consult-knowledge.sh` hook queries across all registered qmd collections, so knowledge from any company can surface when relevant.
 
-## Project Repos
+## Repos
 
-Under each company, projects contain repos as symlinks. This avoids duplicating clones — a repo can be referenced by multiple projects if needed. The convention `projects/{project}/repos/{repo}/` allows organizing by project context rather than flat repo lists.
+Under each company, repos are symlinked directly at `repos/{repo}/`. This avoids duplicating clones while keeping the structure flat and simple.

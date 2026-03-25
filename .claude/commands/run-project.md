@@ -1,461 +1,229 @@
 ---
-description: Run all subtasks of a parent task through the orchestrator loop
-allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash
-argument-hint: [task-id] or [--resume task-id] or [--status]
+description: Run all subtasks of a parent task, delegating each to bd-worker
+allowed-tools: Read, Bash, AskUserQuestion
+argument-hint: <task-id>
 visibility: public
 ---
 
-# /run-loop - Task Orchestrator Loop
+# /run-project - Execute Task Subtasks
 
-Ultra-lean state machine with fresh context per subtask. Delegates each subtask entirely to a sub-agent via `/execute-task`, receiving only a structured JSON summary back. Each subtask gets clean context; nothing accumulates.
+Orchestrates execution of a bd task's subtasks. Each subtask is delegated to `bd-worker` via `ask-claude.sh` in a worktree. The command handles review, commit, retry, and PR creation.
 
 **Arguments:** $ARGUMENTS
 
-## Core Pattern (Fresh-Context)
+**Pipeline:** `/idea` → `/brainstorm` → `/plan-project` → **`/run-project`**
 
-The orchestrator is an **ultra-lean state machine**. It picks subtasks and delegates each one entirely to a sub-agent via `/execute-task`. The orchestrator:
-- Fetches open subtasks from beads via `bd children {task-id} --json`
-- Spawns ONE sub-agent per subtask (fresh context per subtask)
-- Receives only a structured JSON summary back
-- Appends state transitions to `loops/state.jsonl`
-- Never accumulates worker outputs, handoff blobs, or implementation details
+## Step 1: Parse & Validate
 
-## Usage
+Extract `{task-id}` from `$ARGUMENTS`.
 
-```bash
-/run-loop ghq-abc123              # Run all subtasks of task ghq-abc123
-/run-loop --resume ghq-abc123     # Resume paused loop
-/run-loop --status                # Check active loops
-```
+If empty: STOP with "Usage: `/run-project <task-id>`"
 
-## Process
-
-### 1. Parse Arguments
-
-**If `--status`:**
-- Read last entries from `loops/state.jsonl` and `loops/history.jsonl`
-- Display active and completed loop statuses
-- Exit
-
-**If `--resume {task-id}`:**
-- Read `loops/state.jsonl` to find last state for this task
-- Fetch subtasks from beads, skip already-closed ones
-- Continue from next open + unblocked subtask
-- Orchestrator starts with ZERO accumulated context -- only state.jsonl + beads
-
-**If `{task-id}`:**
-- Resolve company from task ID's epic prefix via `companies/manifest.yaml` epic field
-- `cd companies/{slug}` so all `bd` commands use the correct per-company database
-- Validate task exists: `bd show {task-id} --json`
-- If task **NOT FOUND**: STOP immediately.
-  ```
-  ERROR: Task {task-id} not found in beads.
-
-  Fix: Run /plan to create a task with subtasks.
-  ```
-- Fetch subtasks: `bd children {task-id} --json`
-- If no children: STOP with "Task {task-id} has no subtasks. Add subtasks with `bd create --parent {task-id}`."
-- Check if a loop is already in progress for this task (scan state.jsonl for `loop_start` without `loop_end`)
-
-### 2. Load Subtasks
+Resolve company from the task ID prefix. Read `companies/manifest.yaml` to find the matching company slug.
 
 ```bash
-bd children {task-id} --json
-```
-
-Parse the JSON output. Filter to open subtasks:
-
-```javascript
-const allChildren = JSON.parse(bdOutput)
-const open = allChildren.filter(t => t.status === "open" || t.status === "in_progress")
-const closed = allChildren.filter(t => t.status === "closed")
-const total = allChildren.length
-const completed = closed.length
-const remaining = open
-
-if (remaining.length === 0) {
-  STOP: "All subtasks are already closed."
-}
-```
-
-Load parent task metadata for quality gates and repo path:
-
-```bash
+cd companies/{slug}
 bd show {task-id} --json
 ```
 
-Extract from parent's metadata (stored as JSON in the metadata field):
-- `qualityGates` -- commands to run after each skill
-- `repoPath` -- target repository path
-- `relatedSkills` -- skill IDs from registry
-
-### 3. Ask Work Mode
-
-**ALWAYS ask the user before starting. GHQ never uses feature branches.**
-
+If task **NOT FOUND**: STOP.
 ```
-Loop: {task-id} ({parent.title})
-Progress: {completed}/{total} ({percentage}%)
+ERROR: Task {task-id} not found in beads.
 
-Remaining subtasks:
-  1. {id}: {title} (next)
+Fix: Run /plan-project to create a task with subtasks.
+```
+
+## Step 2: Check Subtasks
+
+```bash
+cd companies/{slug} && bd children {task-id} --json
+```
+
+If no children: STOP with "Task {task-id} has no subtasks. Run `/plan-project {task-id}` to decompose it first."
+
+Count open vs closed subtasks. If all closed: STOP with "All subtasks are already closed."
+
+Display:
+```
+Run: {task-id} ({title})
+Progress: {closed}/{total} subtasks complete
+
+Remaining:
+  1. {id}: {title}
   2. {id}: {title}
   ...
-
-Work mode (GHQ never uses feature branches):
-  1. Work on main (simple, direct)
-  2. Use a git worktree (isolated, parallel-safe)
-
-Which mode?
 ```
 
-Use the user's answer to determine work mode. If worktree:
-- Detect default branch: `git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'` (fallback: `main`)
-- Create a worktree from the default branch: `git worktree add ../worktree-{task-id} {default-branch}`
-- All sub-agents work in the worktree directory
+## Step 3: Resolve Work Directory
 
-If main:
-- Verify currently on `main` branch
-- All sub-agents work in the repo directory on main
+Extract `repoPath` from the parent task's metadata. If not set, ask the user:
 
-**NEVER create feature branches.** The only two options are main or worktree.
+```
+Which repo should the orchestrator work in?
+```
 
-### 4. Initialize State
+Validate the path exists.
 
-Mark the parent task as in-progress:
+## Step 4: Create Worktree
 
 ```bash
-bd update {task-id} --status in_progress
+cd {work-dir}
+BRANCH="bd/{task-id}"
+git worktree add -b "$BRANCH" ".worktrees/$BRANCH" HEAD
+WORKTREE_DIR="{work-dir}/.worktrees/$BRANCH"
 ```
 
-Append a `loop_start` entry to `loops/state.jsonl`:
+All subsequent file changes happen inside the worktree.
 
-```jsonl
-{"ts":"{ISO8601}","type":"loop_start","data":{"task_id":"{task-id}","stories_total":{total},"stories_pending":{remaining.length}}}
+## Step 5: Mark In-Progress
+
+```bash
+cd companies/{slug} && bd update {task-id} --status in_progress
 ```
 
-### 5. The Loop
+## Step 6: The Loop
 
-The orchestrator is an **ultra-lean state machine**. It picks subtasks and delegates everything to sub-agents. Classification, skill selection, skill chains, and learning capture all happen inside the sub-agent via `/execute-task`. The orchestrator NEVER accumulates implementation context.
+Process subtasks in dependency order. Use `bd ready --mol {task-id}` from the company directory to respect ordering. Skip any subtask whose `issue_type` is `gate`.
 
 ```
-while (open subtasks remain):
+for each non-gate subtask in dependency order:
 
-    5a. SELECT next subtask
-        - Priority order from beads (sorted by priority field)
-        - Respect dependencies: `bd dep list {subtask-id}` -- skip if deps are open
-        - First open + unblocked subtask
-
-        Report:
-        ```
+    6a. REPORT
         ────────────────────────────────────
-        Next: {subtask.id} - {subtask.title}
+        Next: {subtask-id} - {subtask-title}
         Progress: {completed}/{total} ({percentage}%)
         ────────────────────────────────────
-        ```
 
-    5b. EXECUTE subtask via sub-agent
+    6b. EXECUTE via bd-worker
 
-        Spawn a SINGLE sub-agent for the entire subtask.
-        The sub-agent handles classification, skill selection,
-        the full skill chain, task closure, execution state,
-        and learning capture -- all via /execute-task.
+        ./companies/ghq/tools/ask-claude.sh \
+          -c {slug} \
+          -w "$WORKTREE_DIR" \
+          -t bd-worker \
+          "{subtask-id}"
 
-        IMPORTANT: Do NOT set isolation: "worktree" on the Agent/Task call.
-        All sub-agents must work in the same shared directory.
+        Wait for completion.
 
-        Task({
-          description: "Execute {subtask.id}: {subtask.title}",
-          prompt: "IMPORTANT: Do NOT use EnterPlanMode or TodoWrite.
-                   Execute /execute-task IMMEDIATELY -- it handles all planning,
-                   classification, skill selection, and execution internally.
+    6c. REVIEW
 
-                   Run /execute-task {subtask.id}
+        1. Run `cd "$WORKTREE_DIR" && git diff` to see changes.
+        2. Run `cd companies/{slug} && bd show {subtask-id}` to re-read acceptance criteria.
+        3. If tests exist in the repo, run them.
+        4. Evaluate: do the changes satisfy the requirements?
 
-                   After completion, output ONLY this structured JSON:
-                   {
-                     \"task_id\": \"{subtask.id}\",
-                     \"status\": \"completed|failed|blocked\",
-                     \"summary\": \"1-sentence summary\",
-                     \"workers_used\": [\"list\"],
-                     \"models_used\": {},
-                     \"back_pressure\": {
-                       \"tests\": \"pass|fail|skipped\",
-                       \"lint\": \"pass|fail|skipped\",
-                       \"typecheck\": \"pass|fail|skipped\",
-                       \"build\": \"pass|fail|skipped\"
-                     },
-                     \"discovered_work\": [
-                       {\"title\": \"short description\", \"rationale\": \"why needed\", \"urgency\": \"blocking|important|nice-to-have\"}
-                     ]
-                   }"
-        })
+    6d. ACCEPT or REJECT
 
-        The sub-agent's full context (skill outputs, handoff blobs,
-        file diffs, error traces) is freed when it returns.
-        Only the structured JSON crosses the boundary.
+        If acceptable:
+          cd "$WORKTREE_DIR"
+          git add -A
+          git commit -m "feat({subtask-id}): {brief description}"
+          git push -u origin "$BRANCH"
+          cd companies/{slug} && bd close {subtask-id}
 
-    5c. POST-SUBTASK (orchestrator side -- minimal)
+        If not acceptable (max 2 retries per subtask):
+          cd "$WORKTREE_DIR"
+          git checkout -- .
+          git clean -fd
+          Re-run bd-worker with retry instructions:
+            ./companies/ghq/tools/ask-claude.sh \
+              -c {slug} \
+              -w "$WORKTREE_DIR" \
+              -t bd-worker \
+              "{subtask-id} — RETRY: {describe problems and specific fix guidance}"
 
-        Parse the sub-agent's JSON output.
+        If all retries exhausted: STOP execution. Jump to Step 7.
 
-        i. If status == "completed":
-           - Append to loops/state.jsonl:
-             {"ts":"{now}","type":"story_complete","story_id":"{subtask.id}","data":{"skills_run":[...]}}
-           - Increment completed count
+    6e. GATE CHECK
 
-        ii. If discovered_work is non-empty:
-            - Present to user:
-              ```
-              Subtask {subtask.id} discovered additional work:
-                1. "{title}" ({urgency}) — {rationale}
-                ...
-
-              Options:
-                A. Add as new subtask(s) and continue
-                B. Note for later and continue
-                C. Pause loop to investigate
-              ```
-            - If A: create beads subtasks via `bd create "{title}" --parent {task-id}` for each item.
-              Step 5e auto-reanchor will pick them up automatically.
-            - If B: append to loops/state.jsonl as `{"ts":"...","type":"discovered_work","data":{...}}`
-            - If C: pause loop
-
-        iii. If status == "failed" or "blocked":
-            - Append to loops/state.jsonl:
-              {"ts":"{now}","type":"story_blocked","story_id":"{subtask.id}","data":{"reason":"{summary}"}}
-            - Ask user:
-              1. Retry this subtask
-              2. Skip and continue
-              3. Pause loop (run /run-loop --resume {task-id})
-
-    5d. PROGRESS DISPLAY + RE-PLANNING GATE
-
-        After each subtask completes, show progress:
-        ```
-        ════════════════════════════════════
-        LOOP: {task-id} ({parent.title})
-        PROGRESS: {completed}/{total} ({percentage}%)
-
-        Completed this session:
-          {id}: {summary}
-          {id}: {summary}
-
-        Remaining:
-          {id}: {title}
-          {id}: {title}
-        ════════════════════════════════════
-        ```
-
-        RE-PLANNING GATE: If completed_this_session == 10 AND remaining > 0:
-        ```
-        ────────────────────────────────────
-        CHECKPOINT: {completed}/{total} subtasks complete
-
-        Based on completed work, should we:
-          1. Continue as planned (default)
-          2. Re-scope: skip/modify/add subtasks
-          3. Pause for manual review
-        ────────────────────────────────────
-        ```
-        Default to option 1 if user doesn't respond within prompt.
-
-    5e. AUTO-REANCHOR (between subtasks, silent)
-
-        After processing each subtask result, refresh context:
-        1. Re-fetch subtasks from beads: `bd children {task-id} --json`
-        2. Refresh git state: `git log --oneline -3`
-        3. If subtask failed: search for known fixes via `qmd vsearch "{error}" --json -n 5`
-
-    5f. CONTEXT SAFETY NET
-
-        If > 8 subtasks completed this session OR context heavy:
-          - Append state to loops/state.jsonl
-          - Print: "Context boundary reached. Run: /run-loop --resume {task-id}"
-          - STOP
+        If the next subtask is a gate, stop executing and jump to Step 7.
+        Gates mean a human needs to review before work can continue.
 ```
 
-### 6. Handle Subtask Failure
+## Step 7: Create PR
 
-If a sub-agent returns failed/blocked:
+Create a PR when either all non-gate subtasks are done, or a gate blocks further progress, or retries were exhausted:
 
-**Gutter detection:** Before offering options, check `loops/state.jsonl` for previous `story_blocked` entries for this same subtask. If a previous attempt failed with the same error category, the agent is stuck in a gutter — add a "try different approach" option.
-
-```
-Subtask {subtask.id} failed: {summary}
-
-Options:
-1. Retry this subtask
-2. Skip and continue to next subtask
-3. Pause loop (/run-loop --resume {task-id})
-4. Abort
-```
-
-If gutter detected (repeated failure, same error):
-```
-Subtask {subtask.id} failed again with same error: {summary}
-
-Options:
-1. Try with different approach (spawn fresh agent with error context from previous attempts)
-2. Skip and continue to next subtask
-3. Pause loop (/run-loop --resume {task-id})
-4. Abort
-```
-
-Use the user's response to decide next action.
-
-### 7. Complete Loop
-
-When all subtasks are closed:
-
-**Append loop_end to state.jsonl:**
-```jsonl
-{"ts":"{ISO8601}","type":"loop_end","data":{"task_id":"{task-id}","stories_completed":{completed},"stories_blocked":{blocked}}}
-```
-
-**Append summary to history.jsonl:**
-```jsonl
-{"ts":"{ISO8601}","task_id":"{task-id}","duration_s":{elapsed},"stories_completed":{N},"stories_blocked":{N},"skills_invoked":{N},"blocked_stories":[]}
-```
-
-**Set parent task to in_review:**
 ```bash
-bd update {task-id} --status in_review
+cd "$WORKTREE_DIR"
+gh pr create \
+  --title "{task-id}: {task title}" \
+  --body "## Summary
+<list of completed subtasks and what each one did>
+
+## Subtask Results
+- {subtask-1}: completed / failed
+- {subtask-2}: completed / failed
+
+## Notes
+<any assumptions, skipped tasks, or issues encountered>"
 ```
 
-The parent task stays in `in_review` until the user explicitly asks to merge/close it. Do NOT close the parent task or ancestor epics automatically.
+If a gate blocked work, update it with the PR:
+```bash
+cd companies/{slug} && bd comments add {gate-id} "PR ready for review: {pr-url}
+Worktree: $WORKTREE_DIR
+Branch: $BRANCH"
+```
 
-**Display completion report:**
+## Step 8: Post-Run
+
+Re-check subtask status:
+
+```bash
+cd companies/{slug} && bd children {task-id} --json
+```
+
+**If all subtasks closed:** set the parent task to `in_review`:
+
+```bash
+cd companies/{slug} && bd update {task-id} --status in_review
+```
+
+The parent stays `in_review` until the user explicitly closes it. Do NOT close the parent task or ancestor epics automatically.
+
+**If some subtasks remain open:** leave the parent as `in_progress`.
+
+Display completion summary:
+
 ```
 ════════════════════════════════════
-LOOP COMPLETE: {task-id} ({parent.title})
+RUN COMPLETE: {task-id} ({title})
 
 Subtasks: {completed}/{total}
-Skills used: {aggregated from session}
-Status: in_review (awaiting user merge/close)
+PR: {pr-url or "none"}
+Status: {in_review | in_progress}
 ════════════════════════════════════
 ```
 
-**If worktree mode -- ask user:**
-```
-Loop completed in worktree. How should we merge?
+Reindex: `qmd update 2>/dev/null || true`
 
-1. Merge directly to main
-2. Create a PR for review
-```
+## Step 9: Cleanup
 
-If merge: `git checkout main && git merge {worktree-branch}`, then `bd close {task-id}` + `bd epic close-eligible`
-If PR:
-  1. Create PR: `gh pr create --title "{parent.title}: all subtasks complete" --body "..."`
-  2. Store PR ref on task: `bd update {task-id} --external-ref "gh-pr:{pr-number}" --set-metadata pr_url={pr-url}`
-  3. Record demo video and post to PR (see §7b)
-
-### 7b. Demo Video (PR mode only)
-
-Record a short demo video of the changes in the running app and attach it to the PR as a comment.
-
-#### Prerequisites
-
+If no gates are pending, remove the worktree:
 ```bash
-# One-time install (skip if already installed)
-gh extension install sudosubin/gh-attach
+cd {work-dir}
+git worktree remove ".worktrees/$BRANCH"
 ```
 
-#### Recording
+If a gate is pending, keep the worktree alive and note the path.
 
-1. **Find the app window:**
-   ```bash
-   macosrec --list 2>&1 | grep -i "{app-name}"
-   ```
-
-2. **Start recording:**
-   ```bash
-   macosrec --record {window-id} &
-   RECORD_PID=$!
-   ```
-
-3. **Interact with the app** using agent-browser to demonstrate the changes:
-   - Connect: `agent-browser --cdp {port} snapshot -ic` (Electron) or `agent-browser open {url}` (web)
-   - Navigate to the changed feature
-   - Perform 2-3 key interactions that showcase the work
-   - Keep it short (10-20 seconds of meaningful interaction)
-
-4. **Stop recording:**
-   ```bash
-   kill -INT $RECORD_PID
-   sleep 2
-   ```
-
-5. **Find the output file** (macosrec saves to `~/Desktop/{timestamp}-{window-title}.mov`):
-   ```bash
-   ls -t ~/Desktop/*.mov | head -1
-   ```
-
-#### Post to PR
-
-1. **Upload the video:**
-   ```bash
-   gh attach {video-path} -R {OWNER/REPO} --browser chrome --profile Default
-   ```
-   This returns a URL like `https://github.com/user-attachments/assets/{UUID}`
-
-2. **Post as PR comment:**
-   ```bash
-   gh pr comment {PR_NUMBER} -R {OWNER/REPO} --body '<video src="{URL_FROM_UPLOAD}" controls autoplay muted></video>'
-   ```
-
-#### Skip conditions
-- Skip if the task is content-only (no UI/API changes to demo)
-- Skip if no running app is available to record
-- Skip if macosrec is not installed
-
-**If main mode -- ask user:**
+If any subtasks remain open, suggest:
 ```
-All subtasks complete. Task is now in_review.
-
-1. Close task (mark as done)
-2. Keep in review (will close later)
-```
-
-If close: `bd close {task-id}` + `bd epic close-eligible`
-If keep: task stays `in_review`
-
-**Post-loop cleanup:**
-1. `qmd update 2>/dev/null || true` -- reindex all changes
-2. Commit if dirty: `git add -A && git commit -m "loop-complete: {task-id}"`
-
-### 8. Status Display (--status)
-
-Read `loops/state.jsonl` and `loops/history.jsonl`:
-
-```
-Loop Status
-
-ACTIVE:
-  {task-id} ({title}) -- {completed}/{total} ({pct}%)
-
-COMPLETED:
-  {task-id} ({title}) -- {completed}/{total} -- {duration}
+Remaining subtasks can be retried:
+  /run-project {task-id}    (re-runs remaining open subtasks)
 ```
 
 ## Rules
 
-- **ONE loop at a time**
-- **Sub-agent per subtask** -- each subtask runs in its own Task() sub-agent via `/execute-task`. The orchestrator NEVER executes skill phases directly.
-- **Context discipline** -- the orchestrator stores ONLY task_id, status, and 1-sentence summary per subtask. No skill outputs, no handoff blobs, no file lists.
-- **Fresh context per subtask** -- sub-agent context is freed when it returns.
-- **Resume is first-class** -- `--resume` is how multi-session loops continue. Not a fallback -- the expected path for large loops.
-- **Back pressure is mandatory** -- enforced inside `/execute-task`, not by the orchestrator.
-- **Fail fast** -- pause on errors, surface to user.
+- **Orchestrator pattern** -- this command IS the orchestrator. It loops through subtasks, delegating each to `bd-worker` via `ask-claude.sh`.
+- **No sub-agents** -- uses `ask-claude.sh -t bd-worker`, not Task() or Agent().
 - **Beads is the source of truth** -- tasks and state come from `bd`, not files.
-- **Sub-agents must NOT use EnterPlanMode** -- /execute-task is the planning pipeline.
-- **Work mode: main or worktree only** -- NEVER create feature branches. Always ask the user which mode before starting.
-- **If worktree: ask merge or PR on completion** -- never assume one or the other.
-- **Zero accumulation** -- receives only structured JSON back from sub-agents. Discards everything else.
-- **NEVER use `isolation: "worktree"` on Agent/Task tool calls** -- the Claude Code `isolation: "worktree"` parameter creates a SEPARATE git worktree per agent invocation, scattering commits across branches. Instead, manage worktrees via `git worktree add` in Step 3 and pass the working directory to all sub-agents. All sub-agents must work in the SAME directory (either main or a single shared worktree).
+- **Max 2 retries per subtask** -- if retries exhausted, stop and create PR with completed work.
+- **Gates are not executable** -- when a gate is next, stop and create PR for human review.
+- **Do NOT close parent tasks** -- only set `in_review`. The user decides when to close.
+- **Do NOT use TodoWrite or EnterPlanMode** -- this command handles orchestration directly.
 
 ## Integration
 
-- `/plan` creates task + subtasks under a project epic -> `/run-loop {task-id}` executes the subtasks
-- `/execute-task {subtask-id}` runs single subtask (standalone or as sub-agent)
-- `/run-loop --resume` continues from next open subtask with fresh context
+- `/plan-project` creates task + subtasks under a project epic → `/run-project {task-id}` executes them
+- `/run-project` can be re-run to pick up remaining open subtasks

@@ -1,17 +1,17 @@
 ---
-description: Decompose a task into subtasks for execution via /run-loop
+description: Decompose a task into subtasks for execution via /run-project
 allowed-tools: Task, Read, Glob, Grep, Write, Bash, Edit
 argument-hint: [task/feature description]
 visibility: public
 ---
 
-# /plan - Decompose Task into Subtasks
+# /plan-project - Decompose Task into Subtasks
 
-Break down an existing task into subtasks for execution via `/run-loop`. Only companies and projects are epics — tasks are never epics.
+Break down an existing task into subtasks for execution via `/run-project`. Only companies and projects are epics — tasks are never epics.
 
 **User's input:** $ARGUMENTS
 
-**Pipeline:** `/idea` → `/brainstorm` → **`/plan`** → `/run-loop`
+**Pipeline:** `/idea` → `/brainstorm` → **`/plan-project`** → `/run-project`
 
 **Important:** Do NOT implement. Just create the tasks.
 
@@ -19,13 +19,13 @@ Break down an existing task into subtasks for execution via `/run-loop`. Only co
 
 ```
 Project Epic (root)             ← created by /new-project
-└── Task (created here)         ← /plan creates subtasks under this
+└── Task (created here)         ← /plan-project creates subtasks under this
     ├── Subtask 1
     ├── Subtask 2
     └── Subtask 3
 ```
 
-Only projects are epics (root-level, no parent). `/plan` decomposes a task into subtasks under a project epic.
+Only projects are epics (root-level, no parent). `/plan-project` decomposes a task into subtasks under a project epic.
 
 ## Step 1: Get Task Description
 
@@ -253,8 +253,7 @@ Subtasks: {N}
 
 To execute, start a new session and run:
 ```
-/run-loop {task-id}           (run all subtasks)
-/execute-task {subtask-id}    (run single subtask)
+/run-project {task-id}        (run all subtasks via bd-worker)
 ```
 
 To view:
@@ -288,13 +287,13 @@ bd children {task-id}
 
 - Scan GHQ first, ask questions second
 - Batch questions (don't overwhelm)
-- **Never create epics** -- only projects are epics (root-level). `/plan` creates subtasks only
+- **Never create epics** -- only projects are epics (root-level). `/plan-project` creates subtasks only
 - **Beads is the source of truth** -- all tasks managed via `bd` CLI
 - **Do NOT use EnterPlanMode** -- this skill IS planning
 - **Do NOT use TodoWrite** -- beads subtasks track tasks
 - **Skills, not workers** -- reference skill IDs from `.claude/skills/`, not worker names
 - **Work mode: main or worktree only** -- GHQ never uses feature branches. Ask user to choose in interview
 - **Company context** -- if the task relates to a company, apply the appropriate company label
-- **HARD BLOCK: Do NOT implement** -- ONLY create beads subtasks. NEVER edit target repo files during a /plan session
-- **STOP after planning** -- After Step 7 confirmation, end session. NEVER start executing subtasks in the same session
-- **MANDATORY: Always create beads subtasks** -- Every /plan invocation MUST produce subtasks under a task. Never output a plan to chat only
+- **HARD BLOCK: Do NOT implement** -- ONLY create beads subtasks. NEVER edit target repo files during a /plan-project session
+- **STOP after planning** -- After Step 8 confirmation, end session. NEVER start executing subtasks in the same session
+- **MANDATORY: Always create beads subtasks** -- Every /plan-project invocation MUST produce subtasks under a task. Never output a plan to chat only

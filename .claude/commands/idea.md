@@ -11,7 +11,7 @@ Quickly capture an idea as a beads task. No subtasks, no planning — just captu
 
 **Input:** $ARGUMENTS
 
-**Pipeline:** **`/idea`** → `/brainstorm` → `/plan` → `/run-loop`
+**Pipeline:** **`/idea`** → `/brainstorm` → `/plan-project` → `/run-project`
 
 ## Step 1: Parse Input
 
@@ -67,7 +67,7 @@ bd create "{title}" \
   --description "{user's full description}
 
 ## Acceptance Criteria
-- TBD (refine during /brainstorm or /plan)" \
+- TBD (refine during /brainstorm or /plan-project)" \
   --labels "{company-label},idea" \
   --silent
 ```
@@ -101,7 +101,7 @@ Reindex: `qmd update 2>/dev/null || true`
 ## Rules
 
 - **No subtask creation** — this command creates a single bd task only
-- **No execution** — ideas are pre-planning; `/plan` decomposes into subtasks
+- **No execution** — ideas are pre-planning; `/plan-project` decomposes into subtasks
 - **1 AskUserQuestion max** — batch everything into one call
 - **bd task is the only artifact** — no files written to disk
 - **Inline mode**: if all info is provided via args/flags, create the task with zero questions
