@@ -1,1 +1,1 @@
-{"id":"c-1774432939828","question":"What are the best patterns for using bd formula aspects in practice? How do teams compose security-scan, logging, and compliance aspects across their workflow formulas?","context":"The aspect system (AOP for workflows) is powerful but no real-world examples were found beyond the test cases. Understanding practical aspect composition patterns would be valuable.","source":"knowledge_gap","priority":5,"status":"pending","created_at":"2026-03-25T10:02:19.828Z","updated_at":"2026-03-25T10:02:19.828Z"}
+
