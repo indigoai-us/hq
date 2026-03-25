@@ -71,6 +71,13 @@ Analyze the collected data against these criteria. Track each finding as a list 
 - Result text does not address the original prompt (off-topic or generic)
 - Errors in stderr that suggest misconfiguration
 
+**Docs/syntax issues** (file an issue with label `docs-fix`):
+- Wrong CLI syntax used (e.g., incorrect flag names, wrong argument order)
+- Missing required flags that caused a retry or failure
+- Flags or options that don't exist on the tool (hallucinated flags)
+- Incorrect command patterns that suggest the docs are unclear or incomplete
+- Workarounds for undocumented behavior that should be in the docs
+
 **Informational** (note in summary, don't file issues):
 - Warnings that were recovered from
 - Expected failures (e.g., duplicate detection in report_issue.sh)
@@ -132,15 +139,19 @@ Only if no existing issue covers the root cause:
 {{WORK_DIR}}/companies/ghq/tools/report_issue.sh "<title>" \
   -d "<description with run ID, error details, and context>" \
   -p <priority> \
-  -l "agent-review"
+  -l "<label>"
 ```
 
-**Title format**: `agent-review: <brief description> ({{AGENT_RUN_ID}})`
+**Label**: Use `agent-review` for hard failures and quality issues. Use `docs-fix` for syntax/flag errors.
+
+**Title format**:
+- Hard failures / quality issues: `agent-review: <brief description> ({{AGENT_RUN_ID}})`
+- Docs/syntax issues: `docs-fix: <tool/command> — <what was wrong> ({{AGENT_RUN_ID}})`
 
 **Priority guidelines**:
 - P1: Agent crashed, data loss, or sandbox breach
 - P2: Agent failed its task or produced incorrect output
-- P3: Quality issues, excessive retries, minor errors
+- P3: Quality issues, excessive retries, minor errors, docs/syntax issues
 
 **Handle duplicates gracefully**: If `report_issue.sh` exits with code 1 (duplicate found), log "Duplicate issue — skipped" and continue. Do not treat this as a failure.
 
@@ -187,6 +198,9 @@ Print a structured review report:
 
 #### Quality Issues
 - <description> → Issue: <issue-id>
+
+#### Docs/Syntax Issues
+- <tool/command>: <wrong syntax used> → <correct syntax> → Issue: <issue-id>
 
 #### Informational
 - <description>
