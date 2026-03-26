@@ -254,6 +254,10 @@ When all stories have `passes: true`:
 
    Output: `{execDir}/doc-sweep.output.json`. Non-blocking on failure.
 
+3b. **Document release** — run `/document-release {company} {project}` (or headless `claude -p` with document-release skill).
+    Runs the full document-release pipeline (diff analysis → doc audit → apply updates → consistency check → cleanup).
+    Non-blocking on failure — log output to `{execDir}/doc-release.output.json`.
+
 4. **INDEX.md** — flag for rebuild (deferred to `/cleanup`)
 5. **Manifest verification** — check repos/workers registered
 6. **qmd reindex** — final search index update
@@ -296,7 +300,7 @@ This example shows `/run-project campaign-migration` executing through multiple 
   "name": "campaign-migration",
   "metadata": {
     "company": "{company}",
-    "repoPath": "repos/private/{your-repo}",
+    "repoPath": "repos/private/{product}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [

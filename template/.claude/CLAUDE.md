@@ -90,7 +90,7 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Companies
 
-{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, tonal, {company}, {company}, {company}, hpo, amass, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
+{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -223,7 +223,7 @@ Use a bridge instead of copying files:
 
 HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
 
-**Collections:** `hq` (all HQ), `{repo}` ({REPO} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
+**Collections:** `hq` (all HQ), `{product}` ({PRODUCT} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
 
 **When to search:** Before any planning, research, or context-gathering task, search with `qmd` first. This includes codebase exploration — use qmd for conceptual search instead of Grep.
 
@@ -295,6 +295,8 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 - Prefer merge over rebase when a branch is significantly behind (50+ commits).
 - If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
+
+## Project Repos - Commit Rules
 
 ## Vercel Deployments
 

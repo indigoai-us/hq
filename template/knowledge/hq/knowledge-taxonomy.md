@@ -111,7 +111,7 @@ Files that **move to subdirs**:
 | {company} | `engineering/`, `operations/`, `wildcat/` (escape hatch) |
 | {company} | `brand/`, `product/`, `growth/`, `operations/`, `assets/` |
 | {company} | `brand/`, `engineering/`, `market/`, `operations/` |
-| hpo | `brand/`, `product/`, `growth/` |
+| {company} | `brand/`, `product/`, `growth/` |
 | personal | `brand/`, `growth/`, `operations/`, `data/` |
 | {company} | `brand/`, `growth/`, `operations/` |
 | {company} | `engineering/`, `product/` |

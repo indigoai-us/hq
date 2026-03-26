@@ -30,7 +30,7 @@ Available Workers:
 
   x-corey            X/Twitter posting for Corey
   cfo-{company}    Financial reporting
-  {company}-analyst LR/{REPO} data analysis
+  {company}-analyst LR/{PRODUCT} data analysis
   ...
 
 Usage: /run {worker-id} to see skills

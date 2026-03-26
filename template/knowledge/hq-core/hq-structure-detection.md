@@ -406,7 +406,7 @@ The current HQ Desktop Rust backend (`files.rs`, `orchestrator.rs`) hardcodes th
 | `list_checkpoints()` | `~/Documents/HQ/workspace/checkpoints` |
 | `list_companies()` | `~/Documents/HQ/companies` |
 | `list_projects()` | `~/Documents/HQ/projects` |
-| `list_claude_sessions()` | `~/.claude/projects/-Users-{your-name}-Documents-HQ` (user-specific!) |
+| `list_claude_sessions()` | `~/.claude/projects/-Users-{your-username}-Documents-HQ` (user-specific!) |
 | `get_hq_stats()` | `~/Documents/HQ` (multiple sub-paths) |
 | `get_worker_detail()` | `~/Documents/HQ/workers/{id}` (flat, not public/private split) |
 | `get_company_detail()` | `~/Documents/HQ/companies/{id}` |

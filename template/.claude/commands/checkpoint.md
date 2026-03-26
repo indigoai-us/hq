@@ -106,6 +106,10 @@ Save current work state as a thread to survive context loss.
    - Check files_touched for any `companies/*/knowledge/` paths — if found, regenerate that company's `knowledge/INDEX.md`
    - See `knowledge/public/hq-core/index-md-spec.md` for INDEX format
 
+8b. **Document release**
+    Run `/document-release` — the skill resolves company + project context on its own.
+    Best-effort — skip silently on failure.
+
 9. **Report**
    ```
    Thread saved: workspace/threads/{thread_id}.json

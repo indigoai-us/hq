@@ -108,7 +108,7 @@ Desktop currently has **2 file watchers** and **1 polling mechanism**:
 
 | File Path | Change Type | Frequency | Payload |
 |-----------|-------------|-----------|---------|
-| `~/.claude/projects/-Users-{your-name}-Documents-HQ/*.jsonl` | Create/Modify | High (continuous during active sessions) | JSONL session log |
+| `~/.claude/projects/-Users-{your-username}-Documents-HQ/*.jsonl` | Create/Modify | High (continuous during active sessions) | JSONL session log |
 
 **Desktop UI triggers:**
 - Active sessions count update

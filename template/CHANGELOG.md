@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.0.0 (2026-03-25)
+
+Major expansion: skills, policies, and infrastructure blueprints now included in the kit.
+
+### Added
+- **30 skills** in `.claude/skills/` — `adapt`, `agent-browser`, `animate`, `arrange`, `ascii-graphic`, `audit`, `bolder`, `clarify`, `colorize`, `consolidate`, `critique`, `delight`, `distill`, `document-release`, `extract`, `frontend-design`, `harden`, `investigate`, `normalize`, `onboard`, `optimize`, `overdrive`, `polish`, `quieter`, `retro`, `review`, `review-plan`, `social-graphic`, `teach-impeccable`, `typeset`
+- **26 gstack skills** — `g-autoplan`, `g-benchmark`, `g-canary`, `g-careful`, `g-codex`, `g-cso`, `g-design-consultation`, `g-design-review`, `g-document-release`, `g-freeze`, `g-gstack-upgrade`, `g-guard`, `g-investigate`, `g-land-and-deploy`, `g-office-hours`, `g-plan-ceo-review`, `g-plan-design-review`, `g-plan-eng-review`, `g-qa`, `g-qa-only`, `g-retro`, `g-review`, `g-setup-browser-cookies`, `g-setup-deploy`, `g-ship`, `g-unfreeze`. Credit: [Garry Tan](https://github.com/garrytan/gstack) (Y Combinator)
+- **89 policies** in `.claude/policies/` — workflow rules, safety guards, tool-specific gotchas (git, Vercel, Supabase, Linear, Clerk, Expo, orchestrator, and more)
+- `.ignore` — ripgrep ignore config, critical for Grep hygiene in HQ
+- `settings/orchestrator.yaml` — swarm/file-locking/state-machine config for `/run-project`
+- `USER-GUIDE.md` — command reference, worker guide, and typical session walkthrough
+- `modules/modules.yaml` — knowledge module registry for `qmd` search integration
+- `scripts/codex-skill-bridge.sh` — Codex ↔ Claude skill bridge installer
+- `scripts/audit-log.sh` — structured audit log utility
+- `scripts/resize-screenshot.sh` — screenshot resize utility (used by `screenshot-resize-trigger.sh` hook)
+
+### Changed
+- Updated all existing commands, workers, knowledge, hooks to latest HQ state
+- CLAUDE.md refreshed with current structure and guidance
+
 ## v8.2.0 (2026-03-23)
 
 New commands, workers, knowledge, and a comprehensive PII/company scrub across all files.
@@ -27,9 +47,9 @@ New commands, workers, knowledge, and a comprehensive PII/company scrub across a
 
 ### Removed
 - `/imessage` command (personal, not generic)
-- All {REPO}/{Company}/{Company} references scrubbed from CLAUDE.md, commands, workers, knowledge
-- {Company} Linear Integration section removed from CLAUDE.md
-- {REPO} Project Repos commit rules section removed from CLAUDE.md
+- All {PRODUCT}/{Product}/{Product} references scrubbed from CLAUDE.md, commands, workers, knowledge
+- {Product} Linear Integration section removed from CLAUDE.md
+- {PRODUCT} Project Repos commit rules section removed from CLAUDE.md
 - All company-specific examples replaced with generic placeholders
 
 ### Security

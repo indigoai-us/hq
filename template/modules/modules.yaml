@@ -11,34 +11,268 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/{your-name}/hq-starter-kit.git
+    repo: https://github.com/{your-username}/hq-starter-kit.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
     paths:
-      knowledge/Ralph: knowledge/Ralph
-      knowledge/workers: knowledge/workers
+      knowledge/public/Ralph: knowledge/public/Ralph
+      knowledge/public/workers: knowledge/public/workers
       .claude/commands: .claude/commands
 
-  # Example: Company shared module
-  # - name: acme-workflows
-  #   repo: https://github.com/acme-corp/hq-module.git
-  #   branch: main
-  #   strategy: link  # symlink for real-time sync
-  #   access: team
-  #   paths:
-  #     knowledge/company: knowledge/acme
-  #     workers/shared: workers/acme
+  # ─── Public Knowledge Repos ───────────────────────────────────────────
+  # Each knowledge folder is its own git repo, symlinked into HQ.
+  # Strategy: link (repos live locally at repos/public/ or repos/private/).
 
-  # Example: Role-specific module
-  # - name: engineering-tools
-  #   repo: https://github.com/acme-corp/engineering-hq.git
-  #   branch: main
-  #   strategy: copy  # one-time copy, no ongoing sync
-  #   access: "role:engineer"
-  #   paths:
-  #     workers/code: workers/engineering
-  #     knowledge/tech-stack: knowledge/tech-stack
+  - name: knowledge-ralph
+    repo: https://github.com/{your-username}/ralph-methodology.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      docs: knowledge/public/Ralph
+
+  - name: knowledge-ai-security
+    repo: https://github.com/{your-username}/knowledge-ai-security.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/ai-security-framework
+
+  - name: knowledge-impeccable
+    repo: local
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/impeccable
+
+  - name: knowledge-design-styles
+    repo: https://github.com/{your-username}/knowledge-design-styles.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/design-styles
+
+  - name: knowledge-dev-team
+    repo: https://github.com/{your-username}/knowledge-dev-team.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/dev-team
+
+  - name: knowledge-hq-core
+    repo: https://github.com/{your-username}/knowledge-hq-core.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/hq-core
+
+  - name: knowledge-loom
+    repo: https://github.com/{your-username}/knowledge-loom.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/loom
+
+  - name: knowledge-workers
+    repo: https://github.com/{your-username}/knowledge-workers.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/workers
+
+  - name: knowledge-projects
+    repo: https://github.com/{your-username}/knowledge-projects.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/projects
+
+  - name: knowledge-curious-minds
+    repo: local
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/curious-minds
+
+  # ─── Private Knowledge Repos ──────────────────────────────────────────
+
+  - name: knowledge-linear
+    repo: https://github.com/{your-username}/knowledge-linear.git
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: knowledge/private/linear
+
+  # ─── Company Knowledge Repos ──────────────────────────────────────────
+
+  - name: knowledge-{company}
+    repo: https://github.com/{your-username}/knowledge-{company}.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: https://github.com/{your-username}/knowledge-{company}.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-personal
+    repo: https://github.com/{your-username}/knowledge-personal.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/personal/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: {company}-docs-internal
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/repos/{company}-docs-internal
+
+  - name: {company}-docs-customer
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/repos/{company}-docs-customer
+
+  - name: knowledge-dripkit
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/dripkit/knowledge
+
+  # ─── Add-On Kits ────────────────────────────────────────────────────
+
+  - name: hq-social-kit
+    repo: https://github.com/{your-username}/hq-social-kit.git
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      commands: .claude/commands
+
+  - name: gstack
+    repo: https://github.com/garrytan/gstack.git
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: .claude/skills  # bridged with g- prefix via scripts/gstack-bridge.sh
+    notes: >
+      Skills bridged with g- prefix. Run scripts/gstack-bridge.sh update to pull
+      latest and re-link. browse skill excluded (use /agent-browser instead).
 
 # Schema Reference:
 #

@@ -4,6 +4,56 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v9.0.0 (from v8.x)
+
+This is a major release. Three new directories are introduced.
+
+### New: Skills (`.claude/skills/`)
+
+Copy the entire `.claude/skills/` directory from the starter-kit. This adds 30 design, code quality, and workflow skills that power commands like `/polish`, `/investigate`, `/audit`, etc.
+
+```bash
+cp -R starter-kit/.claude/skills/ your-hq/.claude/skills/
+```
+
+### New: Policies (`.claude/policies/`)
+
+Copy the entire `.claude/policies/` directory. These are 89 structured workflow rules covering git safety, Vercel gotchas, Supabase patterns, orchestrator guardrails, and more.
+
+```bash
+cp -R starter-kit/.claude/policies/ your-hq/.claude/policies/
+```
+
+### New: Infrastructure Files
+
+Copy these files to your HQ root:
+
+| File | Purpose |
+|------|---------|
+| `.ignore` | Ripgrep config — blocks `repos/`, `node_modules/` from Grep |
+| `settings/orchestrator.yaml` | Swarm/file-locking config for `/run-project` |
+| `USER-GUIDE.md` | Command reference + worker guide |
+| `modules/modules.yaml` | Knowledge module registry |
+| `scripts/codex-skill-bridge.sh` | Codex ↔ Claude skill bridge |
+| `scripts/audit-log.sh` | Structured audit log utility |
+| `scripts/resize-screenshot.sh` | Screenshot resize (used by hook) |
+
+### Updated Files
+
+Review and merge changes to all existing commands, workers, and knowledge. The easiest approach:
+
+```bash
+# From your HQ root, with starter-kit cloned alongside:
+rsync -avL --ignore-existing starter-kit/.claude/commands/ .claude/commands/
+rsync -avL --ignore-existing starter-kit/workers/public/ workers/public/
+rsync -avL --ignore-existing starter-kit/knowledge/ knowledge/public/
+```
+
+### Breaking Changes
+- None — all additions are backward-compatible
+
+---
+
 ## Migrating to v8.2.0 (from v8.1.x)
 
 ### New Commands
@@ -52,7 +102,7 @@ Copy these to `knowledge/`:
 - Delete `.claude/commands/imessage.md` if present (personal command, removed from starter-kit)
 
 ### PII Scrub
-This release scrubbed all company-specific references. If you forked from an earlier version, review your files for any {REPO}/{Company}/{Company} references and replace with generic placeholders.
+This release scrubbed all company-specific references. If you forked from an earlier version, review your files for any {PRODUCT}/{Product}/{company} references and replace with generic placeholders.
 
 ### Breaking Changes
 - None

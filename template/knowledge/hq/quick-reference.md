@@ -45,7 +45,7 @@ HQ/
 
 | Company | Workers | Key Resources |
 |---------|---------|---------------|
-| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({company}) |
+| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({product}) |
 | {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
 | personal | x-corey, invoices, social-council | Slack, Gmail, LinkedIn, X |
 | {company} | pr-coordinator, pr-strategist, pr-writer, pr-outreach, pr-monitor, pr-shared | PR team |
@@ -53,12 +53,12 @@ HQ/
 | {company} | — | Band/music |
 | {company} | — | Artist site + admin |
 | {company} | — | Artist manager monorepo |
-| {company} | — | {Product} AI |
+| {company} | — | {company} AI |
 | {company} | — | Estate platform |
-| tonal | — | Shopify store |
+| {company} | — | Shopify store |
 | {company} | — | Expo mobile app |
 | {company} | — | Domain management |
-| hpo | — | GTM/growth |
+| {company} | — | GTM/growth |
 
 ## Workers
 
@@ -91,7 +91,7 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Design:** `/generateimage`
 **System:** `/cleanup`, `/garden`, `/search`, `/search-reindex`, `/publish-kit`, `/harness-audit`, `/model-route`, `/update-hq`
 **Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/{custom-command}`, `/personal-interview`
-**Linear:** `/check-linear-{company}`, `/{repo}-prd`
+**Linear:** `/{check-linear}`, `/{repo-prd}`
 **Deploy:** `/pr`
 
 ## Knowledge Bases

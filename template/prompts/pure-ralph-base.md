@@ -167,7 +167,7 @@ For CLI + web integrations:
 // Example: Test CLI opens correct URL and page works
 test('account create opens working auth page', async ({ page }) => {
   // 1. Run CLI and capture the URL it would open
-  const result = execSync('{company} account create --dry-run', { encoding: 'utf8' });
+  const result = execSync('{product} account create --dry-run', { encoding: 'utf8' });
   const authUrl = extractUrl(result);
 
   // 2. Open that URL in Playwright

@@ -31,9 +31,9 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company} | {repo}, {repo}-popup-builder, agent-ops-hq, {repo}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-{company} + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-{company}) | cfo-{company}, {company}-analyst, {company}-deploy | yes | {company}, {repo} |
+| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-{product} + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-{product}) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
 | {company} | {company}-site, {company}-cmohq | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
-| {company} | {company}-advisory | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
+| {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
 | personal | (none) | slack + (on disk: gmail, linkedin, x) | x-corey, invoices | yes | personal |
 | {company} | {company}-portal | (none) | (none) | null | (none) |
 
@@ -162,7 +162,7 @@ When searching via qmd, the active company determines the default collection:
 function getSearchCollections(activeCompany: string | null): string[] {
   if (!activeCompany) return ['hq']  // search everything
   const manifest = getManifest(activeCompany)
-  return manifest.qmd_collections  // e.g., ['{company}', '{repo}'] for {Company}
+  return manifest.qmd_collections  // e.g., ['{company}', '{product}'] for {company}
 }
 ```
 

@@ -34,7 +34,7 @@ Comprehensive audit of the HQ Desktop terminal subsystem: PTY implementation, co
 |---------|---------|-----------|
 | `spawn_worker_skill` | Opens macOS Terminal.app via AppleScript, runs `claude '/run {worker}:{skill}'` | EXTERNAL terminal, not integrated PTY |
 | `open_terminal_in_hq` | Opens macOS Terminal.app via AppleScript, `cd` to HQ | EXTERNAL terminal, not integrated PTY |
-| `list_claude_sessions` | Reads `.claude/projects/-Users-{your-name}-Documents-HQ/*.jsonl` | Read-only, returns last 20 sessions |
+| `list_claude_sessions` | Reads `.claude/projects/-Users-{your-username}-Documents-HQ/*.jsonl` | Read-only, returns last 20 sessions |
 
 ## 2. Frontend Session Layer
 

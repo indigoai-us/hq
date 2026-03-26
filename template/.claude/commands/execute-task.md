@@ -861,6 +861,13 @@ Run: `qmd update 2>/dev/null || true`
 
 Ensures any knowledge, worker instructions, or command rules modified during execution are immediately searchable.
 
+#### 7b.7 Document Release (standalone only)
+
+When invoked standalone (not by `/run-project`), run `/document-release {company} {project}`.
+Skip when invoked as sub-agent — orchestrator runs it in its own completion flow.
+
+Best-effort — never block task completion. Log and continue on failure.
+
 #### 7c.0 Audit: Task Completed
 
 ```bash

@@ -10,12 +10,26 @@ You are not here to rubber-stamp this plan. You are here to make it extraordinar
 
 Your posture depends on the mode:
 - **EXPANSION:** Build the cathedral. Envision the platonic ideal. Push scope UP. "What would make this 10x better for 2x the effort?" You have permission to dream.
+- **SELECTIVE EXPANSION:** Strategist. Audit the plan — which parts have 10x potential and which are already right-sized? Expand selectively, hold the rest tight. The realistic mode for most plans.
 - **HOLD:** Rigorous reviewer. The plan's scope is accepted. Make it bulletproof — catch every failure mode, test every edge case, ensure observability, map every error path. Do not silently reduce OR expand.
 - **REDUCTION:** Surgeon. Find the minimum viable version that achieves the core outcome. Cut everything else. Be ruthless.
 
 **Critical rule:** Once the user selects a mode, COMMIT to it. Do not silently drift. If EXPANSION is selected, do not argue for less work. If REDUCTION is selected, do not sneak scope back in. Raise concerns once in Step 0 — after that, execute the chosen mode faithfully.
 
 Do NOT make any code changes. Do NOT start implementation. Your only job is to review the plan with maximum rigor and the appropriate level of ambition.
+
+## Thinking Instincts (Reference — apply throughout)
+
+When analyzing a plan, filter through these instincts. These are not sections to complete — they are lenses to apply. Surface relevant instincts in the sections where they add signal.
+
+1. **One-way vs Two-way Door** (Bezos) — Is this reversible? Rate 1-5. Irreversible decisions need more rigor; reversible ones need more speed.
+2. **Inversion Reflex** (Munger) — What would make this fail spectacularly? Work backward from failure to find hidden risks.
+3. **Focus as Subtraction** (Jobs) — What is this plan NOT doing? The non-goals are as important as the goals. Saying no is a feature.
+4. **Speed Calibration** (Bezos 70%) — Can we decide with 70% of information and course-correct? Or does this require 90%+ certainty before committing?
+5. **Proxy Skepticism** — Is the metric being optimized a proxy that could decouple from the real goal? (e.g., test coverage ≠ test quality, story count ≠ value shipped)
+6. **Temporal Depth** — 1-month impact vs 12-month impact. Does the plan optimize for the right time horizon?
+7. **Founder-Mode Bias** (Chesky/Graham) — Is this plan too delegated? Should the operator be hands-on in surprising ways rather than abstracting everything?
+8. **Willfulness as Strategy** (Altman) — Is the plan deferring important decisions that should just be made and committed to? Indecision has a cost.
 
 ## Input Resolution
 
@@ -108,10 +122,18 @@ CURRENT STATE         →    THIS PLAN           →    12-MONTH IDEAL
 
 ### 0D. Mode-Specific Analysis
 
-**EXPANSION** — run all three:
+**EXPANSION** — run all five:
 1. 10x check: What's 10x more ambitious for 2x effort?
 2. Platonic ideal: What would the best engineer build with unlimited time?
 3. Delight opportunities: What adjacent 30-minute improvements would make this sing? List at least 3.
+4. 10-Star Visioning: What would a 10-star version of this feel like? (1-star = terrible, 5-star = expected, 10-star = magical/unexpected). Work backward from 10-star → 7-star → what's achievable in this plan.
+5. Narrowest Wedge: What is the narrowest possible starting point that still proves the core value proposition? Sometimes the 10x path starts with a 0.1x wedge.
+
+**SELECTIVE EXPANSION** — run this:
+1. Scope audit: For each story/component in the plan, classify as EXPAND (has 10x potential) or HOLD (scope is correct).
+2. For EXPAND items: apply the EXPANSION analysis above (10x, platonic, delight, 10-star, wedge).
+3. For HOLD items: apply the HOLD analysis below (complexity, minimum change set).
+4. Present the classification table before proceeding with the review sections.
 
 **HOLD** — run this:
 1. Complexity check: >8 files or >2 new services/modules? Challenge whether fewer moving parts achieve the same goal.
@@ -130,13 +152,15 @@ PHASE 4 (polish/tests):   What will they wish they'd planned for?
 ```
 
 ### 0F. Mode Selection
-Present three options via AskUserQuestion:
+Present four options via AskUserQuestion:
 1. **EXPANSION:** The plan could be great. Push scope up. Build the cathedral.
-2. **HOLD:** The plan's scope is right. Make it bulletproof.
-3. **REDUCTION:** The plan is overbuilt. Propose a minimal version.
+2. **SELECTIVE EXPANSION:** Some parts should grow, others should stay tight. Expand selectively.
+3. **HOLD:** The plan's scope is right. Make it bulletproof.
+4. **REDUCTION:** The plan is overbuilt. Propose a minimal version.
 
 Context-dependent defaults:
 - Greenfield feature → default EXPANSION
+- Multi-story PRD with mixed complexity → default SELECTIVE EXPANSION
 - Bug fix or hotfix → default HOLD
 - Refactor → default HOLD
 - Plan touching >15 files → suggest REDUCTION
@@ -162,6 +186,11 @@ Evaluate and diagram:
 - Rollback posture — if this breaks immediately, what's the rollback procedure?
 
 **EXPANSION addition:** What would make this architecture beautiful? What infrastructure could make this feature a platform?
+
+**Competitive Moats** (EXPANSION + HOLD):
+- What does this plan create that's hard to replicate? (data advantage, network effects, switching cost, workflow lock-in)
+- What moat does the incumbent/alternative already have? How does this plan overcome or route around it?
+- Rate moat potential: **Structural** (architecture creates lasting advantage) / **Behavioral** (habit/workflow creates switching cost) / **None** (commodity, compete on execution)
 
 **STOP.** One AskUserQuestion per issue.
 
@@ -415,30 +444,34 @@ If any AskUserQuestion goes unanswered, note it here. Never silently default.
 ## Mode Quick Reference
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     MODE COMPARISON                             │
-├─────────────┬──────────────┬──────────────┬────────────────────┤
-│             │  EXPANSION   │  HOLD SCOPE  │  REDUCTION         │
-├─────────────┼──────────────┼──────────────┼────────────────────┤
-│ Scope       │ Push UP      │ Maintain     │ Push DOWN          │
-│ 10x check   │ Mandatory    │ Optional     │ Skip               │
-│ Platonic    │ Yes          │ No           │ No                 │
-│ ideal       │              │              │                    │
-│ Delight     │ 5+ items     │ Note if seen │ Skip               │
-│ opps        │              │              │                    │
-│ Complexity  │ "Is it big   │ "Is it too   │ "Is it the bare    │
-│ question    │  enough?"    │  complex?"   │  minimum?"         │
-│ Taste       │ Yes          │ No           │ No                 │
-│ calibration │              │              │                    │
-│ Temporal    │ Full         │ Key decisions│ Skip               │
-│ interrogate │              │  only        │                    │
-│ Observ.     │ "Joy to      │ "Can we      │ "Can we see if     │
-│ standard    │  operate"    │  debug it?"  │  it's broken?"     │
-│ Deploy      │ Infra as     │ Safe deploy  │ Simplest possible  │
-│ standard    │ feature scope│  + rollback  │  deploy            │
-│ Error map   │ Full + chaos │ Full         │ Critical paths     │
-│             │  scenarios   │              │  only              │
-│ Phase 2/3   │ Map it       │ Note it      │ Skip               │
-│ planning    │              │              │                    │
-└─────────────┴──────────────┴──────────────┴────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                              MODE COMPARISON                                     │
+├─────────────┬──────────────┬──────────────────┬──────────────┬──────────────────┤
+│             │  EXPANSION   │  SELECTIVE EXP.  │  HOLD SCOPE  │  REDUCTION       │
+├─────────────┼──────────────┼──────────────────┼──────────────┼──────────────────┤
+│ Scope       │ Push UP      │ Mixed (per part) │ Maintain     │ Push DOWN        │
+│ 10x check   │ Mandatory    │ EXPAND parts only│ Optional     │ Skip             │
+│ 10-star     │ Yes          │ EXPAND parts only│ No           │ No               │
+│ visioning   │              │                  │              │                  │
+│ Narrowest   │ Yes          │ Yes              │ No           │ Yes              │
+│ wedge       │              │                  │              │                  │
+│ Competitive │ Yes          │ EXPAND parts     │ Yes          │ No               │
+│ moats       │              │                  │              │                  │
+│ Delight     │ 5+ items     │ EXPAND parts     │ Note if seen │ Skip             │
+│ opps        │              │                  │              │                  │
+│ Complexity  │ "Is it big   │ "Right part      │ "Is it too   │ "Is it the bare  │
+│ question    │  enough?"    │  growing?"       │  complex?"   │  minimum?"       │
+│ Taste       │ Yes          │ EXPAND parts     │ No           │ No               │
+│ calibration │              │                  │              │                  │
+│ Temporal    │ Full         │ EXPAND parts     │ Key decisions│ Skip             │
+│ interrogate │              │                  │  only        │                  │
+│ Observ.     │ "Joy to      │ Per-part         │ "Can we      │ "Can we see if   │
+│ standard    │  operate"    │  standard        │  debug it?"  │  it's broken?"   │
+│ Deploy      │ Infra as     │ Standard         │ Safe deploy  │ Simplest possible│
+│ standard    │ feature scope│                  │  + rollback  │  deploy          │
+│ Error map   │ Full + chaos │ Full             │ Full         │ Critical paths   │
+│             │  scenarios   │                  │              │  only            │
+│ Phase 2/3   │ Map it       │ EXPAND parts     │ Note it      │ Skip             │
+│ planning    │              │                  │              │                  │
+└─────────────┴──────────────┴──────────────────┴──────────────┴──────────────────┘
 ```

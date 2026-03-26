@@ -689,7 +689,7 @@ workers/registry.yaml
 companies/manifest.yaml
   │
   ├─ {company}:
-  │     workers: [cfo-{company}, {company}-analyst, {company}-deploy, infobip-admin, lr-qa, {company}-gtm]
+  │     workers: [cfo-{company}, {company}-analyst, {product}-deploy, infobip-admin, lr-qa, {company}-gtm]
   │
   ├─ {company}:
   │     workers: [cmo-{company}, {company}-brand-writer, {company}-copy-auditor]

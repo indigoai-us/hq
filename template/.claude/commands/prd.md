@@ -62,7 +62,7 @@ Before asking questions, explore HQ. If company is anchored (Step 0), scope all 
 
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
-- If target repo has a qmd collection (e.g. `{repo}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 
@@ -277,7 +277,7 @@ If a policy or repo context **fully answers** a question, present it as a confir
 6c. Does this need a new worker or skill?
 6d. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 6e. Branch name? (default: `feature/{project-name}`)
-6f. Base branch? (default: `main`, or `staging` for {company}-nx, etc.) — Pure Ralph creates feature branch from this
+6f. Base branch? (default: `main`, or `staging` for {your-repo}, etc.) — Pure Ralph creates feature branch from this
 
 6g. Analytics / event tracking needed? *(conditional: deployable UI projects only)*
     A. No — not a user-facing feature

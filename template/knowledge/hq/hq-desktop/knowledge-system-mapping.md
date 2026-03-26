@@ -142,7 +142,7 @@ The `@tauri-apps/plugin-fs` `readDir()` also follows symlinks transparently. The
 
 1. **Broken symlinks:** If a repo is deleted but the symlink remains, `fs::read_dir()` will fail. Desktop should catch this and show a "broken link" indicator.
 2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`~/Documents/HQ/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
-3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {Company} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
+3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {company} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
 
 ---
 
@@ -170,7 +170,7 @@ INDEX.md files are auto-generated navigation indexes placed at key directory lev
 | `knowledge/public/INDEX.md` | Yes | Lists all public knowledge bases |
 | `knowledge/private/INDEX.md` | No | Missing -- only 1 entry (linear) |
 | `companies/{company}/knowledge/INDEX.md` | Yes | Lists LR knowledge files/dirs |
-| `companies/{company}/knowledge/INDEX.md` | Yes | Lists {Company} knowledge files/dirs |
+| `companies/{company}/knowledge/INDEX.md` | Yes | Lists {company} knowledge files/dirs |
 | `companies/{company}/knowledge/INDEX.md` | Yes | Lists {Product} knowledge files/dirs |
 | `companies/personal/knowledge/INDEX.md` | Yes | Lists personal knowledge files |
 
@@ -231,7 +231,7 @@ KnowledgeBase (top-level grouping)
 ### What Desktop Needs to Display
 
 **Knowledge Base List View:**
-- Name (e.g., "Ralph", "HQ Core", "{Company}")
+- Name (e.g., "Ralph", "HQ Core", "{company}")
 - Scope badge (Public / Private / Company: {name})
 - File count
 - Last modified date
@@ -263,7 +263,7 @@ Per `manifest.yaml`, each company owns its knowledge:
 ```yaml
 {company}:
   knowledge: companies/{company}/knowledge/
-  qmd_collections: [{company}, {repo}]
+  qmd_collections: [{company}, {product}]
 
 {company}:
   knowledge: companies/{company}/knowledge/
@@ -280,7 +280,7 @@ personal:
 
 ### Desktop Isolation Rules
 
-1. **Company filter in UI**: When user selects a company context (e.g., "{Company}"), the knowledge browser should:
+1. **Company filter in UI**: When user selects a company context (e.g., "{company}"), the knowledge browser should:
    - Show that company's knowledge base
    - Show HQ-level public knowledge (always accessible)
    - Hide other companies' knowledge bases
@@ -311,16 +311,16 @@ Knowledge Browser
 │   │   └── Curious Minds
 │   └── Private
 │       └── Linear
-├── Company: {Company} (when LR context active)
+├── Company: {company} (when LR context active)
 │   ├── Architecture
 │   ├── Database Schema
 │   ├── Infrastructure
-│   ├── {REPO}/
-│   ├── {Company} SMS/
+│   ├── {PRODUCT}/
+│   ├── {Product} SMS/
 │   ├── CDP/
 │   ├── GTM/
 │   └── ...
-├── Company: {Company} (when {Company} context active)
+├── Company: {company} (when {company} context active)
 │   ├── Brand Guidelines
 │   ├── Master Narrative
 │   ├── CRO/
@@ -337,9 +337,9 @@ Knowledge Browser
 | Collection | Source Path | Pattern | Files | Contexts | Purpose |
 |-----------|------------|---------|-------|----------|---------|
 | `hq` | HQ root | `**/*.md` | 2,285 | 7 | All HQ markdown |
-| `{repo}` | {REPO} monorepo | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | 3,078 | 3 | {REPO} codebase |
+| `{product}` | {PRODUCT} monorepo | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | 3,078 | 3 | {PRODUCT} codebase |
 | `{company}` | LR knowledge | `**/*.md` | 121 | 1 | LR company knowledge |
-| `{company}` | {Company} knowledge | `**/*.md` | 87 | 1 | {Company} company knowledge |
+| `{company}` | {company} knowledge | `**/*.md` | 87 | 1 | {company} company knowledge |
 | `{company}` | {Product} knowledge | `**/*.md` | 15 | 1 | {Product} company knowledge |
 | `personal` | Personal knowledge | `**/*.md` | 8 | 1 | Personal knowledge |
 
@@ -460,12 +460,12 @@ Collection Picker
 ├── All Collections (default)
 ├── HQ (2,285 files)
 ├── ─── Company Collections ───
-├── {Company} (121 files)
-├── {Company} (87 files)
+├── {company} (121 files)
+├── {company} (87 files)
 ├── {Product} (15 files)
 ├── Personal (8 files)
 ├── ─── Codebase Collections ───
-└── {REPO} (3,078 files)
+└── {PRODUCT} (3,078 files)
 ```
 
 ---

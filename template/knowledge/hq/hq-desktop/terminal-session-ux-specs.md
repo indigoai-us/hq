@@ -320,8 +320,8 @@ Accessed from "Resume from Thread..." in the session launcher.
 │                                                          │
 │  Latest Handoff                                          │
 │  ┌────────────────────────────────────────────────────┐  │
-│  │ T-20260212-043000-{company}-deploy                       │  │
-│  │ "Fixed SST deploy config for {REPO} runtime"          │  │
+│  │ T-20260212-043000-{product}-deploy                       │  │
+│  │ "Fixed SST deploy config for {PRODUCT} runtime"          │  │
 │  │ 🏢 {company}  👤 backend-dev  🕐 2h ago         │  │
 │  │ Next: Run smoke tests on staging                   │  │
 │  │                           [Resume in New Tab →]    │  │
@@ -330,7 +330,7 @@ Accessed from "Resume from Thread..." in the session launcher.
 │  Recent Threads                                          │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ T-20260212-020000-{company}-report                    │  │
-│  │ "Generated Q4 marketing report for {Company}"         │  │
+│  │ "Generated Q4 marketing report for {company}"         │  │
 │  │ 🏢 {company}  👤 cmo-{company}  🕐 5h ago               │  │
 │  │ Next: Review report, publish to CMO HQ             │  │
 │  │                           [Resume in New Tab →]    │  │
@@ -391,7 +391,7 @@ In the empire view or terminal empty state, show a persistent "Resume Last Hando
 ┌─────────────────────────────────────────────┐
 │  ↪ Resume Last Handoff                      │
 │                                             │
-│  "Fixed SST deploy config for {REPO} runtime"  │
+│  "Fixed SST deploy config for {PRODUCT} runtime"  │
 │  2 hours ago · {company}                  │
 │                                             │
 │  Next: Run smoke tests on staging           │

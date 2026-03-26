@@ -229,12 +229,12 @@ struct CompanyEntry {
 ```yaml
 {company}:
   repos: [...]
-  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{company}]
-  workers: [cfo-{company}, {company}-analyst, {company}-deploy]
+  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{product}]
+  workers: [cfo-{company}, {company}-analyst, {product}-deploy]
   knowledge: companies/{company}/knowledge/
   deploy: [...]
   vercel_projects: [...]
-  qmd_collections: [{company}, {repo}]
+  qmd_collections: [{company}, {product}]
 ```
 
 **Missing data:**

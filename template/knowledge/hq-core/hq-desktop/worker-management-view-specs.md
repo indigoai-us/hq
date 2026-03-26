@@ -720,7 +720,7 @@ In addition to the per-worker Learnings tab (section 2.6), there should be a glo
 │ │                                                                  │ │
 │ │  ┌──────────────────────────────────────────────────────────┐   │ │
 │ │  │ 11:00  MED   global                                       │   │ │
-│ │  │ "{company}-deploy-audit: 7 stories at projects/..."             │   │ │
+│ │  │ "{product}-deploy-audit: 7 stories at projects/..."             │   │ │
 │ │  │ → CLAUDE.md ## Learned Rules                              │   │ │
 │ │  │ Task: auto-learn                                          │   │ │
 │ │  └──────────────────────────────────────────────────────────┘   │ │

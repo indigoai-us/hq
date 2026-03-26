@@ -26,7 +26,7 @@ Every project is defined by `projects/{name}/prd.json`. Desktop must parse this 
 | `goal` | string | Overall project goal (longer than `description`) |
 | `successCriteria` | string | Measurable outcome statement |
 | `qualityGates` | string[] | Back-pressure commands (e.g. `["bun run test", "bun check"]`) |
-| `repoPath` | string | Target repo relative to HQ (e.g. `repos/private/{your-repo}`) |
+| `repoPath` | string | Target repo relative to HQ (e.g. `repos/private/{product}`) |
 | `relatedWorkers` | string[] | Worker IDs relevant to this project |
 | `knowledge` | string[] | Relevant knowledge paths |
 | `linearCredentials` | string | (optional) Path to Linear API key file |
@@ -331,8 +331,8 @@ Quality gates are back-pressure checks that run after each worker phase. They ar
 | Lint | `bun lint`, `eslint`, etc. | After code changes |
 | Typecheck | `bun check`, `tsc --noEmit`, etc. | After code changes |
 | Build | `bun run build`, `npm run build` | After significant changes |
-| E2E manifest | `npm run generate-manifest && git diff --quiet tests/e2e/manifest.json` | {Company}-site only |
-| Coverage | `npm run check-coverage` | {Company}-site only |
+| E2E manifest | `npm run generate-manifest && git diff --quiet tests/e2e/manifest.json` | {company}-site only |
+| Coverage | `npm run check-coverage` | {company}-site only |
 
 ### 5.2 Gate Results in Execution State
 
