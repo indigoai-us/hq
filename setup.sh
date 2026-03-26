@@ -158,8 +158,23 @@ MANIFEST
     skip "Indigo MCP setup"
   fi
 else
-  skip "indigo CLI not found — install via: npm install -g @anthropic-ai/indigo-cli"
-  echo "  You can set up Indigo MCP later by running: indigo setup mcp"
+  if ask "Indigo CLI not found. Install it now? (npm install -g indigo-cli)"; then
+    echo "  Installing indigo-cli…"
+    npm install -g indigo-cli
+    if check_cmd indigo; then
+      ok "indigo CLI installed"
+      echo ""
+      echo "  You need to authenticate first:"
+      echo "    indigo auth login"
+      echo ""
+      echo "  After authenticating, re-run ./setup.sh to configure MCP."
+    else
+      fail "indigo CLI installation failed"
+    fi
+  else
+    skip "Indigo CLI — install later via: npm install -g indigo-cli"
+    echo "  Then run: indigo setup mcp"
+  fi
 fi
 
 # ── 6. Build qmd index ──────────────────────────────────────────────────────
