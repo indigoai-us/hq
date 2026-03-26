@@ -8,8 +8,8 @@
 #   HQ_DISABLED_HOOKS - Comma-separated hook IDs to disable
 #
 # Profiles:
-#   minimal - Critical safety hooks only (block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets)
-#   standard - All minimal + checkpoint/handoff hooks (DEFAULT)
+#   minimal - Critical safety hooks only (block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets, consult-knowledge)
+#   standard - All minimal + productivity hooks (DEFAULT)
 #   strict - All standard + future quality/format hooks (not yet defined)
 #
 # Exit codes:
@@ -36,10 +36,10 @@ PROFILE="${HQ_HOOK_PROFILE:-standard}"
 DISABLED_HOOKS="${HQ_DISABLED_HOOKS:-}"
 
 # Define hook membership per profile (using case statements for POSIX compatibility)
-# Minimal: critical safety hooks
+# Minimal: critical safety hooks + knowledge consultation
 is_in_minimal_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder)
       return 0
       ;;
     *)
@@ -48,10 +48,10 @@ is_in_minimal_profile() {
   esac
 }
 
-# Standard: minimal + checkpoint/handoff + pattern learning
+# Standard: minimal + checkpoint/handoff + pattern learning + auto-reindex + learn-reminder
 is_in_standard_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|auto-reindex|learn-reminder|capture-learnings)
       return 0
       ;;
     *)
@@ -63,7 +63,7 @@ is_in_standard_profile() {
 # Strict: standard + future quality hooks (reserved for expansion)
 is_in_strict_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|auto-reindex|learn-reminder|capture-learnings)
       return 0
       ;;
     *)
@@ -117,5 +117,5 @@ if [ $should_run -eq 0 ]; then
   exit 0
 fi
 
-# Hook should run: pipe stdin to the actual hook script and delegate exit code
-"$HOOK_SCRIPT" "$@"
+# Hook should run: delegate to actual hook script
+exec "$HOOK_SCRIPT" "$@"

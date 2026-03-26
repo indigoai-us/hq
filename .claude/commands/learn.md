@@ -1,218 +1,158 @@
 ---
-description: Auto-capture and classify learnings from task execution
+description: Capture session learnings as knowledge entries and queue gaps for research
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
-argument-hint: [json-event or "rule description"]
-visibility: public
 ---
 
-# /learn - Automated Learning Pipeline
+# /learn — Session Learning Capture
 
-Capture a learning, classify it, and inject the rule directly into the file it governs.
+Reflect on the current conversation and distill durable insights into the knowledge base. Quality over quantity — aim for 1-5 entries per session, never capture trivial or ephemeral information.
 
-Called programmatically by `/execute-task` and `/run-project` after task completion or failure. Also callable manually. `/remember` delegates here.
+## Company Context
 
-**Input:** $ARGUMENTS
+All knowledge is scoped to a company. Determine the target company:
 
-## Core Principle
+1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
+2. Otherwise default to `personal`.
 
-No separate learnings files. Rules go into the files they pertain to:
+Set `COMPANY` to the resolved slug. All paths below use `companies/{COMPANY}/knowledge/`.
 
-| Scope | Target file | Section |
-|-------|------------|---------|
-| `worker:{id}` | `workers/*/{id}/worker.yaml` | `instructions:` → `## Learnings` subsection |
-| `command:{name}` | `.claude/commands/{name}.md` | `## Rules` section |
-| `knowledge:{path}` | The relevant knowledge file | Append as rule/note |
-| `project:{slug}` | Related knowledge or prd.json metadata | Context-dependent |
-| `global` | `.claude/CLAUDE.md` | `## Learned Rules` section |
+## Step 1: Reflect on the Session
 
-## Step 1: Parse Input
+Review what has been discussed, decided, discovered, or corrected. Identify candidates in these categories:
 
-**If structured JSON** (from /execute-task):
-```json
-{
-  "task_id": "TASK-001",
-  "project": "my-project",
-  "source": "back-pressure-failure|user-correction|success-pattern|task-completion|build-activity",
-  "severity": "critical|high|medium|low",
-  "scope": "global|worker:{id}|command:{name}|knowledge:{path}|project:{slug}",
-  "workers_used": ["backend-dev"],
-  "back_pressure_failures": [{"worker": "frontend-dev", "check": "lint", "error": "..."}],
-  "retries": 0,
-  "key_decisions": ["..."],
-  "issues_encountered": ["..."],
-  "patterns_discovered": ["..."]
-}
-```
+- **User corrections** (highest value): The user explicitly said something was wrong or provided a better approach. Confidence: 0.9.
+- **Decisions and rationale**: A deliberate choice was made with reasoning. Confidence: 0.7.
+- **Technical insights**: Something non-obvious discovered during implementation. Confidence: 0.7.
+- **New facts or patterns**: Learned something about a tool, API, codebase, or domain. Confidence: 0.5-0.7.
+- **Inferences**: Connections drawn that weren't explicitly stated. Confidence: 0.5.
 
-**If free text** (manual invocation or /remember delegation):
-- Parse for keywords to determine scope
-- Generate rule statement from description
+Skip the following — they are not durable knowledge:
+- Ephemeral debugging info (stack traces, temp file paths)
+- Temporary state or one-off commands
+- Things that are already obvious from code/docs
+- Sensitive information (API keys, passwords, personal data — NEVER capture these)
 
-## Step 2: Extract Rules
+## Step 2: Process Each Insight
 
-From structured input, generate rules:
+For each candidate (1-5 per session):
 
-- `back_pressure_failures` → `NEVER: {anti-pattern that caused failure}` (scope: worker:{id})
-- `retries > 0` → Rule about what caused retry and how to avoid it
-- `key_decisions` → `ALWAYS: {pattern}` if broadly applicable
-- `issues_encountered` → Scoped rule to prevent recurrence
-- `patterns_discovered` → `ALWAYS: {pattern}` for success patterns
+### a. Formulate title and summary
+Write a concise title (slug-friendly) and a one-paragraph summary capturing the insight and why it matters.
 
-From free text:
-- Extract the core rule in NEVER/ALWAYS/condition→action format
-
-If no meaningful rules can be extracted (task completed cleanly, no failures, no notable patterns), skip injection — log to event log only.
-
-## Step 3: Classify Scope & Resolve Target File
-
-For each extracted rule, determine scope (most specific wins):
-
-| Signal | Scope | Target |
-|--------|-------|--------|
-| Failure in specific worker | `worker:{id}` | `workers/*/{id}/worker.yaml` |
-| Error in specific command | `command:{name}` | `.claude/commands/{name}.md` |
-| Relevant to specific knowledge | `knowledge:{path}` | The knowledge file |
-| Universal pattern | `global` | `.claude/CLAUDE.md` |
-| User correction via /remember | From context, default global | Detected target or CLAUDE.md |
-
-**Resolve the target file path:**
-- For workers: Read `workers/registry.yaml` → find worker path → Read `{path}/worker.yaml` directly
-- For commands: `.claude/commands/{name}.md`
-- For knowledge: the specific knowledge file mentioned in context
-- For global: `.claude/CLAUDE.md`
-
-If the target file doesn't exist, fall back to `.claude/CLAUDE.md`.
-
-## Step 4: Dedup Check
-
+### b. Dedup check
+Run two searches to catch duplicates regardless of phrasing:
 ```bash
-qmd vsearch "{rule text}" --json -n 5
+qmd query "{title}" -n 3 --json -c {COMPANY}
+qmd query "{one-sentence summary of the insight}" -n 3 --json -c {COMPANY}
 ```
 
-Check results for similarity to the new rule:
-- Similarity > 0.85 → **Skip** (already captured somewhere)
-- Similarity 0.6–0.85 → **Merge** (update existing rule to be more precise)
-- Similarity < 0.6 → **Add new**
+Use the **highest similarity score** across both result sets for the same file. Then apply tiered thresholds:
 
-Report dedup action taken.
+| Score | Action |
+|-------|--------|
+| **> 0.9** | **Duplicate.** Already known. Skip and note in the report. |
+| **0.7–0.9** | **Overlap.** Read the matching entry to confirm. If the new insight adds meaningfully, update the existing entry. Otherwise skip. |
+| **< 0.7** | **Novel.** Create a new entry. |
 
-## Step 5: Inject Rule into Target File
+When evaluating matches, read the top-scoring existing entry to confirm the overlap is real — don't rely solely on the similarity score.
 
-### For worker.yaml (`instructions:` block)
+**Tag merging**: When updating an existing entry, union the new tags with the existing tags — don't discard existing tags. Remove duplicates.
 
-Read the file, find `instructions: |` block. Look for `## Learnings` subsection:
-- If exists: append rule under it
-- If not: create `## Learnings` subsection at end of instructions block
+### c. Write knowledge entry (if novel)
+Create `companies/{COMPANY}/knowledge/{category}/{slug}.md` with this format:
 
-```yaml
-instructions: |
-  ...existing instructions...
-
-  ## Learnings
-  - NEVER: {new rule}
-```
-
-### For command .md (`## Rules` section)
-
-Find `## Rules` section, append rule:
 ```markdown
-## Rules
+---
+title: "{Concise Title}"
+category: {category}
+tags: ["{tag1}", "{tag2}", "{tag3}"]
+source: conversation
+confidence: {0.5|0.7|0.9}
+created_at: {ISO 8601 timestamp}
+updated_at: {ISO 8601 timestamp}
+---
 
-...existing rules...
-- **{NEVER|ALWAYS}**: {rule}
+{One-paragraph summary of the insight, including context and why it matters.}
 ```
 
-If no `## Rules` section exists, create it at end of file.
+#### Category validation
 
-### For knowledge files
-
-Append rule as a note at end of file, or under most relevant section.
-
-**Knowledge files live in separate git repos** (symlinked into HQ). After injecting a rule into a knowledge file, commit the change to the knowledge repo:
+Before choosing a category, list existing ones:
 
 ```bash
-# Resolve the real repo path through the symlink
-repo_dir=$(cd "$(dirname "$(readlink -f "{target_file}")")" && git rev-parse --show-toplevel)
-cd "$repo_dir"
-git add -A
-git commit -m "learn: {short rule summary}"
+ls -d companies/{COMPANY}/knowledge/*/
 ```
 
-### For CLAUDE.md (`## Learned Rules`)
+**Prefer an existing category.** Only create a new one when the insight genuinely doesn't fit any existing category. If the category is new, briefly justify the choice in the report summary.
 
-Append rule:
-```markdown
-- **{NEVER|ALWAYS}**: {rule} <!-- {source} | {date} -->
-```
+### Tagging Guidelines
 
-## Step 6: Evaluate Global Promotion
+Tags are the faceted dimension of the knowledge base — they enable cross-cutting discovery that the category hierarchy cannot.
 
-If the rule was injected into a scoped file (worker/command/knowledge), also add to `.claude/CLAUDE.md` `## Learned Rules` if ANY:
-- `severity == critical`
-- `source == user-correction` (explicit /remember invocation)
-- Rule triggered 3+ times (check event log)
+- **Orthogonal**: Each tag should represent an independent dimension. Don't duplicate the category.
+- **3-6 tags per entry**: Enough for discovery, not so many that they lose signal.
+- **Controlled vocabulary**: Prefer reusing existing tags over inventing synonyms.
+- **Stable naming**: Use lowercase, hyphenated terms (`knowledge-management` not `KM`).
 
-### Cap Enforcement
+#### Auto-suggest tags
 
-`## Learned Rules` is capped at 20 rules.
-
-1. Count existing rules in section
-2. If >= 20: find the oldest rule (by date in comment), remove it from CLAUDE.md
-   - The rule still lives in its source file — only the CLAUDE.md copy is removed
-3. Append new rule
-
-## Step 7: Log Event
+Before assigning tags, retrieve the current vocabulary:
 
 ```bash
-mkdir -p workspace/learnings
+./tools/tag-inventory.sh -c {COMPANY}
 ```
 
-Write `workspace/learnings/learn-{YYYYMMDD-HHMMSS}.json`:
-```json
-{
-  "event_id": "learn-{timestamp}",
-  "rules": [
-    {
-      "rule": "NEVER: ...",
-      "scope": "worker:frontend-dev",
-      "target_file": "workers/public/dev-team/frontend-dev/worker.yaml",
-      "severity": "high"
-    }
-  ],
-  "source": "back-pressure-failure",
-  "task_id": "TASK-001",
-  "project": "my-project",
-  "dedup_action": "new|merged|skipped",
-  "promoted_to_global": true,
-  "created_at": "{ISO8601}"
-}
-```
+From the output, **pick 3-6 existing tags that fit** the new entry. Only introduce a new tag when no existing tag covers the concept.
 
-## Step 8: Reindex
+### d. Handle contradictions
+If the new insight contradicts existing knowledge, queue a curiosity item to resolve the conflict:
 
 ```bash
-qmd update 2>/dev/null || true
+npx tsx tools/queue-curiosity.ts -c {COMPANY} --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
 ```
 
-## Step 9: Report
+## Step 3: Queue Unanswered Questions
 
-```
-Learning captured:
-  Rule: {rule}
-  Injected: {target file path} → {section}
-  Global: {promoted|not promoted}
-  Dedup: {new|merged|skipped}
-  Event: workspace/learnings/learn-{timestamp}.json
+For questions that came up during the session but were not resolved:
+
+```bash
+npx tsx tools/queue-curiosity.ts -c {COMPANY} --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
 ```
 
-If multiple rules extracted, report each.
+## Step 4: Reindex
+
+After all writes are complete:
+
+```bash
+npx tsx tools/reindex.ts -c {COMPANY}
+```
+
+## Step 5: Report Summary
+
+Output a structured summary:
+
+```
+## Session Learnings Captured
+
+Knowledge entries written:
+- {title} -> companies/{COMPANY}/knowledge/{category}/{slug}.md (confidence: {N})
+
+Knowledge entries updated:
+- {title} -> companies/{COMPANY}/knowledge/{category}/{slug}.md (reason: {what changed})
+
+Curiosity items queued:
+- {question} (source: {source}, priority: {N})
+
+Skipped (already known):
+- {title}
+```
+
+If nothing was worth capturing, say so honestly — an empty report is better than noise.
 
 ## Rules
 
-- **Never inject empty/trivial rules** — "task completed successfully" is not a learning
-- **Dedup is mandatory** — always check before injecting
-- **Global cap is hard** — never exceed 20 rules in CLAUDE.md `## Learned Rules`
-- **Reindex after every injection** — keeps qmd search current
-- **Preserve existing rules** — append only, never overwrite existing rules
-- **User corrections always promote** — /remember delegations go to both target file AND CLAUDE.md
-- **Match existing style** — use the same rule format as existing rules in the target file
+- **Quality over quantity**: One high-confidence insight beats five vague ones.
+- **User corrections are gold**: Always confidence 0.9. The user knows their own system.
+- **No sensitive data**: Never capture API keys, passwords, tokens, or personal data.
+- **Always reindex**: Run `npx tsx tools/reindex.ts -c {COMPANY}` after writing entries.
+- **Contradictions are signals**: Queue them for resolution, don't suppress them.

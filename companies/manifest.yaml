@@ -1,30 +1,30 @@
-# Company Manifest
-# Maps each company to its repos, workers, knowledge, deploy targets, and infrastructure.
+# HQ Company Manifest
+# Single source of truth for company -> resource mapping
 
-personal:
-  repos: []
-  settings: []
-  workers: []
-  knowledge: companies/personal/knowledge/
-  deploy: []
-  vercel_projects: []
-  qmd_collections: [personal]
+companies:
+  personal:
+    name: "Personal"
+    goal: ""
+    path: "companies/personal"
+    sources: []
+    repos: []
+    knowledge: companies/personal/knowledge/
+    qmd_collections: [personal]
 
-indigo:
-  domain: getindigo.ai
-  repos: [repos/private/indigo-nx]
-  settings: []
-  workers: []
-  knowledge: companies/indigo/knowledge/
-  deploy: []
-  vercel_projects: []
-  qmd_collections: [indigo]
+  indigo:
+    name: "Indigo"
+    goal: "AI-powered meeting intelligence"
+    path: "companies/indigo"
+    sources: [indigo-mcp, slack, gmail, github]
+    repos: [repos/private/indigo-nx]
+    knowledge: companies/indigo/knowledge/
+    qmd_collections: [indigo]
 
-cortex:
-  repos: []
-  settings: []
-  workers: []
-  knowledge: companies/cortex/knowledge/
-  deploy: []
-  vercel_projects: []
-  qmd_collections: [cortex]
+  cortex:
+    name: "Cortex"
+    goal: ""
+    path: "companies/cortex"
+    sources: []
+    repos: []
+    knowledge: companies/cortex/knowledge/
+    qmd_collections: [cortex]
