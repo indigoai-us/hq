@@ -17,7 +17,7 @@ Research a single pending item from the curiosity queue via web search and write
 All knowledge is scoped to a company. Determine the target company:
 
 1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
-2. Otherwise default to `ghq` (cross-cutting / meta knowledge).
+2. Otherwise default to `hq` (cross-cutting / meta knowledge).
 
 Set `COMPANY` to the resolved slug. All paths below use `companies/{COMPANY}/knowledge/`.
 
@@ -67,7 +67,7 @@ From the question and search results, produce a knowledge entry:
   - **Orthogonal**: Each tag is an independent dimension. Don't duplicate the category (e.g., no `architecture` tag for entries in `knowledge/architecture/`).
   - **Controlled vocabulary**: Before assigning tags, retrieve the current inventory:
     ```bash
-    ./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
+    ./companies/hq/tools/tag-inventory.sh -c {COMPANY}
     ```
     Pick from existing tags first. Only introduce a new tag when no existing one covers the concept, and verify it isn't a synonym of an existing tag.
   - **Stable naming**: Lowercase, hyphenated terms (`knowledge-management` not `KM`)
@@ -82,7 +82,7 @@ From the question and search results, produce a knowledge entry:
 
 The slug is derived from the title: lowercase, replace spaces and non-alphanumeric chars with hyphens, collapse consecutive hyphens, max 80 chars. Drop category-name prefixes for brevity.
 
-Frontmatter must conform to the schema in `companies/ghq/knowledge/meta/format-spec.md`.
+Frontmatter must conform to the schema in `companies/hq/knowledge/meta/format-spec.md`.
 
 #### d. Check for Duplicates
 
@@ -120,7 +120,7 @@ Write the entry to `companies/{COMPANY}/knowledge/{category}/{slug}.md` with the
 Run:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
+npx tsx companies/hq/tools/reindex.ts -c {COMPANY}
 ```
 
 This regenerates INDEX.md files for all knowledge categories.
@@ -139,7 +139,7 @@ This regenerates INDEX.md files for all knowledge categories.
 While researching, you may discover new questions that weren't part of the original item. For each follow-up:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
+npx tsx companies/hq/tools/queue-curiosity.ts -c {COMPANY} --question "{follow-up question}" --source research_followup --priority 5 --context "Discovered while researching: {original question}"
 ```
 
 Only queue genuinely new questions — not rephrased versions of what was just answered. Increment `items_queued` counter.
@@ -188,7 +188,7 @@ If follow-up questions were queued, list them:
 
 - **One item per run** — research a single queue item, then stop.
 - **Use the WebSearch tool** for all research — Claude IS the LLM doing synthesis; do not call external APIs.
-- **Valid frontmatter** is mandatory — match the schema in `companies/ghq/knowledge/meta/format-spec.md`.
+- **Valid frontmatter** is mandatory — match the schema in `companies/hq/knowledge/meta/format-spec.md`.
 - **Create category directories** as needed (`mkdir -p`).
-- **Always run `npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}`** after writing entries.
+- **Always run `npx tsx companies/hq/tools/reindex.ts -c {COMPANY}`** after writing entries.
 - **Never skip deduplication** — always run `qmd vsearch` before writing.

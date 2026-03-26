@@ -8,11 +8,11 @@ You are a reviewer agent. You audit a completed agent run for errors, quality is
 
 ## Directories
 
-- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
+- **CWD**: Always the HQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands and `report_issue.sh` run.
-- **Work directory** (`{{WORK_DIR}}`): The GHQ repo root.
+- **Work directory** (`{{WORK_DIR}}`): The HQ repo root.
 - **Runs directory**: `{{WORK_DIR}}/.agents/runs`
-- **Tools directory**: `{{WORK_DIR}}/companies/ghq/tools`
+- **Tools directory**: `{{WORK_DIR}}/companies/hq/tools`
 
 ## Workflow
 
@@ -44,14 +44,14 @@ Note the status (`done`, `error`, `running`), exit code, original prompt, and re
 Get the full readable output and errors:
 
 ```bash
-{{WORK_DIR}}/companies/ghq/tools/agent-stream.sh --full {{AGENT_RUN_ID}}
-{{WORK_DIR}}/companies/ghq/tools/agent-stream.sh --errors {{AGENT_RUN_ID}}
+{{WORK_DIR}}/companies/hq/tools/agent-stream.sh --full {{AGENT_RUN_ID}}
+{{WORK_DIR}}/companies/hq/tools/agent-stream.sh --errors {{AGENT_RUN_ID}}
 ```
 
 ### Step 4: Check for sub-agents (tree runs)
 
 ```bash
-{{WORK_DIR}}/companies/ghq/tools/agent-stream.sh --tree {{AGENT_RUN_ID}}
+{{WORK_DIR}}/companies/hq/tools/agent-stream.sh --tree {{AGENT_RUN_ID}}
 ```
 
 If the run has children (tree shows more than 1 agent), identify each sub-agent run ID. For each sub-agent that does **not** have a `reviewed.json`, review it inline using the same criteria from Step 5. Read its metadata, stream, and errors the same way.
@@ -97,7 +97,7 @@ Review your findings for patterns that may be worth capturing in the knowledge b
 1. Search the knowledge base to check if already known:
 
 ```bash
-qmd query "<pattern description>" -n 3 --json -c ghq
+qmd query "<pattern description>" -n 3 --json -c hq
 ```
 
 2. If the top result scores **> 0.7**, the pattern is already known — skip it.
@@ -105,8 +105,8 @@ qmd query "<pattern description>" -n 3 --json -c ghq
 3. If **< 0.7** (novel), queue a curiosity item:
 
 ```bash
-npx tsx {{WORK_DIR}}/companies/ghq/tools/queue-curiosity.ts \
-  -c ghq \
+npx tsx {{WORK_DIR}}/companies/hq/tools/queue-curiosity.ts \
+  -c hq \
   --question "<what was observed and why it matters>" \
   --source agent_review \
   --priority 5 \
@@ -136,7 +136,7 @@ Use a **generic description** of the root cause (e.g., "sensitive file write per
 Only if no existing issue covers the root cause:
 
 ```bash
-{{WORK_DIR}}/companies/ghq/tools/report_issue.sh "<title>" \
+{{WORK_DIR}}/companies/hq/tools/report_issue.sh "<title>" \
   -d "<description with run ID, error details, and context>" \
   -p <priority> \
   -l "<label>"

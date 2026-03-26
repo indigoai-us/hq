@@ -1,4 +1,4 @@
-# GHQ v0.2
+# HQ v0.2
 
 Knowledge-first personal OS. No pre-loaded content — intelligence accumulates through use.
 
@@ -9,9 +9,9 @@ Knowledge is scoped per company under `companies/{slug}/knowledge/`. At the star
 1. If the user's request mentions a specific company or project, use that company's slug.
 2. If working within a `companies/{slug}/` directory, use that slug.
 3. If unclear, ask the user which company they're working with before proceeding.
-4. Cross-cutting concerns (GHQ tooling, agent patterns, meta-knowledge) go under `ghq`.
+4. Cross-cutting concerns (HQ tooling, agent patterns, meta-knowledge) go under `hq`.
 
-All knowledge commands accept `-c <company-slug>` (default: `ghq`).
+All knowledge commands accept `-c <company-slug>` (default: `hq`).
 
 ## Rules
 
@@ -23,7 +23,7 @@ All knowledge commands accept `-c <company-slug>` (default: `ghq`).
 - **No pre-loaded content**: No companies, skills, or scaffolded directories. Everything is earned through learning.
 - **Context diet**: Read only what the current task requires. Never pre-load.
 - **Capture before losing context**: Before ending a session or when context is filling, run `/learn` to capture learnings.
-- **Report blocking failures**: If this failure is blocking, please read .claude/settings.local.json to understand which commands are allowed. If you believe it's a permission issue, report it: ./companies/ghq/tools/report_issue.sh \"<title>\" -d \"<description>\" -p <1|2|3>. Do NOT retry the same failing call.
+- **Report blocking failures**: If this failure is blocking, please read .claude/settings.local.json to understand which commands are allowed. If you believe it's a permission issue, report it: ./companies/hq/tools/report_issue.sh \"<title>\" -d \"<description>\" -p <1|2|3>. Do NOT retry the same failing call.
 
 ## Search (qmd)
 
@@ -35,16 +35,16 @@ qmd query "<query>" -n 10         # hybrid BM25 + vector (best, slower)
 
 ## Tools Reference
 
-See [`companies/ghq/tools/INDEX.md`](companies/ghq/tools/INDEX.md) for the auto-generated tool index. The index is regenerated automatically on every write to `companies/ghq/tools/`.
+See [`companies/hq/tools/INDEX.md`](companies/hq/tools/INDEX.md) for the auto-generated tool index. The index is regenerated automatically on every write to `companies/hq/tools/`.
 
 ## Subprocess, Not Subagents
 
-Never use the `Agent` tool for delegating work. Instead, use `companies/ghq/tools/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
+Never use the `Agent` tool for delegating work. Instead, use `companies/hq/tools/ask-claude.sh` to spawn a Claude subprocess via `claude -p`. This gives full control over model, tools, and turn limits while keeping the main session's context clean.
 
 ```bash
-./companies/ghq/tools/ask-claude.sh "Summarize this file"              # simple prompt
-cat file.txt | ./companies/ghq/tools/ask-claude.sh "Explain this"       # stdin + prompt
-./companies/ghq/tools/ask-claude.sh -j "List exports"                    # JSON output
+./companies/hq/tools/ask-claude.sh "Summarize this file"              # simple prompt
+cat file.txt | ./companies/hq/tools/ask-claude.sh "Explain this"       # stdin + prompt
+./companies/hq/tools/ask-claude.sh -j "List exports"                    # JSON output
 ```
 
 ## Structure
@@ -61,7 +61,7 @@ companies/
     data/                         company-specific data files
     tools/                        company-specific scripts
     repos/                        repo symlinks
-  ghq/                            GHQ itself — cross-cutting knowledge + shared tools
+  hq/                             HQ itself — cross-cutting knowledge + shared tools
     tools/                        shared utility scripts (reindex, queue, ask-claude, etc.)
-    knowledge/                    meta-knowledge (agent patterns, GHQ architecture, etc.)
+    knowledge/                    meta-knowledge (agent patterns, HQ architecture, etc.)
 ```

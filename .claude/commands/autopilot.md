@@ -30,7 +30,7 @@ Use `REPO_ROOT` for all `-w` flags below. Never use `$(pwd)`.
 Kick off the retrospective loop first — it reviews previous unreviewed runs while new work proceeds:
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -a -c ghq -w <REPO_ROOT> -t bd-retrospective-loop ""
+./companies/hq/tools/ask-claude.sh -a -c hq -w <REPO_ROOT> -t bd-retrospective-loop ""
 ```
 
 Note the agent ID from stderr for later.
@@ -40,7 +40,7 @@ Note the agent ID from stderr for later.
 For each company slug from the manifest, spawn a bd-manager agent asynchronously:
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -a -c <SLUG> -w <REPO_ROOT> -t bd-manager "<SLUG>"
+./companies/hq/tools/ask-claude.sh -a -c <SLUG> -w <REPO_ROOT> -t bd-manager "<SLUG>"
 ```
 
 Spawn all companies. Note each agent ID.

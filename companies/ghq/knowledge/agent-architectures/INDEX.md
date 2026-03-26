@@ -1,9 +1,0 @@
-# agent-architectures
-
-| File | Title | Summary | Confidence | Updated |
-|------|-------|---------|------------|---------|
-| [context-window-management.md](context-window-management.md) | Context Window Management for Long-Running Agents | The context window is the fundamental constraint on autonomous agents. A coding agent running for... | 0.8 | 2026-03-20 |
-| [agent-iteration-patterns-comparison.md](agent-iteration-patterns-comparison.md) | Agent Iteration Patterns: Ralph vs ReAct vs Plan-and-Execute vs Tree-of-Thought vs Reflexion | Taxonomy of agent iteration patterns and how they compare for long-horizon coding tasks. | 0.8 | 2026-03-20 |
-| [claude-agent-sdk.md](claude-agent-sdk.md) | Claude Agent SDK: Architecture, Abstractions, and Framework Comparison | The Claude Agent SDK exposes the same agent loop, tool execution, and context management that pow... | 0.9 | 2026-03-20 |
-| [coding-agent-loop-comparison.md](coding-agent-loop-comparison.md) | Coding Agent Loop Architecture: Claude Code vs Devin vs Cursor vs Codex | Architectural comparison of how Claude Code, Devin, Cursor, and OpenAI Codex implement their agen... | 0.8 | 2026-03-20 |
-| [event-driven-agent-architectures.md](event-driven-agent-architectures.md) | Event-Driven Autonomous Agent Architectures | Three patterns for how autonomous agents perceive and react to the world: polling, webhooks, and ... | 0.8 | 2026-03-20 |

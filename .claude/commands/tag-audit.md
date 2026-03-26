@@ -14,7 +14,7 @@ Audit the knowledge base tag vocabulary for quality issues and fix them interact
 All knowledge is scoped to a company. Determine the target company:
 
 1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
-2. Otherwise default to `ghq`.
+2. Otherwise default to `hq`.
 
 Set `COMPANY` to the resolved slug.
 
@@ -23,7 +23,7 @@ Set `COMPANY` to the resolved slug.
 Run:
 
 ```bash
-./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
+./companies/hq/tools/tag-inventory.sh -c {COMPANY}
 ```
 
 Parse the output into a tag frequency table: `{tag: count}`.
@@ -107,7 +107,7 @@ For each approved fix:
 After all fixes:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
+npx tsx companies/hq/tools/reindex.ts -c {COMPANY}
 ```
 
 ## Step 6: Summary

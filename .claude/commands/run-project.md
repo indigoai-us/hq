@@ -96,7 +96,7 @@ for each non-gate subtask in dependency order:
 
     6b. EXECUTE via bd-worker
 
-        ./companies/ghq/tools/ask-claude.sh \
+        ./companies/hq/tools/ask-claude.sh \
           -c {slug} \
           -w "$WORKTREE_DIR" \
           -t bd-worker \
@@ -125,7 +125,7 @@ for each non-gate subtask in dependency order:
           git checkout -- .
           git clean -fd
           Re-run bd-worker with retry instructions:
-            ./companies/ghq/tools/ask-claude.sh \
+            ./companies/hq/tools/ask-claude.sh \
               -c {slug} \
               -w "$WORKTREE_DIR" \
               -t bd-worker \

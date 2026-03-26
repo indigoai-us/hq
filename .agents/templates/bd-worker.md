@@ -8,7 +8,7 @@ Run `cd {{COMPANY_DIR}} && bd show {{TASK_ID}}` to get the full task description
 
 ## Directories
 
-- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
+- **CWD**: Always the HQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands run. The `.beads/` database lives here.
 - **Work directory** (`{{WORK_DIR}}`): Where you make file changes. All edits, new files, and deletions MUST be inside this directory.
 

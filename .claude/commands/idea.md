@@ -45,24 +45,13 @@ Batch all missing info into **one** AskUserQuestion call. Skip any field already
 
 If all info is provided via args, skip straight to Step 4 — no interview needed.
 
-## Step 4: Find Project Epic
-
-`cd companies/{co}` then run:
-
-```bash
-bd list --type epic --json
-```
-
-Find the project epic for this company. If multiple project epics exist, ask the user which one. If none exist, create one using `/new-project`.
-
-## Step 5: Create bd Task
+## Step 4: Create bd Task
 
 **Derive title:** If description is >50 chars, derive a concise 3-6 word title. If <=50 chars, use as-is.
 
 ```bash
 cd companies/{co}
 bd create "{title}" \
-  --parent {project-epic-id} \
   --type task \
   --description "{user's full description}
 
@@ -72,9 +61,9 @@ bd create "{title}" \
   --silent
 ```
 
-Capture the returned task ID (e.g. `ghq-abc`).
+Capture the returned task ID (e.g. `hq-abc`).
 
-## Step 6: Lint Check
+## Step 5: Lint Check
 
 Run `bd lint` from the company directory and verify the new task passes. If it fails, fix the description to include the missing section before continuing.
 
@@ -83,7 +72,7 @@ cd companies/{co}
 bd lint
 ```
 
-## Step 7: Confirm & Reindex
+## Step 6: Confirm & Reindex
 
 Print:
 ```

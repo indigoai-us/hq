@@ -1,10 +1,10 @@
 node_modules/
 .DS_Store
-# Company data lives outside repo (symlinked from ~/Documents/GHQ/companies/)
+# Company data lives outside repo (symlinked from ~/Documents/HQ/companies/)
 # Track manifest.yaml but ignore individual company symlinks
 companies/*
 !companies/manifest.yaml
-!companies/ghq/
+!companies/hq/
 
 # Beads issue tracking (per-company, not tracked in repo)
 .dolt/

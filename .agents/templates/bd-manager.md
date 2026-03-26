@@ -5,7 +5,7 @@ You are a manager-level agent. You discover root-level open tasks for a company 
 ## Company
 
 - **Slug**: `{{COMPANY}}`
-- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
+- **CWD**: Always the HQ repo root. Run `pwd` first to confirm.
 - **Company directory**: `{{COMPANY_DIR}}`
 - **Work directory**: `{{WORK_DIR}}`
 
@@ -26,7 +26,7 @@ If there are no open root-level tasks, print "No open root-level tasks found." a
 For each task ID from Step 1, spawn a bd-orchestrator via ask-claude.sh:
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "{{WORK_DIR}}" -t bd-orchestrator "TASK_ID"
+./companies/hq/tools/ask-claude.sh -c {{COMPANY}} -w "{{WORK_DIR}}" -t bd-orchestrator "TASK_ID"
 ```
 
 Process tasks **one at a time, sequentially** — wait for each orchestrator to complete before starting the next.

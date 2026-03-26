@@ -34,16 +34,16 @@ If empty, ask: "Describe what you want to build or accomplish."
 
 ### Check for Existing Task
 
-1. If `$ARGUMENTS` matches a bd task ID (e.g. `ghq-abc`), read the task with `bd show {task-id} --json`
+1. If `$ARGUMENTS` matches a bd task ID (e.g. `hq-abc`), read the task with `bd show {task-id} --json`
    - Use the task's title and description as starting context
 2. If the task description contains a brainstorm (has `## Approaches` and `## Recommendation` sections):
    - Extract: context, recommendation, approaches, next steps
    - Announce: "Found brainstorm: **{title}** — using recommended approach (Option {X})"
    - Pre-populate the discovery interview (Step 4) with brainstorm context — skip questions already answered
 
-## Step 2: Scan GHQ Context
+## Step 2: Scan HQ Context
 
-Before asking questions, explore GHQ:
+Before asking questions, explore HQ:
 
 **Skills:**
 - Scan `.claude/skills/*/SKILL.md` frontmatter for available skills
@@ -63,11 +63,11 @@ Before asking questions, explore GHQ:
 
 Present:
 ```
-Scanned GHQ:
+Scanned HQ:
 - Skills: {relevant list from registry}
 - Project epics: {list of project epics}
 - Relevant knowledge: {if any}
-- Category: [company-specific | personal | GHQ infrastructure]
+- Category: [company-specific | personal | HQ infrastructure]
 ```
 
 ## Step 2b: Resolve Company Context
@@ -135,7 +135,7 @@ Ask questions in batches using AskUserQuestion
    D. Other: [specify]
 8. Based on scan: "Should this use skills: {relevant skills from registry}?"
 9. Repo path? (e.g. path to repo, or "none" if non-code)
-10. Work mode? GHQ never uses feature branches.
+10. Work mode? HQ never uses feature branches.
     A. Work on `main` (simple, direct)
     B. Use a git worktree (isolated, parallel-safe)
 
@@ -169,7 +169,7 @@ bd create "{task title}" \
   --silent
 ```
 
-Capture the returned task ID (e.g. `ghq-abc123`).
+Capture the returned task ID (e.g. `hq-abc123`).
 
 ### 5b. Create Subtasks
 
@@ -285,14 +285,14 @@ bd children {task-id}
 
 ## Rules
 
-- Scan GHQ first, ask questions second
+- Scan HQ first, ask questions second
 - Batch questions (don't overwhelm)
 - **Never create epics** -- only projects are epics (root-level). `/plan-project` creates subtasks only
 - **Beads is the source of truth** -- all tasks managed via `bd` CLI
 - **Do NOT use EnterPlanMode** -- this skill IS planning
 - **Do NOT use TodoWrite** -- beads subtasks track tasks
 - **Skills, not workers** -- reference skill IDs from `.claude/skills/`, not worker names
-- **Work mode: main or worktree only** -- GHQ never uses feature branches. Ask user to choose in interview
+- **Work mode: main or worktree only** -- HQ never uses feature branches. Ask user to choose in interview
 - **Company context** -- if the task relates to a company, apply the appropriate company label
 - **HARD BLOCK: Do NOT implement** -- ONLY create beads subtasks. NEVER edit target repo files during a /plan-project session
 - **STOP after planning** -- After Step 8 confirmation, end session. NEVER start executing subtasks in the same session

@@ -7,7 +7,7 @@ visibility: public
 
 # /brainstorm - Structured Exploration
 
-Think through a problem before committing to tasks. Research GHQ context, compare approaches, surface unknowns.
+Think through a problem before committing to tasks. Research HQ context, compare approaches, surface unknowns.
 
 **Input:** $ARGUMENTS
 
@@ -25,7 +25,7 @@ Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies
 
 **If no match** → full `$ARGUMENTS` is the description text. Company resolved later.
 
-**Task ID detection:** After company check, see if remaining args match a bd task ID pattern (e.g. `ghq-abc`). If so, this brainstorm is expanding an existing idea task.
+**Task ID detection:** After company check, see if remaining args match a bd task ID pattern (e.g. `hq-abc`). If so, this brainstorm is expanding an existing idea task.
 
 ## Step 1: Resolve Company + Existing Task
 
@@ -38,9 +38,9 @@ Check if the **first word** of `$ARGUMENTS` matches a company slug in `companies
 
 **If `$ARGUMENTS` is empty:** go straight to Step 3 (full interview).
 
-## Step 2: GHQ Research (before any questions)
+## Step 2: HQ Research (before any questions)
 
-Do not ask questions yet. Build context from GHQ first.
+Do not ask questions yet. Build context from HQ first.
 
 **Semantic search:**
 - If anchored + company has `qmd_collections`: `qmd vsearch "<description keywords>" -c {collection} --json -n 10`
@@ -65,7 +65,7 @@ Research complete:
 
 ## Step 2.1: Repo Exploration (if target repo identified)
 
-**Skip if** no target repo was found in Step 2 (e.g. knowledge-only or GHQ infrastructure tasks).
+**Skip if** no target repo was found in Step 2 (e.g. knowledge-only or HQ infrastructure tasks).
 
 **Goal:** Understand the repo's structure, patterns, and relevant code before forming approaches. This prevents brainstorm options that conflict with existing architecture.
 
@@ -186,7 +186,7 @@ Batch all missing directional info into **one** `AskUserQuestion` call. Skip any
 
 **If warranted:** 1-2 `WebSearch` calls. Extract relevant tools/APIs, known tradeoffs. Summarize in 3-5 bullets max.
 
-**If GHQ context is sufficient** (the common case): skip entirely.
+**If HQ context is sufficient** (the common case): skip entirely.
 
 ## Step 5: Populate bd Task Description
 
@@ -203,7 +203,7 @@ Write the brainstorm output directly into the bd task description. No files gene
 
 ## What We Know
 
-- {Confirmed fact from GHQ research — existing projects, prior work, tech constraints}
+- {Confirmed fact from HQ research — existing projects, prior work, tech constraints}
 - {Relevant skill or knowledge base that exists}
 
 ## What We Don't Know
@@ -294,7 +294,7 @@ Reindex: `qmd update 2>/dev/null || true`
 
 ## Rules
 
-- **Scan GHQ before asking anything** — research phase (Step 2) happens before the first question
+- **Scan HQ before asking anything** — research phase (Step 2) happens before the first question
 - **1 AskUserQuestion max** — direction + constraints in one call. Zero questions is fine if clear
 - **2-3 approaches, no more** — present distinct options, not variations
 - **State a recommendation** — "it depends" without a stated override condition is not a recommendation

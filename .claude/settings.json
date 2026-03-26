@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/consult-knowledge.sh",
+            "command": ".claude/hooks/hook-gate.sh consult-knowledge .claude/hooks/consult-knowledge.sh",
             "timeout": 1200
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/auto-reindex.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-reindex .claude/hooks/auto-reindex.sh",
             "timeout": 30
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/capture-learnings.sh",
+            "command": ".claude/hooks/hook-gate.sh capture-learnings .claude/hooks/capture-learnings.sh",
             "timeout": 60
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/report-issue-reminder.sh",
+            "command": ".claude/hooks/hook-gate.sh report-issue-reminder .claude/hooks/report-issue-reminder.sh",
             "timeout": 10
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/learn-reminder.sh",
+            "command": ".claude/hooks/hook-gate.sh learn-reminder .claude/hooks/learn-reminder.sh",
             "timeout": 10
           }
         ]
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/guard-claude-dir.sh",
+            "command": ".claude/hooks/hook-gate.sh guard-claude-dir .claude/hooks/guard-claude-dir.sh",
             "timeout": 5
           }
         ]

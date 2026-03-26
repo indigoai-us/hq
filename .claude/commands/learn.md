@@ -12,7 +12,7 @@ Reflect on the current conversation and distill durable insights into the knowle
 All knowledge is scoped to a company. Determine the target company:
 
 1. If `$ARGUMENTS` contains `-c <slug>`, use that slug.
-2. Otherwise default to `ghq` (cross-cutting / meta knowledge).
+2. Otherwise default to `hq` (cross-cutting / meta knowledge).
 
 Set `COMPANY` to the resolved slug. All paths below use `companies/{COMPANY}/knowledge/`.
 
@@ -75,7 +75,7 @@ updated_at: {ISO 8601 timestamp}
 {One-paragraph summary of the insight, including context and why it matters.}
 ```
 
-Frontmatter must conform to the schema in `companies/ghq/knowledge/meta/format-spec.md`.
+Frontmatter must conform to the schema in `companies/hq/knowledge/meta/format-spec.md`.
 
 #### Category validation
 
@@ -101,7 +101,7 @@ Tags are the faceted dimension of the knowledge base — they enable cross-cutti
 Before assigning tags, retrieve the current vocabulary:
 
 ```bash
-./companies/ghq/tools/tag-inventory.sh -c {COMPANY}
+./companies/hq/tools/tag-inventory.sh -c {COMPANY}
 ```
 
 From the output, **pick 3-6 existing tags that fit** the new entry. Only introduce a new tag when no existing tag covers the concept. If introducing a new tag, verify it isn't a synonym of an existing one (e.g., don't create `agent-loops` when `agent-loop` exists).
@@ -110,7 +110,7 @@ From the output, **pick 3-6 existing tags that fit** the new entry. Only introdu
 If the new insight contradicts existing knowledge, do NOT silently overwrite. Queue a curiosity item to resolve the conflict:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
+npx tsx companies/hq/tools/queue-curiosity.ts -c {COMPANY} --question "Resolve conflict: {existing insight} vs {new insight}" --source outcome_gap --priority 7 --context "Session learning contradicted existing knowledge"
 ```
 
 Contradictions are valuable signals — never ignore them.
@@ -120,7 +120,7 @@ Contradictions are valuable signals — never ignore them.
 For questions that came up during the session but were not resolved:
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
+npx tsx companies/hq/tools/queue-curiosity.ts -c {COMPANY} --question "{question}" --source knowledge_gap --priority 5 --context "{brief description of why this came up}"
 ```
 
 ### Queue Outcome Gaps
@@ -128,7 +128,7 @@ npx tsx companies/ghq/tools/queue-curiosity.ts -c {COMPANY} --question "{questio
 When the session revealed that reality didn't match expectations (a tool behaved differently than documented, a pattern failed where it usually works, an assumption was proven wrong):
 
 ```bash
-npx tsx companies/ghq/tools/queue-curiosity.ts \
+npx tsx companies/hq/tools/queue-curiosity.ts \
   --question "Why did {actual} happen instead of {expected}?" \
   --source outcome_gap \
   --priority 7 \
@@ -142,7 +142,7 @@ Outcome gaps are high-value research targets (priority 7) because they reveal wh
 After all writes are complete:
 
 ```bash
-npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}
+npx tsx companies/hq/tools/reindex.ts -c {COMPANY}
 ```
 
 ## Step 5: Report Summary
@@ -172,6 +172,6 @@ If nothing was worth capturing, say so honestly — an empty report is better th
 - **Quality over quantity**: One high-confidence insight beats five vague ones.
 - **User corrections are gold**: Always confidence 0.9. The user knows their own system.
 - **No sensitive data**: Never capture API keys, passwords, tokens, or personal data.
-- **Always reindex**: Run `npx tsx companies/ghq/tools/reindex.ts -c {COMPANY}` after writing entries.
+- **Always reindex**: Run `npx tsx companies/hq/tools/reindex.ts -c {COMPANY}` after writing entries.
 - **Contradictions are signals**: Queue them for resolution, don't suppress them.
 - **Integration**: The PreCompact hook should suggest running `/learn` before context is lost. If context is filling up, prioritize capturing learnings before they disappear.

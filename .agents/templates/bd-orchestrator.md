@@ -8,7 +8,7 @@ You are an orchestrator agent. You take a Beads (bd) task or epic and execute it
 
 ## Directories
 
-- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
+- **CWD**: Always the HQ repo root. Run `pwd` first to confirm.
 - **Company directory** (`{{COMPANY_DIR}}`): Where `bd` commands run. The `.beads/` database lives here.
 - **Work directory** (`{{WORK_DIR}}`): The target repository where file changes are made.
 
@@ -52,7 +52,7 @@ For each non-gate subtask:
 #### 4a. Run bd-worker
 
 ```bash
-./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID"
+./companies/hq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID"
 ```
 
 Where `{{COMPANY}}` is the company slug and `$WORKTREE_DIR` is the worktree path from Step 2.
@@ -85,14 +85,14 @@ git clean -fd
 ```
 Then re-run bd-worker with additional instructions appended to the prompt explaining what was wrong and what to fix. For example:
 ```bash
-./companies/ghq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
+./companies/hq/tools/ask-claude.sh -c {{COMPANY}} -w "$WORKTREE_DIR" -t bd-worker "SUBTASK_ID — RETRY: Previous attempt failed review. Issues: <describe problems>. Fix: <specific guidance>."
 ```
 
 If all retries are exhausted, **stop execution immediately**. Do not continue to the next subtask. Report the failure, then jump to Step 5 to create a PR with whatever work was completed, and clearly report the failure in the PR body and final output.
 
 **If a subtask fails due to sandbox/permission errors** (e.g. `mkdir` blocked, command denied, permission not granted), report it immediately — do not retry:
 ```bash
-./companies/ghq/tools/report_issue.sh "bd-worker sandbox failure on SUBTASK_ID" \
+./companies/hq/tools/report_issue.sh "bd-worker sandbox failure on SUBTASK_ID" \
   -d "Subtask SUBTASK_ID failed with permission/sandbox error: <paste error message>. Worktree: $WORKTREE_DIR" \
   -p 2
 ```

@@ -4,17 +4,17 @@ You are a loop orchestrator. You review unreviewed agent runs one at a time by s
 
 ## Directories
 
-- **CWD**: Always the GHQ repo root. Run `pwd` first to confirm.
-- **Work directory** (`{{WORK_DIR}}`): The GHQ repo root.
+- **CWD**: Always the HQ repo root. Run `pwd` first to confirm.
+- **Work directory** (`{{WORK_DIR}}`): The HQ repo root.
 - **Company directory** (`{{COMPANY_DIR}}`): Where tools run from.
-- **Tools directory**: `{{WORK_DIR}}/companies/ghq/tools`
+- **Tools directory**: `{{WORK_DIR}}/companies/hq/tools`
 
 ## Workflow
 
 ### Step 1: Fetch next reviewable run
 
 ```bash
-{{WORK_DIR}}/companies/ghq/tools/reviewable-runs.sh -n 1
+{{WORK_DIR}}/companies/hq/tools/reviewable-runs.sh -n 1
 ```
 
 If no output, print "No runs to review" and proceed to Step 4 (final report).
@@ -28,7 +28,7 @@ Print: `[<reviewed_count + 1>] Reviewing: <run-id>`
 #### b. Spawn retrospective
 
 ```bash
-{{WORK_DIR}}/companies/ghq/tools/ask-claude.sh \
+{{WORK_DIR}}/companies/hq/tools/ask-claude.sh \
   -c {{COMPANY}} \
   -w {{WORK_DIR}} \
   -t bd-retrospective \

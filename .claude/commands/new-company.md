@@ -37,8 +37,8 @@ Take the company name and generate a slug (lowercase, hyphens, no special chars)
 Ask the user where to create the company folder using `AskUserQuestion`:
 
 - Detect the OS:
-  - **macOS** (Darwin): suggest `~/Documents/GHQ/companies/<slug>`
-  - **Windows**: suggest `C:\GHQ\companies\<slug>`
+  - **macOS** (Darwin): suggest `~/Documents/HQ/companies/<slug>`
+  - **Windows**: suggest `C:\HQ\companies\<slug>`
 - Options:
   - Option 1: The default path for the detected OS (Recommended)
   - Option 2: "Choose a different location"
@@ -55,9 +55,9 @@ Once all inputs are gathered, execute these steps:
 mkdir -p "<chosen-path>/knowledge" "<chosen-path>/data" "<chosen-path>/tools"
 ```
 
-### 4b. Create symlink in GHQ companies/
+### 4b. Create symlink in HQ companies/
 
-Create a symlink from `companies/<slug>` (relative to the GHQ repo root) pointing to the chosen path:
+Create a symlink from `companies/<slug>` (relative to the HQ repo root) pointing to the chosen path:
 
 ```bash
 ln -s "<chosen-path>" companies/<slug>
@@ -90,7 +90,7 @@ qmd collection add "<chosen-path>/knowledge" --name <slug> --mask "**/*.md"
 If `companies/manifest.yaml` doesn't exist, create it with this structure:
 
 ```yaml
-# GHQ Company Manifest
+# HQ Company Manifest
 # Single source of truth for company -> resource mapping
 
 companies: {}

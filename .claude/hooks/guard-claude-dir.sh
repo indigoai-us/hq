@@ -20,8 +20,8 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 if echo "$FILE_PATH" | grep -q '\.claude'; then
   echo "BLOCKED: Do not use built-in $TOOL_NAME for .claude/ files."
   echo "  Use the custom file tools instead:"
-  echo "  ./companies/ghq/tools/file/write-file.sh <path> <<'EOF'"
-  echo "  ./companies/ghq/tools/file/edit-file.sh <path> --old '...' --new '...'"
+  echo "  ./companies/hq/tools/file/write-file.sh <path> <<'EOF'"
+  echo "  ./companies/hq/tools/file/edit-file.sh <path> --old '...' --new '...'"
   exit 2
 fi
 
