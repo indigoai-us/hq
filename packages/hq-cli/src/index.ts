@@ -13,6 +13,7 @@ import { registerCloudCommands } from "./commands/cloud.js";
 import { registerInstallCommand } from "./commands/install.js";
 import { registerRemoveCommand } from "./commands/remove.js";
 import { registerPkgUpdateCommand } from "./commands/pkg-update.js";
+import { registerPkgListCommand } from "./commands/pkg-list.js";
 
 const program = new Command();
 
@@ -25,6 +26,7 @@ program
 registerInstallCommand(program);
 registerRemoveCommand(program);
 registerPkgUpdateCommand(program);
+registerPkgListCommand(program);
 
 // Module management subcommand group
 const modulesCmd = program
