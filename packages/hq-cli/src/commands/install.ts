@@ -317,6 +317,22 @@ async function installPackage(packageName: string): Promise<void> {
       }
     }
 
+    // 13b. Cache on-remove hook (best-effort — warn on failure, never abort)
+    let onRemoveCachedPath: string | undefined;
+    if (manifest.hooks?.['on-remove']) {
+      const hookSrc = path.join(extractedRoot, manifest.hooks['on-remove']);
+      const hookDest = path.join(hqRoot, 'packages', 'hooks', manifest.name, 'on-remove.sh');
+      try {
+        await mkdir(path.dirname(hookDest), { recursive: true });
+        await cp(hookSrc, hookDest, { force: true });
+        onRemoveCachedPath = path.join('packages', 'hooks', manifest.name, 'on-remove.sh');
+        console.log(chalk.dim(`  Cached on-remove hook: ${onRemoveCachedPath}`));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(chalk.yellow(`  Warning: failed to cache on-remove hook: ${msg}`));
+      }
+    }
+
     // 14. ATOMIC: update installed.json only after all files + hooks succeeded
     const record: InstalledPackage = {
       name: manifest.name,
@@ -326,6 +342,7 @@ async function installPackage(packageName: string): Promise<void> {
       files: installedFiles,
       repo: manifest.repo,
       publisher,
+      ...(onRemoveCachedPath ? { hooks: { onRemove: onRemoveCachedPath } } : {}),
     };
     await setInstalled(hqRoot, record);
 

@@ -47,6 +47,9 @@ export interface InstalledPackage {
   files: string[];          // relative paths to installed files (for removal)
   repo?: string;
   publisher?: string;
+  hooks?: {
+    onRemove?: string;      // path relative to HQ root, e.g. "packages/hooks/dev-team/on-remove.sh"
+  };
 }
 
 export interface InstalledPackages {
