@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://admin.getindigo.ai/schemas/hq-package.schema.json",
+  "title": "HQ Package Manifest",
+  "description": "Schema for hq-package.yaml — the manifest file for HQ packages",
+  "type": "object",
+  "required": ["name", "type", "version", "description"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique package name (e.g. my-worker-pack)",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    },
+    "type": {
+      "type": "string",
+      "description": "Package type",
+      "enum": ["worker-pack", "command-set", "skill-bundle", "knowledge-base", "company-template"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of what the package does",
+      "minLength": 1
+    },
+    "minHQVersion": {
+      "type": "string",
+      "description": "Minimum HQ version required",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*).*$"
+    },
+    "author": {
+      "type": "string",
+      "description": "Package author name or email"
+    },
+    "repo": {
+      "type": "string",
+      "description": "URL to the package source repository",
+      "format": "uri"
+    },
+    "requires": {
+      "type": "object",
+      "description": "Package dependencies",
+      "additionalProperties": false,
+      "properties": {
+        "packages": {
+          "type": "array",
+          "description": "HQ packages this package depends on",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "services": {
+          "type": "array",
+          "description": "External services required (e.g. github, slack)",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "exposes": {
+      "type": "object",
+      "description": "Files this package exposes into the HQ installation",
+      "additionalProperties": false,
+      "properties": {
+        "workers": {
+          "type": "array",
+          "description": "Worker yaml files (paths relative to package root)",
+          "items": { "type": "string" }
+        },
+        "commands": {
+          "type": "array",
+          "description": "Command files (paths relative to package root)",
+          "items": { "type": "string" }
+        },
+        "skills": {
+          "type": "array",
+          "description": "Skill files (paths relative to package root)",
+          "items": { "type": "string" }
+        },
+        "knowledge": {
+          "type": "array",
+          "description": "Knowledge files or directories (paths relative to package root)",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Lifecycle hook scripts",
+      "additionalProperties": false,
+      "properties": {
+        "on-install": {
+          "type": "string",
+          "description": "Shell script to run after installation (path relative to package root)"
+        },
+        "on-update": {
+          "type": "string",
+          "description": "Shell script to run after update (path relative to package root)"
+        },
+        "on-remove": {
+          "type": "string",
+          "description": "Shell script to run before removal (path relative to package root)"
+        }
+      }
+    }
+  }
+}

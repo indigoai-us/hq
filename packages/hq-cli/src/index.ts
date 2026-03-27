@@ -15,6 +15,8 @@ import { registerRemoveCommand } from "./commands/remove.js";
 import { registerPkgUpdateCommand } from "./commands/pkg-update.js";
 import { registerPkgListCommand } from "./commands/pkg-list.js";
 import { registerPkgSearchCommand } from "./commands/pkg-search.js";
+import { registerLoginCommand } from "./commands/login.js";
+import { registerPublishCommand } from "./commands/publish.js";
 
 const program = new Command();
 
@@ -24,6 +26,8 @@ program
   .version("5.0.0");
 
 // Package management — top-level commands
+registerLoginCommand(program);
+registerPublishCommand(program);
 registerInstallCommand(program);
 registerRemoveCommand(program);
 registerPkgUpdateCommand(program);
