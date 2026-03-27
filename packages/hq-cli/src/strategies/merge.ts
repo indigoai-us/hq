@@ -1,17 +1,35 @@
 /**
  * Merge Sync Strategy (US-007)
- * Copies files from module into HQ, tracks state for conflict detection
+ * Copies files from module into HQ, tracks state for conflict detection.
+ * Interactive conflict resolution ported from modules/cli/src/commands/modules-sync.ts
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import type { ModuleDefinition, SyncResult, SyncState } from '../types.js';
 import { readState, writeState } from '../utils/manifest.js';
+import type { ConflictState } from '../utils/conflict.js';
+import {
+  hashFile,
+  checkPreviousResolution,
+  recordResolution,
+  promptConflictResolution,
+} from '../utils/conflict.js';
 
-function hashFile(filePath: string): string {
-  const content = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(content).digest('hex');
+export interface MergeSyncOptions {
+  /** If true, prompt user on conflict. Default: false (auto-keep). */
+  interactive?: boolean;
+  /** Shared conflict resolution state for recording user choices. */
+  conflictState?: ConflictState;
+}
+
+interface ConflictInfo {
+  srcFile: string;
+  destFile: string;
+  destRelative: string;
+  srcRelative: string;
+  srcHash: string;
+  destHash: string;
 }
 
 function copyRecursive(
@@ -20,7 +38,8 @@ function copyRecursive(
   state: SyncState,
   moduleName: string,
   hqRoot: string,
-  filesChanged: { count: number }
+  filesChanged: { count: number },
+  conflicts: ConflictInfo[]
 ): void {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
@@ -32,33 +51,34 @@ function copyRecursive(
     const destPath = path.join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      copyRecursive(srcPath, destPath, state, moduleName, hqRoot, filesChanged);
+      copyRecursive(srcPath, destPath, state, moduleName, hqRoot, filesChanged, conflicts);
     } else {
       const relativeDest = path.relative(hqRoot, destPath);
+      const relativeSrc = path.relative(path.join(srcDir, '..'), srcPath);
       const newHash = hashFile(srcPath);
 
-      // Check if file exists and has been modified by user
       if (fs.existsSync(destPath)) {
         const existingHash = hashFile(destPath);
         const lastSyncedHash = state.files[relativeDest]?.hash;
 
         if (lastSyncedHash && existingHash !== lastSyncedHash && existingHash !== newHash) {
-          // User modified the file since last sync - skip (conflict)
-          console.warn(`  Conflict: ${relativeDest} has local changes, skipping`);
+          // Conflict: user modified since last sync
+          conflicts.push({
+            srcFile: srcPath,
+            destFile: destPath,
+            destRelative: relativeDest,
+            srcRelative: relativeSrc,
+            srcHash: newHash,
+            destHash: existingHash,
+          });
           continue;
         }
 
-        if (existingHash === newHash) {
-          // File unchanged, skip
-          continue;
-        }
+        if (existingHash === newHash) continue; // Unchanged, skip
       }
 
-      // Copy file
       fs.copyFileSync(srcPath, destPath);
       filesChanged.count++;
-
-      // Track in state
       state.files[relativeDest] = {
         hash: newHash,
         syncedAt: new Date().toISOString(),
@@ -71,14 +91,19 @@ function copyRecursive(
 export async function mergeSync(
   module: ModuleDefinition,
   moduleDir: string,
-  hqRoot: string
+  hqRoot: string,
+  options: MergeSyncOptions = {}
 ): Promise<SyncResult> {
+  const { interactive = false, conflictState } = options;
+
   let state = readState(hqRoot);
   if (!state) {
     state = { version: '1', files: {} };
   }
 
   const filesChanged = { count: 0 };
+  const conflicts: ConflictInfo[] = [];
+  const now = new Date().toISOString();
 
   for (const mapping of module.paths) {
     const srcPath = path.join(moduleDir, mapping.src);
@@ -95,48 +120,114 @@ export async function mergeSync(
 
     const srcStat = fs.statSync(srcPath);
     if (srcStat.isDirectory()) {
-      copyRecursive(srcPath, destPath, state, module.name, hqRoot, filesChanged);
+      copyRecursive(srcPath, destPath, state, module.name, hqRoot, filesChanged, conflicts);
     } else {
-      // Single file
+      const relativeDest = path.relative(hqRoot, destPath);
+      const newHash = hashFile(srcPath);
+
       const destDir = path.dirname(destPath);
       if (!fs.existsSync(destDir)) {
         fs.mkdirSync(destDir, { recursive: true });
       }
-
-      const relativeDest = path.relative(hqRoot, destPath);
-      const newHash = hashFile(srcPath);
 
       if (fs.existsSync(destPath)) {
         const existingHash = hashFile(destPath);
         const lastSyncedHash = state.files[relativeDest]?.hash;
 
         if (lastSyncedHash && existingHash !== lastSyncedHash && existingHash !== newHash) {
-          console.warn(`  Conflict: ${relativeDest} has local changes, skipping`);
+          conflicts.push({
+            srcFile: srcPath,
+            destFile: destPath,
+            destRelative: relativeDest,
+            srcRelative: mapping.src,
+            srcHash: newHash,
+            destHash: existingHash,
+          });
           continue;
         }
 
-        if (existingHash === newHash) {
-          continue;
-        }
+        if (existingHash === newHash) continue;
       }
 
       fs.copyFileSync(srcPath, destPath);
       filesChanged.count++;
-
       state.files[relativeDest] = {
         hash: newHash,
-        syncedAt: new Date().toISOString(),
+        syncedAt: now,
         fromModule: module.name,
       };
     }
   }
 
+  // Handle conflicts
+  let kept = 0;
+  if (conflicts.length > 0) {
+    console.log(`\n  ${conflicts.length} conflict(s) detected for ${module.name}:`);
+
+    for (const conflict of conflicts) {
+      let resolution: 'keep' | 'take' | 'skip' = 'keep';
+
+      // Check for cached resolution
+      const cached = conflictState
+        ? checkPreviousResolution(
+            conflictState,
+            module.name,
+            conflict.destRelative,
+            conflict.destHash,
+            conflict.srcHash
+          )
+        : null;
+
+      if (cached) {
+        console.log(`    ${conflict.destRelative}: reusing previous resolution (${cached})`);
+        resolution = cached;
+      } else if (interactive) {
+        resolution = await promptConflictResolution(
+          conflict.destRelative,
+          conflict.destFile,
+          conflict.srcFile
+        );
+        if (conflictState) {
+          recordResolution(
+            conflictState,
+            module.name,
+            conflict.destRelative,
+            resolution,
+            conflict.destHash,
+            conflict.srcHash
+          );
+        }
+      } else {
+        console.warn(`  Conflict: ${conflict.destRelative} has local changes, skipping`);
+        resolution = 'keep';
+      }
+
+      if (resolution === 'take') {
+        fs.copyFileSync(conflict.srcFile, conflict.destFile);
+        filesChanged.count++;
+        state.files[conflict.destRelative] = {
+          hash: conflict.srcHash,
+          syncedAt: now,
+          fromModule: module.name,
+        };
+        console.log(`    Overwrote: ${conflict.destRelative}`);
+      } else {
+        kept++;
+        if (resolution === 'keep') {
+          console.log(`    Kept local: ${conflict.destRelative}`);
+        }
+      }
+    }
+  }
+
   writeState(hqRoot, state);
 
+  const msg = kept > 0 ? `${filesChanged.count} files synced, ${kept} conflicts kept` : undefined;
   return {
     module: module.name,
     success: true,
     action: 'synced',
     filesChanged: filesChanged.count,
+    message: msg,
   };
 }

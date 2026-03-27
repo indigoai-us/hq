@@ -1,5 +1,7 @@
 /**
  * hq modules sync command (US-004)
+ * Enhanced with --dry-run, --module, --no-interactive flags.
+ * Features ported from modules/cli/src/commands/modules-sync.ts
  */
 
 import * as fs from 'fs';
@@ -24,13 +26,16 @@ import {
 import { linkSync } from '../strategies/link.js';
 import { mergeSync } from '../strategies/merge.js';
 import type { ModuleDefinition, ModuleLock, SyncResult } from '../types.js';
+import type { ConflictState } from '../utils/conflict.js';
 
 async function syncModule(
   module: ModuleDefinition,
   moduleDir: string,
   hqRoot: string,
   locked: boolean,
-  lockData: ModuleLock | null
+  lockData: ModuleLock | null,
+  interactive: boolean,
+  conflictState: ConflictState
 ): Promise<SyncResult> {
   const repoExists = await isRepo(moduleDir);
 
@@ -42,7 +47,6 @@ async function syncModule(
     console.log(`  Fetching ${module.name}...`);
     await fetchRepo(moduleDir);
 
-    // Checkout locked commit if --locked
     if (locked && lockData?.locked[module.name]) {
       await checkoutCommit(moduleDir, lockData.locked[module.name]);
     } else {
@@ -60,7 +64,7 @@ async function syncModule(
       break;
     case 'merge':
     case 'copy':
-      result = await mergeSync(module, moduleDir, hqRoot);
+      result = await mergeSync(module, moduleDir, hqRoot, { interactive, conflictState });
       break;
     default:
       result = {
@@ -79,7 +83,15 @@ export function registerSyncCommand(program: Command): void {
     .command('sync')
     .description('Sync all modules from manifest')
     .option('--locked', 'Use locked versions from modules.lock')
-    .action(async (options: { locked?: boolean }) => {
+    .option('--module <name>', 'Sync only a specific module')
+    .option('--dry-run', 'Show what would be synced without making changes')
+    .option('--no-interactive', 'Skip interactive conflict prompts (auto-keep local on conflict)')
+    .action(async (options: {
+      locked?: boolean;
+      module?: string;
+      dryRun?: boolean;
+      interactive?: boolean;
+    }) => {
       try {
         const hqRoot = findHqRoot();
         const manifest = readManifest(hqRoot);
@@ -89,21 +101,48 @@ export function registerSyncCommand(program: Command): void {
           return;
         }
 
+        // Filter to specific module if requested
+        let modulesToSync = manifest.modules;
+        if (options.module) {
+          modulesToSync = manifest.modules.filter(m => m.name === options.module);
+          if (modulesToSync.length === 0) {
+            console.error(`Error: Module "${options.module}" not found in manifest.`);
+            console.error('Available modules: ' + manifest.modules.map(m => m.name).join(', '));
+            process.exit(1);
+          }
+        }
+
+        // Dry-run: show what would be synced
+        if (options.dryRun) {
+          console.log('\n--- DRY RUN ---\n');
+          for (const module of modulesToSync) {
+            console.log(`Would sync: ${module.name}`);
+            console.log(`  Repo:     ${module.repo}`);
+            console.log(`  Branch:   ${module.branch || 'main'}`);
+            console.log(`  Strategy: ${module.strategy}`);
+            for (const p of module.paths) {
+              console.log(`  Path:     ${p.src} -> ${p.dest}`);
+            }
+          }
+          return;
+        }
+
         const modulesDir = getModulesDir(hqRoot);
         if (!fs.existsSync(modulesDir)) {
           fs.mkdirSync(modulesDir, { recursive: true });
         }
 
-        // Ensure modules/ is gitignored
         ensureGitignore(hqRoot, 'modules/');
 
         const lockData = options.locked ? readLock(hqRoot) : null;
         const results: SyncResult[] = [];
         const newLock: ModuleLock = { version: '1', locked: {} };
+        const interactive = options.interactive !== false;
+        const conflictState: ConflictState = { resolutions: {} };
 
-        console.log(`Syncing ${manifest.modules.length} module(s)...\n`);
+        console.log(`Syncing ${modulesToSync.length} module(s)...\n`);
 
-        for (const module of manifest.modules) {
+        for (const module of modulesToSync) {
           console.log(`[${module.name}]`);
           const moduleDir = path.join(modulesDir, module.name);
 
@@ -112,11 +151,12 @@ export function registerSyncCommand(program: Command): void {
             moduleDir,
             hqRoot,
             options.locked ?? false,
-            lockData
+            lockData,
+            interactive,
+            conflictState
           );
           results.push(result);
 
-          // Record commit for lock file
           if (result.success) {
             const commit = await getCurrentCommit(moduleDir);
             newLock.locked[module.name] = commit;
@@ -127,12 +167,22 @@ export function registerSyncCommand(program: Command): void {
           console.log(`  ${status} ${result.action}: ${msg}\n`);
         }
 
-        // Write lock file (US-008)
+        // Write lock file
         if (!options.locked) {
+          // Preserve locks for modules not synced when using --module
+          if (options.module) {
+            const existingLock = readLock(hqRoot);
+            if (existingLock) {
+              for (const [name, commit] of Object.entries(existingLock.locked)) {
+                if (!newLock.locked[name]) {
+                  newLock.locked[name] = commit;
+                }
+              }
+            }
+          }
           writeLock(hqRoot, newLock);
         }
 
-        // Summary
         const success = results.filter(r => r.success).length;
         const failed = results.filter(r => !r.success).length;
         console.log(`Done: ${success} succeeded, ${failed} failed`);
