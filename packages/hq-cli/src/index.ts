@@ -17,6 +17,7 @@ import { registerPkgListCommand } from "./commands/pkg-list.js";
 import { registerPkgSearchCommand } from "./commands/pkg-search.js";
 import { registerLoginCommand } from "./commands/login.js";
 import { registerPublishCommand } from "./commands/publish.js";
+import { registerCoreStatusCommand } from "./commands/core-status.js";
 
 const program = new Command();
 
@@ -43,6 +44,13 @@ registerAddCommand(modulesCmd);
 registerSyncCommand(modulesCmd);
 registerListCommand(modulesCmd);
 registerUpdateCommand(modulesCmd);
+
+// Core governance subcommand group
+const coreCmd = program
+  .command("core")
+  .description("Kernel governance commands — manage and verify HQ core integrity");
+
+registerCoreStatusCommand(coreCmd);
 
 // Cloud sync subcommand group
 const syncCmd = program
