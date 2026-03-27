@@ -132,6 +132,44 @@ async function computeChecksum(hqRoot: string, entry: string): Promise<string | 
   }
 }
 
+// ─── Shared integrity check (used by doctor command) ─────────────────────────
+
+/**
+ * Run the core integrity check without printing output or calling process.exit().
+ * Returns pass/fail/skipped and a human-readable message for use by `hq doctor`.
+ * `skipped` is true when core.yaml is absent (governance not initialized — not a failure).
+ */
+export async function checkCoreIntegrity(
+  hqRoot: string
+): Promise<{ pass: boolean; skipped?: boolean; message: string }> {
+  const coreYamlPath = path.join(hqRoot, 'core.yaml');
+  let coreYaml: CoreYaml;
+  try {
+    const raw = await readFile(coreYamlPath, 'utf8');
+    coreYaml = parseYaml(raw) as CoreYaml;
+  } catch {
+    // core.yaml absent = governance not yet initialized; skip rather than fail
+    return { pass: true, skipped: true, message: 'core.yaml absent — governance not initialized' };
+  }
+
+  const checksums = coreYaml.checksums ?? {};
+  const entries = Object.entries(checksums);
+
+  if (entries.length === 0) {
+    return { pass: true, message: 'no checksums in core.yaml' };
+  }
+
+  let modifiedCount = 0;
+  for (const [entry, stored] of entries) {
+    const computed = await computeChecksum(hqRoot, entry);
+    if (computed === null || computed !== stored) modifiedCount++;
+  }
+
+  return modifiedCount === 0
+    ? { pass: true, message: 'all locked files unmodified' }
+    : { pass: false, message: `${modifiedCount} file(s) modified or missing` };
+}
+
 // ─── Main status logic ────────────────────────────────────────────────────────
 
 export async function runCoreStatus(): Promise<void> {

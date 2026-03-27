@@ -20,6 +20,7 @@ import { registerPublishCommand } from "./commands/publish.js";
 import { registerTrustCommand } from "./commands/trust.js";
 import { registerCoreStatusCommand } from "./commands/core-status.js";
 import { registerCreateWorkerCommand } from "./commands/create-worker.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
 
 const program = new Command();
 
@@ -33,6 +34,7 @@ registerLoginCommand(program);
 registerPublishCommand(program);
 registerTrustCommand(program);
 registerCreateWorkerCommand(program);
+registerDoctorCommand(program);
 registerInstallCommand(program);
 registerRemoveCommand(program);
 registerPkgUpdateCommand(program);
