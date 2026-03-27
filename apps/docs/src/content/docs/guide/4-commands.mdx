@@ -83,3 +83,47 @@ Orchestrates multi-task execution using the Ralph methodology:
 | `/cleanup` | Audit HQ structure, rebuild INDEX.md files |
 | `/setup` | Interactive setup wizard for new installations |
 | `/exit-plan` | Force exit from plan mode when stuck |
+
+## hq CLI — Package Management
+
+The `hq` binary manages the HQ package ecosystem. Run from your HQ root.
+
+### Installation & discovery
+
+```bash
+hq install dev-team                  # Install a worker pack
+hq install dev-team --company acme   # Company-scoped install
+hq remove dev-team                   # Uninstall
+hq update dev-team                   # Update to latest
+hq update                            # Update all installed packages
+hq list                              # Show installed packages
+hq search "worker pack"              # Search the registry
+```
+
+### Publishing
+
+```bash
+hq login                             # Authenticate with the HQ registry
+hq create-worker                     # Scaffold a new publishable worker pack
+hq publish                           # Publish from cwd
+hq publish --dry-run                 # Validate without uploading
+hq trust add getindigo               # Trust a publisher
+hq trust list                        # List trusted publishers
+```
+
+### Diagnostics
+
+```bash
+hq doctor                            # Run 5 health checks (deps, files, symlinks, core, registry)
+hq core status                       # Verify kernel file checksums against core.yaml
+```
+
+### Module management
+
+```bash
+hq modules add <repo-url>            # Register a knowledge module
+hq modules sync                      # Sync all modules to latest
+hq modules sync --locked             # Sync to locked commits
+hq modules list                      # Show all modules with status
+hq modules update [name]             # Pull latest + update lock
+```

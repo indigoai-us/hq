@@ -1,16 +1,229 @@
 ---
 title: hq-cli
-description: Architecture of the @{company}ai/hq-cli package — module management, sync strategies, and cloud sync bridge.
+description: Architecture of the @{company}ai/hq-cli package — package management, module management, kernel governance, and cloud sync.
 ---
 
-The `@{company}ai/hq-cli` package is the ongoing management CLI for HQ. It handles two concerns: **module management** (adding, syncing, listing, and updating external module repos) and **cloud sync** (bridging to `@{company}ai/hq-cloud` for S3-backed mobile access).
+The `@{company}ai/hq-cli` package is the ongoing management CLI for HQ. It handles four concerns: **package management** (install, remove, update, search, publish worker packs to the HQ registry), **kernel governance** (protecting and verifying core files via `core.yaml`), **module management** (syncing external knowledge repos), and **cloud sync** (bridging to `@{company}ai/hq-cloud` for S3-backed mobile access).
 
-Built with [Commander.js](https://github.com/tj/commander.js), the CLI registers two top-level command groups:
+Built with [Commander.js](https://github.com/tj/commander.js), the CLI registers command groups:
 
 ```
-hq modules <add|sync|list|update>   # Module management
+hq install|remove|update|list|search   # Package management
+hq login|publish|trust                 # Registry auth + publishing
+hq create-worker                       # Worker pack scaffolding
+hq doctor                              # HQ health diagnostics
+hq core status                         # Kernel integrity check
+hq modules <add|sync|list|update>      # Module management
 hq sync <init|start|stop|status|push|pull>  # Cloud sync
 ```
+
+## Package Management
+
+The package ecosystem lets users install pre-built worker packs, command sets, and knowledge bases from the HQ registry at `https://admin.getindigo.ai`.
+
+### Package format: `hq-package.yaml`
+
+Every installable package includes an `hq-package.yaml` manifest:
+
+```yaml
+name: dev-team
+type: worker-pack          # worker-pack | command-set | skill-bundle | knowledge-base | company-template
+version: 1.0.0
+minHQVersion: "6.5.0"
+description: "Full dev team worker pack"
+author: getindigo
+exposes:
+  workers:
+    - workers/architect/worker.yaml
+    - workers/backend-dev/worker.yaml
+  commands: []
+  skills: []
+  knowledge: []
+requires:
+  packages: []
+  services: []
+hooks:
+  on-install: scripts/on-install.sh
+  on-remove: scripts/on-remove.sh
+```
+
+Package types:
+- `worker-pack` — one or more worker.yaml files + skills
+- `command-set` — slash commands for `.claude/commands/`
+- `skill-bundle` — skill files for `.claude/skills/`
+- `knowledge-base` — markdown knowledge repos
+- `company-template` — full company scaffold
+
+### `hq install <package>`
+
+Resolves dependencies (topological sort via Kahn's algorithm), fetches tarballs from the registry or falls back to `git clone` if the registry is unreachable, validates SHA256 checksums, extracts to the HQ tree, runs `on-install` hooks, and records the installation in `packages/installed.json`.
+
+```bash
+hq install dev-team
+hq install dev-team --company acme   # company-scoped install
+```
+
+The `--company` flag installs workers into `companies/{slug}/workers/` instead of the shared `workers/` tree.
+
+**Offline fallback:** If the registry returns a non-2xx response, `install` falls back to `git clone` using the `repo` field from the package manifest.
+
+### `hq remove <package>`
+
+Reads `packages/installed.json`, removes all tracked files, runs `on-remove` hooks if present, then removes the package entry. Warns if dependent packages still require it.
+
+```bash
+hq remove dev-team
+```
+
+### `hq update [package]`
+
+Re-fetches the latest version from the registry, removes old files, installs new files, and updates `packages/installed.json`. If no package name is given, all installed packages are updated.
+
+```bash
+hq update dev-team   # Update one package
+hq update            # Update all
+```
+
+### `hq list`
+
+Reads `packages/installed.json` and displays a formatted table of installed packages with name, version, type, install date, and scope.
+
+```bash
+hq list   # or: hq packages list
+```
+
+### `hq search <query>`
+
+Queries `GET /api/packages?q={query}` on the registry and displays matching packages with name, type, version, description, and download count.
+
+```bash
+hq search dev-team
+hq search "worker pack"
+```
+
+## Registry Auth & Publishing
+
+### `hq login`
+
+Authenticates with the HQ registry. Stores the bearer token at `~/.hq/auth.json`.
+
+```bash
+hq login   # Prompts for credentials
+```
+
+### `hq publish`
+
+Packages the current directory as an HQ package and uploads to the registry. Requires `hq-package.yaml` at the current directory root. Creates a tarball, posts to `/api/packages` (new) or `/api/packages/{name}/versions` (update), then cleans up.
+
+```bash
+hq publish           # Publish or update from cwd
+hq publish --dry-run # Validate without uploading
+```
+
+### `hq trust`
+
+Manages the trusted publishers list at `packages/trusted-publishers.json`. The install command warns (but does not block) when installing from an untrusted publisher.
+
+```bash
+hq trust add getindigo
+hq trust remove getindigo
+hq trust list
+```
+
+## Worker Pack Scaffolding
+
+### `hq create-worker`
+
+Interactive wizard that scaffolds a publishable worker pack directory with the correct structure for the HQ registry:
+
+```
+my-worker/
+├── hq-package.yaml
+├── worker.yaml
+├── skills/
+│   └── example-skill.md
+└── README.md
+```
+
+```bash
+hq create-worker        # Interactive prompts
+hq create-worker my-worker --type worker-pack
+```
+
+## Diagnostics
+
+### `hq doctor`
+
+Runs 5 health checks and outputs a formatted pass/warn/fail table. Exits with code 1 if any check fails.
+
+| Check | What it verifies |
+|-------|-----------------|
+| Required binaries | `claude` and `gh` are on PATH |
+| Package integrity | Every file recorded in `installed.json` exists on disk |
+| Symlink health | No broken symlinks in `workers/` or `knowledge/` |
+| Core integrity | Locked files in `core.yaml` match stored checksums |
+| Registry reachable | `GET /api/packages` returns 2xx |
+
+```bash
+hq doctor
+```
+
+### `hq core status`
+
+Reads `core.yaml` at the HQ root, computes SHA256 of each locked file (or directory tree), and compares against stored checksums. Displays a per-file pass/fail table. Exits with code 1 if any locked file has been modified.
+
+```bash
+hq core status
+```
+
+`core.yaml` classifies files into three tiers:
+- `locked` — kernel files (CLAUDE.md, settings.json, hooks/) — checksummed, block on edit
+- `reviewable` — editable with warning (workspace/, commands/, skills/)
+- `open` — unrestricted (`**`)
+
+The `protect-core.sh` PreToolUse hook enforces the locked tier at edit time by computing a live checksum and comparing against `core.yaml`.
+
+## Installed Packages State
+
+All package state is stored in `packages/installed.json` at the HQ root:
+
+```json
+{
+  "version": "1",
+  "packages": {
+    "dev-team": {
+      "name": "dev-team",
+      "version": "1.0.0",
+      "type": "worker-pack",
+      "installedAt": "2026-03-27T00:00:00Z",
+      "company": null,
+      "files": ["workers/architect/worker.yaml", "..."],
+      "repo": "https://github.com/getindigo/packs",
+      "publisher": "getindigo",
+      "hooks": { "onRemove": "packages/hooks/dev-team/on-remove.sh" }
+    }
+  }
+}
+```
+
+## Registry Client
+
+`src/utils/registry-client.ts` provides a `RegistryClient` class used by all package commands:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `listPackages(query?)` | `GET /api/packages` | List/search packages |
+| `getPackage(name)` | `GET /api/packages/{name}` | Fetch package metadata |
+| `getDownloadInfo(name)` | `GET /api/packages/{name}/download` | Get presigned download URL |
+| `publishPackage(formData)` | `POST /api/packages` | Publish new package |
+| `publishVersion(name, formData)` | `PUT /api/packages/{name}/versions` | Publish new version |
+| `downloadTarball(url, dest, checksum?)` | — | Download + SHA256 validate |
+
+The client reads auth from `~/.hq/auth.json`, retries on network errors and 5xx responses (max 2 retries), enforces a 30s timeout for API calls and 120s for downloads, and uses `HQ_REGISTRY_URL` env var to override the default `https://admin.getindigo.ai`.
+
+## Dependency Resolution
+
+`src/utils/dep-resolver.ts` implements topological sort via Kahn's algorithm. When installing a package that declares `requires.packages`, the resolver builds a dependency graph and produces an install order that ensures dependencies are installed first. Circular dependencies are detected and reported as an error.
 
 ## Module Commands
 
@@ -209,20 +422,39 @@ Dynamic imports (`await import("@{company}ai/hq-cloud")`) mean the cloud package
 ```
 packages/hq-cli/
 ├── src/
-│   ├── index.ts              # Entry point, Commander setup
-│   ├── types.ts              # All TypeScript interfaces
+│   ├── index.ts                    # Entry point, Commander setup
+│   ├── types/
+│   │   └── package-types.ts        # HQPackage, InstalledPackage interfaces
+│   ├── schemas/
+│   │   └── hq-package.schema.json  # JSON Schema for hq-package.yaml
 │   ├── commands/
-│   │   ├── add.ts            # hq modules add
-│   │   ├── sync.ts           # hq modules sync
-│   │   ├── list.ts           # hq modules list
-│   │   ├── update.ts         # hq modules update
-│   │   └── cloud.ts          # hq sync *
+│   │   ├── install.ts              # hq install
+│   │   ├── remove.ts               # hq remove
+│   │   ├── pkg-update.ts           # hq update
+│   │   ├── pkg-list.ts             # hq list
+│   │   ├── pkg-search.ts           # hq search
+│   │   ├── login.ts                # hq login
+│   │   ├── publish.ts              # hq publish
+│   │   ├── trust.ts                # hq trust
+│   │   ├── create-worker.ts        # hq create-worker
+│   │   ├── doctor.ts               # hq doctor
+│   │   ├── core-status.ts          # hq core status
+│   │   ├── add.ts                  # hq modules add
+│   │   ├── sync.ts                 # hq modules sync
+│   │   ├── list.ts                 # hq modules list
+│   │   ├── update.ts               # hq modules update
+│   │   └── cloud.ts                # hq sync *
 │   ├── strategies/
-│   │   ├── link.ts           # Symlink strategy
-│   │   └── merge.ts          # Copy-with-conflict-detection strategy
+│   │   ├── link.ts                 # Symlink strategy
+│   │   └── merge.ts                # Copy-with-conflict-detection strategy
 │   └── utils/
-│       ├── manifest.ts       # Manifest/lock/state I/O
-│       └── git.ts            # simple-git wrapper
+│       ├── registry-client.ts      # HTTP client for registry
+│       ├── installed-packages.ts   # installed.json read/write
+│       ├── trusted-publishers.ts   # trusted-publishers.json read/write
+│       ├── dep-resolver.ts         # Topological sort for deps
+│       ├── auth.ts                 # ~/.hq/auth.json helpers
+│       ├── git.ts                  # simple-git wrapper
+│       └── manifest.ts             # modules.yaml / modules.lock I/O
 └── package.json
 ```
 

@@ -1,6 +1,60 @@
 ---
 title: Publishing Packages
-description: npm publishing workflow for HQ packages, including manual and CI/CD approaches.
+description: Publishing HQ worker packs to the HQ registry, and publishing the hq-cli npm packages.
+---
+
+## HQ Registry (Worker Packs)
+
+Worker packs, command sets, and knowledge bases are published to the HQ registry at `https://admin.getindigo.ai` using the `hq` CLI.
+
+### Prerequisites
+
+- `hq` CLI installed (`npm i -g @{company}ai/hq-cli`)
+- An account at `admin.getindigo.ai`
+
+### Workflow
+
+```bash
+# 1. Authenticate
+hq login
+
+# 2. Scaffold (for new packs)
+hq create-worker
+# Follow prompts — generates hq-package.yaml, worker.yaml, skills/, README.md
+
+# 3. Edit hq-package.yaml — set name, version, description, exposes
+# 4. Validate without uploading
+hq publish --dry-run
+
+# 5. Publish
+hq publish
+```
+
+### hq-package.yaml fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | ✓ | Unique registry name (slug) |
+| `type` | ✓ | `worker-pack`, `command-set`, `skill-bundle`, `knowledge-base`, `company-template` |
+| `version` | ✓ | Semver (e.g. `1.0.0`) |
+| `description` | ✓ | Short description shown in search results |
+| `exposes.workers` | — | Paths to worker.yaml files (relative to package root) |
+| `exposes.commands` | — | Paths to command files |
+| `exposes.skills` | — | Paths to skill files |
+| `requires.packages` | — | Other HQ packages that must be installed first |
+| `hooks.on-install` | — | Shell script run after install |
+| `hooks.on-remove` | — | Shell script run before removal |
+
+### Trust model
+
+Publishers must be explicitly trusted by the installer before `hq install` will proceed without a warning:
+
+```bash
+hq trust add your-org
+```
+
+The trusted publishers list is stored at `packages/trusted-publishers.json`.
+
 ---
 
 ## npm Organization
