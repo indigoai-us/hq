@@ -8,7 +8,7 @@
 #   HQ_DISABLED_HOOKS - Comma-separated hook IDs to disable
 #
 # Profiles:
-#   minimal - Critical safety hooks only (block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets)
+#   minimal - Critical safety hooks only (block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets, protect-core)
 #   standard - All minimal + checkpoint/handoff hooks (DEFAULT)
 #   strict - All standard + future quality/format hooks (not yet defined)
 #
@@ -39,7 +39,7 @@ DISABLED_HOOKS="${HQ_DISABLED_HOOKS:-}"
 # Minimal: critical safety hooks
 is_in_minimal_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|protect-core)
       return 0
       ;;
     *)
@@ -51,7 +51,7 @@ is_in_minimal_profile() {
 # Standard: minimal + checkpoint/handoff + pattern learning
 is_in_standard_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger|protect-core)
       return 0
       ;;
     *)
@@ -63,7 +63,7 @@ is_in_standard_profile() {
 # Strict: standard + future quality hooks (reserved for expansion)
 is_in_strict_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger|protect-core)
       return 0
       ;;
     *)

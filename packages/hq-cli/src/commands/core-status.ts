@@ -98,8 +98,8 @@ async function sha256Dir(dirPath: string): Promise<string | null> {
   for (const filePath of allFiles) {
     const fileHash = await sha256File(filePath);
     if (fileHash === null) continue;
-    // Format matches `shasum -a 256`: "<hash>  <path>"
-    lines.push(`${fileHash}  ${filePath}`);
+    // Format matches `shasum -a 256`: "<hash>  <path>" — use relative path for install-independent checksums
+    lines.push(`${fileHash}  ${path.relative(dirPath, filePath)}`);
   }
 
   if (lines.length === 0) return null;

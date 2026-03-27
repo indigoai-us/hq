@@ -32,6 +32,11 @@ if [[ "$FILE_PATH" != /* ]]; then
   FILE_PATH="$(pwd)/$FILE_PATH"
 fi
 
+# Canonicalize path to resolve any .. or . components
+if command -v realpath >/dev/null 2>&1; then
+  FILE_PATH="$(realpath -m "$FILE_PATH" 2>/dev/null || echo "$FILE_PATH")"
+fi
+
 # Locate HQ root via git
 HQ_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [[ -z "$HQ_ROOT" ]]; then

@@ -7,22 +7,21 @@
       "type": "worker-pack",
       "installedAt": "2026-03-27T00:00:00Z",
       "files": [
-        "workers/public/architect/worker.yaml",
-        "workers/public/backend-dev/worker.yaml",
-        "workers/public/code-reviewer/worker.yaml",
-        "workers/public/codex-coder/worker.yaml",
-        "workers/public/codex-debugger/worker.yaml",
-        "workers/public/codex-reviewer/worker.yaml",
-        "workers/public/database-dev/worker.yaml",
-        "workers/public/frontend-dev/worker.yaml",
-        "workers/public/infra-dev/worker.yaml",
-        "workers/public/knowledge-curator/worker.yaml",
-        "workers/public/motion-designer/worker.yaml",
-        "workers/public/product-planner/worker.yaml",
-        "workers/public/project-manager/worker.yaml",
-        "workers/public/qa-tester/worker.yaml",
-        "workers/public/reality-checker/worker.yaml",
-        "workers/public/task-executor/worker.yaml"
+        "workers/dev-team/architect/worker.yaml",
+        "workers/dev-team/backend-dev/worker.yaml",
+        "workers/dev-team/code-reviewer/worker.yaml",
+        "workers/dev-team/codex-coder/worker.yaml",
+        "workers/dev-team/codex-debugger/worker.yaml",
+        "workers/dev-team/codex-reviewer/worker.yaml",
+        "workers/dev-team/database-dev/worker.yaml",
+        "workers/dev-team/frontend-dev/worker.yaml",
+        "workers/dev-team/infra-dev/worker.yaml",
+        "workers/dev-team/knowledge-curator/worker.yaml",
+        "workers/dev-team/motion-designer/worker.yaml",
+        "workers/dev-team/product-planner/worker.yaml",
+        "workers/dev-team/project-manager/worker.yaml",
+        "workers/dev-team/qa-tester/worker.yaml",
+        "workers/dev-team/task-executor/worker.yaml"
       ],
       "repo": "https://github.com/indigo-hq/hq",
       "publisher": "HQ"
@@ -33,25 +32,23 @@
       "type": "worker-pack",
       "installedAt": "2026-03-27T00:00:00Z",
       "files": [
-        "workers/public/content-brand/worker.yaml",
-        "workers/public/content-legal/worker.yaml",
-        "workers/public/content-product/worker.yaml",
-        "workers/public/content-sales/worker.yaml"
+        "workers/content-brand/worker.yaml",
+        "workers/content-legal/worker.yaml",
+        "workers/content-product/worker.yaml",
+        "workers/content-sales/worker.yaml"
       ],
       "repo": "https://github.com/indigo-hq/hq",
       "publisher": "HQ"
     },
-    "social-team": {
-      "name": "social-team",
+    "gardener-team": {
+      "name": "gardener-team",
       "version": "1.0.0",
       "type": "worker-pack",
       "installedAt": "2026-03-27T00:00:00Z",
       "files": [
-        "workers/public/social-publisher/worker.yaml",
-        "workers/public/social-reviewer/worker.yaml",
-        "workers/public/social-shared/worker.yaml",
-        "workers/public/social-strategist/worker.yaml",
-        "workers/public/social-verifier/worker.yaml"
+        "workers/gardener-team/garden-auditor/worker.yaml",
+        "workers/gardener-team/garden-curator/worker.yaml",
+        "workers/gardener-team/garden-scout/worker.yaml"
       ],
       "repo": "https://github.com/indigo-hq/hq",
       "publisher": "HQ"
