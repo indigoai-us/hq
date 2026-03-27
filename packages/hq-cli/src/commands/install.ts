@@ -20,7 +20,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import yaml from 'js-yaml';
 
-import { registryClient } from '../utils/registry-client.js';
+import { registryClient, RegistryError, RegistryAuthError, RegistryNotFoundError } from '../utils/registry-client.js';
 import type { RegistryPackageWithDeps } from '../utils/registry-client.js';
 import { findHQRoot } from '../utils/hq-root.js';
 import {
@@ -29,6 +29,7 @@ import {
 } from '../utils/installed-packages.js';
 import { isTrusted } from '../utils/trusted-publishers.js';
 import { resolveDependencies, CyclicDependencyError } from '../utils/dep-resolver.js';
+import { cloneRepo, isRepo, pullRepo } from '../utils/git.js';
 import type { HQPackage, InstalledPackage } from '../types/package-types.js';
 
 // ─── Install target mapping ───────────────────────────────────────────────────
@@ -167,6 +168,122 @@ async function updateWorkersRegistry(
   }
 }
 
+// ─── Package source acquisition (registry with git fallback) ──────────────────
+
+interface PackageSource {
+  extractedRoot: string;
+  meta: { version: string; author?: string };
+  isGitInstall: boolean;
+  tempDir?: string; // set for registry installs — must be cleaned up
+}
+
+/**
+ * Attempt to acquire the package from the registry.
+ * On RegistryError (network / 5xx), falls back to git clone into
+ * packages/cache/{packageName}/ under HQ root.
+ *
+ * Throws for:
+ *  - RegistryAuthError / RegistryNotFoundError (no fallback)
+ *  - Both registry AND git fail (combined error message)
+ */
+async function acquirePackageSource(
+  packageName: string,
+  hqRoot: string
+): Promise<PackageSource> {
+  // ── Try registry first ──────────────────────────────────────────────────────
+  let registryErrorMsg: string | undefined;
+  let repoUrlFromMeta: string | undefined;
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'hq-install-'));
+
+  try {
+    // Fetch metadata (includes repo URL when present)
+    console.log(chalk.dim(`Fetching metadata for ${packageName}…`));
+    const meta = await registryClient.getPackage(packageName) as RegistryPackageWithDeps & { repo?: string };
+    repoUrlFromMeta = meta.repo;
+
+    // Fetch download info
+    console.log(chalk.dim(`Resolving download URL…`));
+    const downloadInfo = await registryClient.getDownloadInfo(packageName);
+
+    // Download tarball (downloadTarball validates SHA256 internally)
+    const tarballPath = path.join(tempDir, `${packageName}.tar.gz`);
+    console.log(chalk.dim(`Downloading ${packageName}@${meta.version}…`));
+    await registryClient.downloadTarball(downloadInfo.url, tarballPath, downloadInfo.checksum);
+    console.log(chalk.dim(`  Download complete, checksum verified`));
+
+    // Extract tarball
+    const extractDir = path.join(tempDir, 'extracted');
+    await mkdir(extractDir, { recursive: true });
+    execSync(`tar -xzf "${tarballPath}" -C "${extractDir}"`, { stdio: 'pipe' });
+
+    const extractedRoot = await findExtractedRoot(extractDir);
+    return {
+      extractedRoot,
+      meta: { version: meta.version, author: meta.author },
+      isGitInstall: false,
+      tempDir,
+    };
+  } catch (err: unknown) {
+    // Auth / not-found errors: do NOT fall back — surface immediately
+    if (err instanceof RegistryAuthError) throw err;
+    if (err instanceof RegistryNotFoundError) throw err;
+    // Network / 5xx errors: record and fall through to git fallback
+    if (err instanceof RegistryError) {
+      registryErrorMsg = err.message;
+    } else {
+      throw err; // unexpected error — rethrow
+    }
+    // Clean up temp dir from failed registry attempt
+    try { await rm(tempDir, { recursive: true, force: true }); } catch { /* best effort */ }
+  }
+
+  // ── Git fallback ────────────────────────────────────────────────────────────
+  console.warn(chalk.yellow(`Warning: Registry unreachable, installing from git`));
+
+  const cacheDir = path.join(hqRoot, 'packages', 'cache', packageName);
+  let repoUrl = repoUrlFromMeta;
+
+  // If registry metadata failed before we got the repo URL, try reading from existing cache
+  if (!repoUrl) {
+    try {
+      const cachedManifestRaw = await readFile(path.join(cacheDir, 'hq-package.yaml'), 'utf8');
+      const cached = yaml.load(cachedManifestRaw) as HQPackage;
+      repoUrl = cached.repo;
+    } catch {
+      // No cache available
+    }
+  }
+
+  if (!repoUrl) {
+    const regPart = registryErrorMsg ? `Registry: ${registryErrorMsg}` : 'Registry unavailable';
+    throw new Error(
+      `Install failed:\n  ${regPart}\n  Git: no repo URL available for package "${packageName}"`
+    );
+  }
+
+  try {
+    if (await isRepo(cacheDir)) {
+      console.log(chalk.dim(`Updating cached repo for ${packageName}…`));
+      await pullRepo(cacheDir);
+    } else {
+      console.log(chalk.dim(`Cloning ${repoUrl}…`));
+      await mkdir(path.join(hqRoot, 'packages', 'cache'), { recursive: true });
+      await cloneRepo(repoUrl, cacheDir);
+    }
+  } catch (gitErr: unknown) {
+    const gitMsg = gitErr instanceof Error ? gitErr.message : String(gitErr);
+    const regPart = registryErrorMsg ? `Registry: ${registryErrorMsg}` : 'Registry unavailable';
+    throw new Error(`Install failed:\n  ${regPart}\n  Git: ${gitMsg}`);
+  }
+
+  // Read metadata from the cloned package manifest
+  const manifest = await readPackageManifest(cacheDir);
+  const meta = { version: manifest.version, author: manifest.author };
+
+  // No tempDir for git installs — the cache dir persists intentionally
+  return { extractedRoot: cacheDir, meta, isGitInstall: true };
+}
+
 // ─── Dependency resolution ────────────────────────────────────────────────────
 
 /**
@@ -234,61 +351,20 @@ async function installPackage(packageName: string): Promise<void> {
     }
   }
 
-  // 3. Fetch package metadata
-  console.log(chalk.dim(`Fetching metadata for ${packageName}…`));
-  let meta: Awaited<ReturnType<typeof registryClient.getPackage>>;
+  // 3. Acquire package source (registry, or git fallback on RegistryError)
+  let source: PackageSource;
   try {
-    meta = await registryClient.getPackage(packageName);
+    source = await acquirePackageSource(packageName, hqRoot);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error fetching package: ${msg}`));
+    console.error(chalk.red(`Error: ${msg}`));
     process.exit(1);
   }
 
-  // 4. Fetch download info
-  console.log(chalk.dim(`Resolving download URL…`));
-  let downloadInfo: Awaited<ReturnType<typeof registryClient.getDownloadInfo>>;
-  try {
-    downloadInfo = await registryClient.getDownloadInfo(packageName);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error fetching download info: ${msg}`));
-    process.exit(1);
-  }
-
-  // 5. Create temp dir
-  const tempDir = await mkdtemp(path.join(tmpdir(), 'hq-install-'));
+  const { extractedRoot, meta, isGitInstall, tempDir } = source;
 
   try {
-    // 6 + 7. Download tarball (downloadTarball validates SHA256 internally)
-    const tarballPath = path.join(tempDir, `${packageName}.tar.gz`);
-    console.log(chalk.dim(`Downloading ${packageName}@${meta.version}…`));
-    try {
-      await registryClient.downloadTarball(
-        downloadInfo.url,
-        tarballPath,
-        downloadInfo.checksum
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(chalk.red(`Download failed: ${msg}`));
-      process.exit(1);
-    }
-    console.log(chalk.dim(`  Download complete, checksum verified`));
-
-    // 8. Extract tarball
-    const extractDir = path.join(tempDir, 'extracted');
-    await mkdir(extractDir, { recursive: true });
-    try {
-      execSync(`tar -xzf "${tarballPath}" -C "${extractDir}"`, { stdio: 'pipe' });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(chalk.red(`Extraction failed: ${msg}`));
-      process.exit(1);
-    }
-
-    // 9. Read hq-package.yaml
-    const extractedRoot = await findExtractedRoot(extractDir);
+    // 4. Read hq-package.yaml
     const manifest = await readPackageManifest(extractedRoot);
 
     console.log(`\nInstalling ${chalk.bold(manifest.name)} v${manifest.version}`);
@@ -396,17 +472,20 @@ async function installPackage(packageName: string): Promise<void> {
     // 15. Update workers/registry.yaml if package exposes workers
     await updateWorkersRegistry(hqRoot, manifest, extractedRoot, installedFiles);
 
+    const sourceLabel = isGitInstall ? chalk.dim(' (installed from git — registry unreachable)') : '';
     console.log(
-      `\n${chalk.green('✓')} ${chalk.bold(manifest.name)} v${manifest.version} installed successfully`
+      `\n${chalk.green('✓')} ${chalk.bold(manifest.name)} v${manifest.version} installed successfully${sourceLabel}`
     );
     if (installedFiles.length) {
       console.log(chalk.dim(`  ${installedFiles.length} file(s) installed`));
     }
   } finally {
-    // 16. Always clean up temp dir
-    try {
-      await rm(tempDir, { recursive: true, force: true });
-    } catch { /* best effort */ }
+    // 16. Clean up temp dir (only present for registry installs; git installs use persistent cache)
+    if (tempDir) {
+      try {
+        await rm(tempDir, { recursive: true, force: true });
+      } catch { /* best effort */ }
+    }
   }
 }
 
