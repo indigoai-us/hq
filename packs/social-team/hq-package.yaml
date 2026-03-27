@@ -1,0 +1,19 @@
+name: social-team
+type: worker-pack
+version: 1.0.0
+description: >
+  Social media team — 5 specialist workers for strategy, content review,
+  publishing, verification, and shared social utilities. Manages end-to-end
+  social content workflow from idea to scheduled post.
+
+author: HQ
+repo: https://github.com/indigo-hq/hq
+minHQVersion: 5.0.0
+
+exposes:
+  workers:
+    - social-publisher/worker.yaml
+    - social-reviewer/worker.yaml
+    - social-shared/worker.yaml
+    - social-strategist/worker.yaml
+    - social-verifier/worker.yaml

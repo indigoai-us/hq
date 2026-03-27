@@ -1,0 +1,18 @@
+name: content-team
+type: worker-pack
+version: 1.0.0
+description: >
+  Content creation team — 4 specialist workers for brand voice, sales copy,
+  product content, and legal review. Produces on-brand content across every
+  function with consistent voice and quality.
+
+author: HQ
+repo: https://github.com/indigo-hq/hq
+minHQVersion: 5.0.0
+
+exposes:
+  workers:
+    - content-brand/worker.yaml
+    - content-legal/worker.yaml
+    - content-product/worker.yaml
+    - content-sales/worker.yaml

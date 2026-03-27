@@ -1,0 +1,30 @@
+name: dev-team
+type: worker-pack
+version: 1.0.0
+description: >
+  Full-stack development team — 17 specialist workers covering architecture,
+  backend, frontend, database, infrastructure, QA, code review, and project
+  management. The complete AI dev team for building software with HQ.
+
+author: HQ
+repo: https://github.com/indigo-hq/hq
+minHQVersion: 5.0.0
+
+exposes:
+  workers:
+    - architect/worker.yaml
+    - backend-dev/worker.yaml
+    - code-reviewer/worker.yaml
+    - codex-coder/worker.yaml
+    - codex-debugger/worker.yaml
+    - codex-reviewer/worker.yaml
+    - database-dev/worker.yaml
+    - frontend-dev/worker.yaml
+    - infra-dev/worker.yaml
+    - knowledge-curator/worker.yaml
+    - motion-designer/worker.yaml
+    - product-planner/worker.yaml
+    - project-manager/worker.yaml
+    - qa-tester/worker.yaml
+    - reality-checker/worker.yaml
+    - task-executor/worker.yaml
