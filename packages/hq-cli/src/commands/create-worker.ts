@@ -11,7 +11,6 @@
  */
 
 import { mkdir, writeFile, chmod } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
@@ -86,20 +85,44 @@ export async function scaffoldWorkerPackage(opts: ScaffoldOptions): Promise<stri
     path.join(pkgRoot, 'hooks'),
   ];
 
+  // ── Guard: refuse to overwrite an existing directory (P3) ──────────────
+  try {
+    await import('node:fs/promises').then(fs => fs.stat(pkgRoot));
+    throw new Error(
+      `Directory "${pkgRoot}" already exists. Remove it or choose a different name to avoid overwriting existing work.`
+    );
+  } catch (err: unknown) {
+    // stat threw ENOENT — directory does not exist, safe to proceed
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw err;
+    }
+  }
+
   for (const dir of dirs) {
     await mkdir(dir, { recursive: true });
   }
 
-  // ── hq-package.yaml ─────────────────────────────────────────────────────
+  // ── hq-package.yaml — exposes varies by package type (P2) ───────────────
+
+  // Build type-appropriate exposes section so installed packages are well-formed.
+  const exposes: HQPackage['exposes'] = {};
+  if (type === 'worker-pack') {
+    exposes.workers = [`workers/${name}/${name}.yaml`];
+  } else if (type === 'command-set') {
+    exposes.commands = [];
+  } else if (type === 'skill-bundle') {
+    exposes.skills = [];
+  } else if (type === 'knowledge-base') {
+    exposes.knowledge = [];
+  }
+  // company-template: no exposes — user fills in
 
   const manifest: HQPackage = {
     name,
     type,
     version: '0.1.0',
-    description: `Worker pack for ${name}`,
-    exposes: {
-      workers: [`workers/${name}/worker.yaml`],
-    },
+    description: `${type === 'worker-pack' ? 'Worker pack' : type.replace(/-/g, ' ')} for ${name}`,
+    exposes,
     hooks: {
       'on-install': 'hooks/on-install.sh',
     },
@@ -110,7 +133,8 @@ export async function scaffoldWorkerPackage(opts: ScaffoldOptions): Promise<stri
   await writeFile(manifestPath, manifestYaml, 'utf8');
   created.push(`${name}/hq-package.yaml`);
 
-  // ── workers/{name}/worker.yaml ───────────────────────────────────────────
+  // ── workers/{name}/{name}.yaml ───────────────────────────────────────────
+  // Named ${name}.yaml (not worker.yaml) to ensure unique install basenames (P1).
 
   const workerManifest = {
     name,
@@ -121,9 +145,9 @@ export async function scaffoldWorkerPackage(opts: ScaffoldOptions): Promise<stri
   };
 
   const workerYaml = yaml.dump(workerManifest, { lineWidth: -1 });
-  const workerPath = path.join(pkgRoot, 'workers', name, 'worker.yaml');
+  const workerPath = path.join(pkgRoot, 'workers', name, `${name}.yaml`);
   await writeFile(workerPath, workerYaml, 'utf8');
-  created.push(`${name}/workers/${name}/worker.yaml`);
+  created.push(`${name}/workers/${name}/${name}.yaml`);
 
   // ── skills/.gitkeep ─────────────────────────────────────────────────────
 

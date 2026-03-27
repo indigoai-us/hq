@@ -91,7 +91,7 @@ describe('scaffoldWorkerPackage', () => {
     // Check expected paths are included
     const expected = [
       'test-worker/hq-package.yaml',
-      'test-worker/workers/test-worker/worker.yaml',
+      'test-worker/workers/test-worker/test-worker.yaml',
       'test-worker/skills/.gitkeep',
       'test-worker/knowledge/.gitkeep',
       'test-worker/hooks/on-install.sh',
@@ -161,7 +161,7 @@ describe('scaffoldWorkerPackage', () => {
       outDir: tmpDir,
     });
 
-    const workerPath = path.join(tmpDir, 'worker-yaml-check', 'workers', 'worker-yaml-check', 'worker.yaml');
+    const workerPath = path.join(tmpDir, 'worker-yaml-check', 'workers', 'worker-yaml-check', 'worker-yaml-check.yaml');
     const content = await readFile(workerPath, 'utf8');
     const parsed = yaml.load(content) as Record<string, unknown>;
 
@@ -221,6 +221,19 @@ describe('scaffoldWorkerPackage', () => {
     const hookPath = path.join(tmpDir, 'shebang-check', 'hooks', 'on-install.sh');
     const content = await readFile(hookPath, 'utf8');
     assert.ok(content.startsWith('#!/usr/bin/env bash'), 'Expected shebang line at start of on-install.sh');
+  });
+
+  test('throws if package directory already exists', async () => {
+    const name = 'duplicate-guard-check';
+    await scaffoldWorkerPackage({ name, type: 'worker-pack', outDir: tmpDir });
+    // Second call on same name must throw (not silently overwrite)
+    await assert.rejects(
+      () => scaffoldWorkerPackage({ name, type: 'worker-pack', outDir: tmpDir }),
+      (err: Error) => {
+        assert.ok(err.message.includes('already exists'), `Expected "already exists" in: ${err.message}`);
+        return true;
+      }
+    );
   });
 
   test('works with all valid package types', async () => {
