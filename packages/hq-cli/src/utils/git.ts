@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import simpleGit, { SimpleGit } from 'simple-git';
+import { simpleGit, type SimpleGit } from 'simple-git';
 
 export async function cloneRepo(repoUrl: string, targetDir: string, branch?: string): Promise<void> {
   const git = simpleGit();

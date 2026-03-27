@@ -1,6 +1,6 @@
 /**
  * hq sync commands — cloud sync management
- * Bridges hq-cli to @{company}ai/hq-cloud
+ * Bridges hq-cli to @indigoai/hq-cloud
  */
 
 import { Command } from "commander";
@@ -13,7 +13,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { initSync } = await import("@{company}ai/hq-cloud");
+        const { initSync } = await import("@indigoai/hq-cloud");
         await initSync(hqRoot);
       } catch (error) {
         console.error(
@@ -30,7 +30,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { startDaemon } = await import("@{company}ai/hq-cloud");
+        const { startDaemon } = await import("@indigoai/hq-cloud");
         await startDaemon(hqRoot);
         console.log("Sync daemon started. Use 'hq sync status' to check.");
       } catch (error) {
@@ -48,7 +48,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { stopDaemon } = await import("@{company}ai/hq-cloud");
+        const { stopDaemon } = await import("@indigoai/hq-cloud");
         await stopDaemon(hqRoot);
         console.log("Sync daemon stopped.");
       } catch (error) {
@@ -66,7 +66,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { getStatus } = await import("@{company}ai/hq-cloud");
+        const { getStatus } = await import("@indigoai/hq-cloud");
         const status = await getStatus(hqRoot);
         console.log(`  State:      ${status.running ? "running" : "stopped"}`);
         console.log(`  Last sync:  ${status.lastSync || "never"}`);
@@ -93,7 +93,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { pushAll } = await import("@{company}ai/hq-cloud");
+        const { pushAll } = await import("@indigoai/hq-cloud");
         const result = await pushAll(hqRoot);
         console.log(`Pushed ${result.filesUploaded} files to cloud.`);
       } catch (error) {
@@ -111,7 +111,7 @@ export function registerCloudCommands(program: Command): void {
     .action(async () => {
       try {
         const hqRoot = findHqRoot();
-        const { pullAll } = await import("@{company}ai/hq-cloud");
+        const { pullAll } = await import("@indigoai/hq-cloud");
         const result = await pullAll(hqRoot);
         console.log(`Pulled ${result.filesDownloaded} files from cloud.`);
       } catch (error) {

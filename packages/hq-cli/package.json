@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "node --test dist/**/*.test.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
