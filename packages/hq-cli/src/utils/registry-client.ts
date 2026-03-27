@@ -27,6 +27,13 @@ export interface RegistryPackage {
   publishedAt?: string;
 }
 
+/** Extended RegistryPackage that includes dependency metadata (US-011). */
+export interface RegistryPackageWithDeps extends RegistryPackage {
+  requires?: {
+    packages?: string[];
+  };
+}
+
 export interface PackageListMeta {
   total: number;
   limit: number;

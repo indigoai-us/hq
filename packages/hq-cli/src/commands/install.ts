@@ -21,12 +21,14 @@ import { Command } from 'commander';
 import yaml from 'js-yaml';
 
 import { registryClient } from '../utils/registry-client.js';
+import type { RegistryPackageWithDeps } from '../utils/registry-client.js';
 import { findHQRoot } from '../utils/hq-root.js';
 import {
   getInstalled,
   setInstalled,
 } from '../utils/installed-packages.js';
 import { isTrusted } from '../utils/trusted-publishers.js';
+import { resolveDependencies, CyclicDependencyError } from '../utils/dep-resolver.js';
 import type { HQPackage, InstalledPackage } from '../types/package-types.js';
 
 // ─── Install target mapping ───────────────────────────────────────────────────
@@ -165,6 +167,41 @@ async function updateWorkersRegistry(
   }
 }
 
+// ─── Dependency resolution ────────────────────────────────────────────────────
+
+/**
+ * Resolve transitive dependencies for packageName and return them in install order.
+ * Returns an empty array if there are no uninstalled deps.
+ * Exits the process if a dependency cycle is detected.
+ */
+async function resolveDeps(packageName: string, hqRoot: string): Promise<string[]> {
+  try {
+    return await resolveDependencies(
+      packageName,
+      async (name) => {
+        try {
+          const meta = await registryClient.getPackage(name);
+          return (meta as RegistryPackageWithDeps).requires?.packages ?? [];
+        } catch {
+          return [];
+        }
+      },
+      async (name) => {
+        const installed = await getInstalled(hqRoot, name);
+        return installed !== null;
+      }
+    );
+  } catch (err) {
+    if (err instanceof CyclicDependencyError) {
+      console.error(chalk.red(`\nDependency cycle detected:`));
+      console.error(chalk.red(`  ${err.cycle.join(' → ')}`));
+      console.error(chalk.red(`\nInstall aborted.`));
+      process.exit(1);
+    }
+    throw err;
+  }
+}
+
 // ─── Main install logic ───────────────────────────────────────────────────────
 
 async function installPackage(packageName: string): Promise<void> {
@@ -185,6 +222,16 @@ async function installPackage(packageName: string): Promise<void> {
       '\nUse `hq update` to upgrade.'
     );
     process.exit(0);
+  }
+
+  // 2b. Resolve dependencies
+  const depsToInstall = await resolveDeps(packageName, hqRoot);
+  if (depsToInstall.length > 0) {
+    console.log(chalk.dim(`Resolving ${depsToInstall.length} dependenc${depsToInstall.length === 1 ? 'y' : 'ies'}…`));
+    for (const dep of depsToInstall) {
+      console.log(chalk.dim(`  Installing dependency: ${dep}`));
+      await installPackage(dep);
+    }
   }
 
   // 3. Fetch package metadata
