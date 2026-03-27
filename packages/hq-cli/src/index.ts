@@ -12,6 +12,7 @@ import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
 import { registerInstallCommand } from "./commands/install.js";
 import { registerRemoveCommand } from "./commands/remove.js";
+import { registerPkgUpdateCommand } from "./commands/pkg-update.js";
 
 const program = new Command();
 
@@ -23,6 +24,7 @@ program
 // Package management — top-level commands
 registerInstallCommand(program);
 registerRemoveCommand(program);
+registerPkgUpdateCommand(program);
 
 // Module management subcommand group
 const modulesCmd = program

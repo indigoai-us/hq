@@ -45,6 +45,14 @@ export async function setInstalled(
   await save(hqRoot, data);
 }
 
+/** Returns all installed package records as a name → record map. */
+export async function getAllInstalled(
+  hqRoot: string
+): Promise<Record<string, InstalledPackage>> {
+  const data = await load(hqRoot);
+  return { ...data.packages };
+}
+
 /** Removes a package entry. No-op if not present. */
 export async function removeInstalled(
   hqRoot: string,
