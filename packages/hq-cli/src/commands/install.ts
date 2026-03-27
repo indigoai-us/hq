@@ -98,12 +98,14 @@ async function findExtractedRoot(extractDir: string): Promise<string> {
 /**
  * Update workers/registry.yaml with new worker entries from a package.
  * Idempotent — skips workers already present (matched by id).
+ * Accepts a custom exposeTargets map so company-scoped installs point to the right path.
  */
 async function updateWorkersRegistry(
   hqRoot: string,
   manifest: HQPackage,
   extractedRoot: string,
-  installedFiles: string[]
+  installedFiles: string[],
+  exposeTargets: Record<string, string> = EXPOSE_TARGETS
 ): Promise<void> {
   if (!manifest.exposes?.workers?.length) return;
 
@@ -137,7 +139,7 @@ async function updateWorkersRegistry(
   for (const workerRelPath of manifest.exposes.workers) {
     // The worker path relative to hq root after installation
     const installedRelPath = path.join(
-      EXPOSE_TARGETS.workers,
+      exposeTargets.workers,
       path.basename(workerRelPath)
     );
     // Use the directory name as the worker id
@@ -319,9 +321,57 @@ async function resolveDeps(packageName: string, hqRoot: string): Promise<string[
   }
 }
 
+// ─── Manifest update helper ───────────────────────────────────────────────────
+
+/**
+ * Add packageName to the `packages` array for the given company entry in
+ * companies/manifest.yaml.  Idempotent — skips if already present.
+ * Never throws — logs a warning on any failure.
+ */
+export async function updateManifestPackages(
+  hqRoot: string,
+  company: string,
+  packageName: string
+): Promise<void> {
+  const manifestPath = path.join(hqRoot, 'companies', 'manifest.yaml');
+  try {
+    const { writeFile } = await import('node:fs/promises');
+    const raw = await readFile(manifestPath, 'utf8');
+
+    interface ManifestEntry {
+      packages?: string[];
+      [key: string]: unknown;
+    }
+    interface ManifestYaml {
+      [company: string]: ManifestEntry;
+    }
+
+    const manifest = yaml.load(raw) as ManifestYaml;
+    if (!manifest[company]) {
+      console.warn(chalk.yellow(`  Warning: company '${company}' not found in manifest.yaml — skipping manifest update`));
+      return;
+    }
+
+    const entry = manifest[company];
+    const packages: string[] = entry.packages ?? [];
+    if (packages.includes(packageName)) {
+      console.log(chalk.dim(`  Package '${packageName}' already in manifest for '${company}' — skipping`));
+      return;
+    }
+
+    packages.push(packageName);
+    entry.packages = packages;
+    await writeFile(manifestPath, yaml.dump(manifest, { lineWidth: 120 }), 'utf8');
+    console.log(chalk.dim(`  Updated companies/manifest.yaml: added '${packageName}' to ${company}.packages`));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(chalk.yellow(`  Warning: could not update companies/manifest.yaml: ${msg}`));
+  }
+}
+
 // ─── Main install logic ───────────────────────────────────────────────────────
 
-async function installPackage(packageName: string): Promise<void> {
+async function installPackage(packageName: string, options: { company?: string } = {}): Promise<void> {
   // 1. Find HQ root
   let hqRoot: string;
   try {
@@ -330,6 +380,26 @@ async function installPackage(packageName: string): Promise<void> {
     console.error(chalk.red(`Error: not inside an HQ installation (workers/registry.yaml not found)`));
     process.exit(1);
   }
+
+  // 1b. Validate company directory exists if --company specified
+  if (options.company) {
+    const companyDir = path.join(hqRoot, 'companies', options.company);
+    try {
+      await stat(companyDir);
+    } catch {
+      console.error(chalk.red(`Error: company '${options.company}' not found. Directory does not exist: companies/${options.company}`));
+      process.exit(1);
+    }
+  }
+
+  // 1c. Build effective expose targets (override workers + knowledge when company-scoped)
+  const exposeTargets: Record<string, string> = options.company
+    ? {
+        ...EXPOSE_TARGETS,
+        workers: path.join('companies', options.company, 'workers'),
+        knowledge: path.join('companies', options.company, 'knowledge'),
+      }
+    : EXPOSE_TARGETS;
 
   // 2. Check already installed
   const existing = await getInstalled(hqRoot, packageName);
@@ -347,7 +417,7 @@ async function installPackage(packageName: string): Promise<void> {
     console.log(chalk.dim(`Resolving ${depsToInstall.length} dependenc${depsToInstall.length === 1 ? 'y' : 'ies'}…`));
     for (const dep of depsToInstall) {
       console.log(chalk.dim(`  Installing dependency: ${dep}`));
-      await installPackage(dep);
+      await installPackage(dep, options);
     }
   }
 
@@ -401,7 +471,7 @@ async function installPackage(packageName: string): Promise<void> {
     const installedFiles: string[] = [];
     const exposes = manifest.exposes ?? {};
 
-    for (const [exposeKey, target] of Object.entries(EXPOSE_TARGETS)) {
+    for (const [exposeKey, target] of Object.entries(exposeTargets)) {
       const files = exposes[exposeKey as keyof typeof exposes];
       if (!files?.length) continue;
 
@@ -465,12 +535,18 @@ async function installPackage(packageName: string): Promise<void> {
       files: installedFiles,
       repo: manifest.repo,
       publisher,
+      ...(options.company ? { company: options.company } : {}),
       ...(onRemoveCachedPath ? { hooks: { onRemove: onRemoveCachedPath } } : {}),
     };
     await setInstalled(hqRoot, record);
 
     // 15. Update workers/registry.yaml if package exposes workers
-    await updateWorkersRegistry(hqRoot, manifest, extractedRoot, installedFiles);
+    await updateWorkersRegistry(hqRoot, manifest, extractedRoot, installedFiles, exposeTargets);
+
+    // 15b. Update companies/manifest.yaml when company-scoped
+    if (options.company) {
+      await updateManifestPackages(hqRoot, options.company, packageName);
+    }
 
     const sourceLabel = isGitInstall ? chalk.dim(' (installed from git — registry unreachable)') : '';
     console.log(
@@ -495,7 +571,8 @@ export function registerInstallCommand(program: Command): void {
   program
     .command('install <package>')
     .description('Install a package from the HQ registry')
-    .action(async (packageName: string) => {
-      await installPackage(packageName);
+    .option('--company <co>', 'Install package scoped to a specific company')
+    .action(async (packageName: string, options: { company?: string }) => {
+      await installPackage(packageName, options);
     });
 }
