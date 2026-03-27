@@ -1,0 +1,43 @@
+# core.yaml — HQ Kernel Governance Manifest
+version: 1
+hqVersion: "6.5.0"
+updatedAt: "2026-03-27T00:00:00Z"
+
+description: >
+  Kernel file classification for HQ. Defines which files are locked (cannot be
+  edited without bypass), reviewable (editable with warning), or open (unrestricted).
+  Checksums are SHA256 of each locked file at time of classification.
+
+rules:
+  locked:
+    - .claude/CLAUDE.md
+    - .claude/settings.json
+    - .claude/hooks/
+    - modules/
+    - companies/manifest.yaml
+    - companies/_template/
+    - workers/registry.yaml
+    - INDEX.md
+    - USER-GUIDE.md
+    - .ignore
+    - scripts/
+    - core.yaml
+
+  reviewable:
+    - workspace/
+    - .claude/commands/
+    - .claude/skills/
+
+  open:
+    - "**"
+
+checksums:
+  ".claude/CLAUDE.md": "0b3628adc55b7d532d464fed88e286ff142cacdb25c490781a2568ddaec25fdd"
+  ".claude/settings.json": "8be32e93afa47edbdbaca917daa7556575772397e24e3aac4428323758f8e94e"
+  ".claude/hooks/": "ffae8e2878cb2361545249462e23f46652c59d1cda1e70143133f052b8273218"
+  "modules/": "3da6a2d0ffd5675087b4c2a084661d0e164a439ff0011ba927a7a5312c4e2b18"
+  "companies/_template/": "aa0acb78b63550cc46c857345a14e8199fa83dbbd5e5c723299686032ad8acef"
+  "workers/registry.yaml": "a37d18776a4ae313e622ea06d3c34a2f1906c49f0aaf30807ba2ddfd06f06824"
+  "USER-GUIDE.md": "9d794d15069340779c43c19f7401ba60d9018a44a28422ac7273cbd31642feed"
+  ".ignore": "cb025af61fcd04e69d26135f00bb47d3013e9c9cbb0e02ae6d047d5920879e11"
+  "scripts/": "6de5b524e62634520271c132c342e7929708b775b3164b86637f6f19ffdaf937"

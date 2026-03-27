@@ -1,0 +1,60 @@
+{
+  "version": "1",
+  "packages": {
+    "dev-team": {
+      "name": "dev-team",
+      "version": "1.0.0",
+      "type": "worker-pack",
+      "installedAt": "2026-03-27T00:00:00Z",
+      "files": [
+        "workers/public/architect/worker.yaml",
+        "workers/public/backend-dev/worker.yaml",
+        "workers/public/code-reviewer/worker.yaml",
+        "workers/public/codex-coder/worker.yaml",
+        "workers/public/codex-debugger/worker.yaml",
+        "workers/public/codex-reviewer/worker.yaml",
+        "workers/public/database-dev/worker.yaml",
+        "workers/public/frontend-dev/worker.yaml",
+        "workers/public/infra-dev/worker.yaml",
+        "workers/public/knowledge-curator/worker.yaml",
+        "workers/public/motion-designer/worker.yaml",
+        "workers/public/product-planner/worker.yaml",
+        "workers/public/project-manager/worker.yaml",
+        "workers/public/qa-tester/worker.yaml",
+        "workers/public/reality-checker/worker.yaml",
+        "workers/public/task-executor/worker.yaml"
+      ],
+      "repo": "https://github.com/indigo-hq/hq",
+      "publisher": "HQ"
+    },
+    "content-team": {
+      "name": "content-team",
+      "version": "1.0.0",
+      "type": "worker-pack",
+      "installedAt": "2026-03-27T00:00:00Z",
+      "files": [
+        "workers/public/content-brand/worker.yaml",
+        "workers/public/content-legal/worker.yaml",
+        "workers/public/content-product/worker.yaml",
+        "workers/public/content-sales/worker.yaml"
+      ],
+      "repo": "https://github.com/indigo-hq/hq",
+      "publisher": "HQ"
+    },
+    "social-team": {
+      "name": "social-team",
+      "version": "1.0.0",
+      "type": "worker-pack",
+      "installedAt": "2026-03-27T00:00:00Z",
+      "files": [
+        "workers/public/social-publisher/worker.yaml",
+        "workers/public/social-reviewer/worker.yaml",
+        "workers/public/social-shared/worker.yaml",
+        "workers/public/social-strategist/worker.yaml",
+        "workers/public/social-verifier/worker.yaml"
+      ],
+      "repo": "https://github.com/indigo-hq/hq",
+      "publisher": "HQ"
+    }
+  }
+}
