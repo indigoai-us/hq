@@ -7,7 +7,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-const TRUST_FILE = path.join(homedir(), '.hq', 'trusted-publishers.json');
+function getTrustFilePath(): string {
+  return process.env['HQ_TRUST_FILE'] ?? path.join(homedir(), '.hq', 'trusted-publishers.json');
+}
 
 interface TrustStore {
   publishers: string[];
@@ -15,7 +17,7 @@ interface TrustStore {
 
 async function load(): Promise<TrustStore> {
   try {
-    const raw = await readFile(TRUST_FILE, 'utf8');
+    const raw = await readFile(getTrustFilePath(), 'utf8');
     return JSON.parse(raw) as TrustStore;
   } catch {
     return { publishers: [] };
@@ -23,8 +25,9 @@ async function load(): Promise<TrustStore> {
 }
 
 async function save(store: TrustStore): Promise<void> {
-  await mkdir(path.dirname(TRUST_FILE), { recursive: true });
-  await writeFile(TRUST_FILE, JSON.stringify(store, null, 2) + '\n', 'utf8');
+  const trustFile = getTrustFilePath();
+  await mkdir(path.dirname(trustFile), { recursive: true });
+  await writeFile(trustFile, JSON.stringify(store, null, 2) + '\n', 'utf8');
 }
 
 export async function isTrusted(publisher: string): Promise<boolean> {

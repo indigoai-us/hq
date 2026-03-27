@@ -1,13 +1,16 @@
 /**
  * Tests for hq trust — trusted publishers management (US-014b)
  * Uses Node.js built-in test runner (node:test).
+ *
+ * Trust-store isolation: sets HQ_TRUST_FILE to a temp file so tests never
+ * touch the developer's real ~/.hq/trusted-publishers.json.
  */
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { homedir } from 'node:os';
 
 import { Command } from 'commander';
 
@@ -19,36 +22,25 @@ import {
 } from '../utils/trusted-publishers.js';
 import { registerTrustCommand } from './trust.js';
 
+// ─── Temp trust-store setup ───────────────────────────────────────────────────
+
+let tempDir: string;
+
+// Set HQ_TRUST_FILE before any test touches the trust store.
+// Because getTrustFilePath() reads the env var at call time, this is enough.
+before(async () => {
+  tempDir = await mkdtemp(path.join(tmpdir(), 'hq-trust-test-'));
+  process.env['HQ_TRUST_FILE'] = path.join(tempDir, 'trusted-publishers.json');
+});
+
+after(async () => {
+  delete process.env['HQ_TRUST_FILE'];
+  try { await rm(tempDir, { recursive: true, force: true }); } catch { /* best effort */ }
+});
+
 // ─── Trust store round-trip ───────────────────────────────────────────────────
 
-const TRUST_FILE = path.join(homedir(), '.hq', 'trusted-publishers.json');
-
 describe('trusted-publishers utility (addTrusted / removeTrusted / listTrusted / isTrusted)', () => {
-  // Save and restore the trust file so tests don't affect the real install.
-  let originalContent: string | null = null;
-
-  before(async () => {
-    try {
-      originalContent = await readFile(TRUST_FILE, 'utf8');
-    } catch {
-      originalContent = null;
-    }
-    // Start with empty trust list
-    const { mkdir, writeFile } = await import('node:fs/promises');
-    await mkdir(path.dirname(TRUST_FILE), { recursive: true });
-    await writeFile(TRUST_FILE, JSON.stringify({ publishers: [] }, null, 2) + '\n', 'utf8');
-  });
-
-  after(async () => {
-    const { mkdir, writeFile, unlink } = await import('node:fs/promises');
-    if (originalContent !== null) {
-      await mkdir(path.dirname(TRUST_FILE), { recursive: true });
-      await writeFile(TRUST_FILE, originalContent, 'utf8');
-    } else {
-      try { await unlink(TRUST_FILE); } catch { /* already gone */ }
-    }
-  });
-
   test('listTrusted returns empty array initially', async () => {
     const result = await listTrusted();
     assert.deepEqual(result, []);
@@ -66,7 +58,7 @@ describe('trusted-publishers utility (addTrusted / removeTrusted / listTrusted /
   });
 
   test('isTrusted returns false for unknown publisher', async () => {
-    const result = await isTrusted('unknown-publisher');
+    const result = await isTrusted('__not_a_real_publisher_xyz__');
     assert.equal(result, false);
   });
 
@@ -99,14 +91,18 @@ describe('trusted-publishers utility (addTrusted / removeTrusted / listTrusted /
   });
 
   test('file created on first use when it does not exist', async () => {
-    // Delete the file to simulate first use
-    const { unlink } = await import('node:fs/promises');
-    try { await unlink(TRUST_FILE); } catch { /* already absent */ }
-
-    await addTrusted('first-publisher');
-    const content = await readFile(TRUST_FILE, 'utf8');
-    const parsed = JSON.parse(content) as { publishers: string[] };
-    assert.ok(parsed.publishers.includes('first-publisher'));
+    // Point to a fresh file that doesn't exist yet
+    const freshFile = path.join(tempDir, 'fresh-publishers.json');
+    const original = process.env['HQ_TRUST_FILE'];
+    process.env['HQ_TRUST_FILE'] = freshFile;
+    try {
+      await addTrusted('first-publisher');
+      const content = await readFile(freshFile, 'utf8');
+      const parsed = JSON.parse(content) as { publishers: string[] };
+      assert.ok(parsed.publishers.includes('first-publisher'));
+    } finally {
+      process.env['HQ_TRUST_FILE'] = original;
+    }
   });
 });
 
@@ -129,11 +125,9 @@ describe('registerTrustCommand', () => {
 
     const trustCmd = program.commands.find(c => c.name() === 'trust');
     assert.ok(trustCmd, 'trust command not found');
-    // Optional argument means no "required" — check usage string
-    const usage = trustCmd.usage();
     assert.ok(
-      usage.includes('[publisher]') || trustCmd.description().length > 0,
-      'Expected trust command to be registered with optional publisher'
+      trustCmd.description().length > 0,
+      'Expected trust command to have a description'
     );
   });
 

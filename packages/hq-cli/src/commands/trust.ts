@@ -16,6 +16,24 @@ import {
   removeTrusted,
 } from '../utils/trusted-publishers.js';
 
+// ─── Validation ───────────────────────────────────────────────────────────────
+
+/** Sentinel values that install/update fall back to when a package has no real author. */
+const SENTINEL_PUBLISHERS = new Set(['unknown', '']);
+
+function validatePublisher(publisher: string): void {
+  const trimmed = publisher.trim();
+  if (trimmed.length === 0 || SENTINEL_PUBLISHERS.has(trimmed.toLowerCase())) {
+    console.error(chalk.red(`Error: "${publisher}" is not a valid publisher name`));
+    console.error(
+      chalk.dim(
+        `  Trusting "${publisher}" would allow hooks from any package without a real author to run automatically.`
+      )
+    );
+    process.exit(1);
+  }
+}
+
 // ─── Core logic ───────────────────────────────────────────────────────────────
 
 async function runTrust(
@@ -58,6 +76,7 @@ async function runTrust(
     process.exit(1);
   }
 
+  validatePublisher(publisher);
   await addTrusted(publisher);
   console.log(
     `${chalk.green('✓')} Trusted ${chalk.bold(publisher)}\n` +
