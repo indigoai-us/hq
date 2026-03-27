@@ -209,10 +209,11 @@ export async function checkRegistryReachable(): Promise<CheckResult> {
     });
     clearTimeout(timer);
 
-    if (response.status < 500) {
+    if (response.status >= 200 && response.status < 300) {
       return { name: 'registry', status: 'pass', detail: `reachable (HTTP ${response.status})` };
     }
-    return { name: 'registry', status: 'warn', detail: `server error (HTTP ${response.status})` };
+    // 4xx/5xx or unexpected: registry URL may be misconfigured
+    return { name: 'registry', status: 'warn', detail: `unexpected response (HTTP ${response.status})` };
   } catch (err: unknown) {
     clearTimeout(timer);
     const isTimeout = err instanceof Error && err.name === 'AbortError';
