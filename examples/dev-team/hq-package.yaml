@@ -1,0 +1,37 @@
+name: dev-team
+type: worker-pack
+version: "1.0.0"
+minHQVersion: "9.0.0"
+description: "17 AI dev workers covering full-stack, mobile, infra, QA, security, and architecture"
+author: indigo
+repo: https://github.com/getindigo/hq-dev-team
+
+requires:
+  packages: []
+  services: []
+
+exposes:
+  workers:
+    - workers/architect/worker.yaml
+    - workers/backend-dev/worker.yaml
+    - workers/code-reviewer/worker.yaml
+    - workers/codex-coder/worker.yaml
+    - workers/codex-debugger/worker.yaml
+    - workers/codex-engine/worker.yaml
+    - workers/codex-reviewer/worker.yaml
+    - workers/context-manager/worker.yaml
+    - workers/database-dev/worker.yaml
+    - workers/frontend-dev/worker.yaml
+    - workers/gemini-coder/worker.yaml
+    - workers/gemini-reviewer/worker.yaml
+    - workers/infra-dev/worker.yaml
+    - workers/knowledge-curator/worker.yaml
+    - workers/motion-designer/worker.yaml
+    - workers/product-planner/worker.yaml
+    - workers/project-manager/worker.yaml
+    - workers/qa-tester/worker.yaml
+    - workers/reality-checker/worker.yaml
+    - workers/task-executor/worker.yaml
+  commands: []
+  skills: []
+  knowledge: []

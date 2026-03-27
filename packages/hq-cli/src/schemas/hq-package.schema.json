@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "hq-package.yaml",
+  "description": "Manifest schema for HQ packages — versioned bundles of workers, commands, skills, and knowledge installable via hq install.",
+  "type": "object",
+  "required": ["name", "type", "version", "description", "author", "exposes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Package slug — lowercase alphanumeric with hyphens. Used as the registry identifier and install target directory name.",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "description": "Package type. Controls install target routing for all exposes entries.",
+      "enum": ["worker-pack", "command-set", "skill-bundle", "knowledge-base", "company-template"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version string for this release.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "minHQVersion": {
+      "type": "string",
+      "description": "Minimum HQ version required to install this package. Installer aborts if installed HQ version is below this value.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short human-readable description of what this package provides.",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name or organization that created and maintains this package.",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "description": "Git repository URL for the package source. Used as offline fallback when the registry is unavailable.",
+      "pattern": "^(https?://|git@|ssh://).+"
+    },
+    "requires": {
+      "type": "object",
+      "description": "External dependencies this package needs at runtime.",
+      "additionalProperties": false,
+      "properties": {
+        "packages": {
+          "type": "array",
+          "description": "HQ package slugs this package depends on. Installed before this package.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
+          },
+          "uniqueItems": true
+        },
+        "services": {
+          "type": "array",
+          "description": "Service slugs required at runtime. Installer warns if not configured in the target HQ installation.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "exposes": {
+      "type": "object",
+      "description": "Declares what this package installs into the HQ workspace. At least one sub-array must be non-empty.",
+      "additionalProperties": false,
+      "properties": {
+        "workers": {
+          "type": "array",
+          "description": "Paths within the tarball to worker.yaml files to install.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "commands": {
+          "type": "array",
+          "description": "Paths within the tarball to command .md files to install.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "skills": {
+          "type": "array",
+          "description": "Paths within the tarball to skill .md files to install.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "knowledge": {
+          "type": "array",
+          "description": "Paths within the tarball to knowledge directories or files to install.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Shell scripts run at install lifecycle events. Each value is a path within the tarball to an executable shell script.",
+      "additionalProperties": false,
+      "properties": {
+        "on-install": {
+          "type": "string",
+          "description": "Path to shell script run after all files are installed.",
+          "minLength": 1
+        },
+        "on-update": {
+          "type": "string",
+          "description": "Path to shell script run after an existing installation is updated.",
+          "minLength": 1
+        },
+        "on-remove": {
+          "type": "string",
+          "description": "Path to shell script run before files are removed from the HQ workspace.",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
