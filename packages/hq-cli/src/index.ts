@@ -10,6 +10,8 @@ import { registerSyncCommand } from "./commands/sync.js";
 import { registerListCommand } from "./commands/list.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
+import { registerInstallCommand } from "./commands/install.js";
+import { registerRemoveCommand } from "./commands/remove.js";
 
 const program = new Command();
 
@@ -17,6 +19,10 @@ program
   .name("hq")
   .description("HQ management CLI — modules and cloud sync")
   .version("5.0.0");
+
+// Package management — top-level commands
+registerInstallCommand(program);
+registerRemoveCommand(program);
 
 // Module management subcommand group
 const modulesCmd = program
