@@ -17,6 +17,7 @@ import { registerPkgListCommand } from "./commands/pkg-list.js";
 import { registerPkgSearchCommand } from "./commands/pkg-search.js";
 import { registerLoginCommand } from "./commands/login.js";
 import { registerPublishCommand } from "./commands/publish.js";
+import { registerTrustCommand } from "./commands/trust.js";
 import { registerCoreStatusCommand } from "./commands/core-status.js";
 
 const program = new Command();
@@ -29,6 +30,7 @@ program
 // Package management — top-level commands
 registerLoginCommand(program);
 registerPublishCommand(program);
+registerTrustCommand(program);
 registerInstallCommand(program);
 registerRemoveCommand(program);
 registerPkgUpdateCommand(program);
