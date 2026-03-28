@@ -3,6 +3,17 @@
     "defaultMode": "plan"
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh consult-knowledge .claude/hooks/consult-knowledge.sh",
+            "timeout": 1200
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Glob",
@@ -85,6 +96,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh auto-reindex .claude/hooks/auto-reindex.sh",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -95,6 +116,22 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh auto-handoff-trigger .claude/hooks/auto-handoff-trigger.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh capture-learnings .claude/hooks/capture-learnings.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh report-issue-reminder .claude/hooks/report-issue-reminder.sh",
+            "timeout": 10
           }
         ]
       }
@@ -107,6 +144,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh observe-patterns .claude/hooks/observe-patterns.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh learn-reminder .claude/hooks/learn-reminder.sh",
+            "timeout": 10
           }
         ]
       }
