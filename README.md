@@ -31,12 +31,12 @@ claude
 Sync your HQ to the cloud for mobile access:
 
 ```bash
-npm install -g @{company}ai/hq-cli
+npm install -g @indigoai/hq-cli
 hq sync init        # Authenticate with {Product}AI
 hq sync start       # Start background sync
 ```
 
-Access your HQ from any device at [hq.{company}ai.com](https://hq.{company}ai.com).
+Access your HQ from any device at [hq.indigoai.com](https://hq.indigoai.com).
 
 ## Module Management
 
@@ -51,13 +51,13 @@ hq modules add <repo-url>  # Add external modules
 ## Architecture
 
 ```
-{company}ai/hq/
+indigoai/hq/
 ├── packages/
 │   ├── create-hq/     # npx create-hq installer
 │   ├── hq-cli/        # hq modules|sync management CLI
 │   └── hq-cloud/      # S3 sync engine
 ├── apps/
-│   └── web/           # PWA dashboard (hq.{company}ai.com)
+│   └── web/           # PWA dashboard (hq.indigoai.com)
 ├── infra/             # AWS infrastructure (SST)
 └── template/          # HQ template distributed to users
 ```
@@ -67,8 +67,8 @@ hq modules add <repo-url>  # Add external modules
 | Package | npm | Purpose |
 |---------|-----|---------|
 | `create-hq` | [![npm](https://img.shields.io/npm/v/create-hq)](https://www.npmjs.com/package/create-hq) | One-time installer |
-| `@{company}ai/hq-cli` | [![npm](https://img.shields.io/npm/v/@{company}ai/hq-cli)](https://www.npmjs.com/package/@{company}ai/hq-cli) | Ongoing management |
-| `@{company}ai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@{company}ai/hq-cloud)](https://www.npmjs.com/package/@{company}ai/hq-cloud) | Cloud sync engine |
+| `@indigoai/hq-cli` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cli)](https://www.npmjs.com/package/@indigoai/hq-cli) | Ongoing management |
+| `@indigoai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cloud)](https://www.npmjs.com/package/@indigoai/hq-cloud) | Cloud sync engine |
 
 ## License
 

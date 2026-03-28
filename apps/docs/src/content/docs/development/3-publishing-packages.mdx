@@ -9,7 +9,7 @@ Worker packs, command sets, and knowledge bases are published to the HQ registry
 
 ### Prerequisites
 
-- `hq` CLI installed (`npm i -g @{company}ai/hq-cli`)
+- `hq` CLI installed (`npm i -g @indigoai/hq-cli`)
 - An account at `admin.getindigo.ai`
 
 ### Workflow
@@ -59,17 +59,17 @@ The trusted publishers list is stored at `packages/trusted-publishers.json`.
 
 ## npm Organization
 
-All packages publish under the `@{company}ai` npm scope (except `create-hq` which is unscoped for `npx` convenience).
+All packages publish under the `@indigoai` npm scope (except `create-hq` which is unscoped for `npx` convenience).
 
 | Package | npm Name | Scoped |
 |---------|----------|--------|
 | packages/create-hq | create-hq | No |
-| packages/hq-cli | @{company}ai/hq-cli | Yes |
-| packages/hq-cloud | @{company}ai/hq-cloud | Yes |
+| packages/hq-cli | @indigoai/hq-cli | Yes |
+| packages/hq-cloud | @indigoai/hq-cloud | Yes |
 
 ## Prerequisites
 
-- npm account with publish access to `@{company}ai` org
+- npm account with publish access to `@indigoai` org
 - `NPM_TOKEN` secret set in GitHub repo settings
 - Two-factor authentication enabled on npm account
 

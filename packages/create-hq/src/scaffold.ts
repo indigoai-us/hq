@@ -50,7 +50,7 @@ function getTemplateDir(): string {
   }
 
   throw new Error(
-    "Could not find HQ template directory. This is a packaging error — please report at https://github.com/{company}ai-us/hq/issues"
+    "Could not find HQ template directory. This is a packaging error — please report at https://github.com/indigoai-us/hq/issues"
   );
 }
 
@@ -122,15 +122,15 @@ export async function scaffold(
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
-      "Install @{company}ai/hq-cli globally for module management?"
+      "Install @indigoai/hq-cli globally for module management?"
     );
     if (installCli) {
       try {
-        step("Installing @{company}ai/hq-cli...");
-        execSync("npm install -g @{company}ai/hq-cli", { stdio: "pipe" });
-        success("Installed @{company}ai/hq-cli");
+        step("Installing @indigoai/hq-cli...");
+        execSync("npm install -g @indigoai/hq-cli", { stdio: "pipe" });
+        success("Installed @indigoai/hq-cli");
       } catch {
-        warn("Failed to install @{company}ai/hq-cli — you can install it later with: npm install -g @{company}ai/hq-cli");
+        warn("Failed to install @indigoai/hq-cli — you can install it later with: npm install -g @indigoai/hq-cli");
       }
     }
   }
@@ -139,7 +139,7 @@ export async function scaffold(
   if (!options.skipSync) {
     console.log();
     const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.{company}ai.com)"
+      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
     );
     if (setupSync) {
       step("Cloud sync setup will be available after running /setup in Claude Code");

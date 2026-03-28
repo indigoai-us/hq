@@ -1,9 +1,9 @@
 ---
 title: hq-cloud
-description: Deep dive into @{company}ai/hq-cloud — the S3 sync engine that powers bidirectional file synchronization between a local HQ instance and {Product}AI cloud storage.
+description: Deep dive into @indigoai/hq-cloud — the S3 sync engine that powers bidirectional file synchronization between a local HQ instance and {Product}AI cloud storage.
 ---
 
-`@{company}ai/hq-cloud` is the most complex package in the HQ monorepo. It handles authentication with {Product}AI, bidirectional file synchronization to S3, background daemon management, file change detection, and conflict resolution via a local journal. The CLI delegates all sync operations to this package.
+`@indigoai/hq-cloud` is the most complex package in the HQ monorepo. It handles authentication with {Product}AI, bidirectional file synchronization to S3, background daemon management, file change detection, and conflict resolution via a local journal. The CLI delegates all sync operations to this package.
 
 ## Source Layout
 
@@ -134,13 +134,13 @@ interface DaemonState {
 
 ## Auth (auth.ts)
 
-Authentication uses an OAuth flow with `hq.{company}ai.com`. The flow mints a refresh token locally, which is then exchanged for temporary AWS STS credentials on demand.
+Authentication uses an OAuth flow with `hq.indigoai.com`. The flow mints a refresh token locally, which is then exchanged for temporary AWS STS credentials on demand.
 
 ### OAuth Flow
 
 ```
 ┌──────────┐     1. Open browser      ┌───────────────────┐
-│  hq CLI  │ ─────────────────────────▶│ hq.{company}ai.com/  │
+│  hq CLI  │ ─────────────────────────▶│ hq.indigoai.com/  │
 │          │                           │ auth?callback=...  │
 │          │                           └────────┬──────────┘
 │          │                                    │
@@ -157,7 +157,7 @@ Authentication uses an OAuth flow with `hq.{company}ai.com`. The flow mints a re
 ```
 
 1. `authenticate()` starts an HTTP server on `localhost:19847`.
-2. The user's browser opens to `https://hq.{company}ai.com/auth?callback=http://localhost:19847/callback`.
+2. The user's browser opens to `https://hq.indigoai.com/auth?callback=http://localhost:19847/callback`.
 3. After sign-in, {Product}AI redirects to the callback URL with query parameters: `token`, `refresh_token`, `user_id`, `bucket`, and `region`.
 4. The callback handler writes credentials to `~/.hq/credentials.json` with mode `0o600`, then closes the server.
 
@@ -167,7 +167,7 @@ The flow has a 5-minute timeout. If the browser does not complete authentication
 
 ```
 ┌──────────┐     POST /api/auth/refresh     ┌──────────────────┐
-│ hq-cloud │ ──────────────────────────────▶│ hq.{company}ai.com  │
+│ hq-cloud │ ──────────────────────────────▶│ hq.indigoai.com  │
 │          │     { refreshToken }            │                  │
 │          │                                 │  Cognito + STS   │
 │          │◀──────────────────────────────  │                  │

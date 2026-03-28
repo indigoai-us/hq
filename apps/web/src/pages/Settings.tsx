@@ -29,7 +29,7 @@ export function Settings() {
             <p>HQ v5.0.0</p>
             <p>
               <a
-                href="https://github.com/{company}ai-us/hq"
+                href="https://github.com/indigoai-us/hq"
                 className="underline hover:text-white"
                 target="_blank"
                 rel="noopener"

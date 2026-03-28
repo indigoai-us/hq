@@ -5,11 +5,11 @@ description: Long-term plans and ideas for HQ.
 
 ## Homebrew Tap
 
-**Idea**: `brew install {company}ai/tap/create-hq` as an alternative to npx.
+**Idea**: `brew install indigoai/tap/create-hq` as an alternative to npx.
 
 **Why**: Faster install, no Node.js dependency for the installer itself, native feel on macOS.
 
-**How**: Create a Homebrew tap repo (`{company}ai-us/homebrew-tap`) with a formula that downloads the compiled binary. Use `pkg` or `bun compile` to create a standalone executable from the TypeScript source.
+**How**: Create a Homebrew tap repo (`indigoai-us/homebrew-tap`) with a formula that downloads the compiled binary. Use `pkg` or `bun compile` to create a standalone executable from the TypeScript source.
 
 **Blocked by**: v5 launch (need stable npm packages first).
 
@@ -91,7 +91,7 @@ Workers are already just YAML + markdown files in git repos. The module system a
 # modules.yaml
 plugins:
   slack-notify:
-    repo: https://github.com/{company}ai-us/plugin-slack
+    repo: https://github.com/indigoai-us/plugin-slack
     config:
       webhook_url: $SLACK_WEBHOOK
 ```
@@ -109,7 +109,7 @@ Near-term CLI enhancements:
 
 ## Contributing Ideas
 
-Have an idea? Open an issue on [GitHub](https://github.com/{company}ai-us/hq/issues) with:
+Have an idea? Open an issue on [GitHub](https://github.com/indigoai-us/hq/issues) with:
 - **Problem**: What's missing or broken?
 - **Proposal**: How should it work?
 - **Scope**: Small fix or large feature?

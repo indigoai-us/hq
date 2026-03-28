@@ -1,6 +1,6 @@
 /**
- * @{company}ai/hq-cloud — public API
- * Used by @{company}ai/hq-cli to manage cloud sync
+ * @indigoai/hq-cloud — public API
+ * Used by @indigoai/hq-cli to manage cloud sync
  */
 
 import * as fs from "fs";
