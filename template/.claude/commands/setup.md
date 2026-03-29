@@ -171,6 +171,24 @@ Next steps:
 4. Run /search <topic> — find relevant knowledge in HQ
 ```
 
+## Phase 4: Update Checking (Optional)
+
+Ask the user: "Would you like to set up daily HQ update checks? This will automatically notify you when new HQ versions are available."
+
+**If yes:**
+
+Tell them to open **Claude Desktop → Settings → Scheduled Prompts** and add a new scheduled prompt with these values:
+
+- **Name:** HQ Update Check
+- **Schedule:** Daily at 9:00 AM (or their preferred time)
+- **Prompt text:** `bash ~/hq/scripts/check-hq-update.sh`
+
+Explain: "Once set up, Claude Desktop will run this check each morning and let you know if a new HQ release is available."
+
+**If no:**
+
+Acknowledge and note: "No problem — you can set this up later by running `/setup-update-check`."
+
 ## Rules
 
 - Run setup.sh first if dependencies aren't installed
