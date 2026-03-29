@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { createRequire } from "node:module";
 import { scaffold } from "./scaffold.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 const program = new Command();
 
 program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
-  .version("9.0.0")
+  .version(pkg.version)
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
   .option("--skip-cli", "don't install @{company}ai/hq-cli globally")

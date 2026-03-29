@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-export function banner(): void {
+export function banner(installerVersion?: string): void {
   console.log();
   console.log(chalk.bold.white("  ██   ██  ██████  "));
   console.log(chalk.bold.white("  ██   ██ ██    ██ "));
@@ -9,9 +9,8 @@ export function banner(): void {
   console.log(chalk.bold.white("  ██   ██  ██████  "));
   console.log(chalk.dim("              ▀▀   "));
   console.log();
-  console.log(
-    chalk.dim("  Personal OS for AI Workers") + chalk.dim("  v5.0.0")
-  );
+  const versionSuffix = installerVersion ? chalk.dim(`  v${installerVersion}`) : "";
+  console.log(chalk.dim("  Personal OS for AI Workers") + versionSuffix);
   console.log();
 }
 

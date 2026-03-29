@@ -1,11 +1,15 @@
 import * as path from "path";
 import * as fs from "fs-extra";
 import { createInterface } from "readline";
+import { createRequire } from "node:module";
 import { banner, success, warn, step, nextSteps } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
 import { execSync } from "child_process";
 import { fetchTemplate } from "./fetch-template.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 interface ScaffoldOptions {
   skipDeps?: boolean;
@@ -36,7 +40,7 @@ export async function scaffold(
   directory: string,
   options: ScaffoldOptions
 ): Promise<void> {
-  banner();
+  banner(pkg.version);
 
   // 1. Resolve target directory
   const targetDir = path.resolve(directory);
