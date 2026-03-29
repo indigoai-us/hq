@@ -156,6 +156,53 @@ Proceed with migration? [Y/n]
 
 ---
 
+## Phase 3.5: Governance Pre-Check
+
+### 3.5a. Run integrity check
+
+```bash
+bash scripts/core-integrity.sh --json
+```
+
+If `scripts/core-integrity.sh` doesn't exist (pre-governance HQ): skip with note `"Governance not initialized — skipping integrity pre-check."` and continue to Phase 4.
+
+Parse the JSON output. If `pass` is `false`:
+
+```
+⚠ Pre-existing kernel drift detected:
+{list of MODIFIED/MISSING files from results}
+
+These files have been modified since their last known-good state.
+The upgrade will replace locked files — your modifications may be lost.
+
+1. Continue anyway (modifications will be backed up)
+2. Run scripts/compute-checksums.sh first (accept current state as known-good)
+3. Abort
+```
+
+If user picks 2: run `bash scripts/compute-checksums.sh`, then re-run `bash scripts/core-integrity.sh --json` to confirm pass.
+If user picks 3: stop migration.
+
+If `pass` is `true`: `"✓ Kernel integrity check passed — all locked files unmodified."`
+
+### 3.5b. Version comparison
+
+If `scripts/core.yaml` exists locally, read `hqVersion` from it. Compare against the target version's `core.yaml` `hqVersion` (fetch from upstream):
+
+```bash
+gh api "repos/{your-username}/hq-starter-kit/contents/scripts/core.yaml?ref=v{TARGET_VERSION}" --jq '.content' | base64 -d
+```
+
+Parse `hqVersion` from the fetched content. Display:
+
+```
+Core governance: v{local_hqVersion} → v{target_hqVersion}
+```
+
+If `scripts/core.yaml` doesn't exist locally: skip with note `"No local core.yaml — governance will be initialized by upgrade."`.
+
+---
+
 ## Phase 4: Pre-flight
 
 **Skip entirely if `DRY_RUN=true`.**
@@ -200,10 +247,35 @@ Actions:
 
 ## Phase 5: Apply Migration
 
-Process in order: **new files → updated files → breaking changes → removals**.
+Process in order: **governance safety setup → new files → updated files → breaking changes → removals → governance post-check**.
 
 Track counters: `created=0, auto_updated=0, user_updated=0, skipped=0, deleted=0, failed=0`.
 Track list: `skipped_files=[]` (for summary).
+
+### 5.0 Governance Safety Setup
+
+**Before modifying ANY files:**
+
+Skip this step if `scripts/core.yaml` doesn't exist (pre-governance HQ).
+
+1. Create backup directory:
+```bash
+BACKUP_DIR=".claude/backups/$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+```
+
+2. Read `scripts/core.yaml` and extract all paths listed under `files:` where `protection: locked`. For each locked file that exists locally, copy it to the backup directory preserving relative path structure:
+```bash
+# For each locked path from core.yaml:
+mkdir -p "$BACKUP_DIR/$(dirname "$path")"
+cp "$path" "$BACKUP_DIR/$path"
+```
+
+3. Set bypass to allow modifying protected files: `export HQ_BYPASS_CORE_PROTECT=1`
+
+Report: `"Backed up {N} locked files to {BACKUP_DIR}"`
+
+If `DRY_RUN`: report `"Would backup {N} locked files"` but do not create backup or set bypass.
 
 ### 5a. New Files
 
@@ -241,16 +313,24 @@ For each path in `updated_files`:
 4. **Special handling for `.claude/CLAUDE.md`** → go to section 5b-CLAUDE below.
 5. **Special handling for `workers/registry.yaml`** → go to section 5b-REGISTRY below.
 6. **Special handling for `.claude/settings.json`** → go to section 5b-SETTINGS below.
-7. **Three-way merge for all other files:**
+7. **Reviewable file protection** — if path starts with `.claude/commands/` or `.claude/skills/`: NEVER auto-overwrite. Always show diff and ask via AskUserQuestion:
+   ```
+   {path} is a reviewable file (user-customizable).
+
+   1. Show diff (local vs upstream)
+   2. Skip (keep your version)
+   ```
+   If user views diff, then offer overwrite/skip. If `DRY_RUN`: report `"Would prompt: {path} (reviewable — never auto-overwritten)"`. Continue to next file.
+8. **Three-way merge for all other files:**
    - Fetch **base** content (from CURRENT version tag):
      ```bash
      gh api "repos/{your-username}/hq-starter-kit/contents/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
      ```
-   - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 7b.
-   - **7a. If local == base** (user never customized): auto-update.
+   - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 8b.
+   - **8a. If local == base** (user never customized): auto-update.
      - If `DRY_RUN`: `"Would auto-update: {path} (no local customizations)"`. Skip write.
      - Otherwise: write upstream content, increment `auto_updated`. `"✓ Auto-updated: {path}"`
-   - **7b. If local != base** (user customized): **CONFLICT**.
+   - **8b. If local != base** (user customized): **CONFLICT**.
      - Show unified diff of upstream changes (base → upstream).
      - Show note that local file has been customized from the base version.
      - Use AskUserQuestion:
@@ -389,6 +469,46 @@ For each path in `removed_files`:
 5. If no: note in summary.
 6. If `DRY_RUN`: report `"Would prompt to delete: {path}"`.
 
+### 5e. Governance Post-Check
+
+Skip this step if `scripts/core-integrity.sh` doesn't exist (pre-governance HQ) or if `DRY_RUN=true`.
+
+1. Unset bypass: `unset HQ_BYPASS_CORE_PROTECT`
+
+2. Regenerate checksums for the new file state:
+```bash
+bash scripts/compute-checksums.sh
+```
+
+3. Verify integrity:
+```bash
+bash scripts/core-integrity.sh --json
+```
+
+If `pass` is `false`:
+```
+⚠ Integrity check failed after upgrade!
+{list of failing files from results}
+
+1. Restore from backup ({BACKUP_DIR})
+2. Accept current state (run compute-checksums.sh to update)
+3. Investigate (show diffs)
+```
+
+If user picks 1 (restore):
+```bash
+# For each file in BACKUP_DIR: cp back to original location
+bash scripts/compute-checksums.sh
+bash scripts/core-integrity.sh
+```
+Report restore result.
+
+If user picks 2 (accept): run `bash scripts/compute-checksums.sh` again to lock in current state.
+
+If user picks 3 (investigate): for each failing file, show diff between backup and current version. Then re-prompt with options 1 and 2.
+
+If `pass` is `true`: `"✓ Post-upgrade integrity check passed."`
+
 ---
 
 ## Phase 6: Post-Migration
@@ -507,3 +627,7 @@ Run `/migrate` without --check to apply.
 - **CHANGELOG is version source of truth** — update it last to reflect successful migration
 - **Dry run must never write** — `--check` only reports, touches no files
 - **One file at a time** — never batch-overwrite without showing what changed
+- **Governance-aware** — runs integrity checks before and after upgrade, backs up locked files
+- **Bypass is scoped** — HQ_BYPASS_CORE_PROTECT=1 is set only during file modifications, unset immediately after
+- **Reviewable files preserved** — `.claude/commands/` and `.claude/skills/` files are never auto-overwritten by upgrade (same protection as CLAUDE.md, registry.yaml, and settings.json)
+- **Backup before replace** — all locked files from core.yaml are backed up to `.claude/backups/{timestamp}/` before any modifications

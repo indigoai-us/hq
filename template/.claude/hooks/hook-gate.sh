@@ -33,7 +33,7 @@ DISABLED_HOOKS="${HQ_DISABLED_HOOKS:-}"
 # Minimal: critical safety + knowledge consultation
 is_in_minimal_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder|protect-core)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder)
       return 0 ;;
     *) return 1 ;;
   esac
@@ -42,7 +42,7 @@ is_in_minimal_profile() {
 # Standard: minimal + checkpoint/handoff + reindex + learning
 is_in_standard_profile() {
   case "$1" in
-    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder|protect-core|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger|auto-reindex|learn-reminder|capture-learnings)
+    block-hq-glob|block-hq-grep|warn-cross-company-settings|detect-secrets|consult-knowledge|report-issue-reminder|auto-checkpoint-trigger|auto-handoff-trigger|observe-patterns|block-inline-story-impl|screenshot-resize-trigger|auto-reindex|learn-reminder|capture-learnings)
       return 0 ;;
     *) return 1 ;;
   esac
