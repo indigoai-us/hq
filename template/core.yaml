@@ -1,0 +1,31 @@
+version: 1
+hqVersion: "5.0.0"
+updatedAt: "2026-03-29T00:04:36Z"
+rules:
+  locked:
+    - .claude/CLAUDE.md
+    - .claude/settings.json
+    - .claude/hooks/
+    - .claude/policies/
+    - modules/
+    - companies/manifest.yaml
+    - companies/_template/
+    - workers/registry.yaml
+    - scripts/
+    - core.yaml
+  reviewable:
+    - workspace/
+    - .claude/commands/
+    - .claude/skills/
+  open:
+    - "**"
+checksums:
+  .claude/CLAUDE.md: 0b3628adc55b7d532d464fed88e286ff142cacdb25c490781a2568ddaec25fdd
+  .claude/hooks: 70b2714fff30759e3e9d1ddb379c309137c5cae4a0121a3303710dcbee3657ed
+  .claude/policies: c55604c8ff136417cab8976f39b99ea86791440fdfa66b255f43339d3c068ff8
+  .claude/settings.json: 038c7e9940a38968c0f9d8ec9237cd67944bc5f277db9d705583b65be1d9e820
+  companies/_template: 989a2d928de46bd5933d2f9d803bb9b5d58cb33dfb65d88f8b2fbd7f1b553d6a
+  companies/manifest.yaml: 61b9cc98d7f3f80361f59affc3f50dab3d2dfe2da332ee5d6d44e948ae75802c
+  modules: e3fa331511db4755448923c6b288dc69a0edf293c4871d3f95cc31fc29122189
+  scripts: 38a831322b7a8e9282b13db614a49a735cf48f12c689675299c1fe5314974546
+  workers/registry.yaml: a37d18776a4ae313e622ea06d3c34a2f1906c49f0aaf30807ba2ddfd06f06824
