@@ -95,15 +95,15 @@ export async function scaffold(
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
-      "Install @{company}ai/hq-cli globally for module management?"
+      "Install @indigoai-us/hq-cli globally for module management?"
     );
     if (installCli) {
       try {
-        step("Installing @{company}ai/hq-cli...");
-        execSync("npm install -g @{company}ai/hq-cli", { stdio: "pipe" });
-        success("Installed @{company}ai/hq-cli");
+        step("Installing @indigoai-us/hq-cli...");
+        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+        success("Installed @indigoai-us/hq-cli");
       } catch {
-        warn("Failed to install @{company}ai/hq-cli — you can install it later with: npm install -g @{company}ai/hq-cli");
+        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
       }
     }
   }
@@ -112,7 +112,7 @@ export async function scaffold(
   if (!options.skipSync) {
     console.log();
     const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.{company}ai.com)"
+      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
     );
     if (setupSync) {
       step("Cloud sync setup will be available after running /setup in Claude Code");
