@@ -86,12 +86,31 @@ export async function scaffold(
     warn("git not found — skipping git init");
   }
 
-  // 4. Check dependencies
+  // 4. Governance bootstrap — compute checksums and verify integrity
+  try {
+    const computeChecksumsScript = path.join(targetDir, "scripts", "compute-checksums.sh");
+    const coreIntegrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
+    const hasComputeChecksums = fs.existsSync(computeChecksumsScript);
+    const hasCoreIntegrity = fs.existsSync(coreIntegrityScript);
+    if (hasComputeChecksums && hasCoreIntegrity) {
+      execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
+      try {
+        execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
+        success("Kernel integrity verified — all locked files checksummed");
+      } catch {
+        warn("Kernel integrity check found issues — run scripts/core-integrity.sh to investigate");
+      }
+    }
+  } catch {
+    // governance bootstrap should never abort the scaffold
+  }
+
+  // 5. Check dependencies
   if (!options.skipDeps) {
     checkDeps();
   }
 
-  // 5. Install hq-cli
+  // 6. Install hq-cli
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
@@ -108,7 +127,7 @@ export async function scaffold(
     }
   }
 
-  // 6. Cloud sync setup
+  // 7. Cloud sync setup
   if (!options.skipSync) {
     console.log();
     const setupSync = await confirm(
@@ -120,7 +139,7 @@ export async function scaffold(
     }
   }
 
-  // 7. Index with qmd
+  // 8. Index with qmd
   try {
     execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
     success("Indexed HQ for search");
@@ -128,6 +147,6 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 8. Next steps
+  // 9. Next steps
   nextSteps(displayDir);
 }
