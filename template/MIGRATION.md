@@ -4,6 +4,38 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v9.1.0 (from v9.0.0)
+
+Core governance added. No breaking changes — all additions are backward-compatible.
+
+### New Files
+
+Copy these files from the template to your HQ:
+
+- `core.yaml` — kernel file classification manifest with SHA256 checksums
+- `scripts/compute-checksums.sh` — regenerate checksums after modifying locked files
+- `scripts/core-integrity.sh` — verify kernel integrity (run with `--json` for machine output)
+- `scripts/check-hq-update.sh` — check for newer HQ versions on GitHub
+- `.claude/commands/release.md` — `/release` command for version bumping
+- `.claude/commands/core-status.md` — `/core-status` command for integrity checks
+- `.claude/commands/setup-update-check.md` — `/setup-update-check` for daily update checking
+
+### Updated Files
+
+- `.claude/commands/update-hq.md` — now uses `indigoai-us/hq` repo, governance-aware upgrade flow
+- `.claude/hooks/hook-gate.sh` — no functional change (protect-core removed from profiles)
+- `modules/modules.yaml` — repo URLs updated to `indigoai-us/hq`
+- `README.md` — repo references updated
+
+### Migration Steps
+
+1. Copy new files listed above
+2. Run `bash scripts/compute-checksums.sh` to generate checksums for your locked files
+3. Verify with `bash scripts/core-integrity.sh` — all paths should show UNMODIFIED
+4. Update your `/update-hq` command to point to `indigoai-us/hq` instead of `hq-starter-kit`
+
+---
+
 ## Migrating to v9.0.0 (from v8.x)
 
 This is a major release. Three new directories are introduced.

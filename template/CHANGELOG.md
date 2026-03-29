@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.1.0 (2026-03-29)
+
+Core governance system — kernel file classification, integrity verification, and CI enforcement.
+
+### Added
+- **Core governance system** (`core.yaml`) — classifies HQ files as locked/reviewable/open with SHA256 checksums
+- **`scripts/compute-checksums.sh`** — regenerate checksums for all locked files
+- **`scripts/core-integrity.sh`** — verify kernel integrity against stored checksums (supports `--json`)
+- **`/release` command** — version bump, CHANGELOG, and MIGRATION updates for contributors
+- **`.github/workflows/core-governance.yml`** — CI workflow that blocks PRs modifying locked files without maintainer approval
+- `CHANGELOG.md` and `MIGRATION.md` added to `core.yaml` locked file list
+
+### Changed
+- **`/update-hq`** — uses `indigoai-us/hq` as source repo, `core.yaml` as primary version source, governance pre/post integrity checks with backup and restore
+- All repo references migrated from `coreyepstein/hq-starter-kit` to `indigoai-us/hq`
+- `modules.yaml`, `README.md`, policies updated with correct repo paths
+
+### Removed
+- `protect-core.sh` local edit-blocking hook — governance enforcement moved to CI/PR level
+
 ## v9.0.0 (2026-03-25)
 
 Major expansion: skills, policies, and infrastructure blueprints now included in the kit.
