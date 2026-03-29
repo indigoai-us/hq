@@ -66,7 +66,8 @@ export async function scaffold(
   }
 
   // 2. Fetch template from GitHub
-  stepStatus("Fetching HQ template from GitHub...", "running");
+  const fetchLabel = "Fetching HQ template from GitHub...";
+  stepStatus(fetchLabel, "running");
   let hqVersion = "";
   try {
     const { version } = await fetchTemplate(targetDir, options.tag);
@@ -81,15 +82,10 @@ export async function scaffold(
           .filter((f) => String(f).endsWith("worker.yaml")).length
       : 0;
 
-    stepStatus(
-      `Fetched HQ template ${version} (${commandCount} commands, ${workerCount} workers)`,
-      "done"
-    );
-
-    // Re-render banner with HQ template version now that we have it
-    banner(pkg.version, hqVersion);
+    stepStatus(fetchLabel, "done");
+    success(`HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
   } catch (err) {
-    stepStatus("Fetching HQ template from GitHub...", "failed");
+    stepStatus(fetchLabel, "failed");
     throw err;
   }
 

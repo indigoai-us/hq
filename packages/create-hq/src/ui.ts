@@ -119,16 +119,21 @@ export function step(msg: string): void {
 }
 
 export function nextSteps(dir: string): void {
-  const line = "─".repeat(46);
+  const W = 48;
+  const line = "─".repeat(W);
+  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - text.length));
+  const row = (text: string) =>
+    chalk.dim("  │") + pad(text, W) + chalk.dim("│");
+
   console.log();
   console.log(chalk.dim("  ┌" + line + "┐"));
-  console.log(chalk.dim("  │") + chalk.bold.white("  All done! Your HQ is ready.               ") + chalk.dim("│"));
+  console.log(row(chalk.bold.white("  All done! Your HQ is ready.")));
   console.log(chalk.dim("  ├" + line + "┤"));
-  console.log(chalk.dim("  │") + "                                              " + chalk.dim("│"));
-  console.log(chalk.dim("  │") + "    " + chalk.white(`cd ${dir}`) + " ".repeat(Math.max(0, 42 - dir.length)) + chalk.dim("│"));
-  console.log(chalk.dim("  │") + "    " + chalk.white("claude") + "                                     " + chalk.dim("│"));
-  console.log(chalk.dim("  │") + "    " + chalk.white("/setup") + chalk.dim("  ← personalize your HQ        ") + chalk.dim("│"));
-  console.log(chalk.dim("  │") + "                                              " + chalk.dim("│"));
+  console.log(row(""));
+  console.log(row(`    cd ${dir}`));
+  console.log(row("    claude"));
+  console.log(row("    /setup  " + chalk.dim("← personalize your HQ")));
+  console.log(row(""));
   console.log(chalk.dim("  └" + line + "┘"));
   console.log();
 }
