@@ -4,68 +4,38 @@ import ora, { type Ora } from "ora";
 // ─── ASCII Art Banner ────────────────────────────────────────────────────────
 
 export function banner(installerVersion?: string, hqVersion?: string): void {
-  // Pre-compose each line as a plain string, then colorize segments
-  // Building right-edge at column 68, building grows from spire down
-  const lines = [
-    "                                                              ▄      ",
-    "                                                             ▐█▌     ",
-    "                                                            ▐███▌    ",
-    "  ██   ██  ██████                                          ▐█████▌   ",
-    "  ██   ██ ██    ██   Personal OS                          ▐███████▌  ",
-    "  ███████ ██    ██   for AI Workers                      ▐█████████▌ ",
-    "  ██   ██ ██ ▀▀ ██                                      ▐█░█░█░█░█▌ ",
-    "  ██   ██  ██████    Build. Orchestrate. Ship.         ▐█░█░█░█░███▌",
-    "                                                      ▐██░█░█░█░████▌",
-    "  ────────────────────────────────────────────────────▐████████████████▌",
-  ];
+  const y = chalk.yellow;       // sun / rays
+  const yb = chalk.yellowBright; // bright sun core
+  const o = chalk.hex("#FF8C00"); // orange glow
+  const d = chalk.dim;
+  const w = chalk.bold.white;
 
   console.log();
-
-  for (const line of lines) {
-    // Find where the building starts (first ▐ or ▄)
-    const bldStart = line.search(/[▐▄]/);
-    // Find where the HQ letters end (the block chars)
-    const hqEnd = line.search(/██\s/) !== -1 ? line.indexOf("  ", line.lastIndexOf("██")) : -1;
-
-    if (bldStart === -1) {
-      // No building on this line — shouldn't happen with our data
-      console.log(chalk.dim(line));
-    } else {
-      const left = line.slice(0, bldStart);
-      const right = line.slice(bldStart);
-
-      // Within the left portion, colorize HQ logo (██ blocks) vs tagline text
-      // HQ logo chars: lines 3-7, columns 2-19
-      const hasLogo = /██/.test(left);
-      if (hasLogo) {
-        // Split at first run of spaces after the logo block
-        const logoMatch = left.match(/^(.*██[▀▄█ ]*██\s*)(.*)/);
-        if (logoMatch) {
-          const [, logo, tagline] = logoMatch;
-          console.log(chalk.bold.white(logo) + chalk.dim(tagline) + chalk.cyan(right));
-        } else {
-          console.log(chalk.bold.white(left) + chalk.cyan(right));
-        }
-      } else if (left.includes("──")) {
-        console.log(chalk.dim(left) + chalk.cyan(right));
-      } else {
-        console.log(chalk.dim(left) + chalk.cyan(right));
-      }
-    }
-  }
-
+  console.log(d("                        ") + y("·    ") + yb("·") + y("    ·"));
+  console.log(d("                    ") + y("·        ") + yb("✦") + y("        ·"));
+  console.log(d("                  ") + o("·    ·          ·    ·"));
+  console.log(d("               ") + o("─  ─  ─  ─  ─  ─  ─  ─  ─"));
+  console.log(d("           ") + y("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░"));
+  console.log(d("         ") + o("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░"));
+  console.log();
+  console.log(w("    ██   ██   ██████  ") + d("  Personal OS for AI Workers"));
+  console.log(w("    ██   ██  ██    ██"));
+  console.log(w("    ███████  ██    ██") + d("  Build. Orchestrate. Ship."));
+  console.log(w("    ██   ██  ██ ▄▄ ██"));
+  console.log(w("    ██   ██   ██████ "));
+  console.log(w("                 ▀▀  "));
   console.log();
 
   const parts: string[] = [];
   if (installerVersion) {
-    parts.push(chalk.dim(`create-hq v${installerVersion}`));
+    parts.push(d(`create-hq v${installerVersion}`));
   }
   if (hqVersion) {
     parts.push(chalk.cyan(`HQ template ${hqVersion}`));
   }
 
   if (parts.length > 0) {
-    console.log("  " + parts.join(chalk.dim("  ·  ")));
+    console.log("    " + parts.join(d("  ·  ")));
     console.log();
   }
 }
