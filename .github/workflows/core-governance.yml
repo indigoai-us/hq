@@ -1,0 +1,118 @@
+name: Core Governance Check
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-core-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Check for locked file modifications
+        id: check
+        run: |
+          # Get changed files in this PR
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+          # Read locked paths from core.yaml
+          CORE_YAML="template/core.yaml"
+          if [ ! -f "$CORE_YAML" ]; then
+            echo "core.yaml not found, skipping governance check"
+            echo "locked_files_changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LOCKED_PATHS=$(yq '.rules.locked[]' "$CORE_YAML")
+
+          # Check each changed file against locked paths
+          VIOLATIONS=""
+          while IFS= read -r changed_file; do
+            [ -z "$changed_file" ] && continue
+            # Strip template/ prefix since core.yaml paths are relative to template/
+            rel_file="${changed_file#template/}"
+
+            while IFS= read -r locked_path; do
+              [ -z "$locked_path" ] && continue
+              locked_clean="${locked_path%/}"
+
+              # Exact match or inside locked directory
+              if [ "$rel_file" = "$locked_clean" ] || [[ "$rel_file" == "$locked_clean/"* ]]; then
+                VIOLATIONS="${VIOLATIONS}- \`${changed_file}\` (locked path: \`${locked_path}\`)\n"
+                break
+              fi
+            done <<< "$LOCKED_PATHS"
+          done <<< "$CHANGED_FILES"
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "locked_files_changed=true" >> $GITHUB_OUTPUT
+            # Write violations to file for the comment step
+            printf "%b" "$VIOLATIONS" > /tmp/violations.txt
+          else
+            echo "locked_files_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run integrity check
+        id: integrity
+        if: steps.check.outputs.locked_files_changed == 'true'
+        run: |
+          cd template
+          chmod +x scripts/core-integrity.sh scripts/compute-checksums.sh
+          if bash scripts/core-integrity.sh --json > /tmp/integrity.json 2>&1; then
+            echo "integrity_pass=true" >> $GITHUB_OUTPUT
+          else
+            echo "integrity_pass=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post PR review
+        if: steps.check.outputs.locked_files_changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const violations = fs.readFileSync('/tmp/violations.txt', 'utf8').trim();
+            const integrityPass = '${{ steps.integrity.outputs.integrity_pass }}' === 'true';
+
+            let body = `## Core Governance Review Required\n\n`;
+            body += `These files are part of the HQ kernel. Changes require explicit maintainer approval.\n\n`;
+            body += `### Modified locked files\n${violations}\n\n`;
+
+            if (!integrityPass) {
+              let integrityJson = '';
+              try { integrityJson = fs.readFileSync('/tmp/integrity.json', 'utf8'); } catch(e) {}
+              body += `### Integrity check failed\n`;
+              body += `Checksums are stale. Run \`scripts/compute-checksums.sh\` to update core.yaml after modifying locked files.\n\n`;
+              if (integrityJson) {
+                body += `<details><summary>Integrity report</summary>\n\n\`\`\`json\n${integrityJson}\n\`\`\`\n</details>\n\n`;
+              }
+            } else {
+              body += `### Integrity check passed\nChecksums are up to date.\n\n`;
+            }
+
+            body += `### Required action\n`;
+            body += `A maintainer must review and approve these changes before merge.\n`;
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: body,
+              event: 'REQUEST_CHANGES'
+            });
+
+      - name: Fail if locked files changed
+        if: steps.check.outputs.locked_files_changed == 'true'
+        run: |
+          echo "::error::Locked kernel files modified — maintainer approval required"
+          exit 1
