@@ -88,6 +88,20 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
+## Contacts (CRM)
+
+Global people directory at `contacts/`. One YAML file per person (`contacts/{slug}.yaml`). Contacts are **not** company-scoped — a person is global, with company-specific context nested under a `companies:` key in their file.
+
+**Commands:** `/contact` (add, show, edit, note, search, list), `/who` (quick lookup)
+**Template:** `contacts/_example.yaml`
+**Used by:** `/slack` (Slack user ID resolution), `/imessage` (phone lookup), Linear integration (member ID lookup)
+
+**Key fields:** `name`, `slug`, `handles` (email, phone, github), `companies.{co}` (slack, linear, role, context), `tags`, `notes` (append-only log)
+
+**Agent behavior:** When the agent learns something useful about a person during a session (communication preferences, expertise, role changes), it should add a note via `/contact note`. When resolving a service handle (Slack, Linear), check contacts first before API lookups, and cache the result back to the contact file.
+
+**Knowledge:** `knowledge/public/hq-core/contacts-crm.md`
+
 ## Companies
 
 {company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
