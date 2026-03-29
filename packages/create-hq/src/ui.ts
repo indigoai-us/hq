@@ -4,26 +4,26 @@ import ora, { type Ora } from "ora";
 // ─── ASCII Art Banner ────────────────────────────────────────────────────────
 
 export function banner(installerVersion?: string, hqVersion?: string): void {
-  const y = chalk.yellow;       // sun / rays
-  const yb = chalk.yellowBright; // bright sun core
-  const o = chalk.hex("#FF8C00"); // orange glow
   const d = chalk.dim;
   const w = chalk.bold.white;
+  const c = chalk.white; // city
 
   console.log();
-  console.log(d("                        ") + y("·    ") + yb("·") + y("    ·"));
-  console.log(d("                    ") + y("·        ") + yb("✦") + y("        ·"));
-  console.log(d("                  ") + o("·    ·          ·    ·"));
-  console.log(d("               ") + o("─  ─  ─  ─  ─  ─  ─  ─  ─"));
-  console.log(d("           ") + y("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░"));
-  console.log(d("         ") + o("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░"));
+  console.log(c("                          ^"));
+  console.log(c("             _______     ^^^"));
+  console.log(c("            |xxxxxxx|  _^^^^^_"));
+  console.log(c("            |xxxxxxx| | [][]  |"));
+  console.log(c("         ______xxxxx| |[][][] |"));
+  console.log(c("        |++++++|xxxx| | [][][]|") + w("      ██   ██   ██████"));
+  console.log(c("        |++++++|xxxx| |[][][] |") + w("      ██   ██  ██    ██"));
+  console.log(c("        |++++++|_________ [][]|") + w("      ███████  ██    ██"));
+  console.log(c("        |++++++|=|=|=|=|=| [] |") + w("      ██   ██  ██ ▄▄ ██"));
+  console.log(c("        |++++++|=|=|=|=|=|[][]|") + w("      ██   ██   ██████"));
+  console.log(c("________|++HH++|  _HHHH__|    |________") + d("                ▀▀"));
+  console.log(c("      _______________   ______________      ______________"));
+  console.log(c("_____________  ___________    __________________    ____________"));
   console.log();
-  console.log(w("    ██   ██   ██████  ") + d("  Personal OS for AI Workers"));
-  console.log(w("    ██   ██  ██    ██"));
-  console.log(w("    ███████  ██    ██") + d("  Build. Orchestrate. Ship."));
-  console.log(w("    ██   ██  ██ ▄▄ ██"));
-  console.log(w("    ██   ██   ██████ "));
-  console.log(w("                 ▀▀  "));
+  console.log(d("  Personal OS for AI Workers"));
   console.log();
 
   const parts: string[] = [];
@@ -35,7 +35,7 @@ export function banner(installerVersion?: string, hqVersion?: string): void {
   }
 
   if (parts.length > 0) {
-    console.log("    " + parts.join(d("  ·  ")));
+    console.log("  " + parts.join(d("  ·  ")));
     console.log();
   }
 }
