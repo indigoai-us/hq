@@ -5,6 +5,12 @@
 Core governance system — kernel file classification, integrity verification, and CI enforcement.
 
 ### Added
+- **Contacts CRM** (`contacts/`) — global people directory with one YAML file per person, company-specific context nested under `companies:` key
+- **`/contact` command** — add, show, edit, note, search, list contacts
+- **`/who` command** — quick person lookup across contacts
+- **CRM skill** (`.claude/skills/crm/`) — progressive enrichment, service handle caching
+- **`contacts/_example.yaml`** — contact file template
+- **`knowledge/hq-core/contacts-crm.md`** — CRM knowledge base
 - **Core governance system** (`core.yaml`) — classifies HQ files as locked/reviewable/open with SHA256 checksums
 - **`scripts/compute-checksums.sh`** — regenerate checksums for all locked files
 - **`scripts/core-integrity.sh`** — verify kernel integrity against stored checksums (supports `--json`)

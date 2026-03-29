@@ -6,12 +6,20 @@ Instructions for updating existing HQ installations to new versions.
 
 ## Migrating to v9.1.0 (from v9.0.0)
 
-Core governance added. No breaking changes — all additions are backward-compatible.
+Core governance and contacts CRM added. No breaking changes — all additions are backward-compatible.
 
 ### New Files
 
 Copy these files from the template to your HQ:
 
+**Contacts CRM:**
+- `contacts/_example.yaml` — contact file template
+- `.claude/commands/contact.md` — `/contact` command (add, show, edit, note, search, list)
+- `.claude/commands/who.md` — `/who` quick lookup command
+- `.claude/skills/crm/SKILL.md` — CRM skill for progressive contact enrichment
+- `knowledge/hq-core/contacts-crm.md` — CRM knowledge base
+
+**Core Governance:**
 - `core.yaml` — kernel file classification manifest with SHA256 checksums
 - `scripts/compute-checksums.sh` — regenerate checksums after modifying locked files
 - `scripts/core-integrity.sh` — verify kernel integrity (run with `--json` for machine output)
