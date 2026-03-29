@@ -4,16 +4,14 @@ import { createInterface } from "readline";
 import { banner, success, warn, step, nextSteps } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
-import { fileURLToPath } from "url";
 import { execSync } from "child_process";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { fetchTemplate } from "./fetch-template.js";
 
 interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
   skipSync?: boolean;
+  tag?: string;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -32,26 +30,6 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   const answer = await prompt(`${question} (${hint})`);
   if (!answer) return defaultYes;
   return answer.toLowerCase().startsWith("y");
-}
-
-function getTemplateDir(): string {
-  // In the npm package, template is at ../../template relative to dist/
-  // In dev, it's at ../../../template relative to src/
-  const candidates = [
-    path.resolve(__dirname, "..", "..", "template"),
-    path.resolve(__dirname, "..", "template"),
-    path.resolve(__dirname, "..", "..", "..", "template"),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, ".claude"))) {
-      return candidate;
-    }
-  }
-
-  throw new Error(
-    "Could not find HQ template directory. This is a packaging error — please report at https://github.com/{company}ai-us/hq/issues"
-  );
 }
 
 export async function scaffold(
@@ -81,20 +59,11 @@ export async function scaffold(
     }
   }
 
-  // 2. Copy template
-  step("Creating HQ...");
-  const templateDir = getTemplateDir();
+  // 2. Fetch template from GitHub
+  step("Fetching HQ template from GitHub...");
+  const { version } = await fetchTemplate(targetDir, options.tag);
 
-  await fs.copy(templateDir, targetDir, {
-    filter: (src) => {
-      const rel = path.relative(templateDir, src);
-      // Skip git internals and node_modules
-      if (rel.includes(".git/") || rel.includes("node_modules/")) return false;
-      return true;
-    },
-  });
-
-  // Count what we copied
+  // Count what we fetched
   const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
     ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
     : 0;
@@ -103,7 +72,7 @@ export async function scaffold(
         .filter((f) => String(f).endsWith("worker.yaml")).length
     : 0;
 
-  success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
+  success(`Fetched HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
 
   // 3. Git init
   if (hasGit()) {
