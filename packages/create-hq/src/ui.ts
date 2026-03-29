@@ -3,33 +3,55 @@ import ora, { type Ora } from "ora";
 
 // ─── ASCII Art Banner ────────────────────────────────────────────────────────
 
-const WIDE_ART = `
-  ╔══════════════════════════════════════════════════════════════════════════╗
-  ║                                                                          ║
-  ║   ██   ██  ██████      Personal OS for AI Workers                       ║
-  ║   ██   ██ ██    ██                                                       ║
-  ║   ███████ ██    ██     ┌─────────────────────────────────────────────┐  ║
-  ║   ██   ██ ██ ▄▄ ██     │  █▀█ █▀▀ █▀█ █▀ █▀█ █▄ █ ▄▀█ █     █▀█ █▀  │  ║
-  ║   ██   ██  ██████      │  █▀▀ ██▄ █▀▄ ▄█ █▄█ █ ▀█ █▀█ █▄▄   █▄█ ▄█  │  ║
-  ║              ▀▀        └─────────────────────────────────────────────┘  ║
-  ║                                                                          ║
-  ╚══════════════════════════════════════════════════════════════════════════╝`;
-
-const COMPACT_ART = `
-  ┌─────────────────────────────┐
-  │  ██   ██  ██████            │
-  │  ███████ ██    ██  HQ       │
-  │  ██   ██  ██████            │
-  └─────────────────────────────┘`;
-
 export function banner(installerVersion?: string, hqVersion?: string): void {
-  const cols = process.stdout.columns ?? 80;
-  const isWide = cols >= 80;
+  // Pre-compose each line as a plain string, then colorize segments
+  // Building right-edge at column 68, building grows from spire down
+  const lines = [
+    "                                                              ▄      ",
+    "                                                             ▐█▌     ",
+    "                                                            ▐███▌    ",
+    "  ██   ██  ██████                                          ▐█████▌   ",
+    "  ██   ██ ██    ██   Personal OS                          ▐███████▌  ",
+    "  ███████ ██    ██   for AI Workers                      ▐█████████▌ ",
+    "  ██   ██ ██ ▀▀ ██                                      ▐█░█░█░█░█▌ ",
+    "  ██   ██  ██████    Build. Orchestrate. Ship.         ▐█░█░█░█░███▌",
+    "                                                      ▐██░█░█░█░████▌",
+    "  ────────────────────────────────────────────────────▐████████████████▌",
+  ];
 
-  if (isWide) {
-    console.log(chalk.bold.cyan(WIDE_ART));
-  } else {
-    console.log(chalk.bold.cyan(COMPACT_ART));
+  console.log();
+
+  for (const line of lines) {
+    // Find where the building starts (first ▐ or ▄)
+    const bldStart = line.search(/[▐▄]/);
+    // Find where the HQ letters end (the block chars)
+    const hqEnd = line.search(/██\s/) !== -1 ? line.indexOf("  ", line.lastIndexOf("██")) : -1;
+
+    if (bldStart === -1) {
+      // No building on this line — shouldn't happen with our data
+      console.log(chalk.dim(line));
+    } else {
+      const left = line.slice(0, bldStart);
+      const right = line.slice(bldStart);
+
+      // Within the left portion, colorize HQ logo (██ blocks) vs tagline text
+      // HQ logo chars: lines 3-7, columns 2-19
+      const hasLogo = /██/.test(left);
+      if (hasLogo) {
+        // Split at first run of spaces after the logo block
+        const logoMatch = left.match(/^(.*██[▀▄█ ]*██\s*)(.*)/);
+        if (logoMatch) {
+          const [, logo, tagline] = logoMatch;
+          console.log(chalk.bold.white(logo) + chalk.dim(tagline) + chalk.cyan(right));
+        } else {
+          console.log(chalk.bold.white(left) + chalk.cyan(right));
+        }
+      } else if (left.includes("──")) {
+        console.log(chalk.dim(left) + chalk.cyan(right));
+      } else {
+        console.log(chalk.dim(left) + chalk.cyan(right));
+      }
+    }
   }
 
   console.log();
@@ -44,8 +66,8 @@ export function banner(installerVersion?: string, hqVersion?: string): void {
 
   if (parts.length > 0) {
     console.log("  " + parts.join(chalk.dim("  ·  ")));
+    console.log();
   }
-  console.log();
 }
 
 // ─── Step Status Tracking ────────────────────────────────────────────────────
