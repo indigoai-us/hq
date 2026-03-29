@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { createInterface } from "readline";
 import { createRequire } from "node:module";
 import { banner, success, warn, step, nextSteps, stepStatus } from "./ui.js";

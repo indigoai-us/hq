@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 /**
  * Detect whether cloud sync has already been configured for this HQ directory.
