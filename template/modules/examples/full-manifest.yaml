@@ -9,7 +9,7 @@ modules:
   # Official HQ updates - recommended for all users
   # =============================================================================
   - name: hq-core
-    repo: https://github.com/{your-name}/hq-starter-kit.git
+    repo: https://github.com/indigoai-us/hq.git
     branch: main
     strategy: merge
     access: public

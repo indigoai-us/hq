@@ -1,5 +1,5 @@
 ---
-description: Upgrade HQ from the latest hq-starter-kit release
+description: Upgrade HQ from the latest release from indigoai-us/hq
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--check | --from v{X.Y.Z} | v{target}]
 visibility: public
@@ -7,7 +7,7 @@ visibility: public
 
 # /update-hq - HQ Upgrade
 
-Upgrade your HQ installation from the latest hq-starter-kit release on GitHub.
+Upgrade your HQ installation from the latest release from indigoai-us/hq on GitHub.
 
 **User's input:** $ARGUMENTS
 
@@ -44,25 +44,24 @@ If not authenticated: hard stop with `"Run: gh auth login"`.
 
 ### 1b. Detect version
 
-If `OVERRIDE_VERSION` is set, use it. Otherwise:
+If `OVERRIDE_VERSION` is set, use it. Otherwise, detect in this order:
 
-1. Read `CHANGELOG.md` from HQ root.
-2. Scan for first heading matching `## v{X.Y.Z}` (regex: `/^## v(\d+\.\d+\.\d+)/`).
-3. If found → `CURRENT_VERSION={match}`.
-4. If CHANGELOG.md missing or no match, use structural markers:
+1. Read `core.yaml` from HQ root. If it exists and contains `hqVersion:` field → `CURRENT_VERSION={value}`. Note: `"(from core.yaml)"`.
+2. If `core.yaml` missing or no `hqVersion` field: read `CHANGELOG.md` from HQ root. Scan for first heading matching `## v{X.Y.Z}` (regex: `/^## v(\d+\.\d+\.\d+)/`). If found → `CURRENT_VERSION={match}`. Note: `"(from CHANGELOG.md)"`.
+3. If CHANGELOG.md also missing or no match, use structural markers:
    - `workers/dev-team/codex-*` dirs exist → `>= v5.3.0`
    - `workers/sample-worker/` exists → `>= v5.0.0`
    - `settings/pure-ralph.json` exists → `>= v3.0.0`
    - `workspace/content-ideas/` exists → `>= v2.0.0`
    - None → `unknown`
-5. If `unknown`: ask user with AskUserQuestion — cannot proceed without a baseline.
+4. If `unknown`: ask user with AskUserQuestion — cannot proceed without a baseline.
 
 Display:
 ```
 Current HQ version: v{CURRENT_VERSION}
 ```
 
-If structural fallback was used, note: `"(detected via structural markers — no CHANGELOG.md found)"`
+If structural fallback was used, note: `"(detected via structural markers — no core.yaml or CHANGELOG.md found)"`
 
 ---
 
@@ -71,12 +70,12 @@ If structural fallback was used, note: `"(detected via structural markers — no
 If `TARGET_OVERRIDE` is set, use it. Otherwise:
 
 ```bash
-gh api repos/{your-username}/hq-starter-kit/releases/latest --jq '.tag_name' 2>/dev/null
+gh api repos/indigoai-us/hq/releases/latest --jq '.tag_name' 2>/dev/null
 ```
 
 If that fails (no releases):
 ```bash
-gh api repos/{your-username}/hq-starter-kit/tags --jq '.[0].name' 2>/dev/null
+gh api repos/indigoai-us/hq/tags --jq '.[0].name' 2>/dev/null
 ```
 
 Set `TARGET_VERSION` from result (strip leading `v` for comparison, keep for display).
@@ -95,7 +94,7 @@ Stop.
 
 Fetch CHANGELOG.md from target:
 ```bash
-gh api repos/{your-username}/hq-starter-kit/contents/CHANGELOG.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
+gh api repos/indigoai-us/hq/contents/CHANGELOG.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
 ```
 
 Extract all version headings (`## v{X.Y.Z}`) between CURRENT and TARGET. Display:
@@ -109,10 +108,16 @@ Upgrade path: v{CURRENT} → v{intermediate1} → ... → v{TARGET}
 
 Fetch MIGRATION.md from target:
 ```bash
-gh api repos/{your-username}/hq-starter-kit/contents/MIGRATION.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
+gh api repos/indigoai-us/hq/contents/MIGRATION.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
 ```
 
-### Parse sections
+If the fetch fails (404, no MIGRATION.md in this version):
+- Warn: `"MIGRATION.md not found in v{TARGET_VERSION} — migration guide unavailable."`
+- Skip all migration data parsing below.
+- Fall back to **direct template comparison mode**: fetch the repo's file tree at TARGET tag, compare every template file against local, and present updates/new files/removals based on file presence and content diff (no categorization by migration section).
+- Continue to Phase 3.5 (governance pre-check) after presenting the file list.
+
+### Parse sections (when MIGRATION.md is available)
 
 Collect every `## Migrating to v{X}` section where X is between CURRENT (exclusive) and TARGET (inclusive).
 
@@ -187,10 +192,10 @@ If `pass` is `true`: `"✓ Kernel integrity check passed — all locked files un
 
 ### 3.5b. Version comparison
 
-If `scripts/core.yaml` exists locally, read `hqVersion` from it. Compare against the target version's `core.yaml` `hqVersion` (fetch from upstream):
+If `core.yaml` exists locally (at HQ root), read `hqVersion` from it. Compare against the target version's `core.yaml` `hqVersion` (fetch from upstream):
 
 ```bash
-gh api "repos/{your-username}/hq-starter-kit/contents/scripts/core.yaml?ref=v{TARGET_VERSION}" --jq '.content' | base64 -d
+gh api "repos/indigoai-us/hq/contents/core.yaml?ref=v{TARGET_VERSION}" --jq '.content' | base64 -d
 ```
 
 Parse `hqVersion` from the fetched content. Display:
@@ -199,7 +204,7 @@ Parse `hqVersion` from the fetched content. Display:
 Core governance: v{local_hqVersion} → v{target_hqVersion}
 ```
 
-If `scripts/core.yaml` doesn't exist locally: skip with note `"No local core.yaml — governance will be initialized by upgrade."`.
+If `core.yaml` doesn't exist locally: skip with note `"No local core.yaml — governance will be initialized by upgrade."`.
 
 ---
 
@@ -256,7 +261,7 @@ Track list: `skipped_files=[]` (for summary).
 
 **Before modifying ANY files:**
 
-Skip this step if `scripts/core.yaml` doesn't exist (pre-governance HQ).
+Skip this step if `core.yaml` doesn't exist at HQ root (pre-governance HQ).
 
 1. Create backup directory:
 ```bash
@@ -264,14 +269,12 @@ BACKUP_DIR=".claude/backups/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 ```
 
-2. Read `scripts/core.yaml` and extract all paths listed under `files:` where `protection: locked`. For each locked file that exists locally, copy it to the backup directory preserving relative path structure:
+2. Read `core.yaml` and extract all paths listed under `files:` where `protection: locked`. For each locked file that exists locally, copy it to the backup directory preserving relative path structure:
 ```bash
 # For each locked path from core.yaml:
 mkdir -p "$BACKUP_DIR/$(dirname "$path")"
 cp "$path" "$BACKUP_DIR/$path"
 ```
-
-3. Set bypass to allow modifying protected files: `export HQ_BYPASS_CORE_PROTECT=1`
 
 Report: `"Backed up {N} locked files to {BACKUP_DIR}"`
 
@@ -286,12 +289,12 @@ For each path in `new_files`:
 3. If not exists:
    - For directories: list contents first:
      ```bash
-     gh api "repos/{your-username}/hq-starter-kit/contents/{dir_path}?ref=v{TARGET}" --jq '.[].path'
+     gh api "repos/indigoai-us/hq/contents/{dir_path}?ref=v{TARGET}" --jq '.[].path'
      ```
      Then process each file in the directory.
    - Fetch content:
      ```bash
-     gh api "repos/{your-username}/hq-starter-kit/contents/{path}?ref=v{TARGET}" --jq '.content' | base64 -d
+     gh api "repos/indigoai-us/hq/contents/{path}?ref=v{TARGET}" --jq '.content' | base64 -d
      ```
    - If `DRY_RUN`: report `"Would create: {path}"`. Do not write.
    - Otherwise: create parent dirs (`mkdir -p`), write file, increment `created`.
@@ -324,7 +327,7 @@ For each path in `updated_files`:
 8. **Three-way merge for all other files:**
    - Fetch **base** content (from CURRENT version tag):
      ```bash
-     gh api "repos/{your-username}/hq-starter-kit/contents/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
+     gh api "repos/indigoai-us/hq/contents/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
      ```
    - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 8b.
    - **8a. If local == base** (user never customized): auto-update.
@@ -473,14 +476,12 @@ For each path in `removed_files`:
 
 Skip this step if `scripts/core-integrity.sh` doesn't exist (pre-governance HQ) or if `DRY_RUN=true`.
 
-1. Unset bypass: `unset HQ_BYPASS_CORE_PROTECT`
-
-2. Regenerate checksums for the new file state:
+1. Regenerate checksums for the new file state:
 ```bash
 bash scripts/compute-checksums.sh
 ```
 
-3. Verify integrity:
+2. Verify integrity:
 ```bash
 bash scripts/core-integrity.sh --json
 ```
@@ -628,6 +629,5 @@ Run `/migrate` without --check to apply.
 - **Dry run must never write** — `--check` only reports, touches no files
 - **One file at a time** — never batch-overwrite without showing what changed
 - **Governance-aware** — runs integrity checks before and after upgrade, backs up locked files
-- **Bypass is scoped** — HQ_BYPASS_CORE_PROTECT=1 is set only during file modifications, unset immediately after
 - **Reviewable files preserved** — `.claude/commands/` and `.claude/skills/` files are never auto-overwritten by upgrade (same protection as CLAUDE.md, registry.yaml, and settings.json)
 - **Backup before replace** — all locked files from core.yaml are backed up to `.claude/backups/{timestamp}/` before any modifications
