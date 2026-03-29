@@ -15,7 +15,7 @@ program
   .version(pkg.version)
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
-  .option("--skip-cli", "don't install @{company}ai/hq-cli globally")
+  .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .action(async (directory: string, options) => {
