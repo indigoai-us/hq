@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { createRequire } from "node:module";
 import { scaffold } from "./scaffold.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 const program = new Command();
 
 program
   .name("create-hq")
   .description("Create a new HQ — Personal OS for AI Workers")
-  .version("9.0.0")
+  .version(pkg.version)
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")
-  .option("--skip-cli", "don't install @{company}ai/hq-cli globally")
+  .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
+  .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .action(async (directory: string, options) => {
     try {
       await scaffold(directory, options);

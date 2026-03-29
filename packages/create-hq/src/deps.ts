@@ -28,6 +28,12 @@ const deps: Dep[] = [
     installHint: "npm install -g @tobilu/qmd",
   },
   {
+    name: "yq",
+    command: "yq --version",
+    required: true,
+    installHint: "brew install yq",
+  },
+  {
     name: "gh CLI",
     command: "gh --version",
     required: false,

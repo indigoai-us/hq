@@ -1,19 +1,22 @@
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { createInterface } from "readline";
-import { banner, success, warn, step, nextSteps } from "./ui.js";
+import { createRequire } from "node:module";
+import { banner, success, warn, step, nextSteps, stepStatus } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
-import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import { fetchTemplate } from "./fetch-template.js";
+import { detectExistingSync } from "./cloud-sync.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
   skipSync?: boolean;
+  tag?: string;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -34,31 +37,12 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   return answer.toLowerCase().startsWith("y");
 }
 
-function getTemplateDir(): string {
-  // In the npm package, template is at ../../template relative to dist/
-  // In dev, it's at ../../../template relative to src/
-  const candidates = [
-    path.resolve(__dirname, "..", "..", "template"),
-    path.resolve(__dirname, "..", "template"),
-    path.resolve(__dirname, "..", "..", "..", "template"),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, ".claude"))) {
-      return candidate;
-    }
-  }
-
-  throw new Error(
-    "Could not find HQ template directory. This is a packaging error — please report at https://github.com/{company}ai-us/hq/issues"
-  );
-}
-
 export async function scaffold(
   directory: string,
   options: ScaffoldOptions
 ): Promise<void> {
-  banner();
+  // Show banner with installer version; hqVersion will be added after template fetch
+  banner(pkg.version);
 
   // 1. Resolve target directory
   const targetDir = path.resolve(directory);
@@ -81,65 +65,105 @@ export async function scaffold(
     }
   }
 
-  // 2. Copy template
-  step("Creating HQ...");
-  const templateDir = getTemplateDir();
+  // 2. Fetch template from GitHub
+  const fetchLabel = "Fetching HQ template from GitHub...";
+  stepStatus(fetchLabel, "running");
+  let hqVersion = "";
+  try {
+    const { version } = await fetchTemplate(targetDir, options.tag);
+    hqVersion = version;
 
-  await fs.copy(templateDir, targetDir, {
-    filter: (src) => {
-      const rel = path.relative(templateDir, src);
-      // Skip git internals and node_modules
-      if (rel.includes(".git/") || rel.includes("node_modules/")) return false;
-      return true;
-    },
-  });
+    // Count what we fetched
+    const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
+      ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
+      : 0;
+    const workerCount = fs.existsSync(path.join(targetDir, "workers"))
+      ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
+          .filter((f) => String(f).endsWith("worker.yaml")).length
+      : 0;
 
-  // Count what we copied
-  const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
-    ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
-    : 0;
-  const workerCount = fs.existsSync(path.join(targetDir, "workers"))
-    ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
-        .filter((f) => String(f).endsWith("worker.yaml")).length
-    : 0;
-
-  success(`Copied template (${commandCount} commands, ${workerCount} workers)`);
+    stepStatus(fetchLabel, "done");
+    success(`HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
+  } catch (err) {
+    stepStatus(fetchLabel, "failed");
+    throw err;
+  }
 
   // 3. Git init
+  const gitLabel = "Initializing git repository";
+  stepStatus(gitLabel, "running");
   if (hasGit()) {
     initGit(targetDir);
-    success("Initialized git repository");
+    stepStatus(gitLabel, "done");
   } else {
+    stepStatus(gitLabel, "failed");
     warn("git not found — skipping git init");
   }
 
-  // 4. Check dependencies
+  // 4. Governance bootstrap — compute checksums and verify integrity
+  const integrityLabel = "Verifying kernel integrity";
+  stepStatus(integrityLabel, "running");
+  try {
+    const computeChecksumsScript = path.join(targetDir, "scripts", "compute-checksums.sh");
+    const coreIntegrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
+    const hasComputeChecksums = fs.existsSync(computeChecksumsScript);
+    const hasCoreIntegrity = fs.existsSync(coreIntegrityScript);
+    if (hasComputeChecksums && hasCoreIntegrity) {
+      execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
+      try {
+        execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
+        stepStatus(integrityLabel, "done");
+      } catch {
+        stepStatus(integrityLabel, "failed");
+        warn("Kernel integrity check found issues — run scripts/core-integrity.sh to investigate");
+      }
+    } else {
+      // Scripts not present in this template version — skip silently
+      stepStatus(integrityLabel, "done");
+    }
+  } catch {
+    stepStatus(integrityLabel, "failed");
+    // governance bootstrap should never abort the scaffold
+  }
+
+  // 5. Check dependencies
+  const depsLabel = "Checking dependencies";
+  stepStatus(depsLabel, "running");
   if (!options.skipDeps) {
     checkDeps();
   }
+  stepStatus(depsLabel, "done");
 
-  // 5. Install hq-cli
+  // 6. Smart cloud sync detection
+  const alreadySynced = await detectExistingSync(targetDir);
+  if (alreadySynced) {
+    success("Cloud sync already configured — skipping setup");
+  }
+
+  // 7. Install hq-cli
   if (!options.skipCli) {
     console.log();
     const installCli = await confirm(
-      "Install @{company}ai/hq-cli globally for module management?"
+      "Install @indigoai-us/hq-cli globally for module management?"
     );
     if (installCli) {
+      const cliLabel = "Installing @indigoai-us/hq-cli";
+      stepStatus(cliLabel, "running");
       try {
-        step("Installing @{company}ai/hq-cli...");
-        execSync("npm install -g @{company}ai/hq-cli", { stdio: "pipe" });
-        success("Installed @{company}ai/hq-cli");
+        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+        stepStatus(cliLabel, "done");
       } catch {
-        warn("Failed to install @{company}ai/hq-cli — you can install it later with: npm install -g @{company}ai/hq-cli");
+        stepStatus(cliLabel, "failed");
+        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
       }
     }
   }
 
-  // 6. Cloud sync setup
-  if (!options.skipSync) {
+  // 8. Cloud sync setup
+  if (!options.skipSync && !alreadySynced) {
     console.log();
     const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.{company}ai.com)"
+      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
     );
     if (setupSync) {
       step("Cloud sync setup will be available after running /setup in Claude Code");
@@ -147,7 +171,7 @@ export async function scaffold(
     }
   }
 
-  // 7. Index with qmd
+  // 9. Index with qmd
   try {
     execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
     success("Indexed HQ for search");
@@ -155,6 +179,6 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 8. Next steps
+  // 10. Next steps
   nextSteps(displayDir);
 }

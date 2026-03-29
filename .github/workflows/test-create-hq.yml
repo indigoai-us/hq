@@ -1,0 +1,21 @@
+name: Test create-hq
+on:
+  push:
+    paths:
+      - 'packages/create-hq/**'
+  pull_request:
+    paths:
+      - 'packages/create-hq/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+        working-directory: packages/create-hq
+      - run: npm test
+        working-directory: packages/create-hq
