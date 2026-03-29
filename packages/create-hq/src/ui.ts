@@ -17,9 +17,9 @@ export function banner(installerVersion?: string, hqVersion?: string): void {
   console.log(c("        |++++++|xxxx| | [][][]|") + w("      ██   ██   ██████"));
   console.log(c("        |++++++|xxxx| |[][][] |") + w("      ██   ██  ██    ██"));
   console.log(c("        |++++++|_________ [][]|") + w("      ███████  ██    ██"));
-  console.log(c("        |++++++|=|=|=|=|=| [] |") + w("      ██   ██  ██ ▄▄ ██"));
+  console.log(c("        |++++++|=|=|=|=|=| [] |") + w("      ██   ██  ██  ████"));
   console.log(c("        |++++++|=|=|=|=|=|[][]|") + w("      ██   ██   ██████"));
-  console.log(c("________|++HH++|  _HHHH__|    |________") + d("                ▀▀"));
+  console.log(c("________|++HH++|  _HHHH__|    |________") + w("             ██"));
   console.log(c("      _______________   ______________      ______________"));
   console.log(c("_____________  ___________    __________________    ____________"));
   console.log();
