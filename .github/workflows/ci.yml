@@ -14,5 +14,6 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - run: npm run build -w packages/hq-cloud
       - run: npm run build --workspaces --if-present
       - run: npm run typecheck --workspaces --if-present
