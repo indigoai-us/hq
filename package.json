@@ -9,7 +9,12 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present"
+    "clean": "npm run clean --workspaces --if-present",
+    "test:e2e": "RUN_E2E=true vitest run --config tests/e2e/vitest.config.ts",
+    "verify": "npm run typecheck --workspaces --if-present && npm run test:e2e"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.2"
   },
   "engines": {
     "node": ">=18.0.0"
