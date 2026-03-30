@@ -1,9 +1,9 @@
 ---
 title: hq-cli
-description: Architecture of the @{company}ai/hq-cli package — module management, sync strategies, and cloud sync bridge.
+description: Architecture of the @indigoai/hq-cli package — module management, sync strategies, and cloud sync bridge.
 ---
 
-The `@{company}ai/hq-cli` package is the ongoing management CLI for HQ. It handles two concerns: **module management** (adding, syncing, listing, and updating external module repos) and **cloud sync** (bridging to `@{company}ai/hq-cloud` for S3-backed mobile access).
+The `@indigoai/hq-cli` package is the ongoing management CLI for HQ. It handles two concerns: **module management** (adding, syncing, listing, and updating external module repos) and **cloud sync** (bridging to `@indigoai/hq-cloud` for S3-backed mobile access).
 
 Built with [Commander.js](https://github.com/tj/commander.js), the CLI registers two top-level command groups:
 
@@ -191,18 +191,18 @@ Planned. Currently falls through to the merge strategy implementation.
 
 **File:** `src/commands/cloud.ts`
 
-The `hq sync` command group bridges to `@{company}ai/hq-cloud` via dynamic imports. Each subcommand lazily loads the cloud package and delegates to its exported functions:
+The `hq sync` command group bridges to `@indigoai/hq-cloud` via dynamic imports. Each subcommand lazily loads the cloud package and delegates to its exported functions:
 
 | Command | Cloud Function | Description |
 |---------|---------------|-------------|
-| `hq sync init` | `initSync()` | Authenticate with {Product}AI and provision S3 storage |
+| `hq sync init` | `initSync()` | Authenticate with IndigoAI and provision S3 storage |
 | `hq sync start` | `startDaemon()` | Start the background file-watching sync daemon |
 | `hq sync stop` | `stopDaemon()` | Stop the daemon |
 | `hq sync status` | `getStatus()` | Display sync health: running state, last sync time, file count, bucket, errors |
 | `hq sync push` | `pushAll()` | Force upload all local changes to S3 |
 | `hq sync pull` | `pullAll()` | Force download all cloud changes to local |
 
-Dynamic imports (`await import("@{company}ai/hq-cloud")`) mean the cloud package is only loaded when cloud commands are actually invoked. Module management commands work without `hq-cloud` installed.
+Dynamic imports (`await import("@indigoai/hq-cloud")`) mean the cloud package is only loaded when cloud commands are actually invoked. Module management commands work without `hq-cloud` installed.
 
 ## File Layout
 

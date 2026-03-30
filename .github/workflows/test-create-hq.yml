@@ -19,3 +19,5 @@ jobs:
         working-directory: packages/create-hq
       - run: npm test
         working-directory: packages/create-hq
+        env:
+          GH_TOKEN: ${{ github.token }}

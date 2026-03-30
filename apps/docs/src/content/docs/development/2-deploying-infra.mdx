@@ -8,7 +8,7 @@ description: Deploy HQ's AWS infrastructure using SST for serverless backend, au
 - AWS Account with admin access
 - AWS CLI v2 configured (`aws configure`)
 - Node.js 18+
-- Domain name for PWA (optional, default: hq.{company}ai.com)
+- Domain name for PWA (optional, default: hq.indigoai.com)
 
 ## SST Overview
 
@@ -65,7 +65,7 @@ After first deploy, you'll need the outputs:
 
 ## Custom Domain
 
-To use `hq.{company}ai.com`:
+To use `hq.indigoai.com`:
 
 1. Add domain to Route 53 (or configure external DNS)
 2. Update `sst.config.ts` StaticSite with `customDomain` property

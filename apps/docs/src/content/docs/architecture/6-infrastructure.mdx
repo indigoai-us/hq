@@ -37,7 +37,7 @@ A single S3 bucket stores all user files with per-user prefix isolation.
 const bucket = new s3.Bucket(stack, "Uploads", {
   cors: [
     {
-      allowedOrigins: ["https://hq.{company}ai.com", "http://localhost:5173"],
+      allowedOrigins: ["https://hq.indigoai.com", "http://localhost:5173"],
       allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.DELETE],
       allowedHeaders: ["*"],
     },
@@ -63,7 +63,7 @@ s3://hq-bucket/
 
 The `users/{userId}/hq/` prefix mirrors the local HQ directory structure. All file operations are scoped to the authenticated user's prefix, preventing cross-user access.
 
-CORS is restricted to the production domain (`hq.{company}ai.com`) and the local dev server (`localhost:5173`).
+CORS is restricted to the production domain (`hq.indigoai.com`) and the local dev server (`localhost:5173`).
 
 ## API Gateway
 
@@ -120,7 +120,7 @@ The web dashboard is deployed as a static site behind CloudFront:
 ```ts
 new StaticSite(stack, "Web", {
   path: "apps/web",
-  customDomain: "hq.{company}ai.com",
+  customDomain: "hq.indigoai.com",
 });
 ```
 
@@ -133,4 +133,4 @@ The infrastructure enforces isolation at multiple layers:
 1. **JWT verification** — All API routes require a valid Cognito JWT. Unauthenticated requests are rejected at the API Gateway level before reaching any Lambda.
 2. **User prefix scoping** — Every Lambda handler extracts the `sub` claim from the JWT and constructs S3 keys under `users/{userId}/hq/`. There is no API path that allows accessing another user's prefix.
 3. **STS temporary credentials** — The `refresh` endpoint issues short-lived (1-hour) AWS credentials with an IAM policy scoped to the user's S3 prefix. Even if credentials leak, they only grant access to that user's files and expire quickly.
-4. **CORS restriction** — The S3 bucket and API only accept requests from `hq.{company}ai.com` and `localhost:5173`, blocking cross-origin access from other domains.
+4. **CORS restriction** — The S3 bucket and API only accept requests from `hq.indigoai.com` and `localhost:5173`, blocking cross-origin access from other domains.

@@ -7,7 +7,7 @@ export default defineConfig({
       title: "HQ",
       description: "Personal OS for AI Workers",
       social: {
-        github: "https://github.com/{company}ai-us/hq",
+        github: "https://github.com/indigoai-us/hq",
       },
       customCss: ["./src/styles/custom.css"],
       sidebar: [

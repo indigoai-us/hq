@@ -11,14 +11,14 @@ description: "npm publishing and first release specification for HQ v5."
 
 ### npm Organization
 
-- [ ] Register `@{company}ai` npm org (or verify access)
+- [ ] Register `@indigoai` npm org (or verify access)
 - [ ] Add team members with publish access
 - [ ] Enable 2FA enforcement on org
 - [ ] Set `NPM_TOKEN` in GitHub repo secrets
 
 ### GitHub Repository
 
-- [ ] Verify `{company}ai-us/hq` repo is public
+- [ ] Verify `indigoai-us/hq` repo is public
 - [ ] Branch protection on `main` (require CI pass)
 - [ ] Set up GitHub release drafting
 
@@ -28,8 +28,8 @@ description: "npm publishing and first release specification for HQ v5."
 
 ```bash
 npm view create-hq          # Shows package info
-npm view @{company}ai/hq-cli   # Shows package info
-npm view @{company}ai/hq-cloud # Shows package info
+npm view @indigoai/hq-cli   # Shows package info
+npm view @indigoai/hq-cloud # Shows package info
 ```
 
 All three packages visible on npmjs.com with correct metadata.
@@ -56,7 +56,7 @@ On a clean machine with only Node.js and Claude Code installed.
 ### AC-4: CLI installs and runs
 
 ```bash
-npm install -g @{company}ai/hq-cli
+npm install -g @indigoai/hq-cli
 hq modules list    # Shows module inventory
 hq modules sync    # Syncs modules from manifest
 ```
@@ -69,7 +69,7 @@ hq modules sync    # Syncs modules from manifest
 
 ## Implementation Steps
 
-1. **Register npm org** — `npm org create {company}ai` or verify existing
+1. **Register npm org** — `npm org create indigoai` or verify existing
 2. **Verify package.json files** — Ensure `name`, `version`, `files`, `bin`, `main`, `types` are correct
 3. **Dry-run publish** — `npm publish --dry-run` for each package, verify contents
 4. **Test locally** — Build + run installer from source, verify template

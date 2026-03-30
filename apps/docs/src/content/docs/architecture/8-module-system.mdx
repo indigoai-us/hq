@@ -14,7 +14,7 @@ version: 1
 modules:
   ralph-methodology:
     name: ralph-methodology
-    repo: https://github.com/{company}ai-us/ralph-methodology
+    repo: https://github.com/indigoai-us/ralph-methodology
     branch: main
     path: docs
     strategy: link
@@ -22,7 +22,7 @@ modules:
       - knowledge/public/Ralph
   knowledge-workers:
     name: knowledge-workers
-    repo: https://github.com/{company}ai-us/knowledge-workers
+    repo: https://github.com/indigoai-us/knowledge-workers
     strategy: link
     targets:
       - knowledge/public/workers
@@ -116,7 +116,7 @@ Registers a new module. Clones the repository, adds an entry to the manifest, an
 | `--strategy <strategy>` | Sync strategy: `link`, `merge`, or `copy` |
 | `--path <subdir>` | Subdirectory within the repo to use as source |
 
-The repository is cloned into `repos/public/` or `repos/private/` following the standard convention. The module name is extracted from the GitHub URL by default (e.g., `https://github.com/{company}ai-us/ralph-methodology` becomes `ralph-methodology`).
+The repository is cloned into `repos/public/` or `repos/private/` following the standard convention. The module name is extracted from the GitHub URL by default (e.g., `https://github.com/indigoai-us/ralph-methodology` becomes `ralph-methodology`).
 
 ### `hq modules sync`
 
@@ -166,7 +166,7 @@ The module system relies on two internal utilities:
 
 **`findHqRoot()`** — Walks up the directory tree from the current working directory, looking for a `.claude/` directory to identify the HQ root. This allows module commands to work from any subdirectory within HQ.
 
-**`parseRepoName()`** — Extracts a module name from a GitHub URL by taking the final path segment and stripping any `.git` suffix. For example, `https://github.com/{company}ai-us/knowledge-workers.git` becomes `knowledge-workers`.
+**`parseRepoName()`** — Extracts a module name from a GitHub URL by taking the final path segment and stripping any `.git` suffix. For example, `https://github.com/indigoai-us/knowledge-workers.git` becomes `knowledge-workers`.
 
 ## Repo Layout Convention
 
@@ -180,8 +180,8 @@ repos/
 │   ├── knowledge-hq-core/
 │   └── ...
 └── private/              # Private module repos
-    ├── knowledge-{company}/
-    ├── knowledge-{company}/
+    ├── knowledge-indigo/
+    ├── knowledge-indigo/
     └── ...
 ```
 
@@ -199,7 +199,7 @@ The typical workflow for adding a new knowledge base as a module:
 
 ```bash
 # Example: add a new public knowledge base
-hq modules add https://github.com/{company}ai-us/knowledge-design-styles \
+hq modules add https://github.com/indigoai-us/knowledge-design-styles \
   --strategy link \
   --as knowledge-design-styles
 ```

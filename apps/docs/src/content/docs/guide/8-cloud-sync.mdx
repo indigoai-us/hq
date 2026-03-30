@@ -9,7 +9,7 @@ HQ Cloud Sync enables bidirectional syncing between your local HQ folder and clo
 
 ```
 Local HQ  ←→  Sync Daemon  ←→  S3 Bucket  ←→  PWA Dashboard
-              (chokidar)       (AWS)          (hq.{company}ai.com)
+              (chokidar)       (AWS)          (hq.indigoai.com)
 ```
 
 ## Setup
@@ -17,7 +17,7 @@ Local HQ  ←→  Sync Daemon  ←→  S3 Bucket  ←→  PWA Dashboard
 ### Install the CLI
 
 ```bash
-npm install -g @{company}ai/hq-cli
+npm install -g @indigoai/hq-cli
 ```
 
 ### Authenticate
@@ -26,7 +26,7 @@ npm install -g @{company}ai/hq-cli
 hq sync init
 ```
 
-This opens your browser for {Product}AI sign-up/sign-in. After authentication:
+This opens your browser for IndigoAI sign-up/sign-in. After authentication:
 - Your account is provisioned
 - An S3 bucket is created for your files
 - Credentials are stored locally at `~/.hq/credentials.json`
@@ -89,7 +89,7 @@ workspace/scratch/
 
 ## Mobile Access
 
-Once sync is running, access your HQ at [hq.{company}ai.com](https://hq.{company}ai.com):
+Once sync is running, access your HQ at [hq.indigoai.com](https://hq.indigoai.com):
 
 - **File browser** — Navigate your HQ directory structure
 - **Markdown viewer** — Read knowledge files, reports, and threads
