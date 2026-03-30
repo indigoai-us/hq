@@ -52,6 +52,34 @@ If slash command discovery fails, document how to pass `.md` content as the prom
 
 ---
 
+## Cost Benchmarks
+
+Baseline token usage per operation, measured with `claude-haiku-4-5-20251001`.
+Fill in actual values after running `spike.sh`.
+
+| Operation              | Input Tokens | Output Tokens | Total Tokens | Est. USD  |
+|------------------------|-------------|---------------|-------------|-----------|
+| `/setup` (discovery)   | _pending_   | _pending_     | _pending_   | _pending_ |
+| Simple prompt          | _pending_   | _pending_     | _pending_   | _pending_ |
+| Command w/ tool use    | _pending_   | _pending_     | _pending_   | _pending_ |
+
+### Budget Rationale
+
+The default `E2E_TOKEN_BUDGET` is set to **100,000 tokens**. This is a conservative
+starting point based on the assumption that a typical e2e suite of 5-10 tests, each
+using Haiku with `maxTurns=3`, will consume roughly 5,000-15,000 tokens per test
+(~50k-150k total). The 100k default provides headroom for a small suite while
+preventing runaway costs from misconfigured tests. Adjust via the `E2E_TOKEN_BUDGET`
+environment variable once actual spike data is available.
+
+### Pricing Reference (Haiku 4.5)
+
+- Input:  $1.00 / 1M tokens
+- Output: $5.00 / 1M tokens
+- At 100k total tokens (80/20 input/output split): ~$0.18 per suite run
+
+---
+
 ## Notes
 
 _Fill in after running the spike._
