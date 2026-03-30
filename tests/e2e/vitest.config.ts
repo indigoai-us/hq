@@ -7,7 +7,8 @@ export default defineConfig({
       ? ['tests/e2e/**/*.e2e.test.ts']
       : [],
     passWithNoTests: true,
-    testTimeout: 120_000,
+    testTimeout: 300_000,
+    hookTimeout: 300_000,
     pool: 'forks',
     maxWorkers: 1,
     sequence: {

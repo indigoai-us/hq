@@ -22,8 +22,8 @@ export interface ClaudeRunResult {
 }
 
 const DEFAULT_MODEL = 'haiku';
-const DEFAULT_MAX_TURNS = 3;
-const DEFAULT_TIMEOUT = 120_000;
+const DEFAULT_MAX_TURNS = 10;
+const DEFAULT_TIMEOUT = 300_000;
 // 100k tokens: conservative default for a small e2e suite (5-10 tests × ~10k tokens each).
 // Haiku 4.5 at this budget costs ~$0.18 per run (80/20 input/output split).
 // TODO: refine based on actual spike.sh measurements — see tests/e2e/SPIKE.md#cost-benchmarks
@@ -66,13 +66,8 @@ function checkBudget() {
 }
 
 export function validateEnvironment() {
-  if (!process.env['ANTHROPIC_API_KEY']) {
-    throw new Error(
-      'ANTHROPIC_API_KEY environment variable is not set. ' +
-      'E2E tests require a valid API key to run Claude CLI.'
-    );
-  }
-
+  // Claude CLI can authenticate via local auth (OAuth/session) or ANTHROPIC_API_KEY.
+  // We only check that the CLI is installed — auth is validated at runtime by the CLI itself.
   try {
     const { execFileSync } = require('node:child_process') as typeof import('node:child_process');
     execFileSync('which', ['claude'], { stdio: 'pipe' });
@@ -143,7 +138,9 @@ export function runClaude(options: ClaudeRunOptions): Promise<ClaudeRunResult> {
           return;
         }
 
-        const exitCode = error ? (error.code as unknown as number ?? 1) : 0;
+        const exitCode = error
+          ? (typeof error.code === 'number' ? error.code : (error as any).status ?? 1)
+          : 0;
         const combined = stdout + stderr;
         const cost = parseTokenUsage(combined);
 

@@ -21,9 +21,9 @@ describe('e2e: /checkpoint', () => {
       prompt: '/checkpoint',
       cwd: scaffold.dir,
       model: 'haiku',
-      maxTurns: 3,
+      maxTurns: 10,
     });
-  }, 120_000);
+  }, 300_000);
 
   afterAll(() => {
     const cost = getCumulativeCost();

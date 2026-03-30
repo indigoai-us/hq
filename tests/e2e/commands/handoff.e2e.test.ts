@@ -45,9 +45,9 @@ describe('e2e: /handoff', () => {
       prompt: '/handoff',
       cwd: scaffold.dir,
       model: 'haiku',
-      maxTurns: 3,
+      maxTurns: 10,
     });
-  }, 120_000);
+  }, 300_000);
 
   afterAll(() => {
     const cost = getCumulativeCost();
