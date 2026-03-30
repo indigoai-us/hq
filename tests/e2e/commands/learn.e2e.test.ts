@@ -65,13 +65,19 @@ describe.skip('e2e: /learn', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('creates at least one .md file in knowledge/', () => {
+  it('creates a NEW .md file in knowledge/', () => {
+    // Baseline: count .md files before command ran (template already has some)
+    // Since we can't easily snapshot pre-run here, check for files with
+    // recent mtime (within last 5 minutes)
+    const now = Date.now();
+    const recentThreshold = 5 * 60 * 1000;
     const knowledgeDir = join(scaffold.dir, 'knowledge');
-    const mdFiles = findFiles(knowledgeDir, '.md');
-    // Also check companies/*/knowledge/ as an alternative location
     const companiesDir = join(scaffold.dir, 'companies');
-    const companyMdFiles = findFiles(companiesDir, '.md');
-    const allMd = [...mdFiles, ...companyMdFiles];
-    expect(allMd.length).toBeGreaterThan(0);
+    const allMd = [...findFiles(knowledgeDir, '.md'), ...findFiles(companiesDir, '.md')];
+    const { statSync } = require('node:fs') as typeof import('node:fs');
+    const recentFiles = allMd.filter((f) => {
+      try { return now - statSync(f).mtimeMs < recentThreshold; } catch { return false; }
+    });
+    expect(recentFiles.length).toBeGreaterThan(0);
   });
 });
