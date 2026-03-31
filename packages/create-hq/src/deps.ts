@@ -1,8 +1,19 @@
 import { execSync } from "child_process";
 import { createInterface } from "readline";
+import chalk from "chalk";
 import { success, warn, info } from "./ui.js";
 import { detectPlatform } from "./platform.js";
 import type { PlatformInfo } from "./platform.js";
+
+export type DepStatus = "installed" | "just-installed" | "missing" | "skipped";
+
+export interface DepResult {
+  name: string;
+  required: boolean;
+  status: DepStatus;
+  version?: string;
+  installHint: string;
+}
 
 export interface InstallCommands {
   brew?: string;
@@ -159,12 +170,14 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
 
   const platform = detectPlatform();
   let allRequired = true;
+  const results: DepResult[] = [];
 
   for (const dep of deps) {
     const version = checkCommand(dep.command);
 
     if (version) {
       success(`${dep.name} ${version}`);
+      results.push({ name: dep.name, required: dep.required, status: "installed", version, installHint: dep.installHint });
       continue;
     }
 
@@ -192,9 +205,11 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
         const recheck = checkCommand(dep.command);
         if (recheck) {
           success(`${dep.name} ${recheck}`);
+          results.push({ name: dep.name, required: dep.required, status: "just-installed", version: recheck, installHint: dep.installHint });
           continue;
         } else {
           warn(`${dep.name} install failed — could not verify after install`);
+          results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
           if (dep.required) {
             allRequired = false;
           }
@@ -203,9 +218,11 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
         // User declined
         if (dep.required) {
           warn(`${dep.name} not found (required)`);
+          results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
           allRequired = false;
         } else {
           info(`${dep.name} (optional) — skipped`);
+          results.push({ name: dep.name, required: dep.required, status: "skipped", installHint: dep.installHint });
         }
       }
     } else {
@@ -213,12 +230,58 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
       if (dep.required) {
         warn(`${dep.name} not found`);
         info(`Install manually: ${dep.installHint}`);
+        results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
         allRequired = false;
       } else {
         info(`${dep.name} (optional) — ${dep.installHint}`);
+        results.push({ name: dep.name, required: dep.required, status: "skipped", installHint: dep.installHint });
       }
     }
   }
 
+  // ─── Summary Banner ──────────────────────────────────────────────────────
+  printDepSummary(results, allRequired);
+
   return { allRequired };
+}
+
+function printDepSummary(results: DepResult[], allRequired: boolean): void {
+  const statusIcon = (r: DepResult): string => {
+    switch (r.status) {
+      case "installed":
+        return chalk.green("✓");
+      case "just-installed":
+        return chalk.green("✓") + chalk.cyan(" new");
+      case "missing":
+        return chalk.red("✗");
+      case "skipped":
+        return chalk.dim("~");
+    }
+  };
+
+  console.log();
+  console.log(chalk.dim("  ─── Dependency Summary ───────────────────────"));
+  console.log();
+
+  for (const r of results) {
+    const icon = statusIcon(r);
+    const ver = r.version ? chalk.dim(` ${r.version}`) : "";
+    const tag = r.required ? "" : chalk.dim(" (optional)");
+    console.log(`  ${icon}  ${r.name}${ver}${tag}`);
+  }
+
+  console.log();
+
+  const missing = results.filter((r) => r.required && r.status === "missing");
+
+  if (missing.length > 0) {
+    warn("Some required dependencies are missing:");
+    console.log();
+    for (const m of missing) {
+      console.log(chalk.yellow("    →") + ` ${m.name}: ${chalk.dim(m.installHint)}`);
+    }
+    console.log();
+  } else {
+    success("All required dependencies installed");
+  }
 }
