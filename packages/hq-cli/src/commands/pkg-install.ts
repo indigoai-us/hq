@@ -99,10 +99,8 @@ async function installPackage(
     if (download.signature) {
       const sigValid = verifyRsaSignature(download.sha256, download.signature);
       if (!sigValid) {
-        console.warn(
-          chalk.yellow(
-            'Warning: RSA signature verification failed or public key not found. Proceeding with SHA256-only verification.'
-          )
+        throw new Error(
+          'RSA signature verification failed — the package may have been tampered with or the public key is missing/invalid. Aborting install.'
         );
       }
     }
