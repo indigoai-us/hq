@@ -10,6 +10,9 @@ import { registerSyncCommand } from "./commands/sync.js";
 import { registerListCommand } from "./commands/list.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
+import { registerLoginCommand } from "./commands/login.js";
+import { registerLogoutCommand } from "./commands/logout.js";
+import { registerWhoamiCommand } from "./commands/whoami.js";
 
 const program = new Command();
 
@@ -34,5 +37,10 @@ const syncCmd = program
   .description("Cloud sync commands — sync HQ to S3 for mobile access");
 
 registerCloudCommands(syncCmd);
+
+// Auth commands (top-level)
+registerLoginCommand(program);
+registerLogoutCommand(program);
+registerWhoamiCommand(program);
 
 program.parse();
