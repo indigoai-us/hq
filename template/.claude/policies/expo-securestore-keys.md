@@ -16,7 +16,7 @@ The error message "Invalid key" appears as an unhandled promise rejection that's
 
 ## Rationale
 
-Caused a production bug where tapping a rep name in the {Company} field app did nothing. `SecureStore.setItemAsync('{company}:auth', '1')` threw silently, preventing navigation. Fixed by changing all keys from colons to dots.
+Caused a production bug where tapping a rep name in the {company} field app did nothing. `SecureStore.setItemAsync('{company}:auth', '1')` threw silently, preventing navigation. Fixed by changing all keys from colons to dots.
 
 ## How to apply
 

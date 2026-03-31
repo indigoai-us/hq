@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "10.1"
-updated: "2026-03-23"
+version: "10.2"
+updated: "2026-03-31"
 
 workers:
   # ===================
@@ -95,8 +95,14 @@ workers:
     status: active
     description: "Core Web Vitals + k6 load testing with performance budgets"
 
+  - id: gstack-sprint
+    path: workers/gstack-sprint/
+    type: CodeWorker
+    status: active
+    description: "gstack sprint loop — autoplan, review, qa, ship using g-prefixed gstack skills"
+
   # ===================
-  # Gemini Team (3)
+  # Gemini Team (6)
   # ===================
 
   - id: gemini-coder
@@ -119,6 +125,27 @@ workers:
     team: gemini-team
     status: active
     description: "Frontend development via Gemini CLI — component building, styling, responsiveness, accessibility"
+
+  - id: gemini-designer
+    path: workers/gemini-designer/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "Gemini CLI design system analysis and visual audit — design tokens, consistency checks, visual diffs, holistic audits"
+
+  - id: gemini-stylist
+    path: workers/gemini-stylist/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "CSS and animation specialist via Google Gemini CLI — animations, responsive polish, dark mode, CSS refactoring"
+
+  - id: gemini-ux-auditor
+    path: workers/gemini-ux-auditor/
+    type: CodeWorker
+    team: gemini-team
+    status: active
+    description: "UX and usability audit via Google Gemini CLI — heuristic evaluation, flow review, copy review, competitive analysis"
 
   # ===================
   # Dev Team (17)

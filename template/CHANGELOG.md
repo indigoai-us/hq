@@ -1,30 +1,27 @@
 # Changelog
 
-## v9.1.0 (2026-03-29)
+## v9.1.0 (2026-03-31)
 
-Core governance system — kernel file classification, integrity verification, and CI enforcement.
+Obsidian vault integration, new policies, command updates, and scrub hardening.
 
 ### Added
-- **Contacts CRM** (`contacts/`) — global people directory with one YAML file per person, company-specific context nested under `companies:` key
-- **`/contact` command** — add, show, edit, note, search, list contacts
-- **`/who` command** — quick person lookup across contacts
-- **CRM skill** (`.claude/skills/crm/`) — progressive enrichment, service handle caching
-- **`contacts/_example.yaml`** — contact file template
-- **`knowledge/hq-core/contacts-crm.md`** — CRM knowledge base
-- **Core governance system** (`core.yaml`) — classifies HQ files as locked/reviewable/open with SHA256 checksums
-- **`scripts/compute-checksums.sh`** — regenerate checksums for all locked files
-- **`scripts/core-integrity.sh`** — verify kernel integrity against stored checksums (supports `--json`)
-- **`/release` command** — version bump, CHANGELOG, and MIGRATION updates for contributors
-- **`.github/workflows/core-governance.yml`** — CI workflow that blocks PRs modifying locked files without maintainer approval
-- `CHANGELOG.md` and `MIGRATION.md` added to `core.yaml` locked file list
+- **Obsidian vault config** (`.obsidian/`) — pre-configured doc viewer with graph colors, CSS snippet, folder exclusions, bookmarks. Open HQ in Obsidian for instant browsing
+- `/hq-growth-dashboard` — pull HQ growth metrics (npm downloads, GitHub stars)
+- `protect-core.sh` hook — prevents edits to core infrastructure files
+- **15 new policies**: `agent-browser-react-false-positives`, `articles-blog-first`, `bulk-sed-exception-ordering`, `cio-browser-navigation`, `dual-codex-review-pattern`, `git-filter-repo-case-variants`, `hq-docker-build-platform-amd64`, `hq-docker-in-docker-path-translation`, `hq-nextjs-clean-types-after-page-delete`, `hq-swarm-rust-hub-files`, `hq-telegram-single-poller`, `hq-tmux-plan-approval-dance`, `hq-use-neon-not-vercel-postgres`, `hq-verify-shared-files-after-parallel-agents`, `image-context-isolation`
+- `obsidian-setup.md` knowledge doc in hq-core
 
 ### Changed
-- **`/update-hq`** — uses `indigoai-us/hq` as source repo, `core.yaml` as primary version source, governance pre/post integrity checks with backup and restore
-- All repo references migrated from `coreyepstein/hq-starter-kit` to `indigoai-us/hq`
-- `modules.yaml`, `README.md`, policies updated with correct repo paths
+- **16 commands** updated: `/audit`, `/cleanup`, `/garden`, `/harness-audit`, `/model-route`, `/prd`, `/reanchor`, `/recover-session`, `/remember`, `/run-project`, `/run`, `/search-reindex`, `/search`, `/startwork`, `/understand-project`, `/update-hq`
+- **4 skills** updated: `ascii-graphic`, `colorize`, `consolidate`, `social-graphic`
+- **30+ policies** updated with latest learned rules
+- **5 workers** updated: `accessibility-auditor`, `content-brand`, `content-legal`, `content-product`, `content-sales`
+- **4 hooks** updated: `auto-checkpoint-trigger`, `hook-gate`, `observe-patterns`, `screenshot-resize-trigger`
+- `CLAUDE.md`, `USER-GUIDE.md`, `modules.yaml`, `audit-log.sh` refreshed
+- Scrub denylist expanded with `{company}` and `{company}`
 
 ### Removed
-- `protect-core.sh` local edit-blocking hook — governance enforcement moved to CI/PR level
+- `qa-screenshot-isolation.md` policy (replaced by `image-context-isolation`)
 
 ## v9.0.0 (2026-03-25)
 
