@@ -17,6 +17,7 @@ interface ScaffoldOptions {
   skipCli?: boolean;
   skipSync?: boolean;
   tag?: string;
+  localTemplate?: string;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -65,28 +66,55 @@ export async function scaffold(
     }
   }
 
-  // 2. Fetch template from GitHub
-  const fetchLabel = "Fetching HQ template from GitHub...";
-  stepStatus(fetchLabel, "running");
+  // 2. Fetch template (from local path or GitHub)
   let hqVersion = "";
-  try {
-    const { version } = await fetchTemplate(targetDir, options.tag);
-    hqVersion = version;
+  if (options.localTemplate) {
+    const localLabel = "Copying local HQ template...";
+    stepStatus(localLabel, "running");
+    try {
+      const templateSrc = path.resolve(options.localTemplate);
+      if (!fs.existsSync(templateSrc)) {
+        throw new Error(`Local template not found: ${templateSrc}`);
+      }
+      fs.ensureDirSync(targetDir);
+      fs.copySync(templateSrc, targetDir, { overwrite: true });
+      hqVersion = "local";
 
-    // Count what we fetched
-    const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
-      ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
-      : 0;
-    const workerCount = fs.existsSync(path.join(targetDir, "workers"))
-      ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
-          .filter((f) => String(f).endsWith("worker.yaml")).length
-      : 0;
+      const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
+        ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
+        : 0;
+      const workerCount = fs.existsSync(path.join(targetDir, "workers"))
+        ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
+            .filter((f) => String(f).endsWith("worker.yaml")).length
+        : 0;
 
-    stepStatus(fetchLabel, "done");
-    success(`HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
-  } catch (err) {
-    stepStatus(fetchLabel, "failed");
-    throw err;
+      stepStatus(localLabel, "done");
+      success(`HQ template (local) (${commandCount} commands, ${workerCount} workers)`);
+    } catch (err) {
+      stepStatus(localLabel, "failed");
+      throw err;
+    }
+  } else {
+    const fetchLabel = "Fetching HQ template from GitHub...";
+    stepStatus(fetchLabel, "running");
+    try {
+      const { version } = await fetchTemplate(targetDir, options.tag);
+      hqVersion = version;
+
+      const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
+        ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
+        : 0;
+      const workerCount = fs.existsSync(path.join(targetDir, "workers"))
+        ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
+            .filter((f) => String(f).endsWith("worker.yaml")).length
+        : 0;
+
+      stepStatus(fetchLabel, "done");
+      success(`HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
+    } catch (err) {
+      stepStatus(fetchLabel, "failed");
+      throw err;
+    }
   }
 
   // 3. Git init
