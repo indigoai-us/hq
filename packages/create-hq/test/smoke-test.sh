@@ -105,10 +105,9 @@ echo ""
 # Uses --local-template to avoid GitHub API auth inside the container.
 # This exercises the full scaffold pipeline: template copy, git init,
 # integrity checks, dependency checks — everything except the network fetch.
-echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-deps --skip-cli --skip-sync"
+echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-cli --skip-sync"
 "$CREATE_HQ_BIN" "${TEST_DIR}" \
   --local-template "${TEMPLATE_DIR}" \
-  --skip-deps \
   --skip-cli \
   --skip-sync \
   < /dev/null 2>&1 || {
