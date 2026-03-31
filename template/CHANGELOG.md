@@ -20,7 +20,7 @@ Core governance system — kernel file classification, integrity verification, a
 
 ### Changed
 - **`/update-hq`** — uses `indigoai-us/hq` as source repo, `core.yaml` as primary version source, governance pre/post integrity checks with backup and restore
-- All repo references migrated from `coreyepstein/hq-starter-kit` to `indigoai-us/hq`
+- All repo references migrated to `indigoai-us/hq`
 - `modules.yaml`, `README.md`, policies updated with correct repo paths
 
 ### Removed

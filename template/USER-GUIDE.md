@@ -95,7 +95,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ```
 /run                    # see all
 /run cfo-{company} mrr
-/run x-corey contentidea "AI"
+/run x-poster contentidea "AI"
 ```
 
 **Public (`workers/public/`):**
@@ -138,7 +138,7 @@ gemini-coder, gemini-reviewer, gemini-frontend
 | lr-qa | {company} | QA testing |
 | {product}-deploy | {company} | Deployment automation |
 | cmo-{company} | {Product} | Social/content (X, LinkedIn) |
-| x-corey | Personal | X/Twitter posting |
+| x-poster | Personal | X/Twitter posting |
 | invoices | Personal | Invoice generation |
 | social-council | Personal | Social strategy council |
 | pr-coordinator | {company} | PR campaign coordination |
@@ -189,7 +189,7 @@ HQ/
 │   ├── hooks/         # Lifecycle hooks (8)
 │   ├── policies/      # Cross-cutting rules (47)
 │   └── skills/        # Skill definitions (3)
-├── agents-profile.md  # Corey's profile
+├── agents-profile.md  # Owner's profile
 ├── agents-companies.md # Company contexts
 ├── companies/         # Company-scoped resources (14)
 │   └── {co}/

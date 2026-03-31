@@ -177,8 +177,8 @@ detail.skills = yaml.get("skills")...  // expects array of {id, name, descriptio
 Actual worker.yaml has nested structure:
 ```yaml
 worker:
-  id: social-x-corey
-  name: "Corey's X Worker"
+  id: social-x-poster
+  name: "X Worker"
   type: SocialWorker
 
 skills:
