@@ -1,0 +1,14 @@
+# Dockerfile.blank-slate
+# Minimal blank-slate image for smoke-testing create-hq from absolute zero.
+# Deliberately contains NO pre-installed extras (no git, no qmd, no yq).
+# Simulates a real user's fresh machine with only Node/npm available.
+
+FROM node:22-slim
+
+# Create a non-root test user to simulate real user permissions
+RUN useradd --create-home --shell /bin/bash testuser
+
+USER testuser
+WORKDIR /home/testuser
+
+CMD ["node", "--version"]
