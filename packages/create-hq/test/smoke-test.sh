@@ -6,9 +6,9 @@
 #   /opt/create-hq/create-hq.tgz  — npm-packed tarball of the local build
 #   /opt/create-hq/template/       — the HQ template directory
 #
-# This script installs create-hq from the local tarball, then runs it.
-# create-hq fetches the template from GitHub by default, but we pre-seed
-# the target directory with the local template to avoid network dependency.
+# This script installs create-hq from the local tarball, then runs the
+# actual `create-hq` command end-to-end with --local-template to avoid
+# needing GitHub API auth inside the container.
 #
 # Usage: ./smoke-test.sh [--image <name>]
 #   --image <name>  Identifier for which Docker image this is running in (for reports)
@@ -101,31 +101,20 @@ echo "Testing create-hq CLI loads correctly..."
 }
 echo ""
 
-# create-hq fetches the template from GitHub, which requires auth for the private repo.
-# For container smoke tests, we copy the local template directly and validate the output.
-# This tests the same artifact (the template) that create-hq would produce.
-echo "Copying template to ${TEST_DIR}..."
-mkdir -p "${TEST_DIR}"
-cp -R "${TEMPLATE_DIR}/." "${TEST_DIR}/"
-
-# Run git init if git is available (simulates what create-hq does)
-if [ "$HAS_GIT" = true ]; then
-  cd "${TEST_DIR}"
-  git init 2>&1
-  # Create .gitignore if the template includes one
-  if [ ! -f .gitignore ]; then
-    echo "node_modules/" > .gitignore
-  fi
-  cd /home/testuser
-fi
-
-# Run integrity checks if scripts exist (simulates create-hq's governance bootstrap)
-if [ -f "${TEST_DIR}/scripts/compute-checksums.sh" ] && [ -f "${TEST_DIR}/scripts/core-integrity.sh" ]; then
-  echo "Running integrity checks..."
-  bash "${TEST_DIR}/scripts/compute-checksums.sh" 2>&1 || true
-  bash "${TEST_DIR}/scripts/core-integrity.sh" 2>&1 || true
-fi
-
+# --- Run create-hq end-to-end ---
+# Uses --local-template to avoid GitHub API auth inside the container.
+# This exercises the full scaffold pipeline: template copy, git init,
+# integrity checks, dependency checks — everything except the network fetch.
+echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-deps --skip-cli --skip-sync"
+"$CREATE_HQ_BIN" "${TEST_DIR}" \
+  --local-template "${TEMPLATE_DIR}" \
+  --skip-deps \
+  --skip-cli \
+  --skip-sync \
+  < /dev/null 2>&1 || {
+  echo "FATAL: create-hq exited with non-zero status"
+  exit 1
+}
 echo ""
 
 # --- Assertions ---
