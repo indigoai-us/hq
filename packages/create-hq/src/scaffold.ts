@@ -2,12 +2,24 @@ import * as path from "path";
 import fs from "fs-extra";
 import { createInterface } from "readline";
 import { createRequire } from "node:module";
-import { banner, success, warn, step, nextSteps, stepStatus } from "./ui.js";
+import chalk from "chalk";
+import { banner, success, warn, step, info, nextSteps, stepStatus } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
 import { execSync } from "child_process";
 import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
+import { startAuthFlow, saveToken, loadToken, isTokenExpired } from "./auth.js";
+import type { AuthToken } from "./auth.js";
+import {
+  getRegistryUrl,
+  fetchPublicPackages,
+  fetchEntitlements,
+  buildPackageChoices,
+  formatPackageChoice,
+  installSelectedPackages,
+} from "./packages.js";
+import type { PackageChoice } from "./packages.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -16,6 +28,7 @@ interface ScaffoldOptions {
   skipDeps?: boolean;
   skipCli?: boolean;
   skipSync?: boolean;
+  skipPackages?: boolean;
   tag?: string;
   localTemplate?: string;
   join?: string;
@@ -169,7 +182,145 @@ export async function scaffold(
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 7. Cloud sync setup
+  // 6b. Package discovery & installation
+  const installedPackageSlugs: string[] = [];
+  if (!options.skipPackages) {
+    console.log();
+    const registryUrl = getRegistryUrl(targetDir);
+    let authToken: AuthToken | null = null;
+
+    // Check for existing auth token
+    const existingToken = loadToken();
+    if (existingToken && !isTokenExpired(existingToken)) {
+      authToken = existingToken;
+      info(`Already signed in as ${chalk.cyan(authToken.email)}`);
+    } else {
+      const hasAccount = await confirm("Do you have an HQ account?");
+      if (hasAccount) {
+        const authLabel = "Authenticating with HQ registry";
+        stepStatus(authLabel, "running");
+        try {
+          authToken = await startAuthFlow(registryUrl);
+          stepStatus(authLabel, "done");
+          success(`Signed in as ${chalk.cyan(authToken.email)}`);
+        } catch {
+          stepStatus(authLabel, "failed");
+          warn("Authentication failed — continuing without login");
+          info("You can sign in later with: hq login");
+        }
+      } else {
+        info("Visit " + chalk.cyan("hq.sh") + " to create an account and browse packages");
+      }
+    }
+
+    // Fetch packages
+    const packagesLabel = "Discovering packages";
+    stepStatus(packagesLabel, "running");
+
+    let choices: PackageChoice[] = [];
+    try {
+      const allPackages = await fetchPublicPackages(registryUrl);
+
+      if (allPackages.length > 0) {
+        let entitlements: { slug: string; tier: string; granted_at: string; expires_at?: string }[] = [];
+        if (authToken) {
+          entitlements = await fetchEntitlements(
+            registryUrl,
+            authToken.clerk_session_token
+          );
+        }
+
+        choices = buildPackageChoices(allPackages, entitlements);
+        stepStatus(packagesLabel, "done");
+
+        // Display package list
+        const entitled = choices.filter((c) => c.entitled);
+        const available = choices.filter((c) => !c.entitled);
+
+        if (entitled.length > 0) {
+          console.log();
+          console.log(chalk.bold("  Your packages:"));
+          for (const choice of entitled) {
+            console.log(chalk.green("  [✓] ") + formatPackageChoice(choice));
+          }
+        }
+
+        if (available.length > 0) {
+          console.log();
+          console.log(chalk.bold("  Available packages:"));
+          for (const choice of available) {
+            console.log(chalk.dim("  [ ] ") + formatPackageChoice(choice));
+          }
+        }
+
+        // If user has entitled packages or free packages are available
+        const installable = authToken
+          ? entitled
+          : choices.filter((c) => c.pkg.tier === "free");
+
+        if (installable.length > 0) {
+          console.log();
+          const installAll = await confirm(
+            `Install ${installable.length} package${installable.length === 1 ? "" : "s"}?`
+          );
+
+          if (installAll) {
+            const slugsToInstall = installable.map((c) => c.pkg.slug);
+            const installLabel = `Installing ${slugsToInstall.length} package${slugsToInstall.length === 1 ? "" : "s"}`;
+            stepStatus(installLabel, "running");
+
+            const installed = await installSelectedPackages(
+              registryUrl,
+              slugsToInstall,
+              targetDir,
+              authToken?.clerk_session_token
+            );
+
+            if (installed.length === slugsToInstall.length) {
+              stepStatus(installLabel, "done");
+            } else if (installed.length > 0) {
+              stepStatus(installLabel, "done");
+              warn(
+                `${slugsToInstall.length - installed.length} package${slugsToInstall.length - installed.length === 1 ? "" : "s"} failed to install`
+              );
+            } else {
+              stepStatus(installLabel, "failed");
+              warn("Package installation failed — you can install packages later with: hq install <name>");
+            }
+
+            installedPackageSlugs.push(...installed);
+          }
+        }
+      } else {
+        stepStatus(packagesLabel, "done");
+        info("No packages available");
+      }
+    } catch {
+      stepStatus(packagesLabel, "failed");
+      info("Package registry unavailable — you can install packages later with: hq install <name>");
+    }
+  }
+
+  // 7. Install hq-cli
+  if (!options.skipCli) {
+    console.log();
+    const installCli = await confirm(
+      "Install @indigoai-us/hq-cli globally for module management?"
+    );
+    if (installCli) {
+      const cliLabel = "Installing @indigoai-us/hq-cli";
+      stepStatus(cliLabel, "running");
+      try {
+        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+        stepStatus(cliLabel, "done");
+      } catch {
+        stepStatus(cliLabel, "failed");
+        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
+      }
+    }
+  }
+
+  // 8. Cloud sync setup
   if (!options.skipSync && !alreadySynced) {
     console.log();
     const setupSync = await confirm(
@@ -215,6 +366,15 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 9. Next steps
+  // 10. Setup summary
+  if (installedPackageSlugs.length > 0) {
+    console.log();
+    console.log(chalk.bold("  Installed packages:"));
+    for (const slug of installedPackageSlugs) {
+      console.log(chalk.green("  ✓ ") + slug);
+    }
+  }
+
+  // 11. Next steps
   nextSteps(displayDir);
 }
