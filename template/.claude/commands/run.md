@@ -28,7 +28,7 @@ If no arguments provided, read `workers/registry.yaml` and display:
 ```
 Available Workers:
 
-  x-corey            X/Twitter posting for Corey
+  x-poster           X/Twitter posting
   cfo-{company}    Financial reporting
   {company}-analyst LR/{PRODUCT} data analysis
   ...
@@ -44,15 +44,15 @@ If only worker-id provided:
 3. List available skills
 
 ```
-Worker: x-corey
-Description: X/Twitter posting for Corey
+Worker: x-poster
+Description: X/Twitter posting
 
 Skills:
   contentidea   Build out a content idea into posts
   suggestposts  Research and suggest posts
   scheduleposts Choose what to post now
 
-Usage: /run x-corey {skill}
+Usage: /run x-poster {skill}
 ```
 
 ### Worker + Skill → Execute
@@ -98,9 +98,9 @@ Also append to metrics: `workspace/metrics/metrics.jsonl`
 
 ```
 /run                              # See all workers
-/run x-corey                      # See x-corey skills
-/run x-corey contentidea          # Run contentidea
-/run x-corey contentidea "AI workforce" # Run with topic
+/run x-poster                     # See x-poster skills
+/run x-poster contentidea         # Run contentidea
+/run x-poster contentidea "AI workforce" # Run with topic
 /run cfo-{company} mrr          # Run MRR report
 ```
 

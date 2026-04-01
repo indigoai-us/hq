@@ -29,7 +29,7 @@ worker:
 | OpsWorker | 10 | cfo-{company}, infobip-admin, qa-tester, pretty-mermaid |
 | ContentWorker | 5 | content-brand, content-sales, {company}-brand-writer |
 | ResearchWorker | 2 | {company}-analyst, pr-monitor |
-| SocialWorker | 1 | x-corey |
+| SocialWorker | 1 | x-poster |
 | Library | 2 | content-shared, pr-shared |
 
 ### 1.2 Identity Block (Optional)
@@ -155,7 +155,7 @@ state_machine:
 ```yaml
 integrations:
   x:
-    client: workers/private/x-corey/src/x-client.ts
+    client: workers/private/x-poster/src/x-client.ts
     config: companies/personal/settings/x/config.json
 ```
 
@@ -698,7 +698,7 @@ companies/manifest.yaml
   │     workers: [cmo-{company}]
   │
   ├─ personal:
-  │     workers: [x-corey, invoices]
+  │     workers: [x-poster, invoices]
   │
   └─ (public workers: dev-team/*, content-team/*, qa-tester, etc.)
        → company-agnostic, inherit active company from invocation
