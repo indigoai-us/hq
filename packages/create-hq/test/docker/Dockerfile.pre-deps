@@ -1,0 +1,18 @@
+FROM node:22
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root test user with home directory
+RUN useradd --create-home --shell /bin/bash testuser
+
+# Configure git for testuser so git init/commit works without prompts
+USER testuser
+RUN git config --global user.name "Test User" \
+    && git config --global user.email "testuser@example.com"
+
+WORKDIR /home/testuser

@@ -34,3 +34,4 @@ template/workspace/learnings/*.json
 
 # Added by ggshield
 .cache_ggshield
+packages/create-hq/test/results/latest.json
