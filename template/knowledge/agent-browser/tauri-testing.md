@@ -19,7 +19,7 @@ Add to your Tauri app as a **dev dependency only**:
 ```toml
 # src-tauri/Cargo.toml
 [dependencies]
-tauri-plugin-agent-test = { git = "https://github.com/{your-username}/tauri-agent-browser" }
+tauri-plugin-agent-test = { git = "https://github.com/{your-name}/tauri-agent-browser" }
 ```
 
 Register in `main.rs`:
@@ -94,7 +94,7 @@ Without this, the JS→Rust event bridge (`window.__TAURI__.event.emit`) is not 
 
 ## Verified on
 
-- **{your-app}** (Tauri v2 + React 19): 24 interactive elements detected (icon rail, company selector, all navigation buttons)
+- **{company}-hq-app** (Tauri v2 + React 19): 24 interactive elements detected (icon rail, company selector, all navigation buttons)
 - MCP protocol: initialize, tools/list, tools/call all work over HTTP+SSE
 - 98 unit tests in the plugin repo, 493 tests in the upstream agent-browser fork
 
@@ -105,4 +105,4 @@ PR #921 to `vercel-labs/agent-browser` adds `--provider tauri` support: https://
 ## Repo
 
 `repos/public/tauri-agent-browser` — Cargo workspace with `shared`, `tauri-plugin-agent-test`, `agent-browser-provider-tauri`.
-GitHub: https://github.com/{your-username}/tauri-agent-browser
+GitHub: https://github.com/{your-name}/tauri-agent-browser

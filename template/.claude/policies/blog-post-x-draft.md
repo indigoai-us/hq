@@ -19,7 +19,7 @@ When publishing a new blog article to {your-name}.com (writing MDX to `repos/pri
 6. Update `workspace/social-drafts/blog-queue.json` — set item status to `published` after deploy, `done` after share
 
 **X post format:**
-- Match the owner's voice: direct, declarative, first-person, short sentences
+- Match Corey's voice: direct, declarative, first-person, short sentences
 - Open with a hook (the insight or contrarian take)
 - 3-5 short paragraphs max
 - End with the article URL (`https://{your-name}.com/blog/{slug}`)

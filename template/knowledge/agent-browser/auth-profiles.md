@@ -34,7 +34,7 @@ agent-browser state save settings/personal/browser-state/linkedin-auth.json
 agent-browser close
 
 # Invoices (password auth)
-agent-browser open "https://invoices.{your-username}.com/admin"
+agent-browser open "https://invoices.{your-name}.com/admin"
 agent-browser snapshot -i
 agent-browser fill @e1 "invoice2024"
 agent-browser click @e2

@@ -8,7 +8,26 @@ visibility: public
 
 Quick setup to get your HQ running. Takes ~5 minutes.
 
-## Phase 0: Dependencies
+## Phase 0: Welcome
+
+Before checking anything, print this welcome block:
+
+```
+Welcome to HQ — your personal AI operating system.
+
+HQ is a folder on your computer that becomes the infrastructure for your AI workforce.
+You have access to 1,000 employees willing to work. HQ is the office, the org chart,
+and the job descriptions that put them to work.
+
+This setup takes ~5 minutes. After that, you'll have:
+  - A configured HQ tailored to your role
+  - Educational materials to guide your first week
+  - A clear path from "just installed" to "shipping projects autonomously"
+
+Let's get started.
+```
+
+## Phase 1: Dependencies
 
 Check silently. Only prompt if missing.
 
@@ -77,7 +96,16 @@ Run: vercel login
 
 Post-install: run `qmd index .` if qmd was just installed or no index exists.
 
-## Phase 1: Identity
+After dependency checks complete, print:
+```
+These tools form your toolkit:
+  - Claude Code: your AI interface (the terminal, not chat)
+  - qmd: how HQ searches its own knowledge
+  - gh: how HQ publishes to GitHub
+  - vercel: how HQ deploys to the web
+```
+
+## Phase 2: Identity
 
 Ask these 3 questions. One at a time.
 
@@ -87,7 +115,15 @@ Ask these 3 questions. One at a time.
 
 Use "personal" as the company/context name.
 
-## Phase 2: Generate Files
+After collecting answers, print:
+```
+HQ will use this to personalize your workers, knowledge, and project context.
+
+Key concept: HQ learns who you are so your AI workforce has the context
+to make good decisions without you supervising every step.
+```
+
+## Phase 3: Generate Files
 
 ### Repos directory (required)
 
@@ -196,6 +232,7 @@ knowledge/*/
 !knowledge/hq-core/
 !knowledge/loom/
 !knowledge/projects/
+!knowledge/getting-started/
 ```
 
 ### Index
@@ -203,8 +240,9 @@ knowledge/*/
 qmd update 2>/dev/null || qmd index . 2>/dev/null || true
 ```
 
-## Phase 3: Summary
+## Phase 4: Summary + Education
 
+Print the file creation summary:
 ```
 HQ Setup Complete!
 
@@ -226,31 +264,54 @@ Knowledge Repos:
 Your knowledge bases can be independent git repos symlinked into knowledge/.
 This lets you version, share, and publish each knowledge base separately.
 See "Knowledge Repos" in CLAUDE.md for details.
-
-Next steps:
-1. Run /personal-interview — deep interview to build your voice + profile
-2. Run /newworker — create your first worker
-3. Run /prd — plan your first project
-4. Run /search <topic> — find relevant knowledge in HQ
 ```
 
-## Phase 4: Update Checking (Optional)
+Then print the education kit section:
+```
+══════════════════════════════════════
+  Your HQ Education Kit
+══════════════════════════════════════
 
-Ask the user: "Would you like to set up daily HQ update checks? This will automatically notify you when new HQ versions are available."
+Three guides have been included to help you learn HQ:
 
-**If yes:**
+  1. Quick Start Guide — What HQ is, how it works, the daily workflow
+     knowledge/getting-started/quick-start-guide.md
 
-Tell them to open **Claude Desktop → Settings → Scheduled Prompts** and add a new scheduled prompt with these values:
+  2. Cheatsheet — Daily reference card for commands and cadence
+     knowledge/getting-started/cheatsheet.md
 
-- **Name:** HQ Update Check
-- **Schedule:** Daily at 9:00 AM (or their preferred time)
-- **Prompt text:** `bash ~/hq/scripts/check-hq-update.sh`
+  3. Learning Path — 11-module progression from beginner to advanced
+     knowledge/getting-started/learning-path.md
+```
 
-Explain: "Once set up, Claude Desktop will run this check each morning and let you know if a new HQ release is available."
+Auto-open the quick start guide:
+```bash
+open knowledge/getting-started/quick-start-guide.md 2>/dev/null || true
+```
 
-**If no:**
+Then print the first-week roadmap:
+```
+══════════════════════════════════════
+  Your First Week
+══════════════════════════════════════
 
-Acknowledge and note: "No problem — you can set this up later by running `/setup-update-check`."
+Day 1 (today):
+  1. Read the Quick Start Guide (just opened)
+  2. Run /personal-interview — deep interview to build your voice + profile
+  3. Try /startwork — see what your board looks like
+
+Week 1:
+  4. Pick one real project and run /brainstorm
+  5. Turn it into a PRD with /prd
+  6. Execute it with /run-project
+  7. Close every session with /handoff
+
+The single most important rule: plan mode always.
+"AI in ask mode is not AGI. AI in plan mode can be."
+
+Full book: empire.institute/book
+Community: empire.institute
+```
 
 ## Rules
 

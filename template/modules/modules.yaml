@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/indigoai-us/hq.git
+    repo: https://github.com/{your-username}/hq-starter-kit.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
@@ -96,6 +96,14 @@ modules:
     paths:
       .: knowledge/public/projects
 
+  - name: knowledge-getting-started
+    repo: local
+    branch: main
+    strategy: link
+    access: public
+    paths:
+      .: knowledge/public/getting-started
+
   - name: knowledge-curious-minds
     repo: local
     branch: main
@@ -104,27 +112,7 @@ modules:
     paths:
       .: knowledge/public/curious-minds
 
-  # ─── Company Knowledge Repos ──────────────────────────────────────────
-  # Add your company knowledge repos here using embedded or link strategy.
-  # Example:
-  #
-  # - name: knowledge-mycompany
-  #   repo: https://github.com/{your-name}/knowledge-mycompany.git
-  #   branch: main
-  #   strategy: embedded
-  #   access: team
-  #   paths:
-  #     .: companies/mycompany/knowledge
-
   # ─── Add-On Kits ────────────────────────────────────────────────────
-
-  - name: hq-social-kit
-    repo: https://github.com/{your-name}/hq-social-kit.git
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      commands: .claude/commands
 
   - name: gstack
     repo: https://github.com/garrytan/gstack.git

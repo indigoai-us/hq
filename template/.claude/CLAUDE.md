@@ -5,7 +5,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
-- `agents-profile.md` - Owner's profile + style (load only for writing/comms tasks)
+- `agents-profile.md` - Corey's profile + style (load only for writing/comms tasks)
 - `agents-companies.md` - Company contexts + roles (load only when company routing needed)
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `workers/registry.yaml` - Worker index
@@ -29,7 +29,7 @@ Env vars in `.claude/settings.json` control cost defaults:
 | `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Triggers mandatory handoff at 80% context (compaction can't be blocked — handoff preserves state) |
-| `CLAUDE_CODE_SUBAGENT_MODEL` | `sonnet` | Subagents (Task tool) use Sonnet (~60% cheaper than Opus, better quality than Haiku) |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | `opus` | Subagents (Task tool) use Opus — all Claude work runs on Opus 4.6 |
 
 Toggle thinking with Option+T.
 
@@ -88,20 +88,6 @@ Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX bef
 
 Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
-## Contacts (CRM)
-
-Global people directory at `contacts/`. One YAML file per person (`contacts/{slug}.yaml`). Contacts are **not** company-scoped — a person is global, with company-specific context nested under a `companies:` key in their file.
-
-**Commands:** `/contact` (add, show, edit, note, search, list), `/who` (quick lookup)
-**Template:** `contacts/_example.yaml`
-**Used by:** `/slack` (Slack user ID resolution), `/imessage` (phone lookup), Linear integration (member ID lookup)
-
-**Key fields:** `name`, `slug`, `handles` (email, phone, github), `companies.{co}` (slack, linear, role, context), `tags`, `notes` (append-only log)
-
-**Agent behavior:** When the agent learns something useful about a person during a session (communication preferences, expertise, role changes), it should add a note via `/contact note`. When resolving a service handle (Slack, Linear), check contacts first before API lookups, and cache the result back to the contact file.
-
-**Knowledge:** `knowledge/public/hq-core/contacts-crm.md`
-
 ## Companies
 
 {company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
@@ -139,6 +125,7 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, workers, kn
 ## Sensitive Path Deny Lists
 
 Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
+
 
 ## Infrastructure-First
 
@@ -249,7 +236,7 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 - `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
 - `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
 - `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
-- Add `-c {collection}` to scope to a specific collection (e.g. `-c {collection}`)
+- Add `-c {collection}` to scope to a specific collection (e.g. `-c {product}`)
 
 **Slash commands:** `/search <query>`, `/search-reindex`
 
@@ -258,11 +245,11 @@ HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for 
 | Need | Tool | Example |
 |------|------|---------|
 | Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about Stripe integration" |
-| Find code by concept | `qmd vsearch -c {collection}` | "where auth middleware is defined" |
+| Find code by concept | `qmd vsearch -c {product}` | "where auth middleware is defined" |
 | Find project PRD | `qmd search` or direct `Read` | `qmd search "project-name prd.json" --json -n 5` |
 | Find worker yaml | `Read workers/registry.yaml` → path | Never Glob — registry has all paths |
 | Find companies | `Read companies/manifest.yaml` | Never Glob — manifest lists all companies |
-| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{your-repo}/apps/"` |
+| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{product}/apps/"` |
 | Exact pattern match in code | `Grep` (works from HQ root) | `import.*AuthService` with `glob: "*.ts"` |
 | Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
 
@@ -315,6 +302,7 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 - Never commit to local main when intending to work on a feature branch.
 
 ## Project Repos - Commit Rules
+
 
 ## Vercel Deployments
 

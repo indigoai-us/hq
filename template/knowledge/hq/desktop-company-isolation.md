@@ -34,7 +34,7 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 | {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-{product} + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-{product}) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
 | {company} | {company}-site, {company}-cmohq | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
 | {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
-| personal | (none) | slack + (on disk: gmail, linkedin, x) | x-poster, invoices | yes | personal |
+| personal | (none) | slack + (on disk: gmail, linkedin, x) | x-corey, invoices | yes | personal |
 | {company} | {company}-portal | (none) | (none) | null | (none) |
 
 Note: The manifest `settings` list does not always match the on-disk contents of `companies/{id}/settings/`. Desktop must discover settings from the filesystem, but the manifest defines which are "declared" vs which are incidental.

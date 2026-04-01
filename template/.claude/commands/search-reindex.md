@@ -16,7 +16,7 @@ Re-index and re-embed all qmd collections (HQ knowledge + indexed codebases).
 | Collection | Path | Pattern | Files |
 |---|---|---|---|
 | `hq` | `~/Documents/HQ` | `**/*.md` | ~1870 |
-| `{product}` | `~/Documents/HQ/repos/private/{your-repo}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | ~3060 |
+| `{product}` | `~/Documents/HQ/repos/private/{product}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | ~3060 |
 
 ## Process
 
@@ -83,7 +83,7 @@ qmd context add qmd://hq/projects "Project PRDs and READMEs for active and plann
 qmd context add qmd://hq/workspace "Runtime workspace: session threads, checkpoints, orchestrator state, reports, social drafts, content ideas, metrics."
 
 # {PRODUCT} collection
-qmd collection add ~/Documents/HQ/repos/private/{your-repo} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
+qmd collection add ~/Documents/HQ/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
 qmd context add qmd://{product} "{PRODUCT} monorepo: Nx monorepo for {Product}/{Product}. Apps (web-admin, web-client, web-front, function, {company}, cdp) + libs (core, db, ui, web, util, schema). Next.js, React 19, TypeScript, SST, Prisma, PostgreSQL."
 qmd context add qmd://{product}/apps "Application code: Next.js web apps, AWS Lambda functions, {Product} SMS platform, CDP."
 qmd context add qmd://{product}/libs "Shared libraries: db/Prisma schemas, core feature modules (auth, billing, brand, conversation, ai, workflow), UI components, utilities."

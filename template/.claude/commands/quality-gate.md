@@ -1,7 +1,7 @@
 ---
-description: Universal pre-commit quality checks (typecheck, lint, test, coverage) with auto-detection and --fix support
+description: Universal pre-commit quality checks (typecheck, lint, test, coverage, dead code) with auto-detection and --fix support
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
-argument-hint: [--fix] [--coverage-min=80]
+argument-hint: [--fix] [--coverage-min=80] [--deadcode]
 visibility: public
 ---
 
@@ -9,7 +9,7 @@ visibility: public
 
 Run universal quality checks (typecheck, lint, test, coverage) before committing. Auto-detects project type and available tools.
 
-**Arguments:** Optional flags: `--fix` (auto-fix lint issues), `--coverage-min=80` (coverage threshold percentage)
+**Arguments:** Optional flags: `--fix` (auto-fix lint issues), `--coverage-min=80` (coverage threshold percentage), `--deadcode` (run dead code detection)
 
 ## Quality Gate Process
 
@@ -451,6 +451,51 @@ OVERALL: ✓ ALL CHECKS PASSED
 
 ---
 
+## Dead Code Detection (--deadcode flag)
+
+When the `--deadcode` flag is provided, run dead code detection **after** lint passes:
+
+### Node.js Projects
+
+| Tool | Detection | Install Check |
+|------|-----------|---------------|
+| **ts-unused-exports** | Unused exports | `package.json` has `ts-unused-exports` in devDependencies |
+| **knip** | Unused exports, files, deps, types | `package.json` has `knip` in devDependencies |
+| **ts-prune** | Unused exports only | `package.json` has `ts-prune` in devDependencies |
+
+**Preferred tool:** ts-unused-exports (lightweight, no dependency conflicts in monorepos). Use knip for comprehensive scans if zod version is compatible.
+
+**If project has a `deadcode` script in package.json:** Use that (`bun run deadcode`, `npm run deadcode`, etc.)
+
+**If no dead code tool is installed:** Report: "No dead code tool configured. Consider adding ts-unused-exports: `bun add -d ts-unused-exports`"
+
+### Report Format
+
+```
+Dead Code Analysis
+─────────────────────────────────────────────────
+Unused exports:     12 found
+Unused files:        3 found
+Unused dependencies: 2 found
+Unused types:        5 found
+─────────────────────────────────────────────────
+
+Top unused exports:
+  src/utils/legacy.ts: formatOldDate, parseOldFormat
+  src/api/deprecated.ts: oldEndpoint
+  libs/core/auth/src/index.ts: AuthV1Client
+
+⚠️  Dead code scan is INFORMATIONAL — does not block commit.
+    Review findings and clean up in a separate commit.
+```
+
+**Key behaviors:**
+- Dead code results do NOT block commit (informational only)
+- Always recommend cleaning dead code in a separate commit
+- If knip returns errors (config issues), report the error and suggest checking `knip.config.ts`
+
+---
+
 ## Success Checklist
 
 After running /quality-gate, verify:
@@ -461,6 +506,7 @@ After running /quality-gate, verify:
 - [ ] Lint passes (or auto-fixed with --fix flag)
 - [ ] Tests pass (or blockers clearly listed)
 - [ ] Coverage meets threshold (80% by default, or custom value)
+- [ ] Dead code report shown (if --deadcode flag provided)
 - [ ] Report clearly shows pass/fail per check
 - [ ] If any check fails, blockers are clearly documented
 - [ ] Ready to commit (if all checks pass)

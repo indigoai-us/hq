@@ -31,7 +31,7 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
+| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-{company} + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-{company}) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
 | {company} | {your-repo}, {your-repo} | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
 | {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
 | personal | (none) | slack + (on disk: gmail, linkedin, x) | x-corey, invoices | yes | personal |

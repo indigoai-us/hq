@@ -13,7 +13,7 @@ relates_to: []
 ```
 HQ/
 ├── .claude/commands/   # Slash commands (44)
-├── agents.md           # Owner's profile
+├── agents.md           # Corey's profile
 ├── companies/          # Company-scoped resources (14 companies)
 │   └── {co}/
 │       ├── knowledge/  # Embedded git repo (company knowledge)
@@ -47,7 +47,7 @@ HQ/
 |---------|---------|---------------|
 | {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({product}) |
 | {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
-| personal | x-poster, invoices, social-council | Slack, Gmail, LinkedIn, X |
+| personal | x-corey, invoices, social-council | Slack, Gmail, LinkedIn, X |
 | {company} | pr-coordinator, pr-strategist, pr-writer, pr-outreach, pr-monitor, pr-shared | PR team |
 | {company} | site-builder, research-agent | Stripe |
 | {company} | — | Band/music |

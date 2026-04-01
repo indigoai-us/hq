@@ -94,7 +94,7 @@ This enables a pre-commit hook across all repos that blocks commits containing s
 
 ```bash
 # 1. Clone
-git clone https://github.com/indigoai-us/hq.git my-hq
+git clone https://github.com/{your-name}/hq-starter-kit.git my-hq
 cd my-hq
 
 # 2. Open in Claude Code
@@ -530,7 +530,7 @@ my-hq/
 
 | Component | Purpose |
 |-----------|---------|
-| **indigoai-us/hq** | This repo — personal OS template |
+| **hq-starter-kit** | This repo — personal OS template |
 | **[hq-cli](https://github.com/{your-name}/hq-cli)** | Module management CLI |
 
 ---

@@ -25,7 +25,7 @@ How to access each external system per company. Use this to find credentials fas
 | LinkedIn | Personal | Browser state | `agent-browser` | `settings/personal/browser-state/` |
 | LinkedIn | {Product} | Browser state | `agent-browser` | (via social-kit.yaml auth_state_dir) |
 | Stripe | {Product} | API keys | No | `companies/{company}/settings/stripe/` |
-| Stripe ({Product}) | {Product} | API keys | No | `companies/{company}/settings/stripe-voyage/` |
+| Stripe ({Product}) | {Product} | API keys | No | `companies/{company}/settings/stripe-{company}/` |
 | Linear | {company} | API key | No | `companies/{company}/settings/linear/` |
 | Linear | {Product} | API key | No | `companies/{company}/settings/linear/` |
 | Linear | {Product} | API key | No | `companies/{company}/settings/linear/` |

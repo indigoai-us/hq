@@ -48,8 +48,9 @@ build_pattern() {
 
     echo "$terms"
   else
-    # Hardcoded fallback — update this when adding companies
-    echo "{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{team-member}|{team-member}|{team-member}|{team-member}|{company}\.myshopify|{your-domain}|{company}pr|go{company}|{your-repo}|{your-app}|{company}-site|{company}-cmohq|{company}-portal|{your-org}"
+    # No denylist found — user must create .claude/scrub-denylist.yaml with their own terms.
+    # Without a denylist, skip the check (nothing to match against).
+    echo ""
   fi
 }
 

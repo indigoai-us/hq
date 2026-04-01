@@ -59,7 +59,7 @@ Desktop classifies every valid HQ into one of three levels. The level determines
 
 **Definition:** Multi-company structure with extensive workers, projects, and orchestration state. Power user / production HQ.
 
-**Typical instance:** A production HQ with 5+ companies, 40+ workers, 60+ projects, 170+ threads.
+**Typical instance:** Corey's personal HQ with 5 companies, 40+ workers, 60+ projects, 170+ threads.
 
 **Structural fingerprint (all of):**
 - `companies/` directory exists with >= 1 company subdirectory

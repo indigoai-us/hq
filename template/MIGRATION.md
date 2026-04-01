@@ -4,6 +4,48 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.1.0 (from v10.0.0)
+
+Minor release. No breaking changes.
+
+### New: Getting Started Education Kit
+
+Copy the new knowledge directory to your HQ:
+
+```bash
+cp -R starter-kit/knowledge/public/getting-started/ your-hq/knowledge/public/getting-started/
+```
+
+This adds 3 onboarding guides (quick-start-guide, cheatsheet, learning-path) that `/setup` now references.
+
+### Updated: `/setup` Command
+
+Copy the updated setup command:
+
+```bash
+cp starter-kit/.claude/commands/setup.md your-hq/.claude/commands/setup.md
+```
+
+The setup flow now includes a welcome phase, educational bridges, and auto-opens the quick-start-guide after completion.
+
+### New Policies
+
+Copy these 4 new policies:
+
+```bash
+for p in bun-overrides chunked-reads clipboard-file-protocol deconflict-postbridge-schedule; do
+  cp "starter-kit/.claude/policies/${p}.md" "your-hq/.claude/policies/${p}.md"
+done
+```
+
+### Updated Files
+
+Run `/update-hq` or manually merge changes to:
+- Multiple commands, policies, workers, and knowledge bases
+- `CLAUDE.md`, `USER-GUIDE.md`, `modules.yaml`
+
+---
+
 ## Migrating to v10.0.0 (from v9.0.0)
 
 Minor release. No breaking changes.

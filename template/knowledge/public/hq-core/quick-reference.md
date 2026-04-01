@@ -45,7 +45,7 @@ HQ/
 
 | Company | Workers | Key Resources |
 |---------|---------|---------------|
-| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear (voyage) |
+| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({product}) |
 | {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
 | personal | x-corey, invoices, social-council | Slack, Gmail, LinkedIn, X |
 | {company} | pr-coordinator, pr-strategist, pr-writer, pr-outreach, pr-monitor, pr-shared | PR team |
@@ -91,7 +91,7 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Design:** `/generateimage`
 **System:** `/cleanup`, `/garden`, `/search`, `/search-reindex`, `/publish-kit`, `/harness-audit`, `/model-route`, `/update-hq`
 **Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/{custom-command}`, `/personal-interview`
-**Linear:** `/check-linear-voyage`, `/{product}-prd`
+**Linear:** `/check-linear-{company}`, `/{product}-prd`
 **Deploy:** `/pr`
 
 ## Knowledge Bases

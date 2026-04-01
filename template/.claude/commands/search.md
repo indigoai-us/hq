@@ -100,13 +100,13 @@ Display: "qmd unavailable, falling back to grep"
 ```bash
 /search ralph                                    # BM25 keyword search (default, all collections)
 /search "how do workers execute" --mode vsearch  # Semantic across all
-/search auth middleware -c {collection}                    # Search {PRODUCT} codebase only
-/search "webhook handler" -c {collection} --mode vsearch  # Semantic search in {PRODUCT}
+/search auth middleware -c {product}                    # Search {PRODUCT} codebase only
+/search "webhook handler" -c {product} --mode vsearch  # Semantic search in {PRODUCT}
 /search {company} brand --mode query                # Hybrid with re-ranking
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
 /search "brand guidelines" -c {company}             # Search {company} knowledge only
-/search "recovery metrics" -c {collection}        # Search {Product} knowledge only
+/search "recovery metrics" -c {company}        # Search {Product} knowledge only
 # If cwd is companies/{company}/:
 /search "case study"                             # Auto-detects → -c {company}
 ```

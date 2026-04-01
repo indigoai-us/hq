@@ -1,5 +1,31 @@
 # Changelog
 
+## v10.1.0 (2026-04-01)
+
+Onboarding education kit + setup command overhaul. New users now get training materials and a guided first week.
+
+### Added
+- **Getting Started education kit** (`knowledge/public/getting-started/`) — 3 guides that ship with every HQ install:
+  - `quick-start-guide.md` — What HQ is, the Core Loop, daily workflow, key concepts, rules of thumb
+  - `cheatsheet.md` — One-page daily reference card (commands, cadence, troubleshooting)
+  - `learning-path.md` — 11-module self-paced progression from beginner to advanced
+- **4 new policies**: `bun-overrides`, `chunked-reads`, `clipboard-file-protocol`, `deconflict-postbridge-schedule`
+
+### Changed
+- **`/setup` command overhauled** — now an educational onboarding experience:
+  - Phase 0: Welcome block explaining the 1000-employee analogy
+  - Toolkit bridge after dependency checks (what each tool does)
+  - Context bridge after identity collection (why HQ learns who you are)
+  - Phase 4: Education Kit section with auto-open of quick-start-guide
+  - "Your First Week" roadmap (Day 1 + Week 1 tasks)
+- **Multiple commands updated**: `/audit`, `/cleanup`, `/garden`, `/prd`, `/quality-gate`, `/reanchor`, `/run-project`, `/startwork`, and others
+- CLAUDE.md, USER-GUIDE.md, modules.yaml refreshed
+- Knowledge bases updated (agent-browser, hq-core, hq-desktop specs)
+- Worker configs updated
+
+### Removed
+- (none)
+
 ## v10.0.0 (2026-03-31)
 
 Obsidian vault integration, new policies, command updates, and scrub hardening.
@@ -12,9 +38,6 @@ Obsidian vault integration, new policies, command updates, and scrub hardening.
 - `obsidian-setup.md` knowledge doc in hq-core
 
 ### Changed
-- **`/update-hq`** — uses `indigoai-us/hq` as source repo, `core.yaml` as primary version source, governance pre/post integrity checks with backup and restore
-- All repo references migrated to `indigoai-us/hq`
-- `modules.yaml`, `README.md`, policies updated with correct repo paths
 - **16 commands** updated: `/audit`, `/cleanup`, `/garden`, `/harness-audit`, `/model-route`, `/prd`, `/reanchor`, `/recover-session`, `/remember`, `/run-project`, `/run`, `/search-reindex`, `/search`, `/startwork`, `/understand-project`, `/update-hq`
 - **4 skills** updated: `ascii-graphic`, `colorize`, `consolidate`, `social-graphic`
 - **30+ policies** updated with latest learned rules

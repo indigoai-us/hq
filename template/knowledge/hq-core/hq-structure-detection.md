@@ -28,7 +28,7 @@ These must exist for Desktop to recognize a directory as an HQ instance:
 
 ### Standard (Starter-Kit Baseline)
 
-Present in every fresh `indigoai-us/hq` clone. Desktop should expect these and render them:
+Present in every fresh `hq-starter-kit` clone. Desktop should expect these and render them:
 
 | Path | Type | Purpose | Notes |
 |------|------|---------|-------|
@@ -70,7 +70,7 @@ Present in every fresh `indigoai-us/hq` clone. Desktop should expect these and r
 
 ### Extended (Personal HQ Additions)
 
-Present in a full production HQ but NOT in the starter-kit. These represent advanced/custom features:
+Present in Corey's production HQ but NOT in the starter-kit. These represent advanced/custom features:
 
 | Path | Type | Purpose | Starter Equivalent |
 |------|------|---------|-------------------|

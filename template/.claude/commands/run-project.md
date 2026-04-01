@@ -300,7 +300,7 @@ This example shows `/run-project campaign-migration` executing through multiple 
   "name": "campaign-migration",
   "metadata": {
     "company": "{company}",
-    "repoPath": "repos/private/{your-repo}",
+    "repoPath": "repos/private/{product}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [

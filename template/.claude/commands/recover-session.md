@@ -222,7 +222,7 @@ Read the output JSON. If `{"skip": true}`, skip this session (subagent).
 
 Decode `project_dir_encoded` and inspect `cwd` + `files_edited`/`files_written`:
 
-- `cwd` contains `repos/private/{your-repo}` → {company}
+- `cwd` contains `repos/private/{product}` → {company}
 - `cwd` contains `repos/private/{company}-` → {company}
 - `cwd` contains `repos/private/{company}-` → {company}
 - `files_touched` include `companies/{co}/` → that company
