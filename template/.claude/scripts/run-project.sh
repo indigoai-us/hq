@@ -25,7 +25,7 @@ set -euo pipefail
 # =============================================================================
 
 HQ_ROOT="~/Documents/HQ"
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
 SESSION_ID="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -1181,7 +1181,7 @@ RULES:
   local flags=(-p --output-format json)
 
   if [[ "$NO_PERMISSIONS" == true ]]; then
-    flags+=(--dangerously-skip-permissions)
+    flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
   fi
 
   # Model resolution: CLI flag > story model_hint > default
@@ -1371,7 +1371,7 @@ Do NOT modify the PRD. Do NOT run unrelated changes."
   timeout 300 claude -p "$fix_prompt" \
     --output-format json \
     --max-turns 15 \
-    ${NO_PERMISSIONS:+--dangerously-skip-permissions} \
+    ${NO_PERMISSIONS:+--dangerously-skip-permissions --permission-mode bypassPermissions} \
     > "$fix_output" 2>&1 || {
     log_warn "Codex fix agent failed or timed out for $story_id (non-blocking)"
     return 0
@@ -1550,7 +1550,7 @@ Rules:
   local flags=(-p --output-format json)
 
   if [[ "$NO_PERMISSIONS" == true ]]; then
-    flags+=(--dangerously-skip-permissions)
+    flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
   fi
 
   if [[ -n "$MODEL" ]]; then
@@ -2218,7 +2218,7 @@ RULES:
 - Wrong format = task marked FAILED by orchestrator."
 
   local flags=(-p --output-format json)
-  [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions)
+  [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
 
   if [[ -n "$MODEL" ]]; then
     flags+=(--model "$MODEL")

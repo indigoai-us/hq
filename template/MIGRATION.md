@@ -6,41 +6,33 @@ Instructions for updating existing HQ installations to new versions.
 
 ## Migrating to v9.1.0 (from v9.0.0)
 
-Core governance and contacts CRM added. No breaking changes — all additions are backward-compatible.
+Minor release. No breaking changes.
 
-### New Files
+### New: Obsidian Vault
+Copy `.obsidian/` to your HQ root. Open in Obsidian — works out of the box. See `knowledge/public/hq-core/obsidian-setup.md` for details.
 
-Copy these files from the template to your HQ:
+Add to your `.gitignore`:
+```
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
+.obsidian/themes/
+.obsidian/community-plugins.json
+```
 
-**Contacts CRM:**
-- `contacts/_example.yaml` — contact file template
-- `.claude/commands/contact.md` — `/contact` command (add, show, edit, note, search, list)
-- `.claude/commands/who.md` — `/who` quick lookup command
-- `.claude/skills/crm/SKILL.md` — CRM skill for progressive contact enrichment
-- `knowledge/hq-core/contacts-crm.md` — CRM knowledge base
+### New Command
+- `/hq-growth-dashboard` — copy `.claude/commands/hq-growth-dashboard.md`
 
-**Core Governance:**
-- `core.yaml` — kernel file classification manifest with SHA256 checksums
-- `scripts/compute-checksums.sh` — regenerate checksums after modifying locked files
-- `scripts/core-integrity.sh` — verify kernel integrity (run with `--json` for machine output)
-- `scripts/check-hq-update.sh` — check for newer HQ versions on GitHub
-- `.claude/commands/release.md` — `/release` command for version bumping
-- `.claude/commands/core-status.md` — `/core-status` command for integrity checks
-- `.claude/commands/setup-update-check.md` — `/setup-update-check` for daily update checking
+### New Hook
+- `protect-core.sh` — copy `.claude/hooks/protect-core.sh`, `chmod +x`
 
 ### Updated Files
+Run `/update-hq` or manually merge changes to:
+- 16 commands, 4 skills, 30+ policies, 4 hooks, 5 workers
+- `CLAUDE.md`, `USER-GUIDE.md`, `modules.yaml`
 
-- `.claude/commands/update-hq.md` — now uses `indigoai-us/hq` repo, governance-aware upgrade flow
-- `.claude/hooks/hook-gate.sh` — no functional change (protect-core removed from profiles)
-- `modules/modules.yaml` — repo URLs updated to `indigoai-us/hq`
-- `README.md` — repo references updated
-
-### Migration Steps
-
-1. Copy new files listed above
-2. Run `bash scripts/compute-checksums.sh` to generate checksums for your locked files
-3. Verify with `bash scripts/core-integrity.sh` — all paths should show UNMODIFIED
-4. Update your `/update-hq` command to point to `indigoai-us/hq` instead of `hq-starter-kit`
+### Removed
+- Delete `.claude/policies/qa-screenshot-isolation.md` (replaced by `image-context-isolation.md`)
 
 ---
 

@@ -8,7 +8,7 @@ version: 1
 created: 2026-03-05
 updated: 2026-03-05
 source: session-learning
-learned_from: "Cross-company credential violation — used {company} AWS for {Product} domain"
+learned_from: "Cross-company credential violation — used {Product} AWS for {Product} domain"
 ---
 
 ## Rule

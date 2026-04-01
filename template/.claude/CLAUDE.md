@@ -5,7 +5,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
-- `agents-profile.md` - Corey's profile + style (load only for writing/comms tasks)
+- `agents-profile.md` - Owner's profile + style (load only for writing/comms tasks)
 - `agents-companies.md` - Company contexts + roles (load only when company routing needed)
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `workers/registry.yaml` - Worker index
@@ -31,7 +31,7 @@ Env vars in `.claude/settings.json` control cost defaults:
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Triggers mandatory handoff at 80% context (compaction can't be blocked — handoff preserves state) |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `sonnet` | Subagents (Task tool) use Sonnet (~60% cheaper than Opus, better quality than Haiku) |
 
-Switch models mid-session with `/model opus` for complex reasoning. Toggle thinking with Option+T.
+Toggle thinking with Option+T.
 
 ## Hook Profiles
 
@@ -104,7 +104,7 @@ Global people directory at `contacts/`. One YAML file per person (`contacts/{slu
 
 ## Companies
 
-{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
+{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -166,7 +166,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (3) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): {company} (6), {company}/PR (6), personal (3), {company} (2), {company} (1). Full list: `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
@@ -197,6 +197,10 @@ Commands implementing this: `/startwork`, `/run-project`, `/execute-task`, `/prd
 ## Sub-Agent Rules
 
 When spawning Task agents for story/task completion: each sub-agent MUST commit its own work before completing. The orchestrator should verify uncommitted changes after each sub-agent returns and commit them if the sub-agent failed to do so.
+
+## Image Context Isolation
+
+Parent session should never accumulate >10 images. When reading/verifying image files (.png/.jpg/.jpeg/.gif/.webp), delegate to a sub-agent: spawn agent with "Read {path} and describe: dimensions, content, visual quality, issues. Return text only." Mandatory for batch image verification and images >1500px. Full rules: `.claude/policies/image-context-isolation.md`
 
 ## File Locking
 

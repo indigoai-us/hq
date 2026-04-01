@@ -1,0 +1,74 @@
+# scrub-denylist.yaml
+# Terms that must never appear in any public repo synced from HQ.
+# Used by: /publish-kit (replacement rules), pre-commit hook (verification).
+# Update this file whenever a new company, person, domain, or repo is added to HQ.
+
+version: 1
+
+# Company slugs — case-insensitive match
+companies:
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+  {company}: "{company}"
+
+# Product/brand names (case variations handled at scrub time)
+products:
+  {Product}: "{Product}"
+  {Product}: "{Product}"
+  {PRODUCT}: "{PRODUCT}"
+  {product}: "{product}"
+  {Product}: "{Product}"
+  {Product}: "{Product}"
+  {Product}: "{Product}"
+
+# Person names — only scrub in company/work contexts
+persons:
+  {team-member}: "{team-member}"
+  {team-member}: "{team-member}"
+  {team-member}: "{team-member}"
+  {team-member}: "{team-member}"
+  {team-member}: "{team-member}"
+
+# Real domains
+domains:
+  {your-store}.myshopify.com: "{your-store}.myshopify.com"
+  {your-domain}.com: "{your-domain}.com"
+  {your-domain}.com: "{your-domain}.com"
+  {your-domain}.co: "{your-domain}.co"
+  {your-domain}.ai: "{your-domain}.ai"
+  {your-domain}.io: "{your-domain}.io"
+  {your-domain}.sh: "{your-domain}.sh"
+
+# Real repo/project names
+repos:
+  {your-repo}: "{your-repo}"
+  {your-app}: "{your-app}"
+  {your-repo}: "{your-repo}"
+  {your-repo}: "{your-repo}"
+  {your-repo}: "{your-repo}"
+  {your-repo}: "{your-repo}"
+  {your-project}: "{your-project}"
+  {your-org}: "{your-org}"
+
+# Files that should be deleted entirely during publish (no public value)
+delete_files:
+  - knowledge/Ralph/11-team-training-guide.md
+  - knowledge/knowledge-hq-core/systems-access.md
+  - workers/qa-tester/projects/{your-repo}/
+  - workers/dev-team/qa-tester/skills/electron-e2e.md
+
+# Verification: after scrub, grep for these patterns must return 0 results
+# Pattern is auto-generated from all keys in companies + persons + domains + repos

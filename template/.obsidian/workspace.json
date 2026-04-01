@@ -1,0 +1,72 @@
+{
+  "main": {
+    "id": "main",
+    "type": "split",
+    "children": [
+      {
+        "id": "leaf-1",
+        "type": "leaf",
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "INDEX.md",
+            "mode": "preview",
+            "source": false
+          }
+        }
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "left",
+    "type": "split",
+    "children": [
+      {
+        "id": "left-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "file-explorer",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 250
+  },
+  "right": {
+    "id": "right",
+    "type": "split",
+    "children": [
+      {
+        "id": "right-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "outline",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "INDEX.md"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 250
+  },
+  "active": "leaf-1",
+  "lastOpenFiles": [
+    "INDEX.md",
+    "USER-GUIDE.md"
+  ]
+}

@@ -8,17 +8,74 @@ visibility: public
 
 Quick setup to get your HQ running. Takes ~5 minutes.
 
-## Phase 0: Bootstrap
+## Phase 0: Dependencies
 
-Run the setup script to install dependencies, configure hooks, and optionally set up Indigo MCP:
+Check silently. Only prompt if missing.
 
+**Claude Code CLI**:
 ```bash
-./setup.sh
+which claude
+```
+If missing:
+```
+Claude Code CLI not found. Required to run HQ.
+
+Install: npm install -g @anthropic-ai/claude-code
 ```
 
-This handles: node/npm/jq checks, qmd installation, script permissions, directory structure, Indigo MCP setup, and knowledge indexing.
+**qmd** (search):
+```bash
+which qmd
+```
+If missing:
+```
+qmd not found. HQ uses qmd for semantic search across knowledge, workers, and code.
 
-If setup.sh has already been run (qmd installed, hooks executable), skip to Phase 1.
+Install: cargo install qmd
+  OR: brew install tobi/tap/qmd
+
+After install, index HQ: qmd index .
+```
+
+**GitHub CLI** (`gh`):
+```bash
+which gh
+```
+If missing:
+```
+GitHub CLI not found. Required for PRs, repo management, and worker deployments.
+
+Install: brew install gh
+Then authenticate: gh auth login
+```
+If installed but not authenticated (`gh auth status` exits non-zero):
+```
+GitHub CLI installed but not authenticated.
+
+Run: gh auth login
+```
+
+**Vercel CLI**:
+```bash
+which vercel
+```
+If missing:
+```
+Vercel CLI not found. Needed if you deploy sites or previews from HQ.
+
+Install: npm install -g vercel
+Then authenticate: vercel login
+
+Skip if you don't use Vercel.
+```
+If installed but not authenticated (`vercel whoami` exits non-zero):
+```
+Vercel CLI installed but not authenticated.
+
+Run: vercel login
+```
+
+Post-install: run `qmd index .` if qmd was just installed or no index exists.
 
 ## Phase 1: Identity
 
@@ -163,6 +220,12 @@ Dependencies:
 ✓ claude (Claude Code CLI)
 ✓ qmd (semantic search) — or skipped
 ✓ gh (GitHub CLI) — or skipped
+✓ vercel (Vercel CLI) — or skipped
+
+Knowledge Repos:
+Your knowledge bases can be independent git repos symlinked into knowledge/.
+This lets you version, share, and publish each knowledge base separately.
+See "Knowledge Repos" in CLAUDE.md for details.
 
 Next steps:
 1. Run /personal-interview — deep interview to build your voice + profile
@@ -191,10 +254,9 @@ Acknowledge and note: "No problem — you can set this up later by running `/set
 
 ## Rules
 
-- Run setup.sh first if dependencies aren't installed
 - Ask questions one at a time
 - Use defaults when user says "skip"
 - Never overwrite existing files without asking
 - Create parent directories as needed
-- For CLI tools (gh, vercel): inform but don't block setup if missing
+- For CLI tools (gh, vercel): inform but don't block setup if missing. These are "recommended" not "required" (except claude itself)
 - Always use relative paths for symlinks (../../repos/... not absolute paths)

@@ -16,7 +16,7 @@ Never use Glob to find `prd.json`, `worker.yaml`, or discover project/company/wo
 - **Companies:** `Read companies/manifest.yaml` — all companies listed there
 - **Known exact path:** `Read companies/{co}/projects/{name}/prd.json` directly
 
-Glob is only for listing files within a known, scoped directory (e.g. `Glob pattern="*.ts" path="repos/private/{product}/apps/"`).
+Glob is only for listing files within a known, scoped directory (e.g. `Glob pattern="*.ts" path="repos/private/{your-repo}/apps/"`).
 
 ## Rationale
 

@@ -8,7 +8,7 @@ version: 2
 created: 2026-02-22
 updated: 2026-03-15
 source: migration
-learned_from: "CLAUDE.md learned rules migration 2026-02-22, {project} migration 2026-03-15"
+learned_from: "CLAUDE.md learned rules migration 2026-02-22, abg-gtm-hq migration 2026-03-15"
 ---
 
 ## Rule
@@ -22,4 +22,4 @@ Always verify framework is set after project creation. Diagnostic clue: build lo
 
 ## Rationale
 
-CLI-created projects (`vercel link --project`) don't inherit the framework preset from the dashboard. The build runs correctly (uses local Next.js config), but the routing layer doesn't know how to serve pages — all routes return 404. Discovered during {project} migration from {Product} → {COMPANY} Brands team (2026-03-15).
+CLI-created projects (`vercel link --project`) don't inherit the framework preset from the dashboard. The build runs correctly (uses local Next.js config), but the routing layer doesn't know how to serve pages — all routes return 404. Discovered during abg-gtm-hq migration from {Product} → {company} Brands team (2026-03-15).
