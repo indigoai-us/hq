@@ -28,4 +28,4 @@ Infrastructure lookup checklist:
 
 ## Rationale
 
-Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for {your-domain}.ai domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.
+Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for get{company}.ai domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.

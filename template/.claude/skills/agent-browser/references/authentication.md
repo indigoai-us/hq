@@ -184,7 +184,7 @@ fi
 2. **Use environment variables for credentials**
    ```bash
    agent-browser fill @e1 "$APP_USERNAME"
-   agent-browser fill @e2 "$APP_PASSWORD"
+   agent-browser fill @e2 "$APP_AUTH"
    ```
 
 3. **Clean up after automation**

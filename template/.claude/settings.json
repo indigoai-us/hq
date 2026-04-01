@@ -1,19 +1,23 @@
 {
+  "autoMemoryEnabled": false,
   "permissions": {
-    "defaultMode": "plan"
+    "defaultMode": "plan",
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.aws/config)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.env)",
+      "Read(~/.netrc)"
+    ]
+  },
+  "env": {
+    "MAX_THINKING_TOKENS": "31999",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/hook-gate.sh consult-knowledge .claude/hooks/consult-knowledge.sh",
-            "timeout": 1200
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Glob",
@@ -54,6 +58,36 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh protect-core .claude/hooks/protect-core.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh protect-core .claude/hooks/protect-core.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -64,6 +98,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh auto-checkpoint-trigger .claude/hooks/auto-checkpoint-trigger.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh screenshot-resize-trigger .claude/hooks/screenshot-resize-trigger.sh",
+            "timeout": 10
           }
         ]
       },
@@ -76,16 +115,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/hook-gate.sh auto-reindex .claude/hooks/auto-reindex.sh",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "PreCompact": [
@@ -96,22 +125,6 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh auto-handoff-trigger .claude/hooks/auto-handoff-trigger.sh",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/hook-gate.sh capture-learnings .claude/hooks/capture-learnings.sh",
-            "timeout": 60
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/hook-gate.sh report-issue-reminder .claude/hooks/report-issue-reminder.sh",
-            "timeout": 10
           }
         ]
       }
@@ -124,11 +137,6 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh observe-patterns .claude/hooks/observe-patterns.sh",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/hook-gate.sh learn-reminder .claude/hooks/learn-reminder.sh",
-            "timeout": 10
           }
         ]
       }

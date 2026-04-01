@@ -49,7 +49,7 @@ build_pattern() {
     echo "$terms"
   else
     # Hardcoded fallback — update this when adding companies
-    echo "{company}|{company}|{company}|{company}|{company}|tonal|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{team-member}|{team-member}|{team-member}|{team-member}|{company}\.myshopify|{your-domain}|{company}pr|go{company}|{your-repo}|{your-app}|{company}-site|{company}-cmohq|{company}-portal|{your-org}"
+    echo "{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{company}|{team-member}|{team-member}|{team-member}|{team-member}|{company}\.myshopify|{your-domain}|{company}pr|go{company}|{your-repo}|{your-app}|{company}-site|{company}-cmohq|{company}-portal|{your-org}"
   fi
 }
 

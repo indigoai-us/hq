@@ -76,8 +76,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Linear
 | Command | What it does |
 |---------|--------------|
-| `/{check-linear}` | Interactive triage for {Product} workspace |
-| `/{repo-prd}` | Research {PRODUCT} codebase, generate PRD |
+| `/check-linear-voyage` | Interactive triage for {Product} workspace |
+| `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
 
 ### System
 | Command | What it does |
@@ -131,12 +131,12 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {company} | Data analysis |
-| infobip-admin | {company} | Infobip channel management |
-| {company}-gtm | {company} | GTM operations |
-| lr-qa | {company} | QA testing |
-| {product}-deploy | {company} | Deployment automation |
+| cfo-{company} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| {company}-analyst | {Product} | Data analysis |
+| infobip-admin | {Product} | Infobip channel management |
+| {company}-gtm | {Product} | GTM operations |
+| lr-qa | {Product} | QA testing |
+| {product}-deploy | {Product} | Deployment automation |
 | cmo-{company} | {Product} | Social/content (X, LinkedIn) |
 | x-poster | Personal | X/Twitter posting |
 | invoices | Personal | Invoice generation |
@@ -162,7 +162,7 @@ companies/
 ├── {company}/     # Artist site + admin
 ├── {company}/    # Artist management
 ├── {company}/      # PR agency
-├── {company}/     # {company} AI
+├── {company}/     # {Product} AI
 ├── {company}/ # Estate platform
 ├── {company}/       # Agency + tools
 ├── {company}/          # Shopify store

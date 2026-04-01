@@ -56,3 +56,13 @@ data/journal/*.jsonl
 
 # Synced modules (cloned repos)
 modules/.synced/
+.claude/settings.local.json
+
+# Obsidian runtime (workspace.json IS committed as default template)
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
+.obsidian/themes/
+.obsidian/community-plugins.json
+
+# Added by ggshield
+.cache_ggshield

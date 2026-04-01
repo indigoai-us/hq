@@ -5,7 +5,7 @@
 #
 # Environment variables:
 #   APP_USERNAME - Login username/email
-#   APP_PASSWORD - Login password
+#   APP_AUTH - Login password
 #
 # Two modes:
 #   1. Discovery mode (default): Shows form structure so you can identify refs
@@ -14,7 +14,7 @@
 # Setup steps:
 #   1. Run once to see form structure (discovery mode)
 #   2. Update refs in LOGIN FLOW section below
-#   3. Set APP_USERNAME and APP_PASSWORD
+#   3. Set APP_USERNAME and APP_AUTH
 #   4. Delete the DISCOVERY section
 
 set -euo pipefail
@@ -59,7 +59,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Note the refs: username=@e?, password=@e?, submit=@e?"
 echo "  2. Update the LOGIN FLOW section below with your refs"
-echo "  3. Set: export APP_USERNAME='...' APP_PASSWORD='...'"
+echo "  3. Set: export APP_USERNAME='...' APP_AUTH='...'"
 echo "  4. Delete this DISCOVERY MODE section"
 echo ""
 agent-browser close
@@ -69,7 +69,7 @@ exit 0
 # LOGIN FLOW: Uncomment and customize after discovery
 # ================================================================
 # : "${APP_USERNAME:?Set APP_USERNAME environment variable}"
-# : "${APP_PASSWORD:?Set APP_PASSWORD environment variable}"
+# : "${APP_AUTH:?Set APP_AUTH environment variable}"
 #
 # agent-browser open "$LOGIN_URL"
 # agent-browser wait --load networkidle
@@ -77,7 +77,7 @@ exit 0
 #
 # # Fill credentials (update refs to match your form)
 # agent-browser fill @e1 "$APP_USERNAME"
-# agent-browser fill @e2 "$APP_PASSWORD"
+# agent-browser fill @e2 "$APP_AUTH"
 # agent-browser click @e3
 # agent-browser wait --load networkidle
 #
