@@ -1,6 +1,6 @@
 # Changelog
 
-## v9.1.0 (2026-03-31)
+## v10.0.0 (2026-03-31)
 
 Obsidian vault integration, new policies, command updates, and scrub hardening.
 

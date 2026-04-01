@@ -4,7 +4,7 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
-## Migrating to v9.1.0 (from v9.0.0)
+## Migrating to v10.0.0 (from v9.0.0)
 
 Minor release. No breaking changes.
 
