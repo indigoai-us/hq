@@ -158,7 +158,7 @@ export async function scaffold(
   const depsLabel = "Checking dependencies";
   stepStatus(depsLabel, "running");
   if (!options.skipDeps) {
-    checkDeps();
+    await checkDeps();
   }
   stepStatus(depsLabel, "done");
 
@@ -168,26 +168,7 @@ export async function scaffold(
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 7. Install hq-cli
-  if (!options.skipCli) {
-    console.log();
-    const installCli = await confirm(
-      "Install @indigoai-us/hq-cli globally for module management?"
-    );
-    if (installCli) {
-      const cliLabel = "Installing @indigoai-us/hq-cli";
-      stepStatus(cliLabel, "running");
-      try {
-        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
-        stepStatus(cliLabel, "done");
-      } catch {
-        stepStatus(cliLabel, "failed");
-        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
-      }
-    }
-  }
-
-  // 8. Cloud sync setup
+  // 7. Cloud sync setup
   if (!options.skipSync && !alreadySynced) {
     console.log();
     const setupSync = await confirm(
@@ -199,7 +180,7 @@ export async function scaffold(
     }
   }
 
-  // 9. Index with qmd
+  // 8. Index with qmd
   try {
     execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
     success("Indexed HQ for search");
@@ -207,6 +188,6 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 10. Next steps
+  // 9. Next steps
   nextSteps(displayDir);
 }

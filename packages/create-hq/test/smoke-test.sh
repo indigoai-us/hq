@@ -104,10 +104,16 @@ echo ""
 # --- Run create-hq end-to-end ---
 # Uses --local-template to avoid GitHub API auth inside the container.
 # This exercises the full scaffold pipeline: template copy, git init,
-# integrity checks, dependency checks — everything except the network fetch.
-echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-cli --skip-sync"
+# integrity checks — everything except the network fetch.
+#
+# --skip-deps: The new dep installer is interactive (prompts to install missing
+# tools like claude, qmd, yq). In a headless container with /dev/null stdin,
+# prompts auto-accept but npm install -g fails as non-root. Dep install is
+# for real users at a terminal — the smoke test validates the scaffold output.
+echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-deps --skip-cli --skip-sync"
 "$CREATE_HQ_BIN" "${TEST_DIR}" \
   --local-template "${TEMPLATE_DIR}" \
+  --skip-deps \
   --skip-cli \
   --skip-sync \
   < /dev/null 2>&1 || {
