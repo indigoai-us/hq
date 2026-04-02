@@ -1,4 +1,5 @@
 {
+  "outputStyle": "Explanatory",
   "autoMemoryEnabled": false,
   "permissions": {
     "defaultMode": "plan",
@@ -14,8 +15,9 @@
   "env": {
     "MAX_THINKING_TOKENS": "31999",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "hooks": {
     "PreToolUse": [
@@ -108,6 +110,16 @@
       },
       {
         "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh auto-checkpoint-trigger .claude/hooks/auto-checkpoint-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",

@@ -28,7 +28,7 @@ Env vars in `.claude/settings.json` control cost defaults:
 |---------|-------|-----|
 | `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Triggers mandatory handoff at 80% context (compaction can't be blocked — handoff preserves state) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Triggers mandatory handoff at 60% context (compaction can't be blocked — handoff preserves state) |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `opus` | Subagents (Task tool) use Opus — all Claude work runs on Opus 4.6 |
 
 Toggle thinking with Option+T.
@@ -318,11 +318,23 @@ When building HQ infrastructure, auto-capture structural changes via `/learn`. S
 
 ## Auto-Checkpoint (PostToolUse Hook)
 
-PostToolUse hooks on Bash and Write tool calls detect checkpoint-worthy events and inject an `AUTO-CHECKPOINT REQUIRED` nudge. When you see this nudge, **immediately write a lightweight thread file** and continue working.
+PostToolUse hooks on Bash, Edit, and Write tool calls detect checkpoint-worthy events and inject an `AUTO-CHECKPOINT REQUIRED` nudge. When you see this nudge, **immediately write a lightweight thread file** and continue working.
 
 **Triggers (hook-detected):**
-- Git commit (Bash tool with `git commit`)
-- File generation to `workspace/reports/`, `workspace/social-drafts/`, `companies/*/data/`
+
+| Tool | Pattern | Trigger | Debounce? |
+|------|---------|---------|-----------|
+| Bash | `git commit` | `git-commit` | NO (always) |
+| Bash | `git push` | `git-push` | NO (always) |
+| Bash | `gh pr create/merge` | `pr-operation` | 5min |
+| Bash | `vercel deploy/--prod` | `deployment` | 5min |
+| Bash | `npm/bun publish` | `package-publish` | 5min |
+| Bash | `bun run test/npm test/bun test` | `test-run` | 5min |
+| Bash | `curl -X POST/PUT/DELETE` | `api-mutation` | 5min |
+| Edit | any file (excl. `workspace/threads/`) | `file-edit` | 5min |
+| Write | `workspace/reports/`, `social-drafts/`, `companies/*/data/` | `file-generation` | 5min |
+
+**Debounce:** Most triggers suppress duplicate nudges within 5 minutes (tracked via `/tmp/hq-checkpoint-last-${PPID}`). Git commit and git push always fire immediately regardless of debounce.
 
 **Also checkpoint after (instruction-based, no hook):**
 - Worker skill completion (via `/run`) — write auto-checkpoint before reporting results
@@ -347,7 +359,7 @@ PostToolUse hooks on Bash and Write tool calls detect checkpoint-worthy events a
   "metadata": {
     "title": "Auto: brief description",
     "tags": ["auto-checkpoint"],
-    "trigger": "git-commit | file-generation | worker-completion"
+    "trigger": "git-commit | git-push | pr-operation | deployment | package-publish | test-run | api-mutation | file-edit | file-generation | worker-completion"
   }
 }
 ```
@@ -367,7 +379,7 @@ Before `/handoff` or `/checkpoint`, reflect on the session and extract reusable 
 
 ## Auto-Handoff (PreCompact Hook)
 
-A PreCompact hook fires at 80% context. Autocompact cannot be fully disabled in Claude Code — no off switch exists. The hook forces an immediate `/handoff` to preserve state before compaction destroys context.
+A PreCompact hook fires at 60% context. Autocompact cannot be fully disabled in Claude Code — no off switch exists. The hook forces an immediate `/handoff` to preserve state before compaction destroys context.
 
 **When you see the handoff banner: STOP immediately.**
 

@@ -1,10 +1,10 @@
 #!/bin/bash
-# PreCompact hook: fires at 80% context. Compaction cannot be blocked,
+# PreCompact hook: fires at 60% context. Compaction cannot be blocked,
 # so this hook forces an immediate handoff to preserve session state.
 
 cat <<'EOF'
 ╔══════════════════════════════════════════════════════════════╗
-║  MANDATORY HANDOFF — context at 80%, compaction imminent    ║
+║  MANDATORY HANDOFF — context at 60%, compaction imminent    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
 ║  STOP. Do not continue your current task.                    ║
