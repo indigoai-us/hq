@@ -308,7 +308,7 @@ Knowledge Browser
 │   │   ├── Loom
 │   │   ├── Projects
 │   │   ├── PR
-│   │   └── Curious Minds
+│   │   └── {Company}
 │   └── Private
 │       └── Linear
 ├── Company: {company} (when LR context active)

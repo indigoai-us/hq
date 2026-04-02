@@ -20,4 +20,4 @@ Effective pattern: Design System agent first (establishes tokens) → Desktop pa
 
 ## Rationale
 
-Discovered during Magical Moments website redesign. Paper MCP's `write_html` and `create_artboard` tools operate on the same document state. Concurrent writes from parallel agents would produce non-deterministic artboard placement and potential node ID conflicts.
+Discovered during {Company} website redesign. Paper MCP's `write_html` and `create_artboard` tools operate on the same document state. Concurrent writes from parallel agents would produce non-deterministic artboard placement and potential node ID conflicts.

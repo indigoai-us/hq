@@ -70,7 +70,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 | `/newcompany` | Scaffold new company with full infrastructure |
 | `/launch-brand` | Launch new DTC brand end-to-end |
 | `/pb-connect` | Connect Post-Bridge social accounts |
-| `/{custom-command}` | Onboard AGI {program} student |
+| `/bootcamp-student` | Onboard AGI bootcamp student |
 | `/personal-interview` | Deep interview to populate profile/voice |
 
 ### Linear
@@ -95,7 +95,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ```
 /run                    # see all
 /run cfo-{company} mrr
-/run x-corey contentidea "AI"
+/run x-{your-name} contentidea "AI"
 ```
 
 **Public (`workers/public/`):**
@@ -131,14 +131,14 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {company} | Data analysis |
-| infobip-admin | {company} | Infobip channel management |
-| {company}-gtm | {company} | GTM operations |
-| lr-qa | {company} | QA testing |
-| {product}-deploy | {company} | Deployment automation |
-| cmo-{company} | {company} | Social/content (X, LinkedIn) |
-| x-corey | Personal | X/Twitter posting |
+| cfo-{company} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| {company}-analyst | {Product} | Data analysis |
+| infobip-admin | {Product} | Infobip channel management |
+| {company}-gtm | {Product} | GTM operations |
+| lr-qa | {Product} | QA testing |
+| {product}-deploy | {Product} | Deployment automation |
+| cmo-{company} | {Product} | Social/content (X, LinkedIn) |
+| x-{your-name} | Personal | X/Twitter posting |
 | invoices | Personal | Invoice generation |
 | social-council | Personal | Social strategy council |
 | pr-coordinator | {company} | PR campaign coordination |
@@ -162,7 +162,7 @@ companies/
 ├── {company}/     # Artist site + admin
 ├── {company}/    # Artist management
 ├── {company}/      # PR agency
-├── {company}/     # {company} AI
+├── {company}/     # {Product} AI
 ├── {company}/ # Estate platform
 ├── {company}/       # Agency + tools
 ├── {company}/          # Shopify store
@@ -189,7 +189,7 @@ HQ/
 │   ├── hooks/         # Lifecycle hooks (8)
 │   ├── policies/      # Cross-cutting rules (47)
 │   └── skills/        # Skill definitions (3)
-├── agents-profile.md  # Corey's profile
+├── agents-profile.md  # {your-name}'s profile
 ├── agents-companies.md # Company contexts
 ├── companies/         # Company-scoped resources (14)
 │   └── {co}/

@@ -2,7 +2,7 @@
 id: session-data-for-product-accuracy
 title: Analyze session threads before writing user-facing guides
 scope: command
-trigger: creating getting-started guides, cheatsheets, or curriculum for HQ/Empire OS
+trigger: creating getting-started guides, cheatsheets, or curriculum for HQ/{Company}
 enforcement: soft
 version: 1
 created: 2026-03-29

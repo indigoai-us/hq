@@ -8,6 +8,8 @@ SKILLS_SOURCE_DIR="${HQ_ROOT}/.claude/skills"
 CLAUDE_SOURCE_DIR="${HQ_ROOT}/.claude"
 COMMANDS_SOURCE_DIR="${CLAUDE_SOURCE_DIR}/commands"
 GLOBAL_SKILLS_TARGET_DIR="${HOME}/.codex/skills/hq"
+GLOBAL_AGENTS_SKILLS_TARGET_DIR="${HOME}/.agents/skills/hq"
+REPO_AGENTS_SKILLS_TARGET_DIR="${HQ_ROOT}/.agents/skills"
 PROJECT_CODEX_DIR="${HQ_ROOT}/.codex"
 PROJECT_CLAUDE_TARGET_DIR="${PROJECT_CODEX_DIR}/claude"
 PROJECT_PROMPTS_TARGET_DIR="${PROJECT_CODEX_DIR}/prompts"
@@ -25,7 +27,8 @@ EOF
 }
 
 skill_count() {
-  find "${SKILLS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d '[:space:]'
+  # Count all skill dirs (real + symlinked)
+  find "${SKILLS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) | wc -l | tr -d '[:space:]'
 }
 
 command_count() {
@@ -38,6 +41,10 @@ hook_count() {
 
 policy_count() {
   find "${CLAUDE_SOURCE_DIR}/policies" -mindepth 1 -maxdepth 1 -type f -name '*.md' | wc -l | tr -d '[:space:]'
+}
+
+openai_yaml_count() {
+  find "${SKILLS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/agents/openai.yaml' \; -print | wc -l | tr -d '[:space:]'
 }
 
 resolve_dir_link() {
@@ -116,13 +123,17 @@ ensure_dir_symlink() {
 
 print_status() {
   echo "HQ Claude source: ${CLAUDE_SOURCE_DIR}"
-  echo "Skills in source: $(skill_count)"
+  echo "Skills in source: $(skill_count) ($(openai_yaml_count) with agents/openai.yaml)"
   echo "Commands in source: $(command_count)"
   echo "Hooks in source: $(hook_count)"
   echo "Policies in source: $(policy_count)"
   echo
 
-  print_link_status "Global skills bridge" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"
+  print_link_status "Global skills bridge (legacy)" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"
+  echo
+  print_link_status "Global agents skills bridge" "${SKILLS_SOURCE_DIR}" "${GLOBAL_AGENTS_SKILLS_TARGET_DIR}"
+  echo
+  print_link_status "Repo agents skills bridge" "${SKILLS_SOURCE_DIR}" "${REPO_AGENTS_SKILLS_TARGET_DIR}"
   echo
   print_link_status "Project Claude mirror" "${CLAUDE_SOURCE_DIR}" "${PROJECT_CLAUDE_TARGET_DIR}"
   echo
@@ -145,7 +156,9 @@ install_bridge() {
     exit 1
   fi
 
-  ensure_dir_symlink "global Codex skill bridge" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"
+  ensure_dir_symlink "global Codex skill bridge (legacy)" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"
+  ensure_dir_symlink "global agents skill bridge" "${SKILLS_SOURCE_DIR}" "${GLOBAL_AGENTS_SKILLS_TARGET_DIR}"
+  ensure_dir_symlink "repo agents skill bridge" "${SKILLS_SOURCE_DIR}" "${REPO_AGENTS_SKILLS_TARGET_DIR}"
   ensure_dir_symlink "project Codex Claude mirror" "${CLAUDE_SOURCE_DIR}" "${PROJECT_CLAUDE_TARGET_DIR}"
   ensure_dir_symlink "project Codex command bridge" "${COMMANDS_SOURCE_DIR}" "${PROJECT_PROMPTS_TARGET_DIR}"
 

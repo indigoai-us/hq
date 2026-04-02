@@ -209,7 +209,7 @@ Please contribute via pull request. Security is a community effort.
 
 ### Industry Standards
 - [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
-- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-{your-secret-key})
 - [MAESTRO Framework](https://www.mitre.org/focus-areas/cybersecurity/maestro)
 
 ### AI-Specific Guidance

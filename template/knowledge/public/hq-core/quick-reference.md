@@ -13,7 +13,7 @@ relates_to: []
 ```
 HQ/
 ├── .claude/commands/   # Slash commands (44)
-├── agents.md           # Corey's profile
+├── agents.md           # {your-name}'s profile
 ├── companies/          # Company-scoped resources (14 companies)
 │   └── {co}/
 │       ├── knowledge/  # Embedded git repo (company knowledge)
@@ -45,9 +45,9 @@ HQ/
 
 | Company | Workers | Key Resources |
 |---------|---------|---------------|
-| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({product}) |
+| {company} | cfo, analyst, {service}-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear ({company}) |
 | {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
-| personal | x-corey, invoices, social-council | Slack, Gmail, LinkedIn, X |
+| personal | x-{your-name}, invoices, social-council | Slack, Gmail, LinkedIn, X |
 | {company} | pr-coordinator, pr-strategist, pr-writer, pr-outreach, pr-monitor, pr-shared | PR team |
 | {company} | site-builder, research-agent | Stripe |
 | {company} | — | Band/music |
@@ -90,7 +90,7 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Communication:** `/email`, `/checkemail`, `/imessage`
 **Design:** `/generateimage`
 **System:** `/cleanup`, `/garden`, `/search`, `/search-reindex`, `/publish-kit`, `/harness-audit`, `/model-route`, `/update-hq`
-**Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/{custom-command}`, `/personal-interview`
+**Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/bootcamp-student`, `/personal-interview`
 **Linear:** `/check-linear-{company}`, `/{product}-prd`
 **Deploy:** `/pr`
 

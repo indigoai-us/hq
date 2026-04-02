@@ -9,6 +9,7 @@
 | `ai-security-framework/` | AI Security Framework for autonomous workflows (9 files) |
 | `curious-minds/` | The Curious Mind's Handbook (2 files) |
 | `design-styles/` | Curated style references for designer workers (5 files) |
+| `getting-started/` | HQ onboarding — quick start guide, cheatsheet, learning path (4 files) |
 | `dev-team/` | Shared knowledge for the dev-team worker system (4 files) |
 | `hq/` | HQ knowledge alias (9 files) |
 | `hq-core/` | Thread schema, checkpoint schema, index-md spec (9 files) |

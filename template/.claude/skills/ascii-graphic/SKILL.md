@@ -34,7 +34,7 @@ Output: `workspace/social-drafts/images/{date}-{slug}/`
 | fg | `#7B9BC7` | Block art, primary text (faded {company}) |
 | muted | `#5A6270` | Tagline |
 | subtle | `#3D434C` | Mono line, meta |
-| logo | `#7B9BC7` | {company} SVG fill |
+| logo | `#7B9BC7` | {Product} SVG fill |
 
 ### Alternate Color Schemes
 
@@ -60,9 +60,9 @@ Vertical, left-aligned. Generous negative space top and bottom.
 1. **ASCII block-art banner** — hero element, left-aligned
 2. **Tagline** — 1 line, italic, muted
 3. **Mono line** — small monospace, subtle (install command, URLs, version info)
-4. **Logo** — {company} SVG, bottom-right, positioned absolutely, low opacity
+4. **Logo** — {Product} SVG, bottom-right, positioned absolutely, low opacity
 
-### {company} Logo (inline SVG)
+### {Product} Logo (inline SVG)
 
 Use `fill="{fg}"` to match the current color scheme. For Midnight, that's `#7B9BC7`.
 
@@ -567,7 +567,7 @@ Result:
   <pre class="ascii-art">{ASCII_BLOCK_ART}</pre>
   <div class="tagline">{TAGLINE}</div>
   <div class="mono-line">{MONO_LINE}</div>
-  <!-- {company} logo SVG here -->
+  <!-- {Product} logo SVG here -->
 </div>
 </body>
 </html>

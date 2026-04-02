@@ -1,5 +1,23 @@
 # Changelog
 
+## v10.2.0 (2026-04-01)
+
+Codex app compatibility — all 30 HQ skills now discoverable from OpenAI Codex via `agents/openai.yaml` metadata and modernized `.agents/skills/` bridge paths.
+
+### Added
+- **`agents/openai.yaml` for all 30 skills** — Codex app can now render skill names and descriptions in its UI. Each file contains `display_name` + `short_description` extracted from SKILL.md frontmatter
+- **`scripts/generate-openai-yaml.sh`** — batch generator to create `agents/openai.yaml` from SKILL.md for any new skills. Supports `--dry-run` and `--force` flags
+- **`.agents/skills/` bridge path** — Codex's primary discovery path (`~/.agents/skills/hq`) now supported alongside legacy `~/.codex/skills/hq`
+- **Repo-level `.agents/skills/` bridge** — skills discoverable when running Codex from within HQ directory
+
+### Changed
+- **`scripts/codex-skill-bridge.sh`** — now manages 5 bridges (added global `.agents/skills/`, repo `.agents/skills/`). Status output shows openai.yaml coverage count
+- Updated commands, policies, hooks, knowledge bases, and CLAUDE.md
+- Worker configs refreshed
+
+### Removed
+- (none)
+
 ## v10.1.0 (2026-04-01)
 
 Onboarding education kit + setup command overhaul. New users now get training materials and a guided first week.

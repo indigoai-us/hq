@@ -4,6 +4,50 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.2.0 (from v10.1.0)
+
+Minor release. No breaking changes.
+
+### New: Codex App Skill Discovery
+
+All 30 HQ skills now include `agents/openai.yaml` for Codex UI rendering. To add them:
+
+```bash
+# Copy agents/openai.yaml into each skill dir
+for d in starter-kit/.claude/skills/*/agents/; do
+  skill=$(basename "$(dirname "$d")")
+  mkdir -p "your-hq/.claude/skills/${skill}/agents"
+  cp "${d}openai.yaml" "your-hq/.claude/skills/${skill}/agents/openai.yaml"
+done
+```
+
+Or regenerate from your own SKILL.md files:
+
+```bash
+cp starter-kit/scripts/generate-openai-yaml.sh your-hq/scripts/
+bash your-hq/scripts/generate-openai-yaml.sh
+```
+
+### Updated: Codex Skill Bridge
+
+Copy the updated bridge script:
+
+```bash
+cp starter-kit/scripts/codex-skill-bridge.sh your-hq/scripts/codex-skill-bridge.sh
+chmod +x your-hq/scripts/codex-skill-bridge.sh
+bash your-hq/scripts/codex-skill-bridge.sh install
+```
+
+This adds the `.agents/skills/` discovery paths that Codex now prefers over `.codex/skills/`.
+
+### Updated Files
+
+Run `/update-hq` or manually merge changes to:
+- Multiple commands, policies, hooks, and knowledge bases
+- `CLAUDE.md`, `USER-GUIDE.md`
+
+---
+
 ## Migrating to v10.1.0 (from v10.0.0)
 
 Minor release. No breaking changes.

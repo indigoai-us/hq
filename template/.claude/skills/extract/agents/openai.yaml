@@ -1,0 +1,3 @@
+interface:
+  display_name: "Extract"
+  short_description: "Extract and consolidate reusable components, design tokens, and patterns into your design system."

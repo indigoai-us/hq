@@ -1,6 +1,6 @@
 ---
 id: curious-minds-is-book
-title: "Curious Minds is a book, not company knowledge"
+title: "{Company} is a book, not company knowledge"
 scope: global
 trigger: "knowledge operations targeting curious-minds"
 enforcement: hard

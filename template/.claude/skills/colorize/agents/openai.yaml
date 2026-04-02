@@ -1,0 +1,3 @@
+interface:
+  display_name: "Colorize"
+  short_description: "Add strategic color to features that are too monochromatic or lack visual interest."

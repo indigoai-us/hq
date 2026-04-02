@@ -25,7 +25,7 @@ Default is `{product}`. Always pass `workspace:` param when targeting non-defaul
 |--------|-----------|----------|----------|
 | {team-member} Johnson | {company} | `U065YSKUCJK` | `thereal{team-member}` |
 | {team-member} Kalim | {company} | `U0823D5QDJM` | `{team-member}` |
-| Corey Epstein | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
+| {your-name} Epstein | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
 | Ryan, Josh, {Product} team | {product} | — | — |
 
 **`find_user` gotcha**: Search matches `name` (username), not `real_name`. Use username or Slack ID directly if name search fails.

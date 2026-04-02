@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "10.2"
-updated: "2026-03-31"
+version: "10.3"
+updated: "2026-04-01"
 
 workers:
   # ===================
@@ -379,6 +379,163 @@ workers:
     team: gardener-team
     status: active
     description: "Execute approved actions — archive, deduplicate, update INDEX, create escalation PRDs"
+
+  # ===================
+  # Company Worker Templates
+  # ===================
+  # These are example entries for company-scoped workers.
+  # Replace {company}, {product}, {your-name} with your actual values.
+
+  - id: "{company}-analyst"
+    path: companies/{company}/workers/analyst/
+    type: ResearchWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "{Product}/{PRODUCT} data analysis - reports, anomaly detection"
+
+  - id: "cfo-{company}"
+    path: companies/{company}/workers/cfo/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "CFO worker - financial reporting (Stripe, Gusto, Deel, Shopify)"
+
+  - id: infobip-admin
+    path: companies/{company}/workers/infobip-admin/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "Infobip API admin - brands, numbers, RCS senders, account (read-only)"
+
+  - id: "{company}-gtm"
+    path: companies/{company}/workers/gtm/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "GTM/CAPI ops - Meta Pixel, GTM tags, campaign monitoring, dashboard deploy"
+
+  - id: "cmo-{company}"
+    path: companies/{company}/workers/cmo/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "CMO worker - {Product} social/content (X, LinkedIn)"
+
+  - id: "x-{your-name}"
+    path: companies/personal/workers/x-{your-name}/
+    type: SocialWorker
+    visibility: private
+    company: personal
+    status: active
+    description: "X/Twitter posting for {your-name}"
+
+  - id: invoices
+    path: companies/personal/workers/invoices/
+    type: OpsWorker
+    visibility: private
+    company: personal
+    status: active
+    description: "Personal invoices for invoices.{your-name}.com"
+
+  - id: lr-qa
+    path: companies/{company}/workers/qa/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "{Product} QA - smoke tests, store audits, funnel exploration, Playwright suites"
+
+  - id: "{product}-deploy"
+    path: companies/{company}/workers/deploy/
+    type: OpsWorker
+    visibility: private
+    status: active
+    company: "{company}"
+    description: "{PRODUCT} deployment - GitHub Actions, SST, ECS, Pulumi"
+
+  - id: "{company}-site-builder"
+    path: companies/{company}/workers/site-builder/
+    type: OpsWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "{company} template creation, audit, and motion injection for {company}-site"
+
+  - id: "{company}-research-agent"
+    path: companies/{company}/workers/research-agent/
+    type: ResearchWorker
+    visibility: private
+    company: "{company}"
+    status: active
+    description: "Business research for {company} website engine — web search, social discovery, structured output"
+
+  - id: social-council
+    path: companies/personal/workers/social-council/
+    type: StrategicWorker
+    visibility: private
+    company: personal
+    status: active
+    description: "Strategic gate for personal social accounts — evaluates posts against {PRODUCT} board, {Product} investor, and story arc before any post can be approved"
+
+  # PR Team (company-scoped)
+  - id: pr-shared
+    path: companies/{company}/workers/pr-shared/
+    type: Library
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "Shared utilities for PR team (types, media DB, pitch/coverage tracking, templates)"
+
+  - id: pr-strategist
+    path: companies/{company}/workers/pr-strategist/
+    type: OpsWorker
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "PR strategy, campaign planning, messaging frameworks, competitive intel"
+
+  - id: pr-writer
+    path: companies/{company}/workers/pr-writer/
+    type: ContentWorker
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "Press releases, pitches, talking points, op-eds, media alerts, crisis statements"
+
+  - id: pr-outreach
+    path: companies/{company}/workers/pr-outreach/
+    type: OpsWorker
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "Journalist research, media list building, pitch personalization, outreach"
+
+  - id: pr-monitor
+    path: companies/{company}/workers/pr-monitor/
+    type: ResearchWorker
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "Media monitoring, coverage tracking, sentiment analysis, competitive PR intel"
+
+  - id: pr-coordinator
+    path: companies/{company}/workers/pr-coordinator/
+    type: OpsWorker
+    visibility: private
+    team: pr-team
+    company: "{company}"
+    status: active
+    description: "End-to-end PR campaign orchestration, dashboard, content team coordination"
 
   # ===================
   # Add your workers below

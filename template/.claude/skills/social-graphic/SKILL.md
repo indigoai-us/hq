@@ -1,6 +1,6 @@
 ---
 name: social-graphic
-description: Generate 1080x1080 HTML social graphics for HQ update posts. Dark monochrome terminal aesthetic with tree structures, color-coded categories, and {company} branding. Use when creating visuals for social posts about HQ features, workers, or releases.
+description: Generate 1080x1080 HTML social graphics for HQ update posts. Dark monochrome terminal aesthetic with tree structures, color-coded categories, and {Product} branding. Use when creating visuals for social posts about HQ features, workers, or releases.
 allowed-tools: Read, Write, Edit, Bash(open:*), Bash(agent-browser:*)
 ---
 
@@ -46,9 +46,9 @@ All badges share the same dark `#1f2937` background with `#7d8590` text. Color d
 2. **Badges**: Row of category labels with colored dot indicators
 3. **Tree**: Directory tree using `├──`, `│`, `└──` connectors. Each row has left (name) and right (description)
 4. **Footer**: Stats on left, tagline on right, separated by `border-top: 1px solid #161b22`
-5. **Logo**: {company} logo SVG in bottom-right, 80px wide, opacity 0.35
+5. **Logo**: {Product} logo SVG in bottom-right, 80px wide, opacity 0.35
 
-### {company} Logo (inline SVG)
+### {Product} Logo (inline SVG)
 ```svg
 <svg width="106" height="25" viewBox="0 0 106 25" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6743 1.19913C11.9323 0.94113 11.7496 0.5 11.3847 0.5H7.9097C7.80109 0.5 7.69692 0.543148 7.62012 0.619951L0.119951 8.12012C-0.0399837 8.28005 -0.0399837 8.53936 0.119951 8.69929L11.1243 19.7036C11.2842 19.8635 11.5435 19.8635 11.7034 19.7036L22.7078 8.69929C22.8677 8.53936 22.8677 8.28005 22.7078 8.12012L20.6806 6.093C20.6642 6.07651 20.6357 6.08382 20.6265 6.10529C20.6066 6.15222 20.5775 6.19619 20.5392 6.23447L11.7034 15.0702C11.5435 15.2301 11.2842 15.2301 11.1243 15.0702L4.75335 8.69929C4.59341 8.53936 4.59341 8.28005 4.75335 8.12012L8.37509 4.49838L8.37651 4.49695L11.6743 1.19913Z" fill="white"/>
@@ -95,7 +95,7 @@ Place in footer area, right-aligned, at low opacity to subtly brand without domi
   <div class="footer">
     <span class="footer-left">{stats}</span>
     <span class="footer-right">{tagline}</span>
-    <svg class="logo"><!-- {company} logo --></svg>
+    <svg class="logo"><!-- {Product} logo --></svg>
   </div>
 </div>
 </body>
@@ -109,7 +109,7 @@ Place in footer area, right-aligned, at low opacity to subtly brand without domi
 3. Pick muted hue pairs (dot + folder) for each category
 4. Build tree structure with `├──` / `└──` connectors
 5. Add descriptions on the right (short, italic, muted)
-6. Include {company} logo in footer at 0.35 opacity
+6. Include {Product} logo in footer at 0.35 opacity
 7. Save to `workspace/social-drafts/images/{date}-{slug}/{name}.html`
 8. Open in browser: `open {path}` or use agent-browser for screenshot
 

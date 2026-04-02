@@ -26,7 +26,7 @@ Every project is defined by `projects/{name}/prd.json`. Desktop must parse this 
 | `goal` | string | Overall project goal (longer than `description`) |
 | `successCriteria` | string | Measurable outcome statement |
 | `qualityGates` | string[] | Back-pressure commands (e.g. `["bun run test", "bun check"]`) |
-| `repoPath` | string | Target repo relative to HQ (e.g. `repos/private/{your-repo}`) |
+| `repoPath` | string | Target repo relative to HQ (e.g. `repos/private/{product}`) |
 | `relatedWorkers` | string[] | Worker IDs relevant to this project |
 | `knowledge` | string[] | Relevant knowledge paths |
 | `linearCredentials` | string | (optional) Path to Linear API key file |

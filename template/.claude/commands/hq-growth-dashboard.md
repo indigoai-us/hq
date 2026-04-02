@@ -147,7 +147,7 @@ Hard-code these milestones. Mark as complete (☑) if evidence exists:
 | Product Hunt launch | `companies/{company}/data/campaigns/hq-launch/ph-url.txt` exists |
 | Discord server | `companies/{company}/data/campaigns/hq-launch/discord-invite.txt` exists |
 | Package ecosystem merged | Check if `repos/public/hq` main branch has `hq install` command (grep for it) |
-| First external contributor | GitHub API: contributors count > 3 (Corey + {team-member} + hassaans = 3) |
+| First external contributor | GitHub API: contributors count > 3 ({your-name} + {team-member} + hassaans = 3) |
 
 ## Step 4: Open Dashboard
 

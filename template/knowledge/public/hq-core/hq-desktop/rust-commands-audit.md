@@ -177,8 +177,8 @@ detail.skills = yaml.get("skills")...  // expects array of {id, name, descriptio
 Actual worker.yaml has nested structure:
 ```yaml
 worker:
-  id: social-x-corey
-  name: "Corey's X Worker"
+  id: social-x-{your-name}
+  name: "{your-name}'s X Worker"
   type: SocialWorker
 
 skills:
@@ -229,7 +229,7 @@ struct CompanyEntry {
 ```yaml
 {company}:
   repos: [...]
-  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{company}]
+  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{product}]
   workers: [cfo-{company}, {company}-analyst, {product}-deploy]
   knowledge: companies/{company}/knowledge/
   deploy: [...]

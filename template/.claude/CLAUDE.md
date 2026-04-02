@@ -5,7 +5,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
-- `agents-profile.md` - Corey's profile + style (load only for writing/comms tasks)
+- `agents-profile.md` - {your-name}'s profile + style (load only for writing/comms tasks)
 - `agents-companies.md` - Company contexts + roles (load only when company routing needed)
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `workers/registry.yaml` - Worker index

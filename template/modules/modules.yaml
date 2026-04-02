@@ -112,7 +112,172 @@ modules:
     paths:
       .: knowledge/public/curious-minds
 
+  # ─── Private Knowledge Repos ──────────────────────────────────────────
+
+  - name: knowledge-linear
+    repo: https://github.com/{your-name}/knowledge-linear.git
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: knowledge/private/linear
+
+  # ─── Company Knowledge Repos ──────────────────────────────────────────
+
+  - name: knowledge-{company}
+    repo: https://github.com/{your-name}/knowledge-{company}.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: https://github.com/{your-name}/knowledge-{company}.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-personal
+    repo: https://github.com/{your-name}/knowledge-personal.git
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/personal/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
+  - name: {company}-docs-internal
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/repos/{company}-docs-internal
+
+  - name: {company}-docs-customer
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/repos/{company}-docs-customer
+
+  - name: knowledge-dripkit
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/dripkit/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
   # ─── Add-On Kits ────────────────────────────────────────────────────
+
+  - name: hq-social-kit
+    repo: https://github.com/{your-name}/hq-social-kit.git
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      commands: .claude/commands
 
   - name: gstack
     repo: https://github.com/garrytan/gstack.git
