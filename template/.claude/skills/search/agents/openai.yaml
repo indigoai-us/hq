@@ -1,0 +1,3 @@
+interface:
+  display_name: "Search"
+  short_description: "Search across HQ and indexed repos (qmd-powered semantic + full-text)"

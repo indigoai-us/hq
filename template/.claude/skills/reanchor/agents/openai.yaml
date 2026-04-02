@@ -1,0 +1,3 @@
+interface:
+  display_name: "Reanchor"
+  short_description: "Force reanchoring conversation before next task"

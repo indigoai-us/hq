@@ -1,0 +1,3 @@
+interface:
+  display_name: "Search Reindex"
+  short_description: "Reindex and re-embed all qmd collections (HQ + repos)"

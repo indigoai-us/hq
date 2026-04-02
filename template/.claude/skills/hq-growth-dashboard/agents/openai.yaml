@@ -1,0 +1,3 @@
+interface:
+  display_name: "Hq Growth Dashboard"
+  short_description: "Pull HQ growth metrics — npm downloads, GitHub stars, content impressions — into a visual dashboard"

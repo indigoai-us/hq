@@ -1,0 +1,3 @@
+interface:
+  display_name: "Dashboard"
+  short_description: "Generate a visual HTML goals dashboard for a company"

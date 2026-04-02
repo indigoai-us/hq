@@ -1,5 +1,18 @@
 # Changelog
 
+## v10.3.0 (2026-04-02)
+
+Auto-bridge all Claude Code commands to Codex skills — every `/command` now works in the Codex app.
+
+### Added
+- **`scripts/sync-commands-to-skills.sh`** — auto-generates Codex skill wrappers for every Claude Code command that lacks a dedicated skill. Reads command frontmatter, creates thin delegate SKILL.md + agents/openai.yaml. Supports `--dry-run`, `--force`, `--clean` flags
+- **30 command-bridge skills** — `startwork`, `checkpoint`, `handoff`, `prd`, `run-project`, `execute-task`, `brainstorm`, `strategize`, `cleanup`, `garden`, `goals`, `learn`, `remember`, `search`, `run`, and 15 more
+- Auto-generated skills are marked with `# auto-generated: command-skill-bridge` so dedicated skills are never overwritten
+- `--clean` flag removes orphaned auto-generated skills when their command is deleted
+
+### Changed
+- **`scripts/codex-skill-bridge.sh install`** — now runs sync-commands-to-skills.sh and generate-openai-yaml.sh automatically before installing bridges. Single command sets up everything.
+
 ## v10.2.0 (2026-04-01)
 
 Codex app compatibility — all 30 HQ skills now discoverable from OpenAI Codex via `agents/openai.yaml` metadata and modernized `.agents/skills/` bridge paths.

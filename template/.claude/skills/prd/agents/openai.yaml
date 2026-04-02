@@ -1,0 +1,3 @@
+interface:
+  display_name: "Prd"
+  short_description: "Plan a project and generate PRD for execution"

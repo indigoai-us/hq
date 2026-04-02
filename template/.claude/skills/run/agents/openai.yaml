@@ -1,0 +1,3 @@
+interface:
+  display_name: "Run"
+  short_description: "Run a worker or list available workers"

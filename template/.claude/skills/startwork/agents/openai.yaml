@@ -1,0 +1,3 @@
+interface:
+  display_name: "Startwork"
+  short_description: "Start a work session — pick company, project, or repo, gather context"

@@ -14,6 +14,8 @@ PROJECT_CODEX_DIR="${HQ_ROOT}/.codex"
 PROJECT_CLAUDE_TARGET_DIR="${PROJECT_CODEX_DIR}/claude"
 PROJECT_PROMPTS_TARGET_DIR="${PROJECT_CODEX_DIR}/prompts"
 
+SYNC_SCRIPT="${SCRIPT_DIR}/sync-commands-to-skills.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -22,6 +24,7 @@ Usage:
 
 Commands:
   install  Install the HQ Claude -> Codex bridges for skills, commands, and runtime docs.
+           Also syncs commands to skills so all /commands work in Codex.
   status   Show whether each bridge is installed and where it points.
 EOF
 }
@@ -156,6 +159,23 @@ install_bridge() {
     exit 1
   fi
 
+  # Phase 1: Sync commands → skills (so Codex discovers all commands)
+  if [[ -x "${SYNC_SCRIPT}" ]]; then
+    echo "── Syncing commands to skills ──"
+    bash "${SYNC_SCRIPT}"
+    echo
+  fi
+
+  # Phase 2: Generate openai.yaml for any skills missing it
+  local gen_script="${SCRIPT_DIR}/generate-openai-yaml.sh"
+  if [[ -x "${gen_script}" ]]; then
+    echo "── Generating openai.yaml for new skills ──"
+    bash "${gen_script}"
+    echo
+  fi
+
+  # Phase 3: Install symlink bridges
+  echo "── Installing bridges ──"
   ensure_dir_symlink "global Codex skill bridge (legacy)" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"
   ensure_dir_symlink "global agents skill bridge" "${SKILLS_SOURCE_DIR}" "${GLOBAL_AGENTS_SKILLS_TARGET_DIR}"
   ensure_dir_symlink "repo agents skill bridge" "${SKILLS_SOURCE_DIR}" "${REPO_AGENTS_SKILLS_TARGET_DIR}"
