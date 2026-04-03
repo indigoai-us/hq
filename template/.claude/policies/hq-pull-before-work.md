@@ -22,4 +22,4 @@ At session start, after identifying the target repo:
 
 ## Rationale
 
-In a goclaw session (2026-03-21), we built a multi-instance control plane on a local main that was 372 commits behind origin/main. The remote had undergone major restructuring (package renames from `@goclaw/*` to `@{company}ai-us/goclaw-*`, new packages, type rewrites). The resulting merge had 21 conflicted files and was effectively unresolvable. A `git pull` at session start would have cost 10 seconds and saved hours of wasted work.
+In a goclaw session (2026-03-21), we built a multi-instance control plane on a local main that was 372 commits behind origin/main. The remote had undergone major restructuring (package renames from `@goclaw/*` to `@indigoai-us/goclaw-*`, new packages, type rewrites). The resulting merge had 21 conflicted files and was effectively unresolvable. A `git pull` at session start would have cost 10 seconds and saved hours of wasted work.

@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.3.0] — 2026-04-02
+
+### Added
+- **`land` skill** — land a PR: monitor CI, resolve review issues, merge, verify production
+- **12 new policies** — frustration-prevention rules (announce before irreversible, confirm creative direction, fix root cause not symptoms, never swallow errors, no production testing, post-parallel build verify, PR single concern, alert baseline calibration), plus orchestrator improvements (prd-files-match-acs-for-swarm, run-project-name-matches-dir, run-project-sigkill-retry, scrub-hook-no-denylist-in-template)
+
+### Changed
+- `/run-project` — added `--inline` execution mode for plan-first, in-session sequential story execution
+- `/update-hq` — rewritten to pull from indigoai-us/hq (replaces starter-kit references)
+- `/hq-growth-dashboard` — updated for indigoai-us/hq repo references
+- All commands, policies, and hooks refreshed with latest content
+
 ## [10.2.0] — 2026-04-02
 
 ### Added

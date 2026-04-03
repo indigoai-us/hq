@@ -13,8 +13,8 @@ Before scheduling a batch of posts via Post-Bridge:
 1. Query `GET /v1/posts?status=scheduled&limit=100` (paginate if >100) to get ALL existing scheduled posts
 2. Map existing posts by date and account ID to identify occupied time slots
 3. Schedule new posts only in free slots — avoid same-account same-hour collisions
-4. {Company} posts go to BOTH accounts (34528 + 34531) every 3 days — account for this when scheduling X-only or LinkedIn-only posts
+4. Curious Minds posts go to BOTH accounts (34528 + 34531) every 3 days — account for this when scheduling X-only or LinkedIn-only posts
 
 ## Rationale
 
-111 {Company} posts were already scheduled through Feb 2027. Without checking, new {Company} posts would have collided.
+111 Curious Minds posts were already scheduled through Feb 2027. Without checking, new Empire OS posts would have collided.

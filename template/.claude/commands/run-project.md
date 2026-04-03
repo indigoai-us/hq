@@ -25,6 +25,7 @@ Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` �
 | Mode | When | How |
 |------|------|-----|
 | **Default** | `/run-project` invoked interactively | `run-project.sh` in background, Claude polls state files |
+| **inline** | `--inline` flag | Plan from PRD → user approves → execute stories in-session via worker sub-agents |
 | **tmux** | `--tmux` flag | `run-project.sh` in tmux session (observe from phone) |
 | **direct** | `bash scripts/run-project.sh` (CI/nohup/cron) | Direct shell execution |
 
@@ -35,6 +36,7 @@ When `/run-project` is invoked in an interactive Claude session, it launches `ru
 ### Step 1 — Parse Arguments
 
 Parse `$ARGUMENTS` into project name + passthrough flags:
+- `--inline`: route to **Inline Execution** flow (see below) — do NOT launch `run-project.sh`
 - `--status`: delegate synchronously via `bash scripts/run-project.sh --status` (display + exit)
 - `--dry-run`: delegate synchronously via `bash scripts/run-project.sh --dry-run {project}` (display + exit)
 - `--help`: display flags table + exit
@@ -90,6 +92,83 @@ The script runs headless (no tty) — it takes non-interactive paths automatical
 - **Regression gate failure**: auto-pause (sets `state.json` status to `paused`)
 - Claude's poll loop detects `paused` state and surfaces the choice to the user
 
+## Inline Execution (--inline)
+
+Interactive, plan-first execution in the current session. Best for small-to-medium projects (3-8 stories) where user input is valuable — ambiguous specs, design decisions, creative work.
+
+### Step 1 — Parse + Validate
+
+Same as default mode:
+1. Resolve PRD path: `companies/{co}/projects/{project}/prd.json`
+2. Read prd.json → display: project name, total stories, completed, remaining
+3. Ensure `workspace/orchestrator/{project}/` dir exists
+
+**Incompatible flags** — error immediately if combined with `--inline`:
+- `--swarm` (inline is sequential by nature)
+- `--tmux` (no background process to observe)
+- `--codex-autofix` (user handles issues interactively)
+
+### Step 2 — Generate Plan from PRD
+
+1. Read all stories from prd.json
+2. Filter incomplete (`passes: false`), sort by deps → priority → array order
+3. For each story, classify task type (same logic as `/execute-task` step 3) and determine worker sequence (step 4)
+4. Present numbered implementation plan:
+
+```
+## Implementation Plan: {project}
+
+1. **{story-id}**: {title}
+   - Workers: architect → backend-dev → code-reviewer
+   - Files: {files list from PRD}
+   - ACs: {acceptance criteria summary}
+
+2. **{story-id}**: {title}
+   ...
+```
+
+5. **Enter plan mode** — user reviews, can request reordering or story adjustments
+6. Wait for user approval before proceeding
+
+### Step 3 — Load Policies
+
+Same as default: company → repo → global policies. Display count.
+
+### Step 4 — Sequential Story Execution (In-Session Ralph Loop)
+
+For each incomplete story in approved plan order:
+
+1. **Announce**: display story ID, title, full ACs, planned worker sequence
+2. **Branch setup**: create/checkout `branchName` from `baseBranch` (if specified in PRD)
+3. **Linear sync**: set In Progress (best-effort, non-blocking)
+4. **Execute via workers**: spawn worker sub-agents via **Agent tool** (not `claude -p`)
+   - Classify task type → select worker sequence (same as `/execute-task` steps 3-4)
+   - Each worker gets: story spec + ACs + repo context + policy summaries + prior worker output
+   - Workers run sequentially per story (e.g. architect → backend-dev → code-reviewer → QA)
+   - Use Agent tool with worker prompt built from `worker.yaml` config + task context
+5. **Back pressure**: run `metadata.qualityGates` after workers complete (tests, lint, typecheck)
+6. **Commit**: verify all changes committed. Auto-commit if sub-agent forgot
+7. **User checkpoint**: report what was done, then ask:
+   - **Continue** → proceed to next story
+   - **Adjust** → user modifies next story's approach/ACs before execution
+   - **Stop** → pause execution, preserve progress (resume later with `--inline --resume`)
+8. **Mark complete**: set `passes: true` in prd.json, update `state.json`
+9. **Linear sync**: set Done + comment (best-effort)
+
+### Step 5 — Regression Gates
+
+Every 3 completed stories, run full `metadata.qualityGates`. On failure: report to user inline (no auto-pause/retry — user decides).
+
+### Step 6 — Completion
+
+Same as default mode but all inline (no `claude -p` spawning):
+1. Board sync → `done`
+2. Summary report → `workspace/reports/{project}-summary.md`
+3. Doc sweep — run inline via Agent tool (not headless `claude -p`)
+4. Document release — run `/document-release` inline
+5. INDEX.md rebuild, manifest verification, `qmd update`
+6. State → `status: "completed"`
+
 ## Headless Bash Execution
 
 Launch the bash orchestrator directly for long-running, unattended execution:
@@ -127,6 +206,7 @@ bash scripts/run-project.sh --status
 | `--swarm [N]` | off (4) | Run eligible stories in parallel (max N concurrent) |
 | `--checkin-interval N` | 180 | Seconds between check-in status prints |
 | `--codex-autofix` | off | Auto-fix P1/P2 codex review findings (opt-in) |
+| `--inline` | off | Execute in current session with plan-first flow. User stays in the loop |
 
 ## How It Works (Ralph Loop)
 
@@ -285,6 +365,11 @@ If $ARGUMENTS is `--status`:
 - **Back pressure** — enforced inside `/execute-task`, not by orchestrator
 - **Policy-aware** — load company + repo + global policies before first task. Hard-enforcement policies block the loop if violated
 - **ALWAYS**: Use `"userStories"` key in prd.json (not `"stories"`) — `run-project.sh` greps for this exact key name
+- **`--inline` isolation** — incompatible with `--swarm`, `--tmux`, `--codex-autofix` (error if combined)
+- **`--inline` respects `--resume`** — skips completed stories, picks up from next incomplete
+- **`--inline` does NOT launch `run-project.sh`** — all orchestration happens in the Claude session
+- **`--inline` uses Agent tool** — worker sub-agents via Agent tool (in-process), not `claude -p` (process isolation)
+- **`--inline` preserves progress** — user can stop between stories; partial progress saved in prd.json + state.json
 
 ## Worked Example: Complete Project Execution (Ralph Loop)
 

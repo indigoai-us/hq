@@ -8,7 +8,7 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: task-completion
-learned_from: "social advisory council session — direct API posting for {your-name} personal accounts"
+learned_from: "social advisory council session — direct API posting for Corey personal accounts"
 ---
 
 ## Rule

@@ -15,4 +15,4 @@ Paper MCP text nodes do NOT respect `width` or `max-width` for text wrapping. Te
 
 ## Rationale
 
-Discovered during {Company} landing page design session. Multiple attempts to constrain text width (on the node, on a wrapper div, with flexShrink) all failed. Manual line breaks were the only reliable solution in Paper.
+Discovered during Empire OS landing page design session. Multiple attempts to constrain text width (on the node, on a wrapper div, with flexShrink) all failed. Manual line breaks were the only reliable solution in Paper.

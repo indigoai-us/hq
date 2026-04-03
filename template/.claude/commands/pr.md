@@ -62,7 +62,7 @@ Invoke {company}-agent with a writing task:
 - `write press-release {company} {topic}` → `-m "Write a press release for {company} about {topic}. Load client data, follow AP style, under 600 words."`
 - `write pitch {company} {topic}` → `-m "Write a pitch email for {company} about {topic}. Personalize to the journalist's beat. Under 150 words."`
 - `write talking-points {company} {topic}` → `-m "Create talking points for {company} about {topic}. Max 3 key messages with proof points."`
-- `write op-ed {company} {topic}` → `-m "Write an op-ed for {company} about {topic}. 700-1000 words in {your-name}'s voice."`
+- `write op-ed {company} {topic}` → `-m "Write an op-ed for {company} about {topic}. 700-1000 words in Corey's voice."`
 - `write media-alert {company} {topic}` → `-m "Write a media alert for {company} about {topic}. WHO/WHAT/WHEN/WHERE/WHY format."`
 - `write crisis {company} {topic}` → `-m "Write a crisis statement for {company} about {topic}. Acknowledge, state facts, outline next steps."`
 

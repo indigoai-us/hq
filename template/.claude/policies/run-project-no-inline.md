@@ -15,6 +15,8 @@ command: run-project
 
 When user invokes `/run-project` or asks to execute a project with a `prd.json`, ALWAYS launch `scripts/run-project.sh` as the orchestrator. NEVER implement stories inline — no direct Write/Edit to repo files, no creating service files, no editing package.json.
 
+**Exception:** When `--inline` flag is explicitly passed, in-session execution is permitted. The flag is the user's explicit opt-in to interactive mode. All other `/run-project` invocations (without `--inline`) MUST still use `run-project.sh`.
+
 The only acceptable actions in the interactive session are:
 1. Validate PRD exists and is well-formed
 2. Pre-launch prep (state.json fix, env placeholder, branch setup)
