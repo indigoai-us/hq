@@ -61,6 +61,7 @@ export async function authenticate(): Promise<Credentials> {
         const userId = url.searchParams.get("user_id");
         const bucket = url.searchParams.get("bucket");
         const region = url.searchParams.get("region") || "us-east-1";
+        const teamId = url.searchParams.get("team_id");
 
         if (!token || !refreshToken || !userId || !bucket) {
           res.writeHead(400, { "Content-Type": "text/html" });
@@ -77,6 +78,7 @@ export async function authenticate(): Promise<Credentials> {
           userId,
           bucket,
           region,
+          ...(teamId ? { teamId } : {}),
         };
 
         writeCredentials(creds);

@@ -18,6 +18,7 @@ export interface Credentials {
   userId: string;
   bucket: string;
   region: string;
+  teamId?: string;
 }
 
 export interface JournalEntry {
