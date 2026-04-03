@@ -20,4 +20,4 @@ source: session-learning
 
 ## Rationale
 
-Silent error propagation caused the worst incidents: Pydantic validation silently rejected checkout webhooks causing 98% checkout drop across 22+ brands for 2 days with zero alerts. PostgREST `.error` fields went unchecked, propagating null through the frontend. `putEvent()` failed silently creating 9,013 zombie checkouts. A handler returning 204 No Content hid complete data loss from operations.
+Silent error propagation caused the worst incidents in HQ history: Pydantic validation silently rejected checkout webhooks causing 98% checkout drop across 22+ brands for 2 days with zero alerts. PostgREST `.error` fields went unchecked, propagating null through the frontend. `putEvent()` failed silently creating 9,013 zombie checkouts. A handler returning 204 No Content hid complete data loss from operations.

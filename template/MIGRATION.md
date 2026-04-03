@@ -4,6 +4,54 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.4.0 (from v10.3.0)
+
+### New Skills (9 Codex-ready skills)
+
+Copy these skill directories:
+
+```bash
+for s in brainstorm execute-task handoff learn prd run run-project search startwork; do
+  cp -r template/.claude/skills/$s/ your-hq/.claude/skills/$s/
+done
+```
+
+Each includes `SKILL.md` + `agents/openai.yaml` for dual Claude Code / Codex discovery.
+
+### Updated Scripts
+
+```bash
+cp template/scripts/codex-skill-bridge.sh your-hq/scripts/codex-skill-bridge.sh
+chmod +x your-hq/scripts/codex-skill-bridge.sh
+```
+
+### Updated CLAUDE.md
+
+The Skills section now includes Codex dual-format documentation. Merge the new section from `template/.claude/CLAUDE.md` into your CLAUDE.md.
+
+### Updated Denylist
+
+If you use `/publish-kit`, update your `scrub-denylist.yaml` with the new `exceptions` section:
+
+```yaml
+exceptions:
+  "{company}ai-us": "indigoai-us"
+  "@{company}ai-us": "@indigoai-us"
+  "{company}ai-us/hq": "indigoai-us/hq"
+```
+
+### Updated Policies
+
+154 policies synced. Run a diff to merge new/changed policies:
+```bash
+diff -rq template/.claude/policies/ your-hq/.claude/policies/
+```
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v10.3.0 (from v10.2.0)
 
 Minor release. No breaking changes.

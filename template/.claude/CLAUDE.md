@@ -225,6 +225,24 @@ Use a bridge instead of copying files:
 - New command files created under `.claude/commands/` become available to Codex through the prompt bridge without a sync step
 - Inference: Codex may need a fresh session to notice brand-new bridged content, but the filesystem bridge stays current
 
+**Dual-format approach (Codex promotion):** Some skills have both `SKILL.md` (Codex version) and a corresponding `command.md` (Claude Code source of truth). `SKILL.md` is a Codex-adapted derivative — same goal, adapted execution model. When a skill exists in `.claude/skills/{name}/`, it is Codex-ready if it also has `agents/openai.yaml`.
+
+**Codex-ready skill structure:**
+```
+.claude/skills/{name}/
+  SKILL.md              # Codex-adapted instructions (frontmatter: name:, description:)
+  agents/
+    openai.yaml         # display_name + short_description — required for Codex discovery
+```
+
+**Codex adaptation rules (apply when writing new SKILL.md files):**
+- No Claude Code-only tools: never reference `Task`, `EnterPlanMode`, `TodoWrite`
+- Search: `qmd` CLI first (`qmd search/vsearch/query`), Grep as fallback
+- Orchestration: inline execution only — no sub-agent spawning (describe as "inline phases")
+- Rephrase anti-instructions: "Do NOT use TodoWrite" → "Track state in your context, not via TodoWrite"
+
+**Coverage tool:** `bash scripts/codex-skill-bridge.sh status` — shows skills count, openai.yaml coverage, and which commands lack corresponding skills. Run after adding new skills or commands.
+
 ## Search (qmd)
 
 HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.

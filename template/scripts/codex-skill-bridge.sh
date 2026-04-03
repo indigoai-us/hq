@@ -44,7 +44,42 @@ policy_count() {
 }
 
 openai_yaml_count() {
-  find "${SKILLS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/agents/openai.yaml' \; -print | wc -l | tr -d '[:space:]'
+  find "${SKILLS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -exec test -f '{}/agents/openai.yaml' \; -print | wc -l | tr -d '[:space:]'
+}
+
+commands_with_skills_count() {
+  local count=0
+  while IFS= read -r cmd_file; do
+    local cmd_name
+    cmd_name="$(basename "${cmd_file}" .md)"
+    if [[ -d "${SKILLS_SOURCE_DIR}/${cmd_name}" ]]; then
+      (( count++ )) || true
+    fi
+  done < <(find "${COMMANDS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 -type f -name '*.md')
+  echo "${count}"
+}
+
+print_coverage_report() {
+  local total_cmds with_skills without_skills
+  total_cmds="$(command_count)"
+  with_skills="$(commands_with_skills_count)"
+  without_skills=$(( total_cmds - with_skills ))
+
+  echo "Codex coverage: ${with_skills}/${total_cmds} commands have skills"
+
+  if (( without_skills > 0 )); then
+    echo
+    echo "Commands without skills (${without_skills}):"
+    while IFS= read -r cmd_file; do
+      local cmd_name
+      cmd_name="$(basename "${cmd_file}" .md)"
+      if [[ ! -d "${SKILLS_SOURCE_DIR}/${cmd_name}" ]]; then
+        echo "  - ${cmd_name}"
+      fi
+    done < <(find "${COMMANDS_SOURCE_DIR}" -mindepth 1 -maxdepth 1 -type f -name '*.md' | sort)
+  else
+    echo "All commands have corresponding skills."
+  fi
 }
 
 resolve_dir_link() {
@@ -122,11 +157,18 @@ ensure_dir_symlink() {
 }
 
 print_status() {
+  local skill_total skill_with skill_without
+  skill_total="$(skill_count)"
+  skill_with="$(openai_yaml_count)"
+  skill_without=$(( skill_total - skill_with ))
+
   echo "HQ Claude source: ${CLAUDE_SOURCE_DIR}"
-  echo "Skills in source: $(skill_count) ($(openai_yaml_count) with agents/openai.yaml)"
+  echo "Skills in source: ${skill_total} (${skill_with} with agents/openai.yaml, ${skill_without} without)"
   echo "Commands in source: $(command_count)"
   echo "Hooks in source: $(hook_count)"
   echo "Policies in source: $(policy_count)"
+  echo
+  print_coverage_report
   echo
 
   print_link_status "Global skills bridge (legacy)" "${SKILLS_SOURCE_DIR}" "${GLOBAL_SKILLS_TARGET_DIR}"

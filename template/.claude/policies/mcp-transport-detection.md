@@ -20,7 +20,7 @@ Before adding a new MCP server to `.mcp.json`, test the transport protocol. Not 
 4. If plain JSON 200 response → `"type": "http"` is fine
 
 **Known servers requiring `mcp-remote`:** Paper Desktop (`127.0.0.1:29979/mcp`)
-**Known servers fine with `"type": "http"`:** Figma (`localhost:3845/mcp`), {company} (`mcp.{product}.app/mcp`)
+**Known servers fine with `"type": "http"`:** Figma (`localhost:3845/mcp`), {Product} (`mcp.{product}.app/mcp`)
 
 ## Rationale
 
