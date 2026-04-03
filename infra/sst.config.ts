@@ -72,6 +72,37 @@ export default $config({
       link: [userPool, bucket],
     });
 
+    // Team operations
+    api.route("POST /api/teams", {
+      handler: "functions/teams.createTeam",
+      link: [userPool],
+    });
+
+    api.route("GET /api/teams", {
+      handler: "functions/teams.listTeams",
+      link: [userPool],
+    });
+
+    api.route("GET /api/teams/{id}", {
+      handler: "functions/teams.getTeam",
+      link: [userPool],
+    });
+
+    api.route("GET /api/teams/{id}/members", {
+      handler: "functions/teams.listMembers",
+      link: [userPool],
+    });
+
+    api.route("POST /api/teams/{id}/members", {
+      handler: "functions/teams.addMember",
+      link: [userPool],
+    });
+
+    api.route("DELETE /api/teams/{id}/members/{userId}", {
+      handler: "functions/teams.removeMember",
+      link: [userPool],
+    });
+
     // --- PWA ---
     const web = new sst.aws.StaticSite("HqWeb", {
       path: "../apps/web",
