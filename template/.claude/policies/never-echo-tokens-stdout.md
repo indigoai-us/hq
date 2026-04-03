@@ -16,4 +16,4 @@ NEVER print raw API keys, tokens, or secrets to stdout in CLI setup/config comma
 
 ## Rationale
 
-Caught by Codex review (P1) in {company} setup command. The fallback code path printed the actual DOMINION_API_KEY value when no supported AI tool was detected, leaking credentials to anyone with access to CI logs.
+Caught by Codex review (P1) in {company} setup command. The fallback code path printed the actual {PRODUCT}_API_KEY value when no supported AI tool was detected, leaking credentials to anyone with access to CI logs.

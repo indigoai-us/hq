@@ -14,8 +14,8 @@ Before any Slack operation, determine the target workspace from context (company
 
 | Workspace | Company | Team ID |
 |-----------|---------|---------|
-| `voyage` | {company}, voyage | `T7V83HY5B` |
-| `{company}` | {company}, {company}, personal | `T043AC36YE4` |
+| `voyage` | {company}, voyage | `{team-id}` |
+| `{company}` | {company}, {company}, personal | `{team-id}` |
 
 Default is `voyage`. Always pass `workspace:` param when targeting non-default.
 
@@ -32,10 +32,10 @@ Default is `voyage`. Always pass `workspace:` param when targeting non-default.
 
 | Person | Workspace | Slack ID | Username |
 |--------|-----------|----------|----------|
-| {team-member} Johnson | {company} | `U065YSKUCJK` | `therealstefan` |
-| {team-member} Kalim | {company} | `U0823D5QDJM` | `{team-member}` |
-| {your-name} Epstein | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
-| Ryan, Josh, {Product} team | voyage | — | — |
+| {team-member} | {company} | `{slack-id}` | `{username}` |
+| {team-member} | {company} | `{slack-id}` | `{team-member}` |
+| {your-name} | both ({company} primary) | `{slack-id}` ({company}) | `{username}` |
+| {team-member}, {team-member}, {Product} team | voyage | — | — |
 
 **`find_user` gotcha**: Search matches `name` (username), not `real_name`. Use username or Slack ID directly if name search fails.
 

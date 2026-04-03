@@ -8,7 +8,7 @@ enforcement: soft
 
 ## Rule
 
-The `#hq` Slack channel is a private channel on the **{company}** workspace (channel ID: `C0AQY3RDHSL`). When posting HQ-related updates (PRs, releases, project completions), use `workspace: "{company}"` and `channel: "hq"`. The default Slack workspace is {Product} — sending to `#hq` without specifying the {company} workspace will fail with "channel not found".
+The `#hq` Slack channel is a private channel on the **{company}** workspace (channel ID: `{channel-id}`). When posting HQ-related updates (PRs, releases, project completions), use `workspace: "{company}"` and `channel: "hq"`. The default Slack workspace is {Product} — sending to `#hq` without specifying the {company} workspace will fail with "channel not found".
 
 ## Rationale
 
