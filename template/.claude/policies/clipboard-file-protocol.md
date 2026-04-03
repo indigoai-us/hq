@@ -16,4 +16,4 @@ created: 2026-03-31
 
 ## Rationale
 
-Discovered when the Empire OS content review page copy button failed. The `file://` protocol is not a secure context.
+Discovered when the {product} content review page copy button failed. The `file://` protocol is not a secure context.

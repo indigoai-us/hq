@@ -21,4 +21,4 @@ List specific glob paths in the story's `acceptanceCriteria` so the execute-task
 
 ## Rationale
 
-Empire OS US-002 initially only referenced bootcamp transcripts. User corrected to include blog + social drafts. The enriched extraction (121KB across 4 files from 100+ sources) was significantly more useful than transcripts alone would have been.
+{product} US-002 initially only referenced bootcamp transcripts. User corrected to include blog + social drafts. The enriched extraction (121KB across 4 files from 100+ sources) was significantly more useful than transcripts alone would have been.

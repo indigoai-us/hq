@@ -75,7 +75,7 @@ Determine merge strategy:
 - If user specified: use their preference
 
 ```bash
-gh pr merge {pr_number} --repo {repo} --squash --delete-branch
+gh pr merge {pr_number} --repo {repo} --squash
 ```
 
 **If branch protection blocks merge:**
@@ -87,6 +87,21 @@ Verify merge:
 ```bash
 gh pr view {pr_number} --repo {repo} --json state,mergedAt,mergeCommit
 ```
+
+### 3b: Branch Cleanup
+
+After successful merge, offer branch cleanup with smart defaults:
+- **Feature branches** (`feature/*`, `fix/*`, `chore/*`): default to delete — ask user to confirm
+- **Release branches** (`release/*`, `hotfix/*`): default to keep — ask user before deleting
+- **Other branches**: ask user
+
+If user confirms deletion:
+```bash
+gh pr view {pr_number} --repo {repo} --json headRefName -q '.headRefName' | xargs -I {} git push origin --delete {}
+git branch -d {local_branch}  # if exists locally
+```
+
+If user declines or branch is protected, skip silently.
 
 ## Step 4: Monitor Production
 

@@ -10,7 +10,7 @@ Personal OS for AI Workers. Open-source (MIT). Published as **HQ by Indigo**.
 
 ## Template is Canonical
 
-`template/` is the single source of truth for HQ content. `hq-starter-kit` (github.com/coreyepstein/hq-starter-kit) is archived as of v10.2.1 — do not sync from it.
+`template/` is the single source of truth for HQ content. `hq-starter-kit` (github.com/{your-username}/hq-starter-kit) is archived as of v10.2.1 — do not sync from it.
 
 Current content counts (as of v10.2.0):
 - 44+ commands (`.claude/commands/`)

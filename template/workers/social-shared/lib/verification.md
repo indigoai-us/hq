@@ -15,7 +15,7 @@ Tracks posts that need delivery verification (scheduled posts, posts where Post-
   "draftId": "post-090",
   "profile": "personal",
   "platform": "x",
-  "accountId": 34528,
+  "accountId": 12345,
   "caption_preview": "First 100 chars...",
   "scheduledFor": "2026-02-16T22:30:00Z",
   "createdAt": "2026-02-16T21:50:00Z",
