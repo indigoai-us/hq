@@ -2,6 +2,8 @@
 
 Personal OS for AI Workers. **HQ** is free and open-source — install, personalize, and run AI agents from your terminal with [Claude Code](https://docs.anthropic.com/en/docs/claude-code). **HQ Cloud** (paid) adds cross-device sync, a mobile dashboard, and managed infrastructure.
 
+> Formerly [`hq-starter-kit`](https://github.com/coreyepstein/hq-starter-kit) — now distributed directly from this monorepo under `template/`.
+
 ## Install
 
 ```bash
@@ -20,10 +22,10 @@ claude
 
 | Directory | Contents |
 |-----------|----------|
-| `.claude/commands/` | 17 slash commands for session management, workers, projects, content, design |
-| `workers/` | 26 AI workers (dev team, content team, QA, security, finance) |
+| `.claude/commands/` | 44 slash commands for session management, workers, projects, content, design |
+| `workers/` | 28+ AI workers (dev team, content team, QA, security, finance) |
 | `knowledge/` | Knowledge bases (Ralph methodology, design styles, security, worker framework) |
-| `starter-projects/` | 3 starter projects (personal assistant, social media, code worker) |
+| `.claude/skills/` | 44+ skills (design, animate, polish, review, audit, and more) |
 | `workspace/` | Threads, checkpoints, reports, social drafts |
 
 ## Cloud Sync
@@ -31,12 +33,12 @@ claude
 Sync your HQ to the cloud for mobile access:
 
 ```bash
-npm install -g @{company}ai/hq-cli
-hq sync init        # Authenticate with {Product}AI
+npm install -g @indigoai/hq-cli
+hq sync init        # Authenticate with IndigoAI
 hq sync start       # Start background sync
 ```
 
-Access your HQ from any device at [hq.{company}ai.com](https://hq.{company}ai.com).
+Access your HQ from any device at [hq.indigoai.com](https://hq.indigoai.com).
 
 ## Module Management
 
@@ -51,13 +53,14 @@ hq modules add <repo-url>  # Add external modules
 ## Architecture
 
 ```
-{company}ai/hq/
+indigoai-us/hq/
 ├── packages/
 │   ├── create-hq/     # npx create-hq installer
 │   ├── hq-cli/        # hq modules|sync management CLI
 │   └── hq-cloud/      # S3 sync engine
 ├── apps/
-│   └── web/           # PWA dashboard (hq.{company}ai.com)
+│   ├── docs/          # Docs site (Astro + Starlight)
+│   └── web/           # PWA dashboard (hq.indigoai.com)
 ├── infra/             # AWS infrastructure (SST)
 └── template/          # HQ template distributed to users
 ```
@@ -67,8 +70,8 @@ hq modules add <repo-url>  # Add external modules
 | Package | npm | Purpose |
 |---------|-----|---------|
 | `create-hq` | [![npm](https://img.shields.io/npm/v/create-hq)](https://www.npmjs.com/package/create-hq) | One-time installer |
-| `@{company}ai/hq-cli` | [![npm](https://img.shields.io/npm/v/@{company}ai/hq-cli)](https://www.npmjs.com/package/@{company}ai/hq-cli) | Ongoing management |
-| `@{company}ai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@{company}ai/hq-cloud)](https://www.npmjs.com/package/@{company}ai/hq-cloud) | Cloud sync engine |
+| `@indigoai/hq-cli` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cli)](https://www.npmjs.com/package/@indigoai/hq-cli) | Ongoing management |
+| `@indigoai/hq-cloud` | [![npm](https://img.shields.io/npm/v/@indigoai/hq-cloud)](https://www.npmjs.com/package/@indigoai/hq-cloud) | Cloud sync engine |
 
 ## License
 
