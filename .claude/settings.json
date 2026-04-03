@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/sweetheart-encouragement.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
