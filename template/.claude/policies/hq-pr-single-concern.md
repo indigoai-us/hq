@@ -20,4 +20,4 @@ source: session-learning
 
 ## Rationale
 
-A PR merged unready messaging infrastructure commits alongside a Shopify identity fix. The messaging changes were incomplete and took down the messaging app in production, requiring an 11-minute emergency revert. Had the identity fix been in its own PR, it could have shipped safely while the messaging work continued on its branch. Mixed PRs make rollback impossible without also reverting the good changes.
+PR #2980 merged unready messaging infrastructure commits alongside a Shopify identity fix. The messaging changes were incomplete and took down the messaging app in production, requiring an 11-minute emergency revert. Had the identity fix been in its own PR, it could have shipped safely while the messaging work continued on its branch. Mixed PRs make rollback impossible without also reverting the good changes.

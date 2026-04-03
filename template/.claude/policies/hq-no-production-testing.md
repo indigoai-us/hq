@@ -20,4 +20,4 @@ source: session-learning
 
 ## Rationale
 
-A test post was published to an actual social account and could not be deleted via API — the content was permanently live. API field debugging against a production endpoint created immutable records. In both cases, the agent treated production as a test environment because no staging guard existed. External API mutations are often irreversible, and social platforms in particular offer no undo.
+A Post-Bridge test post was published to an actual social account and could not be deleted via API — the content was permanently live. API field debugging against a production endpoint created immutable records. In both cases, the agent treated production as a test environment because no staging guard existed. External API mutations are often irreversible, and social platforms in particular offer no undo.

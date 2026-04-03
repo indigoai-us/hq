@@ -1,5 +1,19 @@
 # Changelog
 
+## [10.4.0] — 2026-04-03
+
+### Added
+- **9 new Codex-ready skills** — `brainstorm`, `execute-task`, `handoff`, `learn`, `prd`, `run`, `run-project`, `search`, `startwork` — each with `SKILL.md` + `agents/openai.yaml` for dual Claude Code / Codex discovery
+- **Codex dual-format documentation** — CLAUDE.md now documents the skill structure, adaptation rules, and `codex-skill-bridge.sh status` coverage tool
+- **Denylist exceptions mechanism** — `scrub-denylist.yaml` now supports an `exceptions` section for terms that must survive scrubbing (e.g. `indigoai-us`)
+- **Codex conversion step** in `/publish-kit` — Step 4.5 verifies all synced skills have `agents/openai.yaml`
+
+### Changed
+- `scripts/codex-skill-bridge.sh` — enhanced with `commands_with_skills_count()`, `print_coverage_report()`, and symlink support in `openai_yaml_count()`
+- `scripts/run-project.sh` — refreshed with latest orchestrator improvements
+- 154 policies synced (scope-filtered: global, command, cross-cutting only)
+- Skill coverage: 39/40 skills now Codex-ready (97%)
+
 ## [10.3.0] — 2026-04-02
 
 ### Added

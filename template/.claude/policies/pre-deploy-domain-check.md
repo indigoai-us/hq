@@ -20,7 +20,7 @@ Before ANY Vercel deploy:
 4. **NEVER** remove a domain from one Vercel project to assign it to another — add new routes within the existing project instead
 5. **NEVER** deploy a repo whose registry entry shows a different `owner` without explicit user confirmation
 
-Protected domains (never reassign): `hq.{domain}`, `{app}.{domain}`, `{domain}`, `{company}.com`, `{company}.com`, `{company}.com`, `{company}pr.com`, `{company}.band`, `{company}.com`, `{your-username}.com`, `{company}app.com`, `www.{company}.ai`
+Protected domains (never reassign): `hq.{domain}`, `{app}.{domain}`, `{domain}`, `{company}.com`, `{company}.com`, `{company}.com`, `{your-domain}.com`, `{company}.band`, `{company}.com`, `{your-name}.com`, `{company}app.com`, `www.{company}.ai`
 
 ## Rationale
 

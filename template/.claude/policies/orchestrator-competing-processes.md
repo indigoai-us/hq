@@ -12,4 +12,4 @@ Before running `--resume` on a project, check for existing `run-project.sh` proc
 
 ## Rationale
 
-Session 2026-03-23: Two competing orchestrator processes for hpo-blog-cms caused state file corruption, requiring manual PID cleanup and resume.
+Session 2026-03-23: Two competing orchestrator processes for {company}-blog-cms caused state file corruption, requiring manual PID cleanup and resume.

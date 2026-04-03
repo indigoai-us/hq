@@ -12,4 +12,4 @@ When a regression gate fails due to lint error increase (e.g. "14 errors, baseli
 
 ## Rationale
 
-Session 2026-03-23: hpo-blog-cms regression gate caught a React compiler lint error in internal-links.tsx (setState synchronously in effect). Fixed by restructuring the useEffect to use async/await with cleanup function.
+Session 2026-03-23: {company}-blog-cms regression gate caught a React compiler lint error in internal-links.tsx (setState synchronously in effect). Fixed by restructuring the useEffect to use async/await with cleanup function.
