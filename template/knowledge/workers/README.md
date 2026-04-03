@@ -21,7 +21,7 @@ Workers are autonomous AI assistants with specialized roles. This knowledge base
 | Type | Purpose | Example |
 |------|---------|---------|
 | **CodeWorker** | Implement features, fix bugs | {company}, {company} |
-| **SocialWorker** | Draft posts, maintain presence | x-corey |
+| **SocialWorker** | Draft posts, maintain presence | x-{your-name} |
 | **ResearchWorker** | Competitive analysis, market research | {company}-analyst |
 | **OpsWorker** | Monitoring, automation, reports | cfo-{company} |
 

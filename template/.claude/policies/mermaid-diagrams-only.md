@@ -13,7 +13,7 @@ learned_from: "CLAUDE.md learned rules migration 2026-02-22"
 
 ## Rule
 
-When creating/editing knowledge files, ALWAYS use ` ```mermaid ` blocks for diagrams — never ASCII art. The {your-app} renders Mermaid as interactive SVG with {Product} theming and click-to-zoom.
+When creating/editing knowledge files, ALWAYS use ` ```mermaid ` blocks for diagrams — never ASCII art. The {your-app} renders Mermaid as interactive SVG with {company} theming and click-to-zoom.
 
 ## Rationale
 

@@ -34,22 +34,22 @@ print(','.join(str(x['downloads']) for x in days))
 
 ### 1b. GitHub Stats
 ```bash
-# Stars, forks, watchers, open issues for {company}ai-us/hq
-gh api repos/{company}ai-us/hq --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count, open_issues: .open_issues_count}'
+# Stars, forks, watchers, open issues for indigoai-us/hq
+gh api repos/indigoai-us/hq --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count, open_issues: .open_issues_count}'
 
 # Star history (recent stargazers — up to 30)
-gh api repos/{company}ai-us/hq/stargazers -H "Accept: application/vnd.github.star+json" --jq '.[].starred_at' 2>/dev/null | tail -30
+gh api repos/indigoai-us/hq/stargazers -H "Accept: application/vnd.github.star+json" --jq '.[].starred_at' 2>/dev/null | tail -30
 
 # Open PRs count
-gh api repos/{company}ai-us/hq/pulls --jq 'length'
+gh api repos/indigoai-us/hq/pulls --jq 'length'
 
 # Contributors count
-gh api repos/{company}ai-us/hq/contributors --jq 'length'
+gh api repos/indigoai-us/hq/contributors --jq 'length'
 ```
 
-Also fetch stats for hq-starter-kit (the repo users actually clone):
+Also fetch stats for the main HQ repo (the repo users actually clone):
 ```bash
-gh api repos/{your-name}/hq-starter-kit --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count}' 2>/dev/null
+gh api repos/indigoai-us/hq --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count}' 2>/dev/null
 ```
 
 ### 1c. npm Package Version
@@ -147,7 +147,7 @@ Hard-code these milestones. Mark as complete (☑) if evidence exists:
 | Product Hunt launch | `companies/{company}/data/campaigns/hq-launch/ph-url.txt` exists |
 | Discord server | `companies/{company}/data/campaigns/hq-launch/discord-invite.txt` exists |
 | Package ecosystem merged | Check if `repos/public/hq` main branch has `hq install` command (grep for it) |
-| First external contributor | GitHub API: contributors count > 3 ({your-name} + {team-member} + hassaans = 3) |
+| First external contributor | GitHub API: contributors count > 3 ({your-name} + {team-member} + {team-member} = 3) |
 
 ## Step 4: Open Dashboard
 

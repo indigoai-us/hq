@@ -8,7 +8,7 @@ version: 1
 created: 2026-03-05
 updated: 2026-03-05
 source: session-learning
-learned_from: "Failed to load {Product} policies before Route 53 work — missed documented DNS workflow"
+learned_from: "Failed to load {company} policies before Route 53 work — missed documented DNS workflow"
 ---
 
 ## Rule
@@ -28,4 +28,4 @@ Infrastructure lookup checklist:
 
 ## Rationale
 
-Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for get{company}.ai domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.
+Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for {domain} domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.

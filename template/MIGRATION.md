@@ -4,6 +4,40 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.3.0 (from v10.2.0)
+
+Minor release. No breaking changes.
+
+### New Skill
+
+Copy the `land` skill directory:
+
+```bash
+cp -r template/.claude/skills/land/ your-hq/.claude/skills/land/
+```
+
+### New Policies
+
+Copy these 12 policies from `template/.claude/policies/`:
+
+```bash
+for p in hq-alert-baseline-calibration hq-announce-before-irreversible hq-confirm-creative-direction hq-fix-root-cause-not-symptoms hq-never-swallow-errors hq-no-production-testing hq-post-parallel-build-verify hq-pr-single-concern prd-files-match-acs-for-swarm run-project-name-matches-dir run-project-sigkill-retry scrub-hook-no-denylist-in-template; do
+  cp "template/.claude/policies/${p}.md" "your-hq/.claude/policies/${p}.md"
+done
+```
+
+### Updated Commands
+
+Review and merge changes to:
+- `.claude/commands/run-project.md` (new `--inline` execution mode)
+- `.claude/commands/update-hq.md` (rewritten for indigoai-us/hq)
+- `.claude/commands/hq-growth-dashboard.md` (updated repo references)
+
+### Breaking Changes
+- (none this release)
+
+---
+
 ## Migrating to v10.2.0 (from v10.1.0)
 
 Minor release. No breaking changes.

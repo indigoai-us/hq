@@ -27,4 +27,4 @@ Implementation happens via `/execute-task` or `/run-project` AFTER the PRD is cr
 
 ## Rationale
 
-On 2026-02-22, a `/prd` session for the {Product} fundraising deck directly edited `companies/{company}/data/pitch-deck/index.html` (14 edits across 12 slides) instead of creating the PRD project files first. This bypassed HQ's project tracking, worker assignment, handoff, and quality gate systems. The plan mode approval was misinterpreted as permission to implement rather than permission to generate the PRD.
+On 2026-02-22, a `/prd` session for the {company} fundraising deck directly edited `companies/{company}/data/pitch-deck/index.html` (14 edits across 12 slides) instead of creating the PRD project files first. This bypassed HQ's project tracking, worker assignment, handoff, and quality gate systems. The plan mode approval was misinterpreted as permission to implement rather than permission to generate the PRD.

@@ -18,4 +18,4 @@ PATCH works on scheduled posts for updating caption and media. PUT does not exis
 
 ## Rationale
 
-Discovered during {Company} batch scheduling — 56 posts were created text-only, then images had to be attached via PATCH. Raw URLs in the `media` array silently fail.
+Discovered during {product} batch scheduling — 56 posts were created text-only, then images had to be attached via PATCH. Raw URLs in the `media` array silently fail.

@@ -17,4 +17,4 @@ When scheduling posts in Post-Bridge with images:
 
 ## Rationale
 
-Discovered during {Company} batch scheduling. POST /v1/posts accepts media IDs but you can't upload and create in one call. PATCH support was undocumented but works.
+Discovered during {product} batch scheduling. POST /v1/posts accepts media IDs but you can't upload and create in one call. PATCH support was undocumented but works.

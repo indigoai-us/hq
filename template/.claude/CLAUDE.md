@@ -22,10 +22,11 @@ Minimize context burn on session start:
 
 ## Token Optimization
 
-Env vars in `.claude/settings.json` control cost defaults:
+Env vars and settings in `.claude/settings.json` control cost/style defaults:
 
-| Env var | Value | Why |
+| Setting | Value | Why |
 |---------|-------|-----|
+| `outputStyle` | `Explanatory` | Enables Insight blocks + educational explanations. Synced to starter-kit |
 | `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Triggers mandatory handoff at 60% context (compaction can't be blocked — handoff preserves state) |

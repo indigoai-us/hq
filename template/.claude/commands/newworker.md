@@ -68,7 +68,7 @@ worker:
   version: "1.0"
 
 identity:
-  persona: {your-name}-epstein  # or company_context, voice_guide
+  persona: {your-name}  # or company_context, voice_guide
 
 execution:
   mode: {on-demand|scheduled|event-triggered}
