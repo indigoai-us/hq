@@ -4,6 +4,8 @@ import fs from 'fs';
 import { config } from './config.js';
 import type { Message, Chat, Session, ScheduledTask, MessageStatus } from './types.js';
 
+const DEFAULT_TEAM_ID = 'default';
+
 let _db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
@@ -27,6 +29,7 @@ export function initDb(dbPath?: string): Database.Database {
   db.pragma('foreign_keys = ON');
 
   createSchema(db);
+  migrateTeamId(db);
 
   _db = db;
   return db;
@@ -43,6 +46,7 @@ function createSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id TEXT NOT NULL DEFAULT 'default',
       group_id TEXT NOT NULL,
       chat_id TEXT NOT NULL,
       channel TEXT NOT NULL,
@@ -59,9 +63,11 @@ function createSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status);
     CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+    CREATE INDEX IF NOT EXISTS idx_messages_team_id_status ON messages(team_id, status);
 
     CREATE TABLE IF NOT EXISTS chats (
       id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL DEFAULT 'default',
       channel TEXT NOT NULL,
       group_id TEXT NOT NULL,
       title TEXT,
@@ -71,6 +77,7 @@ function createSchema(db: Database.Database): void {
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL DEFAULT 'default',
       group_id TEXT NOT NULL,
       chat_id TEXT NOT NULL,
       container_id TEXT,
@@ -82,9 +89,11 @@ function createSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_sessions_group_id ON sessions(group_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+    CREATE INDEX IF NOT EXISTS idx_sessions_team_id ON sessions(team_id);
 
     CREATE TABLE IF NOT EXISTS scheduled_tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id TEXT NOT NULL DEFAULT 'default',
       group_id TEXT NOT NULL,
       task_type TEXT NOT NULL,
       payload TEXT NOT NULL DEFAULT '{}',
@@ -96,7 +105,24 @@ function createSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status ON scheduled_tasks(status);
     CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_group_id ON scheduled_tasks(group_id);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_team_id ON scheduled_tasks(team_id);
   `);
+}
+
+/**
+ * Backward-compatible migration: add team_id column to existing databases
+ * that were created before multi-tenancy. SQLite ALTER TABLE ADD COLUMN
+ * with DEFAULT is safe — existing rows get 'default' automatically.
+ */
+function migrateTeamId(db: Database.Database): void {
+  const tables = ['messages', 'chats', 'sessions', 'scheduled_tasks'];
+  for (const table of tables) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    const hasTeamId = cols.some((c) => c.name === 'team_id');
+    if (!hasTeamId) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN team_id TEXT NOT NULL DEFAULT 'default'`);
+    }
+  }
 }
 
 // --- Message operations ---
@@ -106,24 +132,31 @@ export async function insertMessage(
 ): Promise<number> {
   const db = getDb();
   const stmt = db.prepare(`
-    INSERT INTO messages (group_id, chat_id, channel, sender_id, sender_name, content, status, created_at)
-    VALUES (@group_id, @chat_id, @channel, @sender_id, @sender_name, @content, @status, @created_at)
+    INSERT INTO messages (team_id, group_id, chat_id, channel, sender_id, sender_name, content, status, created_at)
+    VALUES (@team_id, @group_id, @chat_id, @channel, @sender_id, @sender_name, @content, @status, @created_at)
   `);
   const result = stmt.run({
     ...data,
+    team_id: data.team_id ?? DEFAULT_TEAM_ID,
     created_at: Date.now(),
   });
   return result.lastInsertRowid as number;
 }
 
-export async function getPendingMessages(limit = 10): Promise<Message[]> {
+export async function getPendingMessages(teamId?: string, limit = 10): Promise<Message[]> {
   const db = getDb();
-  const rows = db
+  if (teamId) {
+    return db
+      .prepare(
+        `SELECT * FROM messages WHERE team_id = ? AND status = 'pending' ORDER BY created_at ASC LIMIT ?`
+      )
+      .all(teamId, limit) as Message[];
+  }
+  return db
     .prepare(
       `SELECT * FROM messages WHERE status = 'pending' ORDER BY created_at ASC LIMIT ?`
     )
     .all(limit) as Message[];
-  return rows;
 }
 
 export async function updateMessageStatus(
@@ -160,12 +193,12 @@ export async function getMessageById(id: number): Promise<Message | null> {
 export async function upsertChat(data: Chat): Promise<void> {
   const db = getDb();
   db.prepare(`
-    INSERT INTO chats (id, channel, group_id, title, created_at, last_message_at)
-    VALUES (@id, @channel, @group_id, @title, @created_at, @last_message_at)
+    INSERT INTO chats (id, team_id, channel, group_id, title, created_at, last_message_at)
+    VALUES (@id, @team_id, @channel, @group_id, @title, @created_at, @last_message_at)
     ON CONFLICT(id) DO UPDATE SET
       last_message_at = excluded.last_message_at,
       title = COALESCE(excluded.title, chats.title)
-  `).run(data);
+  `).run({ ...data, team_id: data.team_id ?? DEFAULT_TEAM_ID });
 }
 
 export async function getChatById(id: string): Promise<Chat | null> {
@@ -179,9 +212,9 @@ export async function getChatById(id: string): Promise<Chat | null> {
 export async function insertSession(data: Omit<Session, 'ended_at' | 'message_count'>): Promise<void> {
   const db = getDb();
   db.prepare(`
-    INSERT INTO sessions (id, group_id, chat_id, container_id, status, started_at, message_count)
-    VALUES (@id, @group_id, @chat_id, @container_id, @status, @started_at, 0)
-  `).run(data);
+    INSERT INTO sessions (id, team_id, group_id, chat_id, container_id, status, started_at, message_count)
+    VALUES (@id, @team_id, @group_id, @chat_id, @container_id, @status, @started_at, 0)
+  `).run({ ...data, team_id: data.team_id ?? DEFAULT_TEAM_ID });
 }
 
 export async function updateSession(
@@ -228,27 +261,39 @@ export async function insertScheduledTask(
 ): Promise<number> {
   const db = getDb();
   const result = db.prepare(`
-    INSERT INTO scheduled_tasks (group_id, task_type, payload, status, scheduled_at)
-    VALUES (@group_id, @task_type, @payload, @status, @scheduled_at)
-  `).run(data);
+    INSERT INTO scheduled_tasks (team_id, group_id, task_type, payload, status, scheduled_at)
+    VALUES (@team_id, @group_id, @task_type, @payload, @status, @scheduled_at)
+  `).run({ ...data, team_id: data.team_id ?? DEFAULT_TEAM_ID });
   return result.lastInsertRowid as number;
 }
 
-export async function getPendingScheduledTasks(limit = 10): Promise<ScheduledTask[]> {
+export async function getPendingScheduledTasks(teamId?: string, limit = 10): Promise<ScheduledTask[]> {
   const db = getDb();
   const now = Date.now();
-  const rows = db.prepare(`
+  if (teamId) {
+    return db.prepare(`
+      SELECT * FROM scheduled_tasks
+      WHERE team_id = ? AND status = 'pending' AND scheduled_at <= ?
+      ORDER BY scheduled_at ASC LIMIT ?
+    `).all(teamId, now, limit) as ScheduledTask[];
+  }
+  return db.prepare(`
     SELECT * FROM scheduled_tasks
     WHERE status = 'pending' AND scheduled_at <= ?
     ORDER BY scheduled_at ASC LIMIT ?
   `).all(now, limit) as ScheduledTask[];
-  return rows;
 }
 
 // --- Stats ---
 
-export function getQueueDepth(): number {
+export function getQueueDepth(teamId?: string): number {
   const db = getDb();
+  if (teamId) {
+    const row = db
+      .prepare(`SELECT COUNT(*) as count FROM messages WHERE team_id = ? AND (status = 'pending' OR status = 'processing')`)
+      .get(teamId) as { count: number };
+    return row.count;
+  }
   const row = db
     .prepare(`SELECT COUNT(*) as count FROM messages WHERE status = 'pending' OR status = 'processing'`)
     .get() as { count: number };

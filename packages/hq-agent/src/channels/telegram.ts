@@ -45,6 +45,7 @@ class TelegramChannel implements Channel {
       // Upsert chat record
       await upsertChat({
         id: chatId,
+        team_id: config.TEAM_ID,
         channel: 'telegram',
         group_id: groupId,
         title: ctx.chat.type === 'private' ? senderName : (ctx.chat.title ?? null),
@@ -54,6 +55,7 @@ class TelegramChannel implements Channel {
 
       // Insert message into SQLite
       const messageId = await insertMessage({
+        team_id: config.TEAM_ID,
         group_id: groupId,
         chat_id: chatId,
         channel: 'telegram',

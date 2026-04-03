@@ -147,7 +147,7 @@ async function pollMessages(): Promise<void> {
   if (isShuttingDown) return;
 
   try {
-    const messages = await getPendingMessages(config.MAX_CONCURRENT_CONTAINERS * 2);
+    const messages = await getPendingMessages(undefined, config.MAX_CONCURRENT_CONTAINERS * 2);
 
     for (const msg of messages) {
       // Mark as processing immediately to avoid double-dispatch on next poll

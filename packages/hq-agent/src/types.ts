@@ -6,6 +6,7 @@ export type TaskStatus = 'pending' | 'running' | 'done' | 'failed';
 
 export interface Message {
   id: number;
+  team_id: string;
   group_id: string;
   chat_id: string;
   channel: string;
@@ -21,6 +22,7 @@ export interface Message {
 
 export interface Chat {
   id: string;
+  team_id: string;
   channel: string;
   group_id: string;
   title: string | null;
@@ -30,6 +32,7 @@ export interface Chat {
 
 export interface Session {
   id: string;
+  team_id: string;
   group_id: string;
   chat_id: string;
   container_id: string | null;
@@ -41,6 +44,7 @@ export interface Session {
 
 export interface ScheduledTask {
   id: number;
+  team_id: string;
   group_id: string;
   task_type: string;
   payload: string; // JSON string

@@ -18,6 +18,7 @@ describe('db', () => {
   describe('messages', () => {
     it('inserts a message and retrieves it by id', async () => {
       const id = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -34,10 +35,12 @@ describe('db', () => {
       expect(msg!.content).toBe('Hello world');
       expect(msg!.status).toBe('pending');
       expect(msg!.group_id).toBe('group-1');
+      expect(msg!.team_id).toBe('default');
     });
 
     it('getPendingMessages returns only pending messages', async () => {
       await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -48,6 +51,7 @@ describe('db', () => {
       });
 
       const id2 = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -66,6 +70,7 @@ describe('db', () => {
 
     it('updateMessageStatus changes status and sets processed_at', async () => {
       const id = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -85,6 +90,7 @@ describe('db', () => {
 
     it('updateMessageStatus sets error on failure', async () => {
       const id = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -104,6 +110,7 @@ describe('db', () => {
     it('getPendingMessages respects limit', async () => {
       for (let i = 0; i < 5; i++) {
         await insertMessage({
+          team_id: 'default',
           group_id: 'group-1',
           chat_id: 'chat-1',
           channel: 'telegram',
@@ -114,7 +121,7 @@ describe('db', () => {
         });
       }
 
-      const pending = await getPendingMessages(3);
+      const pending = await getPendingMessages(undefined, 3);
       expect(pending).toHaveLength(3);
     });
 
@@ -129,6 +136,7 @@ describe('db', () => {
       const now = Date.now();
       await upsertChat({
         id: 'chat-1',
+        team_id: 'default',
         channel: 'telegram',
         group_id: 'group-1',
         title: 'Test Chat',
@@ -139,12 +147,14 @@ describe('db', () => {
       const chat = await getChatById('chat-1');
       expect(chat).not.toBeNull();
       expect(chat!.title).toBe('Test Chat');
+      expect(chat!.team_id).toBe('default');
     });
 
     it('upsert updates last_message_at on conflict', async () => {
       const now = Date.now();
       await upsertChat({
         id: 'chat-1',
+        team_id: 'default',
         channel: 'telegram',
         group_id: 'group-1',
         title: 'Test Chat',
@@ -155,6 +165,7 @@ describe('db', () => {
       const later = now + 5000;
       await upsertChat({
         id: 'chat-1',
+        team_id: 'default',
         channel: 'telegram',
         group_id: 'group-1',
         title: null,
@@ -178,6 +189,7 @@ describe('db', () => {
     it('inserts and retrieves a session', async () => {
       await insertSession({
         id: 'session-1',
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         container_id: null,
@@ -189,12 +201,14 @@ describe('db', () => {
       expect(session).not.toBeNull();
       expect(session!.status).toBe('active');
       expect(session!.message_count).toBe(0);
+      expect(session!.team_id).toBe('default');
     });
 
     it('updateSession changes status and ended_at', async () => {
       const now = Date.now();
       await insertSession({
         id: 'session-1',
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         container_id: null,
@@ -212,6 +226,7 @@ describe('db', () => {
     it('updateSession with no fields is a no-op', async () => {
       await insertSession({
         id: 'session-1',
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         container_id: null,
@@ -227,6 +242,7 @@ describe('db', () => {
   describe('scheduled_tasks', () => {
     it('inserts a scheduled task', async () => {
       const id = await insertScheduledTask({
+        team_id: 'default',
         group_id: 'group-1',
         task_type: 'reminder',
         payload: JSON.stringify({ msg: 'hello' }),
@@ -242,6 +258,7 @@ describe('db', () => {
       const future = Date.now() + 60000;
 
       await insertScheduledTask({
+        team_id: 'default',
         group_id: 'group-1',
         task_type: 'reminder',
         payload: '{}',
@@ -250,6 +267,7 @@ describe('db', () => {
       });
 
       await insertScheduledTask({
+        team_id: 'default',
         group_id: 'group-1',
         task_type: 'reminder',
         payload: '{}',
@@ -266,6 +284,7 @@ describe('db', () => {
   describe('getQueueDepth', () => {
     it('counts pending and processing messages', async () => {
       const id1 = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -276,6 +295,7 @@ describe('db', () => {
       });
 
       const id2 = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -287,6 +307,7 @@ describe('db', () => {
 
       await updateMessageStatus(id2, 'processing');
       await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -297,6 +318,7 @@ describe('db', () => {
       });
 
       const id3 = await insertMessage({
+        team_id: 'default',
         group_id: 'group-1',
         chat_id: 'chat-1',
         channel: 'telegram',
@@ -316,6 +338,181 @@ describe('db', () => {
 
     it('returns 0 when queue is empty', () => {
       expect(getQueueDepth()).toBe(0);
+    });
+  });
+
+  describe('team isolation', () => {
+    it('getPendingMessages scoped to team returns only that team\'s messages', async () => {
+      await insertMessage({
+        team_id: 'team-A',
+        group_id: 'group-1',
+        chat_id: 'chat-1',
+        channel: 'telegram',
+        sender_id: 'user-1',
+        sender_name: 'Alice',
+        content: 'Team A message',
+        status: 'pending',
+      });
+
+      await insertMessage({
+        team_id: 'team-B',
+        group_id: 'group-2',
+        chat_id: 'chat-2',
+        channel: 'slack',
+        sender_id: 'user-2',
+        sender_name: 'Bob',
+        content: 'Team B message',
+        status: 'pending',
+      });
+
+      const teamAMessages = await getPendingMessages('team-A');
+      expect(teamAMessages).toHaveLength(1);
+      expect(teamAMessages[0].content).toBe('Team A message');
+      expect(teamAMessages[0].team_id).toBe('team-A');
+
+      const teamBMessages = await getPendingMessages('team-B');
+      expect(teamBMessages).toHaveLength(1);
+      expect(teamBMessages[0].content).toBe('Team B message');
+    });
+
+    it('getPendingMessages without teamId returns all teams', async () => {
+      await insertMessage({
+        team_id: 'team-A',
+        group_id: 'group-1',
+        chat_id: 'chat-1',
+        channel: 'telegram',
+        sender_id: 'user-1',
+        sender_name: 'Alice',
+        content: 'A',
+        status: 'pending',
+      });
+
+      await insertMessage({
+        team_id: 'team-B',
+        group_id: 'group-2',
+        chat_id: 'chat-2',
+        channel: 'slack',
+        sender_id: 'user-2',
+        sender_name: 'Bob',
+        content: 'B',
+        status: 'pending',
+      });
+
+      const all = await getPendingMessages();
+      expect(all).toHaveLength(2);
+    });
+
+    it('getQueueDepth scoped to team counts only that team', async () => {
+      await insertMessage({
+        team_id: 'team-A',
+        group_id: 'group-1',
+        chat_id: 'chat-1',
+        channel: 'telegram',
+        sender_id: 'user-1',
+        sender_name: 'Alice',
+        content: 'A1',
+        status: 'pending',
+      });
+
+      await insertMessage({
+        team_id: 'team-A',
+        group_id: 'group-1',
+        chat_id: 'chat-1',
+        channel: 'telegram',
+        sender_id: 'user-1',
+        sender_name: 'Alice',
+        content: 'A2',
+        status: 'pending',
+      });
+
+      await insertMessage({
+        team_id: 'team-B',
+        group_id: 'group-2',
+        chat_id: 'chat-2',
+        channel: 'slack',
+        sender_id: 'user-2',
+        sender_name: 'Bob',
+        content: 'B1',
+        status: 'pending',
+      });
+
+      expect(getQueueDepth('team-A')).toBe(2);
+      expect(getQueueDepth('team-B')).toBe(1);
+      expect(getQueueDepth()).toBe(3);
+    });
+
+    it('getPendingScheduledTasks scoped to team returns only that team\'s tasks', async () => {
+      const past = Date.now() - 1000;
+
+      await insertScheduledTask({
+        team_id: 'team-A',
+        group_id: 'group-1',
+        task_type: 'reminder',
+        payload: '{"team":"A"}',
+        status: 'pending',
+        scheduled_at: past,
+      });
+
+      await insertScheduledTask({
+        team_id: 'team-B',
+        group_id: 'group-2',
+        task_type: 'reminder',
+        payload: '{"team":"B"}',
+        status: 'pending',
+        scheduled_at: past,
+      });
+
+      const teamATasks = await getPendingScheduledTasks('team-A');
+      expect(teamATasks).toHaveLength(1);
+      expect(teamATasks[0].team_id).toBe('team-A');
+
+      const teamBTasks = await getPendingScheduledTasks('team-B');
+      expect(teamBTasks).toHaveLength(1);
+      expect(teamBTasks[0].team_id).toBe('team-B');
+    });
+
+    it('sessions store team_id correctly', async () => {
+      await insertSession({
+        id: 'session-A',
+        team_id: 'team-A',
+        group_id: 'group-1',
+        chat_id: 'chat-1',
+        container_id: null,
+        status: 'active',
+        started_at: Date.now(),
+      });
+
+      await insertSession({
+        id: 'session-B',
+        team_id: 'team-B',
+        group_id: 'group-2',
+        chat_id: 'chat-2',
+        container_id: null,
+        status: 'active',
+        started_at: Date.now(),
+      });
+
+      const sessionA = await getSessionById('session-A');
+      expect(sessionA!.team_id).toBe('team-A');
+
+      const sessionB = await getSessionById('session-B');
+      expect(sessionB!.team_id).toBe('team-B');
+    });
+
+    it('chats store team_id correctly', async () => {
+      const now = Date.now();
+      await upsertChat({
+        id: 'chat-A',
+        team_id: 'team-A',
+        channel: 'telegram',
+        group_id: 'group-1',
+        title: 'Team A Chat',
+        created_at: now,
+        last_message_at: now,
+      });
+
+      const chat = await getChatById('chat-A');
+      expect(chat!.team_id).toBe('team-A');
     });
   });
 });

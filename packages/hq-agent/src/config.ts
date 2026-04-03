@@ -38,6 +38,9 @@ export const config = {
   AWS_REGION: process.env.AWS_REGION ?? 'us-east-1',
   BACKUP_INTERVAL_MS: parseInt(process.env.BACKUP_INTERVAL_MS ?? '1800000', 10),
 
+  // Multi-tenancy
+  TEAM_ID: process.env.TEAM_ID ?? 'default',
+
   // Claude
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
   CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? 'claude-opus-4-6',

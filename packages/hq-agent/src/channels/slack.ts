@@ -97,6 +97,7 @@ class SlackChannel implements Channel {
     // Upsert chat record
     await upsertChat({
       id: chatId,
+      team_id: config.TEAM_ID,
       channel: 'slack',
       group_id: groupId,
       title: null,
@@ -106,6 +107,7 @@ class SlackChannel implements Channel {
 
     // Insert message into SQLite
     const messageId = await insertMessage({
+      team_id: config.TEAM_ID,
       group_id: groupId,
       chat_id: chatId,
       channel: 'slack',
