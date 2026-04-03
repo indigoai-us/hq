@@ -1,5 +1,14 @@
 # Changelog
 
+## [10.2.0] — 2026-04-02
+
+### Added
+- 17 missing workers copied from hq-starter-kit: accessibility-auditor, exec-summary, frontend-designer, gemini-designer, gemini-stylist, gemini-ux-auditor, gstack-sprint, impeccable-designer, paper-designer, performance-benchmarker, pretty-mermaid, qa-tester, social-publisher, social-reviewer, social-shared, social-strategist, social-verifier
+
+### Changed
+- template/ canonicalized as single source of truth for HQ content (hq-starter-kit archived)
+- core.yaml version bumped to 10.2.0
+
 ## v10.2.0 (2026-04-01)
 
 Codex app compatibility — all 30 HQ skills now discoverable from OpenAI Codex via `agents/openai.yaml` metadata and modernized `.agents/skills/` bridge paths.

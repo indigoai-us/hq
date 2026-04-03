@@ -1,0 +1,9 @@
+name: social-shared
+description: Shared utilities, types, and safety functions for the social-team workers
+version: "1.0"
+type: library
+company: null  # public, company-agnostic
+tags:
+  - social
+  - shared
+  - library

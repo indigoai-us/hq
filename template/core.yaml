@@ -1,6 +1,6 @@
 version: 1
-hqVersion: "10.0.0"
-updatedAt: "2026-03-29T03:35:06Z"
+hqVersion: "10.2.0"
+updatedAt: "2026-04-02"
 rules:
   locked:
     - .claude/CLAUDE.md
@@ -32,4 +32,4 @@ checksums:
   MIGRATION.md: ba9f84a8a13a27c6b05e5b78d638a7605ee9ba5c471f75d16e530da8dad229e5
   modules: 1817ff80b389778b27997d9e847c9fa54de486cfb432453c2b231fb5115c34ca
   scripts: 38a831322b7a8e9282b13db614a49a735cf48f12c689675299c1fe5314974546
-  workers/registry.yaml: a37d18776a4ae313e622ea06d3c34a2f1906c49f0aaf30807ba2ddfd06f06824
+  workers/registry.yaml: cbebef441e57d2873ac2ec43fda1cd89db652dbd972550369950ec69e67b029d
