@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { path: "/workers", label: "Workers", icon: "⚙" },
   { path: "/projects", label: "Projects", icon: "▦" },
   { path: "/team", label: "Team", icon: "◉" },
+  { path: "/agents", label: "Agents", icon: "▸" },
   { path: "/settings", label: "Settings", icon: "⚙" },
 ];
 
