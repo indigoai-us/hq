@@ -58,6 +58,7 @@ vi.mock('../config.js', () => ({
     AWS_REGION: 'us-east-1',
     BACKUP_INTERVAL_MS: 1800000,
     DATA_DIR: '/tmp/hq-test-data',
+    TEAM_ID: 'default',
   },
 }));
 
@@ -316,7 +317,7 @@ describe('backup.ts', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const [cmd] = mockSend.mock.calls[0] as [{ input: Record<string, unknown> }];
-      expect((cmd.input.Key as string).startsWith('hq-cloud/db/messages-')).toBe(true);
+      expect((cmd.input.Key as string).startsWith('hq-cloud/teams/default/db/messages-')).toBe(true);
       expect((cmd.input.Key as string).endsWith('.db')).toBe(true);
     });
 
@@ -403,7 +404,7 @@ describe('hydrate.ts', () => {
       const prefix = cmd.input.Prefix as string | undefined;
       if (prefix?.includes('/db/')) {
         return Promise.resolve({
-          Contents: [{ Key: 'hq-cloud/db/messages-2026-01-01.db', Size: 1000, LastModified: now }],
+          Contents: [{ Key: 'hq-cloud/teams/default/db/messages-2026-01-01.db', Size: 1000, LastModified: now }],
           IsTruncated: false,
         });
       }
@@ -433,7 +434,7 @@ describe('hydrate.ts', () => {
       const prefix = cmd.input.Prefix as string | undefined;
       if (prefix?.includes('/sessions/')) {
         return Promise.resolve({
-          Contents: [{ Key: 'hq-cloud/sessions/sess-1/turn-1.jsonl', Size: 100, LastModified: now }],
+          Contents: [{ Key: 'hq-cloud/teams/default/sessions/sess-1/turn-1.jsonl', Size: 100, LastModified: now }],
           IsTruncated: false,
         });
       }
@@ -466,7 +467,7 @@ describe('hydrate.ts', () => {
       const prefix = cmd.input.Prefix as string | undefined;
       if (prefix?.includes('/db/')) {
         return Promise.resolve({
-          Contents: [{ Key: 'hq-cloud/db/snap.db', Size: 500, LastModified: now }],
+          Contents: [{ Key: 'hq-cloud/teams/default/db/snap.db', Size: 500, LastModified: now }],
           IsTruncated: false,
         });
       }

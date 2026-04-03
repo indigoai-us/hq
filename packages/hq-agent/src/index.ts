@@ -37,13 +37,16 @@ async function processMessage(messageId: number): Promise<void> {
   }
 
   const sessionId = crypto.randomUUID();
+  const teamId = msg.team_id ?? config.TEAM_ID;
+
   // Container-internal paths (for file I/O within this host process)
-  const groupDir = path.resolve(config.DATA_DIR, 'groups', msg.group_id);
+  // Group memory is scoped per-team: data/groups/{teamId}/{groupId}/
+  const groupDir = path.resolve(config.DATA_DIR, 'groups', teamId, msg.group_id);
   const globalDir = path.resolve(config.DATA_DIR, 'global');
   const sessionDir = path.resolve(config.DATA_DIR, 'sessions', sessionId);
 
   // EC2-host paths (for Docker bind-mount sources in Docker-in-Docker setup)
-  const hostGroupDir = path.resolve(config.HOST_DATA_DIR, 'groups', msg.group_id);
+  const hostGroupDir = path.resolve(config.HOST_DATA_DIR, 'groups', teamId, msg.group_id);
   const hostGlobalDir = path.resolve(config.HOST_DATA_DIR, 'global');
   const hostSessionDir = path.resolve(config.HOST_DATA_DIR, 'sessions', sessionId);
   const hostIpcDir = path.resolve(config.HOST_DATA_DIR, 'ipc');
@@ -93,6 +96,7 @@ async function processMessage(messageId: number): Promise<void> {
         ],
         env: {
           ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY,
+          TEAM_ID: teamId,
           MESSAGE_ID: String(msg.id),
           IPC_DIR: '/ipc',
         },
@@ -154,6 +158,7 @@ async function pollMessages(): Promise<void> {
       await updateMessageStatus(msg.id, 'processing');
 
       queue.enqueue({
+        teamId: msg.team_id ?? config.TEAM_ID,
         groupId: msg.group_id,
         messageId: msg.id,
         run: () => processMessage(msg.id),

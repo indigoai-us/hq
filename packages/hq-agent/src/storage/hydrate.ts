@@ -43,7 +43,7 @@ export async function hydrateIfNeeded(): Promise<void> {
     return;
   }
 
-  console.log('[hydrate] data/ looks empty — restoring from S3...');
+  console.log(`[hydrate] data/ looks empty — restoring team "${config.TEAM_ID}" from S3...`);
 
   await Promise.all([
     hydrateDatabase(dbPath).catch((err) => {
@@ -62,8 +62,13 @@ export async function hydrateIfNeeded(): Promise<void> {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
+/** Team-scoped S3 prefix: {S3_PREFIX}/teams/{TEAM_ID}/{...} */
+function teamPrefix(...parts: string[]): string {
+  return [config.S3_PREFIX, 'teams', config.TEAM_ID, ...parts].join('/');
+}
+
 async function hydrateDatabase(dbPath: string): Promise<void> {
-  const prefix = `${config.S3_PREFIX}/db/`;
+  const prefix = teamPrefix('db') + '/';
   const objects = await list(prefix);
 
   if (objects.length === 0) {
@@ -84,7 +89,7 @@ async function hydrateDatabase(dbPath: string): Promise<void> {
 }
 
 async function hydrateSessions(sessionsDir: string): Promise<void> {
-  const prefix = `${config.S3_PREFIX}/sessions/`;
+  const prefix = teamPrefix('sessions') + '/';
   const objects = await list(prefix);
 
   if (objects.length === 0) {
@@ -95,9 +100,8 @@ async function hydrateSessions(sessionsDir: string): Promise<void> {
   console.log(`[hydrate] Restoring ${objects.length} session file(s) from S3`);
 
   for (const obj of objects) {
-    // Key format: {PREFIX}/sessions/{sessionId}/{file}.jsonl
-    // Strip prefix to get relative path: sessions/{sessionId}/{file}.jsonl
-    const relativePath = obj.key.slice(`${config.S3_PREFIX}/sessions/`.length);
+    // Key format: {PREFIX}/teams/{TEAM_ID}/sessions/{sessionId}/{file}.jsonl
+    const relativePath = obj.key.slice(prefix.length);
     const localPath = path.join(sessionsDir, relativePath);
     await fsPromises.mkdir(path.dirname(localPath), { recursive: true });
     const content = await get(obj.key);
@@ -108,7 +112,7 @@ async function hydrateSessions(sessionsDir: string): Promise<void> {
 }
 
 async function hydrateGroups(dataDir: string): Promise<void> {
-  const prefix = `${config.S3_PREFIX}/groups/`;
+  const prefix = teamPrefix('groups') + '/';
   const objects = await list(prefix);
 
   if (objects.length === 0) {
@@ -121,8 +125,8 @@ async function hydrateGroups(dataDir: string): Promise<void> {
   const groupsDir = path.join(dataDir, 'groups');
 
   for (const obj of objects) {
-    // Key format: {PREFIX}/groups/{groupId}/{file}.md
-    const relativePath = obj.key.slice(`${config.S3_PREFIX}/groups/`.length);
+    // Key format: {PREFIX}/teams/{TEAM_ID}/groups/{groupId}/{file}.md
+    const relativePath = obj.key.slice(prefix.length);
     const localPath = path.join(groupsDir, relativePath);
     await fsPromises.mkdir(path.dirname(localPath), { recursive: true });
     const content = await get(obj.key);

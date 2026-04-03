@@ -6,6 +6,7 @@
  */
 
 export interface QueueJob {
+  teamId: string;
   groupId: string;
   messageId: number;
   run: () => Promise<void>;

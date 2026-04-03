@@ -19,12 +19,13 @@ const execFileAsync = promisify(execFile);
 
 export { ContainerRunOptions, ContainerResult };
 
-/** Generate a unique container name for this run. */
-function containerName(groupId: string, messageId: number): string {
+/** Generate a unique container name for this run, including team slug. */
+function containerName(teamId: string, groupId: string, messageId: number): string {
   const rand = crypto.randomBytes(4).toString('hex');
-  // Sanitise groupId for Docker naming (only alphanum and dash)
-  const safe = groupId.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30);
-  return `hq-${safe}-${messageId}-${rand}`;
+  // Sanitise for Docker naming (only alphanum and dash)
+  const safeTeam = teamId.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 15);
+  const safeGroup = groupId.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 25);
+  return `hq-${safeTeam}-${safeGroup}-${messageId}-${rand}`;
 }
 
 /** Build docker run argument list (no shell string — safe for execFile). */
@@ -78,7 +79,8 @@ export async function runContainer(
     os.tmpdir(),
   ];
 
-  const name = containerName(options.groupId, options.messageId);
+  const teamId = options.env.TEAM_ID ?? config.TEAM_ID;
+  const name = containerName(teamId, options.groupId, options.messageId);
   const args = buildDockerArgs(name, options, bases);
 
   runtime.register({

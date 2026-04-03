@@ -11,6 +11,7 @@ describe('GroupQueue', () => {
     const executed: number[] = [];
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 1,
       run: async () => {
@@ -27,6 +28,7 @@ describe('GroupQueue', () => {
     const order: number[] = [];
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 1,
       run: async () => {
@@ -36,6 +38,7 @@ describe('GroupQueue', () => {
     });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 2,
       run: async () => {
@@ -63,6 +66,7 @@ describe('GroupQueue', () => {
     });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 1,
       run: async () => {
@@ -72,6 +76,7 @@ describe('GroupQueue', () => {
     });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g2',
       messageId: 2,
       run: async () => {
@@ -106,6 +111,7 @@ describe('GroupQueue', () => {
 
     for (let i = 0; i < 4; i++) {
       q.enqueue({
+        teamId: 'default',
         groupId: `g${i}`,
         messageId: i,
         run: async () => {
@@ -140,12 +146,14 @@ describe('GroupQueue', () => {
     const p1 = new Promise<void>((r) => { resolve1 = r; });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 1,
       run: async () => { await p1; },
     });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g2',
       messageId: 2,
       run: async () => {},
@@ -169,6 +177,7 @@ describe('GroupQueue', () => {
     const results: string[] = [];
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 1,
       run: async () => {
@@ -178,6 +187,7 @@ describe('GroupQueue', () => {
     });
 
     q.enqueue({
+      teamId: 'default',
       groupId: 'g1',
       messageId: 2,
       run: async () => {
@@ -207,6 +217,7 @@ describe('GroupQueue', () => {
 
     for (let i = 0; i < 3; i++) {
       q.enqueue({
+        teamId: 'default',
         groupId: `g${i}`,
         messageId: i,
         run: async () => {

@@ -48,7 +48,7 @@ let backupTimer: NodeJS.Timeout | null = null;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function s3Key(...parts: string[]): string {
-  return [config.S3_PREFIX, ...parts].join('/');
+  return [config.S3_PREFIX, 'teams', config.TEAM_ID, ...parts].join('/');
 }
 
 function isEnabled(): boolean {
@@ -202,7 +202,7 @@ export function getBackupStatus(): BackupStatus {
 
 async function refreshTotalObjects(): Promise<void> {
   try {
-    const objects = await list(`${config.S3_PREFIX}/`);
+    const objects = await list(s3Key() + '/');
     state = { ...state, totalObjectsLastScan: objects.length };
   } catch {
     // Non-fatal — best effort
