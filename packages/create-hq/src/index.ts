@@ -11,7 +11,7 @@ const program = new Command();
 
 program
   .name("create-hq")
-  .description("Create a new HQ — Personal OS for AI Workers")
+  .description("Create a new HQ by Indigo — Personal OS for AI Workers")
   .version(pkg.version)
   .argument("[directory]", "where to create HQ", "hq")
   .option("--skip-deps", "skip dependency checks")

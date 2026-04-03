@@ -1,6 +1,6 @@
-# HQ
+# HQ by Indigo
 
-Personal OS for AI Workers. Install, personalize, and run AI agents from your terminal with [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Personal OS for AI Workers. **HQ** is free and open-source — install, personalize, and run AI agents from your terminal with [Claude Code](https://docs.anthropic.com/en/docs/claude-code). **HQ Cloud** (paid) adds cross-device sync, a mobile dashboard, and managed infrastructure.
 
 ## Install
 

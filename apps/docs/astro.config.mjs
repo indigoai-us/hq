@@ -4,8 +4,8 @@ import starlight from "@astrojs/starlight";
 export default defineConfig({
   integrations: [
     starlight({
-      title: "HQ",
-      description: "Personal OS for AI Workers",
+      title: "HQ by Indigo",
+      description: "HQ by Indigo — Personal OS for AI Workers",
       social: {
         github: "https://github.com/indigoai-us/hq",
       },

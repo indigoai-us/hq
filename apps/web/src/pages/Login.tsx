@@ -36,7 +36,7 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">HQ</h1>
+          <h1 className="text-3xl font-bold tracking-tight">HQ by Indigo</h1>
           <p className="text-neutral-500 text-sm mt-1">Personal OS for AI Workers</p>
         </div>
 

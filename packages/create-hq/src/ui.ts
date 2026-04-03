@@ -23,7 +23,7 @@ export function banner(installerVersion?: string, hqVersion?: string): void {
   console.log(c("      _______________   ______________      ______________"));
   console.log(c("_____________  ___________    __________________    ____________"));
   console.log();
-  console.log(d("  Personal OS for AI Workers"));
+  console.log(d("  HQ by Indigo — Personal OS for AI Workers"));
   console.log();
 
   const parts: string[] = [];

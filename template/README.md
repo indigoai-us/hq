@@ -2,7 +2,7 @@
   <img src="docs/images/hq-banner.svg" alt="HQ - Your Personal Operating System" width="600">
 </p>
 
-<h1 align="center">HQ - Personal OS for AI Workers</h1>
+<h1 align="center">HQ by Indigo — Personal OS for AI Workers</h1>
 
 <p align="center">
   <strong>Build your AI team. Ship projects autonomously. Never lose context.</strong>

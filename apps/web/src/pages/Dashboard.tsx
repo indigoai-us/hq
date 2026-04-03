@@ -37,7 +37,7 @@ export function Dashboard() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <header className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-bold">HQ</h1>
+        <h1 className="text-xl font-bold">HQ by Indigo</h1>
         <div className="flex gap-4 text-sm">
           <Link to="/files" className="text-neutral-400 hover:text-white">Files</Link>
           <Link to="/settings" className="text-neutral-400 hover:text-white">Settings</Link>
