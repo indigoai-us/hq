@@ -12,11 +12,18 @@ import {
   AdminListGroupsForUserCommand,
   ListUsersInGroupCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { Resource } from "sst";
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { randomUUID } from "crypto";
+import { randomUUID, createHmac } from "crypto";
 
 const cognito = new CognitoIdentityProviderClient({});
+const s3 = new S3Client({});
 
 interface TeamMetadata {
   name: string;
@@ -349,6 +356,176 @@ export const removeMember: APIGatewayProxyHandlerV2 = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({ userId: targetUserId, teamId, status: "removed" }),
+    };
+  } catch (err: any) {
+    if (err.name === "ResourceNotFoundException") {
+      return { statusCode: 404, body: JSON.stringify({ error: "Team not found" }) };
+    }
+    return {
+      statusCode: err instanceof Error && err.message === "Unauthorized" ? 401 : 500,
+      body: JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }),
+    };
+  }
+};
+
+/**
+ * Create an invite token for a team (admin only)
+ * POST /api/teams/{id}/invites
+ */
+export const createInvite: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    const userId = getUserId(event);
+    const teamId = event.pathParameters?.id;
+    if (!teamId) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Missing team ID" }) };
+    }
+
+    // Verify requester is admin
+    const groupResult = await cognito.send(
+      new GetGroupCommand({
+        GroupName: teamId,
+        UserPoolId: Resource.HqUserPool.id,
+      })
+    );
+    const metadata = parseTeamMetadata(groupResult.Group?.Description);
+    if (!metadata?.admins.includes(userId)) {
+      return { statusCode: 403, body: JSON.stringify({ error: "Only team admins can create invites" }) };
+    }
+
+    // Generate token payload
+    const payload = {
+      teamId,
+      invitedBy: userId,
+      role: "member" as const,
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      jti: randomUUID(),
+    };
+
+    // Sign with HMAC-SHA256
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const hmac = createHmac("sha256", Resource.InviteSecret.value)
+      .update(payloadB64)
+      .digest("base64url");
+    const token = `${payloadB64}.${hmac}`;
+
+    // Write S3 one-time-use marker
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: Resource.HqStorage.name,
+        Key: `teams/${teamId}/invites/${payload.jti}`,
+        Body: "",
+      })
+    );
+
+    return {
+      statusCode: 201,
+      body: JSON.stringify({
+        token,
+        expiresAt: new Date(payload.exp).toISOString(),
+      }),
+    };
+  } catch (err: any) {
+    if (err.name === "ResourceNotFoundException") {
+      return { statusCode: 404, body: JSON.stringify({ error: "Team not found" }) };
+    }
+    return {
+      statusCode: err instanceof Error && err.message === "Unauthorized" ? 401 : 500,
+      body: JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }),
+    };
+  }
+};
+
+/**
+ * Join a team using an invite token
+ * POST /api/teams/join
+ */
+export const joinTeam: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    const userId = getUserId(event);
+    const body = JSON.parse(event.body || "{}");
+    const { token } = body;
+
+    if (!token || typeof token !== "string") {
+      return { statusCode: 400, body: JSON.stringify({ error: "Missing invite token" }) };
+    }
+
+    // Decode and verify token
+    const parts = token.split(".");
+    if (parts.length !== 2) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid token format" }) };
+    }
+
+    const [payloadB64, signatureB64] = parts;
+
+    // Verify HMAC
+    const expectedHmac = createHmac("sha256", Resource.InviteSecret.value)
+      .update(payloadB64)
+      .digest("base64url");
+    if (expectedHmac !== signatureB64) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid token signature" }) };
+    }
+
+    // Parse payload
+    let payload: { teamId: string; invitedBy: string; role: string; exp: number; jti: string };
+    try {
+      payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+    } catch {
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid token payload" }) };
+    }
+
+    // Check expiry
+    if (payload.exp <= Date.now()) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Token has expired" }) };
+    }
+
+    // Check one-time use — marker must exist
+    try {
+      await s3.send(
+        new HeadObjectCommand({
+          Bucket: Resource.HqStorage.name,
+          Key: `teams/${payload.teamId}/invites/${payload.jti}`,
+        })
+      );
+    } catch (headErr: any) {
+      if (headErr.name === "NotFound" || headErr.$metadata?.httpStatusCode === 404) {
+        return { statusCode: 401, body: JSON.stringify({ error: "Token has already been used" }) };
+      }
+      throw headErr;
+    }
+
+    // Consume the token — delete marker
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: Resource.HqStorage.name,
+        Key: `teams/${payload.teamId}/invites/${payload.jti}`,
+      })
+    );
+
+    // Add user to team
+    await cognito.send(
+      new AdminAddUserToGroupCommand({
+        GroupName: payload.teamId,
+        UserPoolId: Resource.HqUserPool.id,
+        Username: userId,
+      })
+    );
+
+    // Get team name from group metadata
+    const groupResult = await cognito.send(
+      new GetGroupCommand({
+        GroupName: payload.teamId,
+        UserPoolId: Resource.HqUserPool.id,
+      })
+    );
+    const teamMetadata = parseTeamMetadata(groupResult.Group?.Description);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        teamId: payload.teamId,
+        teamName: teamMetadata?.name || payload.teamId,
+        status: "joined",
+      }),
     };
   } catch (err: any) {
     if (err.name === "ResourceNotFoundException") {

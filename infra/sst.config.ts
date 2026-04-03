@@ -37,6 +37,8 @@ export default $config({
       access: "cloudfront",
     });
 
+    const inviteSecret = new sst.Secret("InviteSecret");
+
     // --- API ---
     const api = new sst.aws.ApiGatewayV2("HqApi");
 
@@ -101,6 +103,17 @@ export default $config({
     api.route("DELETE /api/teams/{id}/members/{userId}", {
       handler: "functions/teams.removeMember",
       link: [userPool],
+    });
+
+    // Team invite operations
+    api.route("POST /api/teams/{id}/invites", {
+      handler: "functions/teams.createInvite",
+      link: [userPool, bucket, inviteSecret],
+    });
+
+    api.route("POST /api/teams/join", {
+      handler: "functions/teams.joinTeam",
+      link: [userPool, bucket, inviteSecret],
     });
 
     // --- PWA ---
