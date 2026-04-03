@@ -1,0 +1,68 @@
+---
+title: HQ vs HQ Cloud
+description: Compare HQ (free, open-source) and HQ Cloud (paid subscription) to find the right tier for your workflow.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+## Overview
+
+**HQ** is the free, MIT-licensed open-source project. It gives you everything you need to run an AI-powered personal OS locally with Claude Code. **HQ Cloud** is a paid subscription that adds managed cloud infrastructure, mobile access, and priority support on top of the full HQ feature set.
+
+## Feature Comparison
+
+| Feature | HQ (Free) | HQ Cloud (Paid) |
+|---------|:---------:|:----------------:|
+| **Commands** | 39+ slash commands | 39+ slash commands |
+| **AI Workers** | 28+ workers (dev, content, social, PR, QA, security) | 28+ workers |
+| **Skills** | 44+ skills across the full skill tree | 44+ skills |
+| **Policies** | 132+ learned rules, safety guardrails, enforcement | 132+ policies |
+| **Knowledge Bases** | 20+ knowledge bases (Ralph, security, design, testing) | 20+ knowledge bases |
+| **Session Management** | Checkpoints, handoffs, threads, auto-compaction | Full session management |
+| **qmd Search** | Local semantic + full-text search | Local semantic + full-text search |
+| **`npx create-hq` Installer** | Full template with all components | Full template |
+| **Module System** | Keep HQ updated with upstream changes | Module system |
+| **Starter Projects** | Personal assistant, social media, code worker | Starter projects |
+| **Cloud Sync (S3)** | -- | Bidirectional S3 sync with journal-based conflict resolution |
+| **Mobile PWA Dashboard** | -- | Access HQ from any device at [hq.indigoai.com](https://hq.indigoai.com) |
+| **Managed Hosting** | -- | Provisioned S3 bucket, authentication, and infrastructure |
+| **Team Collaboration** | -- | Roadmap (coming soon) |
+| **Priority Support** | -- | Direct support channel |
+
+## HQ (Free)
+
+HQ is fully functional out of the box. Install with `npx create-hq` and you get:
+
+- **All Claude Code commands** -- session management (`/checkpoint`, `/handoff`), worker execution (`/run`), project orchestration (`/prd`, `/run-project`), content workflows, and system utilities
+- **28+ AI workers** -- pre-configured worker definitions for development, content creation, social media, PR, QA, security scanning, accessibility auditing, and more
+- **44+ skills** -- specialized capabilities that workers use to perform tasks
+- **132+ policies** -- learned rules and guardrails that enforce best practices, prevent mistakes, and maintain workflow consistency
+- **20+ knowledge bases** -- structured knowledge including the Ralph build methodology, AI security framework, design styles, testing guides, and domain-specific references
+- **Session management** -- checkpoints, handoffs, thread history, and auto-compaction hooks to preserve context across sessions
+- **qmd semantic search** -- local BM25 + vector search across your entire HQ and connected codebases
+- **Module system** -- pull upstream updates to commands, workers, and knowledge bases without losing your customizations
+
+<Aside type="tip">
+HQ is MIT open-source. You can use it, modify it, and contribute to it freely.
+</Aside>
+
+## HQ Cloud
+
+HQ Cloud is a paid subscription that includes everything in HQ plus managed cloud infrastructure:
+
+- **Cloud Sync** -- Bidirectional syncing between your local HQ and S3 via a background daemon. File watching, debouncing, hash-based change detection, and journal-based conflict resolution. [Cloud Sync guide →](/guide/8-cloud-sync/)
+- **Mobile PWA Dashboard** -- Access your HQ from any device at [hq.indigoai.com](https://hq.indigoai.com). Browse files, read knowledge and reports, approve social drafts, and search -- all from your phone
+- **Managed Hosting** -- Your S3 bucket, authentication, and cloud infrastructure are provisioned and maintained for you
+- **Team Collaboration** (roadmap) -- Share workspaces, workers, and knowledge bases across team members
+- **Priority Support** -- Direct support channel for setup, troubleshooting, and feature requests
+
+<Aside type="note">
+HQ Cloud pricing will be announced with the GA launch. Early adopters during beta get priority access.
+</Aside>
+
+## Which should I choose?
+
+- **Choose HQ** if you work solo, want full local control, and don't need mobile access or cloud backup of your HQ workspace.
+- **Choose HQ Cloud** if you want to access your HQ from multiple devices, need cloud backup, or plan to collaborate with a team.
+
+You can start with HQ and upgrade to HQ Cloud at any time -- the `hq sync init` command handles the transition.

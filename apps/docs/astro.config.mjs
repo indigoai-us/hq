@@ -16,6 +16,13 @@ export default defineConfig({
           autogenerate: { directory: "guide" },
         },
         {
+          label: "HQ Cloud",
+          items: [
+            { label: "HQ vs HQ Cloud", link: "/guide/hq-vs-hq-cloud/" },
+            { label: "Cloud Sync", link: "/guide/8-cloud-sync/" },
+          ],
+        },
+        {
           label: "Architecture",
           autogenerate: { directory: "architecture" },
         },
