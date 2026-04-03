@@ -3,6 +3,12 @@ title: Template Updates
 description: Managing the HQ template content that ships with create-hq.
 ---
 
+## Source of Truth
+
+`template/` is the **canonical source** for all HQ content shipped via `npx create-hq`. As of v10.2.0 (hq-consolidation), `hq-starter-kit` has been archived and is no longer updated. All changes go directly to `template/` in this repo.
+
+> **`hq-starter-kit` is archived.** Do not sync from it. See [github.com/coreyepstein/hq-starter-kit](https://github.com/coreyepstein/hq-starter-kit) — final release v10.2.1 points here.
+
 ## What's in the Template
 
 The `template/` directory at the repo root contains the full HQ starter kit that gets copied to user machines during `npx create-hq`. It includes:
@@ -11,12 +17,14 @@ The `template/` directory at the repo root contains the full HQ starter kit that
 template/
 ├── .claude/
 │   ├── CLAUDE.md           # Global instructions for Claude Code
-│   └── commands/           # 17 slash commands (.md files)
+│   ├── commands/           # 44+ slash commands (.md files)
+│   ├── skills/             # 44+ skills
+│   ├── policies/           # 132+ policy files
+│   └── hooks/              # Auto-checkpoint + handoff hooks
 ├── knowledge/
-│   └── public/             # 8 knowledge base directories
+│   └── public/             # 20+ knowledge base directories
 ├── workers/
-│   ├── public/             # Shared workers (dev-team, content, QA, etc.)
-│   └── private/            # Private worker templates
+│   └── public/             # 28+ shared workers (dev-team, content, social, QA, etc.)
 ├── projects/               # Project directory (empty, with INDEX.md)
 ├── workspace/
 │   ├── threads/            # Thread storage
@@ -68,7 +76,23 @@ The global CLAUDE.md is the most important file — it's loaded by Claude Code o
 
 ## Testing Template Changes
 
-### Local test
+### Structural integrity E2E test
+
+`tests/e2e/consolidation.e2e.test.ts` validates the template ships with expected content counts. Run it before any release:
+
+```bash
+npm run test:e2e -- --reporter=verbose tests/e2e/consolidation.e2e.test.ts
+```
+
+The test scaffolds a fresh HQ using `--local-template template/` and asserts:
+- `>= 30` command `.md` files in `.claude/commands/`
+- `>= 10` `worker.yaml` files (recursive under `workers/`)
+- `core.yaml` exists with a valid version field
+- `knowledge/` directory has content
+- `>= 20` files in `.claude/skills/`
+- `>= 50` files in `.claude/policies/`
+
+### Local manual test
 ```bash
 cd packages/create-hq
 npm run build
@@ -78,6 +102,7 @@ claude  # Open in Claude Code and test
 ```
 
 ### Checklist
+- [ ] Structural E2E passes (`npm run test:e2e`)
 - [ ] All commands load without errors
 - [ ] Worker registry matches available workers
 - [ ] Knowledge base symlink targets exist (or fallback gracefully)
