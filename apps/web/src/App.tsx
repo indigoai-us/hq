@@ -10,6 +10,7 @@ import { Workers } from "./pages/Workers";
 import { Projects } from "./pages/Projects";
 import { Team } from "./pages/Team";
 import { Agents } from "./pages/Agents";
+import { Marketplace } from "./pages/Marketplace";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -38,6 +39,7 @@ export function App() {
             <Route path="/projects" element={<Projects />} />
             <Route path="/team" element={<Team />} />
             <Route path="/agents" element={<Agents />} />
+            <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
