@@ -130,7 +130,7 @@ export default $config({
         VITE_REGION: "us-east-1",
       },
       domain: {
-        name: "hq.{company}ai.com",
+        name: "hq.getindigo.ai",
       },
     });
 
