@@ -10,6 +10,31 @@
 
 set -euo pipefail
 
+# Ensure PATH includes user-installed tools (Homebrew, nvm, etc.)
+# Needed when running from cron/scheduled agents that don't source shell profiles.
+if [ -z "${HQ_SMOKE_PATH_SET:-}" ]; then
+  for profile in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
+    if [ -f "$profile" ]; then
+      set +eu
+      source "$profile" 2>/dev/null || true
+      set -eu
+      break
+    fi
+  done
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/current/bin:$PATH"
+  export HQ_SMOKE_PATH_SET=1
+fi
+
+# Pre-flight: verify required tools are in PATH
+for tool in npm node docker; do
+  if ! command -v "$tool" &>/dev/null; then
+    echo "FATAL: $tool not found in PATH." >&2
+    echo "PATH=$PATH" >&2
+    echo "If running from cron, ensure your shell profile is sourced." >&2
+    exit 1
+  fi
+done
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PKG_DIR="$REPO_ROOT/packages/create-hq"

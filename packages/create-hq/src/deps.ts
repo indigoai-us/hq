@@ -164,7 +164,7 @@ async function confirm(question: string, defaultYes: boolean): Promise<boolean> 
   });
 }
 
-export async function checkDeps(): Promise<{ allRequired: boolean }> {
+export async function checkDeps(nonInteractive = false): Promise<{ allRequired: boolean }> {
   console.log();
   console.log("  Checking dependencies...");
 
@@ -188,10 +188,22 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
       // Can offer auto-install
       const defaultYes = dep.required;
       const optionalTag = dep.required ? "" : " (optional)";
-      const accepted = await confirm(
-        `Install ${dep.name}?${optionalTag} [${installCmd}]`,
-        defaultYes,
-      );
+
+      let accepted: boolean;
+      if (nonInteractive) {
+        // --yes mode: auto-accept required, auto-skip optional
+        accepted = dep.required;
+        if (accepted) {
+          info(`Auto-installing ${dep.name} [${installCmd}]`);
+        } else {
+          info(`${dep.name} (optional) — skipped (--yes)`);
+        }
+      } else {
+        accepted = await confirm(
+          `Install ${dep.name}?${optionalTag} [${installCmd}]`,
+          defaultYes,
+        );
+      }
 
       if (accepted) {
         info(`Running: ${installCmd}`);

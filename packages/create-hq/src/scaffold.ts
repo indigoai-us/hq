@@ -18,6 +18,7 @@ interface ScaffoldOptions {
   skipSync?: boolean;
   tag?: string;
   localTemplate?: string;
+  yes?: boolean;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -132,35 +133,47 @@ export async function scaffold(
   const integrityLabel = "Verifying kernel integrity";
   stepStatus(integrityLabel, "running");
   try {
-    const computeChecksumsScript = path.join(targetDir, "scripts", "compute-checksums.sh");
-    const coreIntegrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
-    const hasComputeChecksums = fs.existsSync(computeChecksumsScript);
-    const hasCoreIntegrity = fs.existsSync(coreIntegrityScript);
-    if (hasComputeChecksums && hasCoreIntegrity) {
-      execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
-      try {
-        execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
-        stepStatus(integrityLabel, "done");
-      } catch {
-        stepStatus(integrityLabel, "failed");
-        warn("Kernel integrity check found issues — run scripts/core-integrity.sh to investigate");
-      }
-    } else {
+    const computeScript = path.join(targetDir, "scripts", "compute-checksums.sh");
+    const integrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
+
+    if (!fs.existsSync(computeScript) || !fs.existsSync(integrityScript)) {
       // Scripts not present in this template version — skip silently
       stepStatus(integrityLabel, "done");
+    } else {
+      // Both scripts require yq — skip gracefully if not yet installed
+      const hasYq = (() => { try { execSync("yq --version", { stdio: "pipe" }); return true; } catch { return false; } })();
+
+      if (!hasYq) {
+        stepStatus(integrityLabel, "done"); // yq will be offered during dependency check
+      } else {
+        execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
+        try {
+          execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
+          stepStatus(integrityLabel, "done");
+        } catch (err) {
+          stepStatus(integrityLabel, "failed");
+          const stderr = (err as { stderr?: Buffer })?.stderr?.toString().trim() ?? "";
+          warn(`Kernel integrity check found issues${stderr ? " — " + stderr : ""}`);
+          warn("Run: bash scripts/core-integrity.sh for details");
+        }
+      }
     }
-  } catch {
+  } catch (err) {
     stepStatus(integrityLabel, "failed");
+    const stderr = (err as { stderr?: Buffer })?.stderr?.toString().trim() ?? "";
+    if (stderr) warn(`Governance bootstrap failed: ${stderr}`);
     // governance bootstrap should never abort the scaffold
   }
 
   // 5. Check dependencies
   const depsLabel = "Checking dependencies";
-  stepStatus(depsLabel, "running");
   if (!options.skipDeps) {
-    await checkDeps();
+    stepStatus(depsLabel, "running");
+    stepStatus(depsLabel, "done"); // stop spinner — checkDeps prints its own output
+    await checkDeps(options.yes);
+  } else {
+    stepStatus(depsLabel, "done");
   }
-  stepStatus(depsLabel, "done");
 
   // 6. Smart cloud sync detection
   const alreadySynced = await detectExistingSync(targetDir);
@@ -169,7 +182,7 @@ export async function scaffold(
   }
 
   // 7. Cloud sync setup
-  if (!options.skipSync && !alreadySynced) {
+  if (!options.skipSync && !alreadySynced && !options.yes) {
     console.log();
     const setupSync = await confirm(
       "Set up cloud sync? (enables mobile access via hq.indigoai.com)"

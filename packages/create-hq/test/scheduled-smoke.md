@@ -11,6 +11,9 @@ This prompt is designed to be executed by a scheduled agent (via CronCreate or e
 ### 1. Run the smoke test orchestrator
 
 ```bash
+# Ensure PATH includes user tools (Homebrew, nvm, Docker)
+source ~/.zshrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true
+
 cd ~/hq/repos/public/hq
 bash packages/create-hq/test/run-smoke-tests.sh 2>&1
 ```
@@ -92,6 +95,21 @@ Note: CronCreate jobs are session-only (max 7 days). For persistent scheduling, 
 ```bash
 claude -p "Read and execute ~/hq/repos/public/hq/packages/create-hq/test/scheduled-smoke.md"
 ```
+
+## PATH Requirements
+
+The smoke test orchestrator requires `npm`, `node`, and `docker` in PATH. When running from cron or a scheduled agent, these may not be available because the user's shell profile (~/.zshrc) is not sourced.
+
+The orchestrator script now includes automatic PATH detection, but if tools are still not found:
+
+1. **For cron jobs**: Use a login shell wrapper:
+   ```bash
+   7 6 * * * /bin/zsh -l -c "cd ~/hq/repos/public/hq && bash packages/create-hq/test/run-smoke-tests.sh"
+   ```
+
+2. **For Claude Code scheduled agents**: The agent should source the profile before running (see Step 1 above).
+
+3. **For launchd plists**: Set the PATH environment key in the plist to include `/opt/homebrew/bin:/usr/local/bin`.
 
 ## Expected Artifacts
 
