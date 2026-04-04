@@ -1,0 +1,23 @@
+{
+  "name": "hq-cloud-agent",
+  "version": "0.1.0",
+  "description": "Agent container runner for hq-cloud",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:runner && npm run build:mcp",
+    "build:runner": "npx tsc",
+    "build:mcp": "node_modules/.bin/esbuild src/mcp-server.ts --bundle --platform=node --format=cjs --outfile=dist/mcp-server.cjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.0.0"
+  }
+}

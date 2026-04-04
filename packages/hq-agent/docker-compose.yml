@@ -1,0 +1,54 @@
+version: '3.9'
+
+# ─── hq-cloud local dev stack ─────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env && vi .env    # fill in ANTHROPIC_API_KEY at minimum
+#   docker-compose up --build          # starts host + builds agent image
+#
+# The agent-builder service builds the agent image before the host starts.
+# The host mounts the Docker socket to spawn agent containers on demand.
+# SQLite data persists across restarts in the hq-cloud-data volume.
+
+services:
+  # Pre-build the agent container image so it's ready when the host spawns sessions
+  agent-builder:
+    build:
+      context: ./container
+      dockerfile: Dockerfile
+    image: hq-cloud-agent:latest
+    # Build only — exits immediately after image is tagged
+    entrypoint: ["sh", "-c", "echo 'Agent image built: hq-cloud-agent:latest'"]
+
+  host:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hq-cloud-host:latest
+    depends_on:
+      agent-builder:
+        condition: service_completed_successfully
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DATA_DIR=/data
+      - AGENT_IMAGE=hq-cloud-agent:latest
+    volumes:
+      # Persistent SQLite + working files
+      - hq-cloud-data:/data
+      # Docker socket — lets host spawn agent containers on the local Docker daemon
+      # Production equivalent: EC2 launch type with dockerSocketBind in ECS task def
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  hq-cloud-data:
+    driver: local
