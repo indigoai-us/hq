@@ -67,3 +67,53 @@ export async function deleteFile(
     method: "DELETE",
   });
 }
+
+// --- Team API ---
+
+interface TeamListItem {
+  id: string;
+  name: string;
+  plan?: string;
+}
+
+interface TeamMember {
+  userId: string;
+  username: string;
+  role: string;
+  joinedAt?: string;
+}
+
+export async function listTeams(token: string): Promise<TeamListItem[]> {
+  const res = await request("/api/teams", token);
+  const data = await res.json();
+  return data.teams ?? [];
+}
+
+export async function getTeamMembers(
+  token: string,
+  teamId: string
+): Promise<TeamMember[]> {
+  const res = await request(`/api/teams/${teamId}/members`, token);
+  const data = await res.json();
+  return data.members ?? [];
+}
+
+export async function createInvite(
+  token: string,
+  teamId: string
+): Promise<{ token: string }> {
+  const res = await request(`/api/teams/${teamId}/invites`, token, {
+    method: "POST",
+  });
+  return res.json();
+}
+
+export async function removeMember(
+  token: string,
+  teamId: string,
+  userId: string
+): Promise<void> {
+  await request(`/api/teams/${teamId}/members/${userId}`, token, {
+    method: "DELETE",
+  });
+}

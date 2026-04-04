@@ -10,7 +10,7 @@ interface FileEntry {
 }
 
 export function Dashboard() {
-  const { signOut, getToken } = useAuth();
+  const { getToken } = useAuth();
   const [recentFiles, setRecentFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,14 +36,6 @@ export function Dashboard() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-bold">HQ by Indigo</h1>
-        <div className="flex gap-4 text-sm">
-          <Link to="/files" className="text-neutral-400 hover:text-white">Files</Link>
-          <Link to="/settings" className="text-neutral-400 hover:text-white">Settings</Link>
-          <button onClick={signOut} className="text-neutral-500 hover:text-white">Sign Out</button>
-        </div>
-      </header>
 
       <section>
         <h2 className="text-sm font-medium text-neutral-400 mb-3">Recent Files</h2>
