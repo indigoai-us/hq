@@ -19,6 +19,7 @@ program
   .option("--skip-sync", "don't prompt for cloud sync setup")
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
+  .option("--join <token>", "join a team with an invite token after scaffolding")
   .action(async (directory: string, options) => {
     try {
       await scaffold(directory, options);

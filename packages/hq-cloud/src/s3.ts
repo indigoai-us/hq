@@ -17,11 +17,14 @@ import { readCredentials, refreshAwsCredentials } from "./auth.js";
 let s3Client: S3Client | null = null;
 
 function getConfig(creds: Credentials): SyncConfig {
+  const prefix = creds.teamId
+    ? `teams/${creds.teamId}/users/${creds.userId}/hq/`
+    : `users/${creds.userId}/hq/`;
   return {
     bucket: creds.bucket,
     region: creds.region,
     userId: creds.userId,
-    prefix: `hq/`,
+    prefix,
   };
 }
 

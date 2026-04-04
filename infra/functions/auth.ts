@@ -5,6 +5,7 @@
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
+  AdminListGroupsForUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
 import { Resource } from "sst";
@@ -48,14 +49,55 @@ export const refresh: APIGatewayProxyHandlerV2 = async (event) => {
       };
     }
 
+    // Look up team membership for STS policy scoping
+    // Decode userId from the refreshed ID token (JWT sub claim)
+    const tokenParts = idToken.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+    const userId = tokenPayload.sub;
+
+    let teamId: string | undefined;
+    try {
+      const groups = await cognito.send(
+        new AdminListGroupsForUserCommand({
+          Username: userId,
+          UserPoolId: Resource.HqUserPool.id,
+        })
+      );
+      if (groups.Groups && groups.Groups.length > 0) {
+        teamId = groups.Groups[0].GroupName;
+      }
+    } catch {
+      // Solo user
+    }
+
+    const s3Prefix = teamId
+      ? `teams/${teamId}/users/${userId}/hq/`
+      : `users/${userId}/hq/`;
+
     // Get temporary S3 credentials via STS
-    // The assumed role should have scoped S3 access to user's prefix
     const stsResult = await sts.send(
       new AssumeRoleCommand({
         RoleArn: process.env.S3_ACCESS_ROLE_ARN,
         RoleSessionName: "hq-cli-session",
-        DurationSeconds: 3600, // 1 hour
-        // Policy scoping would be added here for per-user isolation
+        DurationSeconds: 3600,
+        Policy: JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Effect: "Allow",
+              Action: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+              Resource: `arn:aws:s3:::${Resource.HqStorage.name}/${s3Prefix}*`,
+            },
+            {
+              Effect: "Allow",
+              Action: ["s3:ListBucket"],
+              Resource: `arn:aws:s3:::${Resource.HqStorage.name}`,
+              Condition: {
+                StringLike: { "s3:prefix": [`${s3Prefix}*`] },
+              },
+            },
+          ],
+        }),
       })
     );
 
@@ -74,6 +116,7 @@ export const refresh: APIGatewayProxyHandlerV2 = async (event) => {
         secretAccessKey: creds.SecretAccessKey,
         sessionToken: creds.SessionToken,
         expiration: creds.Expiration?.toISOString(),
+        ...(teamId ? { teamId } : {}),
       }),
     };
   } catch (err) {
@@ -96,13 +139,34 @@ export const getCredentials: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
     }
 
+    // Look up user's team membership from Cognito groups
+    let teamId: string | undefined;
+    try {
+      const groups = await cognito.send(
+        new AdminListGroupsForUserCommand({
+          Username: claims.sub,
+          UserPoolId: Resource.HqUserPool.id,
+        })
+      );
+      if (groups.Groups && groups.Groups.length > 0) {
+        teamId = groups.Groups[0].GroupName;
+      }
+    } catch {
+      // No team membership — solo user
+    }
+
+    const prefix = teamId
+      ? `teams/${teamId}/users/${claims.sub}/hq/`
+      : `users/${claims.sub}/hq/`;
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         userId: claims.sub,
         bucket: Resource.HqStorage.name,
         region: "us-east-1",
-        prefix: `users/${claims.sub}/hq/`,
+        prefix,
+        ...(teamId ? { teamId } : {}),
       }),
     };
   } catch (err) {

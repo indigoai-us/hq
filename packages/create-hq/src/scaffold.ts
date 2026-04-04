@@ -18,6 +18,7 @@ interface ScaffoldOptions {
   skipSync?: boolean;
   tag?: string;
   localTemplate?: string;
+  join?: string;
 }
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -177,6 +178,32 @@ export async function scaffold(
     if (setupSync) {
       step("Cloud sync setup will be available after running /setup in Claude Code");
       step("Run: hq sync init");
+    }
+  }
+
+  // 7b. Team join flow
+  if (options.join) {
+    const joinLabel = "Joining team...";
+    stepStatus(joinLabel, "running");
+    try {
+      const response = await fetch("https://hq.indigoai.com/api/teams/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: options.join }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error((data as any).error || `Join failed: ${response.statusText}`);
+      }
+
+      const result = (await response.json()) as { teamId: string; teamName: string };
+      stepStatus(joinLabel, "done");
+      success(`Joined team: ${result.teamName}`);
+    } catch (err) {
+      stepStatus(joinLabel, "failed");
+      warn(`Team join failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      warn("HQ was still scaffolded — you can join a team later with 'hq team join'");
     }
   }
 
