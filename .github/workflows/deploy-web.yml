@@ -5,6 +5,7 @@ on:
     paths:
       - "apps/web/**"
       - "infra/**"
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,15 +19,20 @@ jobs:
         with:
           node-version: 22
 
+      # Install monorepo deps (apps/web build needs this)
       - run: npm ci
+
+      # Install infra deps (SST + AWS SDK for Lambda functions)
+      - run: cd infra && npm ci
 
       # Build PWA
       - run: npm run build --workspace apps/web
 
-      # Deploy infra (SST)
+      # Configure AWS via OIDC
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
+      # Deploy infrastructure + static site
       - run: cd infra && npx sst deploy --stage production
