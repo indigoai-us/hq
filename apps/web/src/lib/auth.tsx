@@ -22,6 +22,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  confirmSignUp: (email: string, code: string) => Promise<void>;
+  resendConfirmation: (email: string) => Promise<void>;
   signOut: () => void;
   getToken: () => Promise<string | null>;
 }
@@ -74,6 +76,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const confirmSignUp = async (email: string, code: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const cognitoUser = new CognitoUser({
+        Username: email,
+        Pool: userPool,
+      });
+      cognitoUser.confirmRegistration(code, true, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  };
+
+  const resendConfirmation = async (email: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const cognitoUser = new CognitoUser({
+        Username: email,
+        Pool: userPool,
+      });
+      cognitoUser.resendConfirmationCode((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  };
+
   const signOut = () => {
     user?.signOut();
     setUser(null);
@@ -90,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, getToken }}>
+    <AuthContext.Provider
+      value={{ user, loading, signIn, signUp, confirmSignUp, resendConfirmation, signOut, getToken }}
+    >
       {children}
     </AuthContext.Provider>
   );
