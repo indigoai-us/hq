@@ -12,7 +12,11 @@
 #
 # Events: task_started | phase_completed | task_completed | task_failed |
 #         project_started | project_completed |
-#         story_dispatched | story_completed | story_failed
+#         story_dispatched | story_completed | story_failed |
+#         pipeline_started | pipeline_completed | pipeline_paused | pipeline_failed |
+#         project_pr_created | project_reviewed | project_merged | project_deployed |
+#         project_canary_pass | project_canary_fail |
+#         gate_requested | gate_resolved
 # Results: success | fail | skipped
 # =============================================================================
 
@@ -21,7 +25,7 @@ set -euo pipefail
 HQ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AUDIT_LOG="$HQ_ROOT/workspace/metrics/audit-log.jsonl"
 
-VALID_EVENTS="task_started phase_completed task_completed task_failed project_started project_completed story_dispatched story_completed story_failed"
+VALID_EVENTS="task_started phase_completed task_completed task_failed project_started project_completed story_dispatched story_completed story_failed pipeline_started pipeline_completed pipeline_paused pipeline_failed project_pr_created project_reviewed project_merged project_deployed project_canary_pass project_canary_fail gate_requested gate_resolved"
 VALID_RESULTS="success fail skipped"
 
 # ---------------------------------------------------------------------------
@@ -50,7 +54,7 @@ contains() {
 #   audit-log.sh append \
 #     --event task_started \
 #     --project hq-observability \
-#     [--company {company}] \
+#     [--company indigo] \
 #     [--story-id US-001] \
 #     [--worker backend-dev] \
 #     [--model sonnet] \
@@ -316,8 +320,12 @@ APPEND FLAGS (--event and --project are required):
   --timestamp    ISO8601 (auto-filled if omitted)
   --event        task_started | phase_completed | task_completed | task_failed |
                  project_started | project_completed |
-                 story_dispatched | story_completed | story_failed
-  --company      Company slug (e.g. {company})
+                 story_dispatched | story_completed | story_failed |
+                 pipeline_started | pipeline_completed | pipeline_paused |
+                 pipeline_failed | project_pr_created | project_reviewed |
+                 project_merged | project_deployed | project_canary_pass |
+                 project_canary_fail | gate_requested | gate_resolved
+  --company      Company slug (e.g. indigo)
   --project      Project slug (e.g. hq-observability)
   --story-id     Story ID (e.g. US-001)
   --worker       Worker name (e.g. backend-dev)
@@ -341,7 +349,7 @@ EXAMPLES:
   scripts/audit-log.sh append \
     --event task_started \
     --project hq-observability \
-    --company {company} \
+    --company indigo \
     --story-id US-001 \
     --worker backend-dev \
     --model sonnet

@@ -286,6 +286,6 @@ New learnings: {N} (run /learn to capture)
 - **No re-capture** — check existing policies before proposing a learning. Duplicates waste context
 - **Both modes are valid** — SESSION mode is lighter but still valuable. Not every retro needs a full project
 - **Company isolation** — scope all data collection to the resolved company. Never mix cross-company data
-- **Do NOT use TodoWrite or EnterPlanMode** — this is a focused analysis, not a project
+- **Do NOT create task lists or enter planning mode** — this is a focused analysis, not a project
 - **Honest assessment** — if a project went poorly, say so. Retros that only praise are useless
 - **Actionable over comprehensive** — 3 concrete learnings beat 10 vague observations

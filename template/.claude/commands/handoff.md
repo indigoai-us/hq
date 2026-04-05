@@ -135,7 +135,33 @@ Prepare for a new session to continue this work.
    ```
    Ensures any content created this session is searchable in the next.
 
-6. **Write handoff note** to `workspace/threads/handoff.json`:
+6. **Detect active pipelines**
+   Check for in-progress pipelines to include in handoff state:
+   ```bash
+   for sf in workspace/orchestrator/_pipeline/*/pipeline-state.json; do
+     [ -f "$sf" ] || continue
+     status=$(jq -r '.status // ""' "$sf" 2>/dev/null)
+     if [ "$status" = "in_progress" ] || [ "$status" = "paused" ]; then
+       pipeline_id=$(jq -r '.pipeline_id' "$sf")
+       company=$(jq -r '.company' "$sf")
+       done_count=$(jq -r '.summary.done // 0' "$sf")
+       total=$(jq -r '.summary.total // 0' "$sf")
+       echo "Active pipeline: ${pipeline_id} (${company}) — ${done_count}/${total} done"
+     fi
+   done
+   ```
+   If any active/paused pipelines are found, include in handoff.json:
+   ```json
+   "active_pipeline": {
+     "id": "{pipeline_id}",
+     "company": "{company}",
+     "status": "{status}",
+     "progress": "{done}/{total}"
+   }
+   ```
+   And in the report, suggest: `scripts/run-pipeline.sh --resume {pipeline_id}` to reconnect.
+
+7. **Write handoff note** to `workspace/threads/handoff.json`:
    ```json
    {
      "created_at": "ISO8601 timestamp",
@@ -146,7 +172,7 @@ Prepare for a new session to continue this work.
    }
    ```
 
-7. **Report**
+8. **Report**
    ```
    Handoff ready.
 

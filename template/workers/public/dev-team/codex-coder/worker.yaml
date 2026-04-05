@@ -11,7 +11,7 @@ execution:
   max_runtime: 20m
   retry_attempts: 2
   spawn_method: task_tool
-  model: sonnet
+  model: opus
   codex_model: gpt-5.4
   codex_flags: --reasoning high --fast
 
@@ -114,9 +114,9 @@ instructions: |
   ## CLI Usage
 
   ```bash
-  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{your-repo}
-  /run codex-coder implement-feature --story US-001 --repo repos/private/{your-repo}
-  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{your-repo}
+  /run codex-coder generate-code --task "Create a rate limiter middleware" --cwd repos/private/{product}
+  /run codex-coder implement-feature --story US-001 --repo repos/private/{product}
+  /run codex-coder scaffold-component --name UserProfile --type react --cwd repos/private/{product}
   ```
 
   ## Patterns

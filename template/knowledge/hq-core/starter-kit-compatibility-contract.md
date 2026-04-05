@@ -2,13 +2,13 @@
 type: reference
 domain: [engineering, product]
 status: canonical
-tags: [starter-kit, compatibility, desktop-app, version-detection, feature-degradation]
+tags: [hq-template, compatibility, desktop-app, version-detection, feature-degradation]
 relates_to: []
 ---
 
-# Starter-Kit Compatibility Contract
+# HQ Template Compatibility Contract
 
-> US-023: Defines the minimum HQ structure Desktop requires, feature degradation behavior for simpler instances, and version detection strategy. Enables Desktop to work with any HQ instance from fresh starter-kit to fully evolved production setup.
+> US-023: Defines the minimum HQ structure Desktop requires, feature degradation behavior for simpler instances, and version detection strategy. Enables Desktop to work with any HQ instance from fresh template clone (indigoai-us/hq) to fully evolved production setup.
 
 ## 1. Minimum Required Structure
 
@@ -34,7 +34,7 @@ Desktop classifies every valid HQ into one of three levels. The level determines
 
 **Definition:** Passes the 7-item validation but has little or no populated content.
 
-**Typical instance:** A fresh `hq-starter-kit` clone that has not yet run `/setup`.
+**Typical instance:** A fresh clone of `indigoai-us/hq` template that has not yet run `/setup`.
 
 **Structural fingerprint:**
 - `workers/registry.yaml` has <= 4 workers (sample + 3 codex)
@@ -47,7 +47,7 @@ Desktop classifies every valid HQ into one of three levels. The level determines
 
 **Definition:** Has active workers AND/OR active projects. The user has started building on top of the starter kit.
 
-**Typical instance:** A starter-kit clone after running `/setup`, creating 1-2 workers with `/newworker`, and starting a project with `/prd`.
+**Typical instance:** A template clone after running `/setup`, creating 1-2 workers with `/newworker`, and starting a project with `/prd`.
 
 **Structural fingerprint (any of):**
 - `workers/registry.yaml` has > 4 workers
@@ -74,7 +74,7 @@ Each Desktop feature is available at specific instance levels. Features degrade 
 | Desktop Feature | Minimal | Standard | Full | Detection |
 |----------------|---------|----------|------|-----------|
 | **Dashboard (stats header)** | Zeroed counts | Real counts | Real counts + company breakdown | Parse registry + scan dirs |
-| **Commands palette** | Available (starter 18) | Available (may have more) | Available (22+) | Count `.claude/commands/*.md` |
+| **Commands palette** | Available (template 18) | Available (may have more) | Available (22+) | Count `.claude/commands/*.md` |
 | **Worker browser** | Shows sample + codex | Shows all workers | Shows all + private/public split | Parse `registry.yaml` |
 | **Worker detail** | Basic info | Full skills + learnings | Full + company ownership | Read `worker.yaml` per worker |
 | **Worker skill runner** | Available | Available | Available | Always enabled if workers exist |
@@ -174,9 +174,9 @@ Desktop MUST follow these rules when encountering missing structures. The princi
 
 ## 5. Version Detection Strategy
 
-Desktop needs to identify the starter-kit version and detect custom extensions to understand what to expect structurally.
+Desktop needs to identify the HQ template version and detect custom extensions to understand what to expect structurally.
 
-### 5.1 Starter-Kit Version Detection
+### 5.1 Template Version Detection
 
 **Primary method: CHANGELOG.md parsing**
 
@@ -208,24 +208,24 @@ Algorithm:
 - Has `workspace/content-ideas/` -> >= v2.0
 - None of above -> pre-v2.0 or custom
 
-### 5.2 Starter-Kit vs Custom HQ Detection
+### 5.2 Template vs Custom HQ Detection
 
-**Heuristic: Is this a starter-kit clone or a custom-built HQ?**
+**Heuristic: Is this a template clone or a custom-built HQ?**
 
 ```
-isStarterKit =
-  !exists('companies/')           // starter has no companies
-  && !exists('workers/public/')   // starter uses flat workers/
+isTemplate =
+  !exists('companies/')           // template has no companies
+  && !exists('workers/public/')   // template uses flat workers/
   && !exists('workers/private/')  // no visibility split
   && !exists('repos/')            // no repos dir
   && !exists('.mcp.json')         // no MCP config
 ```
 
-If `isStarterKit` is true, Desktop can show "Starter Kit v{version}" in the settings. If false, show "Custom HQ".
+If `isTemplate` is true, Desktop can show "HQ Template v{version}" in the settings. If false, show "Custom HQ".
 
 ### 5.3 Custom Extension Detection
 
-Desktop counts extensions beyond the starter baseline to show users how much their HQ has grown:
+Desktop counts extensions beyond the template baseline to show users how much their HQ has grown:
 
 | Metric | Baseline (v5.3) | Calculation |
 |--------|-----------------|-------------|
@@ -236,11 +236,11 @@ Desktop counts extensions beyond the starter baseline to show users how much the
 | Threads | 0 | `count(workspace/threads/*.json)` |
 | Companies | 0 | `count(companies/*/` subdirs) |
 
-**Version-specific baselines:** When Desktop detects a specific starter version, it should use that version's known baselines for accurate "custom extension" counts. The baselines above are for v5.3.0.
+**Version-specific baselines:** When Desktop detects a specific template version, it should use that version's known baselines for accurate "custom extension" counts. The baselines above are for v5.3.0.
 
 ### 5.4 Structural Evolution Detection
 
-Desktop should detect when a user has evolved their starter-kit beyond the default by checking for these structural markers (ordered by typical progression):
+Desktop should detect when a user has evolved their HQ template beyond the default by checking for these structural markers (ordered by typical progression):
 
 | Stage | Marker | Description |
 |-------|--------|-------------|
@@ -274,9 +274,9 @@ This section is the formal contract that Desktop code MUST adhere to.
 
 1. Desktop MUST NOT crash or show unhandled errors when any optional structure is missing.
 2. Desktop MUST NOT hardcode `~/Documents/HQ` as the HQ path (currently 17 places do this -- see US-001 Section 5).
-3. Desktop MUST NOT assume `companies/` exists (it is optional, not present in starter-kit).
-4. Desktop MUST NOT assume `workers/public/` or `workers/private/` layout (starter-kit uses flat `workers/`).
-5. Desktop MUST NOT assume `knowledge/public/` layout (starter-kit uses flat `knowledge/`).
+3. Desktop MUST NOT assume `companies/` exists (it is optional, not present in template).
+4. Desktop MUST NOT assume `workers/public/` or `workers/private/` layout (template uses flat `workers/`).
+5. Desktop MUST NOT assume `knowledge/public/` layout (template uses flat `knowledge/`).
 6. Desktop MUST NOT require `qmd` to be installed (search is a progressive enhancement).
 7. Desktop MUST NOT display company-scoped UI elements when no `companies/` directory exists.
 8. Desktop MUST NOT require `workspace/orchestrator/state.json` to show the project list.
@@ -285,7 +285,7 @@ This section is the formal contract that Desktop code MUST adhere to.
 ### SHOULD
 
 1. Desktop SHOULD show instance level (minimal/standard/full) in settings or footer.
-2. Desktop SHOULD show starter-kit version when detectable.
+2. Desktop SHOULD show template version when detectable.
 3. Desktop SHOULD show "custom extensions" count to help users understand their HQ's growth.
 4. Desktop SHOULD start file watchers only for directories that exist.
 5. Desktop SHOULD display CTAs for missing features that guide users toward activation (e.g., "Run /newworker to create your first worker").

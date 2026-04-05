@@ -142,7 +142,7 @@ The `@tauri-apps/plugin-fs` `readDir()` also follows symlinks transparently. The
 
 1. **Broken symlinks:** If a repo is deleted but the symlink remains, `fs::read_dir()` will fail. Desktop should catch this and show a "broken link" indicator.
 2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`~/Documents/HQ/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
-3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {company} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
+3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {Product} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
 
 ---
 
@@ -231,7 +231,7 @@ KnowledgeBase (top-level grouping)
 ### What Desktop Needs to Display
 
 **Knowledge Base List View:**
-- Name (e.g., "Ralph", "HQ Core", "{company}")
+- Name (e.g., "Ralph", "HQ Core", "{Product}")
 - Scope badge (Public / Private / Company: {name})
 - File count
 - Last modified date
@@ -280,7 +280,7 @@ personal:
 
 ### Desktop Isolation Rules
 
-1. **Company filter in UI**: When user selects a company context (e.g., "{company}"), the knowledge browser should:
+1. **Company filter in UI**: When user selects a company context (e.g., "{Product}"), the knowledge browser should:
    - Show that company's knowledge base
    - Show HQ-level public knowledge (always accessible)
    - Hide other companies' knowledge bases
@@ -308,10 +308,10 @@ Knowledge Browser
 │   │   ├── Loom
 │   │   ├── Projects
 │   │   ├── PR
-│   │   └── {Company}
+│   │   └── {product}
 │   └── Private
 │       └── Linear
-├── Company: {company} (when LR context active)
+├── Company: {Product} (when LR context active)
 │   ├── Architecture
 │   ├── Database Schema
 │   ├── Infrastructure
@@ -460,7 +460,7 @@ Collection Picker
 ├── All Collections (default)
 ├── HQ (2,285 files)
 ├── ─── Company Collections ───
-├── {company} (121 files)
+├── {Product} (121 files)
 ├── {company} (87 files)
 ├── {Product} (15 files)
 ├── Personal (8 files)

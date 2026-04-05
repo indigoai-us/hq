@@ -94,7 +94,7 @@ Without this, the JS→Rust event bridge (`window.__TAURI__.event.emit`) is not 
 
 ## Verified on
 
-- **{company}-hq-app** (Tauri v2 + React 19): 24 interactive elements detected (icon rail, company selector, all navigation buttons)
+- **{your-app}** (Tauri v2 + React 19): 24 interactive elements detected (icon rail, company selector, all navigation buttons)
 - MCP protocol: initialize, tools/list, tools/call all work over HTTP+SSE
 - 98 unit tests in the plugin repo, 493 tests in the upstream agent-browser fork
 

@@ -4,6 +4,75 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.5.0 (from v10.4.0)
+
+### New Command
+
+Copy the new command:
+```bash
+cp template/.claude/commands/run-pipeline.md your-hq/.claude/commands/
+```
+
+### New Skill
+
+Copy the new skill directory:
+```bash
+cp -r template/.claude/skills/land-batch/ your-hq/.claude/skills/land-batch/
+```
+
+### Updated Commands (18)
+
+Diff and merge updated commands:
+```bash
+diff -rq template/.claude/commands/ your-hq/.claude/commands/
+```
+
+### Updated Skills (13)
+
+Diff and merge updated skills:
+```bash
+diff -rq template/.claude/skills/ your-hq/.claude/skills/
+```
+
+### New Policies (8)
+
+Copy new policies:
+```bash
+for p in hq-bugfix-requires-tests hq-data-collection-isolation hq-github-review-thread-resolution hq-no-test-shortcuts hq-no-worktree-for-repo-work paper-text-wrapping; do
+  cp template/.claude/policies/${p}.md your-hq/.claude/policies/
+done
+```
+
+### Updated Hooks (11)
+
+```bash
+cp template/.claude/hooks/*.sh your-hq/.claude/hooks/
+chmod +x your-hq/.claude/hooks/*.sh
+```
+
+### Updated Settings
+
+Add `PATH` to your `.claude/settings.json` env block:
+```json
+"PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+```
+
+### Updated modules.yaml
+
+The `hq-core` module now points to `indigoai-us/hq` instead of the archived `hq-starter-kit`. Update your `modules/modules.yaml` accordingly.
+
+### Knowledge Bases
+
+Rsync updated knowledge:
+```bash
+rsync -av template/knowledge/ your-hq/knowledge/ --exclude='.git/'
+```
+
+### Breaking Changes
+- (none)
+
+---
+
 ## Migrating to v10.4.0 (from v10.3.0)
 
 ### New Skills (9 Codex-ready skills)

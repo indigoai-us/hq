@@ -31,11 +31,11 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-{product} + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-{product}) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
-| {company} | {company}-site, {company}-cmohq | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
+| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
+| {company} | {your-repo}, {your-repo} | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
 | {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
 | personal | (none) | slack + (on disk: gmail, linkedin, x) | x-{your-name}, invoices | yes | personal |
-| {company} | {company}-portal | (none) | (none) | null | (none) |
+| {company} | {your-repo} | (none) | (none) | null | (none) |
 
 Note: The manifest `settings` list does not always match the on-disk contents of `companies/{id}/settings/`. Desktop must discover settings from the filesystem, but the manifest defines which are "declared" vs which are incidental.
 
@@ -162,7 +162,7 @@ When searching via qmd, the active company determines the default collection:
 function getSearchCollections(activeCompany: string | null): string[] {
   if (!activeCompany) return ['hq']  // search everything
   const manifest = getManifest(activeCompany)
-  return manifest.qmd_collections  // e.g., ['{company}', '{product}'] for {company}
+  return manifest.qmd_collections  // e.g., ['{company}', '{product}'] for {Product}
 }
 ```
 

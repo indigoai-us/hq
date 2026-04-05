@@ -70,14 +70,12 @@ Personal OS for orchestrating work across companies, workers, and AI.
 | `/newcompany` | Scaffold new company with full infrastructure |
 | `/launch-brand` | Launch new DTC brand end-to-end |
 | `/pb-connect` | Connect Post-Bridge social accounts |
-| `/bootcamp-student` | Onboard AGI bootcamp student |
 | `/personal-interview` | Deep interview to populate profile/voice |
 
 ### Linear
 | Command | What it does |
 |---------|--------------|
-| `/check-linear-{company}` | Interactive triage for {Product} workspace |
-| `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
+| `/check-linear-{company}` | Interactive triage for {company} workspace |
 
 ### System
 | Command | What it does |
@@ -129,46 +127,26 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 **Company Workers** (`companies/{co}/workers/`):
 
+Company workers are scoped to specific companies. Create them with `/newworker`. Examples:
+
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {Product} | Data analysis |
-| infobip-admin | {Product} | Infobip channel management |
-| {company}-gtm | {Product} | GTM operations |
-| lr-qa | {Product} | QA testing |
-| {product}-deploy | {Product} | Deployment automation |
-| cmo-{company} | {Product} | Social/content (X, LinkedIn) |
-| x-{your-name} | Personal | X/Twitter posting |
-| invoices | Personal | Invoice generation |
-| social-council | Personal | Social strategy council |
+| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| {company}-analyst | {company} | Data analysis |
+| cmo-{company} | {company} | Social/content (X, LinkedIn) |
+| x-{your-name} | personal | X/Twitter posting |
 | pr-coordinator | {company} | PR campaign coordination |
-| pr-strategist | {company} | PR strategy |
-| pr-writer | {company} | PR content writing |
-| pr-outreach | {company} | Journalist outreach |
-| pr-monitor | {company} | Media monitoring |
-| {company}-site-builder | {company} | Site generation |
-| {company}-research-agent | {company} | Research automation |
 
-## Companies (14)
+## Companies
 
 Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {company}/    # SMS/e-commerce + AI platform
-├── {company}/         # AI venture
-├── personal/       # Personal tools + social
-├── {company}/  # Band/music
-├── {company}/     # Artist site + admin
-├── {company}/    # Artist management
-├── {company}/      # PR agency
-├── {company}/     # {Product} AI
-├── {company}/ # Estate platform
-├── {company}/       # Agency + tools
-├── {company}/          # Shopify store
-├── {company}/       # Wellness mobile app
-├── {company}/       # Domain management
-└── {company}/            # GTM/growth
+├── {company-1}/   # Your first company
+├── {company-2}/   # Your second company
+├── personal/      # Personal tools + social
+└── _template/     # Template for new companies
 ```
 
 ## Projects

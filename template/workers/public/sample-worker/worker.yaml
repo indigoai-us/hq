@@ -10,7 +10,7 @@ visibility: public
 status: active
 
 execution:
-  model: sonnet
+  model: opus
 
 context:
   base: []

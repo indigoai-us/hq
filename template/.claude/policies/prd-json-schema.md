@@ -20,4 +20,4 @@ When creating `prd.json` files:
 
 ## Rationale
 
-`run-project.sh` uses exact jq field names: `.userStories[]`, `.dependsOn`, `.metadata.repoPath`, `.passes`. Mismatched field names cause silent failures — empty candidate lists, skipped stories, or validation aborts. Discovered across {company}-gtm-hq-v3 and {app}-mcp-persistence projects (Mar 2026).
+`run-project.sh` uses exact jq field names: `.userStories[]`, `.dependsOn`, `.metadata.repoPath`, `.passes`. Mismatched field names cause silent failures — empty candidate lists, skipped stories, or validation aborts.

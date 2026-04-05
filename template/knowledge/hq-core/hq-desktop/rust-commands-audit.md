@@ -229,7 +229,7 @@ struct CompanyEntry {
 ```yaml
 {company}:
   repos: [...]
-  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{product}]
+  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{company}]
   workers: [cfo-{company}, {company}-analyst, {product}-deploy]
   knowledge: companies/{company}/knowledge/
   deploy: [...]
@@ -391,7 +391,7 @@ All mock data lives in `src/lib/tauri.ts` and `src/hooks/use-empire-data.ts`. Us
 
 ```typescript
 // 3 projects for orchestrator view
-{ name: '{company}-billion-dollar-website', state: 'IN_PROGRESS', prdPath: '...README.md' }
+{ name: '{your-project}', state: 'IN_PROGRESS', prdPath: '...README.md' }
 ```
 
 **Issues:**

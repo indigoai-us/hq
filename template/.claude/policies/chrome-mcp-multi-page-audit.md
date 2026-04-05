@@ -16,4 +16,4 @@ When auditing multiple pages via Chrome MCP:
 
 ## Rationale
 
-Discovered during {app}-admin 17-page audit (Mar 2026). Multiple approaches tried before finding the reliable pattern.
+Discovered during a multi-page admin audit (Mar 2026). Multiple approaches tried before finding the reliable pattern.

@@ -241,6 +241,9 @@ Use a bridge instead of copying files:
 - Orchestration: inline execution only — no sub-agent spawning (describe as "inline phases")
 - Rephrase anti-instructions: "Do NOT use TodoWrite" → "Track state in your context, not via TodoWrite"
 
+**12 promoted skills (Codex-ready as of 2026-04-03):**
+`review`, `investigate`, `retro`, `startwork`, `handoff`, `brainstorm`, `prd`, `search`, `learn`, `run`, `execute-task`, `run-project`
+
 **Coverage tool:** `bash scripts/codex-skill-bridge.sh status` — shows skills count, openai.yaml coverage, and which commands lack corresponding skills. Run after adding new skills or commands.
 
 ## Search (qmd)
@@ -417,6 +420,8 @@ A PreCompact hook fires at 60% context. Autocompact cannot be fully disabled in 
 4. **Test before ship** - If you can't verify it works, you can't ship it
 5. **E2E tests prove it works** - Unit tests check code; E2E tests check the product
 6. **Completeness is near-zero cost** - AI makes the marginal cost of doing the complete thing close to zero. Always do the complete thing when achievable (a "lake"), not the shortcut. Reserve shortcuts for genuinely unbounded scope (an "ocean")
+7. **Never skip failing tests** - Always fix tests properly. Never use test.skip, never create false positives, never loosen assertions as a workaround. Investigate root cause and fix it — unit, integration, and E2E equally <!-- user-correction | 2026-04-04 -->
+8. **Bugfixes require tests** - Every bug fix must include test or E2E coverage that catches the regression. Ask user if unsure about test type/scope. A fix without a regression test is incomplete <!-- user-correction | 2026-04-05 -->
 
 ## E2E Testing Standards
 
