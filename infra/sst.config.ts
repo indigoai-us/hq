@@ -37,6 +37,9 @@ export default $config({
 
     const inviteSecret = new sst.Secret("InviteSecret");
 
+    // IAM role for user-scoped S3 credentials (assumed via STS by auth Lambda)
+    const s3AccessRoleArn = "arn:aws:iam::804849608251:role/hq-cloud-s3-access";
+
     // --- API ---
     const api = new sst.aws.ApiGatewayV2("HqApi");
 
@@ -61,10 +64,19 @@ export default $config({
       link: [bucket, userPool],
     });
 
-    // Auth endpoints
+    // Auth endpoints — need STS AssumeRole for credential scoping
     api.route("POST /api/auth/refresh", {
       handler: "functions/auth.refresh",
       link: [userPool, bucket],
+      environment: {
+        S3_ACCESS_ROLE_ARN: s3AccessRoleArn,
+      },
+      permissions: [
+        {
+          actions: ["sts:AssumeRole"],
+          resources: [s3AccessRoleArn],
+        },
+      ],
     });
 
     api.route("GET /api/auth/credentials", {
