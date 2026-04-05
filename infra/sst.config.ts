@@ -127,9 +127,7 @@ export default $config({
         VITE_USER_POOL_CLIENT_ID: userPoolClient.id,
         VITE_REGION: "us-east-1",
       },
-      domain: {
-        name: "hq.getindigo.ai",
-      },
+      // domain: { name: "hq.getindigo.ai" },  // TODO: re-enable after initial deploy succeeds
     });
 
     return {
