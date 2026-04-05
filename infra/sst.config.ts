@@ -33,9 +33,7 @@ export default $config({
     const userPoolClient = userPool.addClient("HqWebClient");
 
     // --- Storage ---
-    const bucket = new sst.aws.Bucket("HqStorage", {
-      access: "cloudfront",
-    });
+    const bucket = new sst.aws.Bucket("HqStorage");
 
     const inviteSecret = new sst.Secret("InviteSecret");
 
