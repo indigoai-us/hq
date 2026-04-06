@@ -17,6 +17,7 @@ import { registerPackageInstallCommand } from "./commands/pkg-install.js";
 import { registerPackageRemoveCommand } from "./commands/pkg-remove.js";
 import { registerPackageUpdateCommand } from "./commands/pkg-update.js";
 import { registerPackageListCommand } from "./commands/pkg-list.js";
+import { registerTeamSyncCommand } from "./commands/team-sync.js";
 
 const program = new Command();
 
@@ -57,6 +58,9 @@ const syncCmd = program
   .description("Cloud sync commands — sync HQ to S3 for mobile access");
 
 registerCloudCommands(syncCmd);
+
+// Team commands (top-level)
+registerTeamSyncCommand(program);
 
 // Auth commands (top-level)
 registerLoginCommand(program);
