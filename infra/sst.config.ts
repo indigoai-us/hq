@@ -158,6 +158,27 @@ export default $config({
       link: [userPool, bucket, githubAppId, githubAppPrivateKey],
     });
 
+    // Team submissions (content contribution review)
+    api.route("POST /api/teams/{id}/submissions", {
+      handler: "functions/submissions.createSubmission",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/submissions", {
+      handler: "functions/submissions.listSubmissions",
+      link: [userPool, bucket],
+    });
+
+    api.route("PUT /api/teams/{id}/submissions/{subId}/approve", {
+      handler: "functions/submissions.approveSubmission",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("PUT /api/teams/{id}/submissions/{subId}/reject", {
+      handler: "functions/submissions.rejectSubmission",
+      link: [userPool, bucket],
+    });
+
     // Team invite operations
     api.route("POST /api/teams/{id}/invites", {
       handler: "functions/teams.createInvite",
