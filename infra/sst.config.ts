@@ -179,6 +179,22 @@ export default $config({
       link: [userPool, bucket],
     });
 
+    // Peer sharing via shared branches (US-010)
+    api.route("POST /api/teams/{id}/shares", {
+      handler: "functions/shares.createShare",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/shares", {
+      handler: "functions/shares.listShares",
+      link: [userPool, bucket],
+    });
+
+    api.route("PUT /api/teams/{id}/shares/{shareId}/status", {
+      handler: "functions/shares.updateShareStatus",
+      link: [userPool, bucket],
+    });
+
     // GitHub diff proxy — fetches compare data using GitHub App token (US-008)
     api.route("GET /api/teams/{id}/github-diff", {
       handler: "functions/github-proxy.getGitHubDiff",
