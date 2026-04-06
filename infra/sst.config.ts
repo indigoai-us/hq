@@ -115,6 +115,22 @@ export default $config({
       link: [userPool],
     });
 
+    // Team entitlements
+    api.route("POST /api/teams/{id}/entitlements", {
+      handler: "functions/entitlements.setEntitlements",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/entitlements", {
+      handler: "functions/entitlements.getEntitlementsManifest",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/entitlements/mine", {
+      handler: "functions/entitlements.getMyEntitlements",
+      link: [userPool, bucket],
+    });
+
     // Team invite operations
     api.route("POST /api/teams/{id}/invites", {
       handler: "functions/teams.createInvite",
