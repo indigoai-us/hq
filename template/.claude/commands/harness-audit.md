@@ -193,8 +193,8 @@ CATEGORY SCORES:
 TOTAL: 63/70 (A grade)
 
 TOP 3 IMPROVEMENTS:
-1. Add missing hook: ~/Documents/HQ/.claude/hooks/observe-patterns.sh (S)
-2. Write security policy: ~/Documents/HQ/.claude/policies/company-isolation-validation.md (M)
+1. Add missing hook: $HQ_ROOT/.claude/hooks/observe-patterns.sh (S)
+2. Write security policy: $HQ_ROOT/.claude/policies/company-isolation-validation.md (M)
 3. Add /tdd command to .claude/commands/ (S)
 
 NOTES:

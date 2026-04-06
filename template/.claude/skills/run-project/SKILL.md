@@ -453,7 +453,7 @@ Write a thread checkpoint:
   "type": "auto-checkpoint",
   "created_at": "{ISO8601}",
   "updated_at": "{ISO8601}",
-  "workspace_root": "~/Documents/HQ",
+  "workspace_root": "$HQ_ROOT",
   "cwd": "{current working directory}",
   "git": {
     "branch": "{current branch}",
@@ -737,7 +737,7 @@ After project completion (or pause), write a project-level checkpoint:
   "type": "auto-checkpoint",
   "created_at": "{ISO8601}",
   "updated_at": "{ISO8601}",
-  "workspace_root": "~/Documents/HQ",
+  "workspace_root": "$HQ_ROOT",
   "cwd": "{current working directory}",
   "git": {
     "branch": "{current branch}",

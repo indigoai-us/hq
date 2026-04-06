@@ -23,7 +23,7 @@ Optional:
 
 3. **Check Consistency via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY $HQ_ROOT/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat .impeccable.md tailwind.config.* 2>/dev/null && find {scope:-src/components} -name "*.tsx" | head -40 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "Design system consistency check. Compare every component against the design system.
 

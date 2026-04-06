@@ -86,11 +86,12 @@ If `--full` flag, after listing results, read top result file with Read tool.
 If qmd errors or isn't installed:
 
 ```bash
-grep -rl "$QUERY" ~/Documents/HQ/knowledge/ \
-  ~/Documents/HQ/companies/ \
-  ~/Documents/HQ/workers/ \
-  ~/Documents/HQ/.claude/commands/ \
-  ~/Documents/HQ/workspace/ 2>/dev/null | head -20
+HQ_ROOT="${HQ_ROOT:-$HOME/hq}"
+grep -rl "$QUERY" "$HQ_ROOT/knowledge/" \
+  "$HQ_ROOT/companies/" \
+  "$HQ_ROOT/workers/" \
+  "$HQ_ROOT/.claude/commands/" \
+  "$HQ_ROOT/workspace/" 2>/dev/null | head -20
 ```
 
 Display: "qmd unavailable, falling back to grep"

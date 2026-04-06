@@ -20,7 +20,7 @@ Optional:
 
 2. **Pipe to Gemini for Audit**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY $HQ_ROOT/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && find {scope:-src/components} -name "*.tsx" -o -name "*.css" | head -50 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "Comprehensive design audit. Evaluate these dimensions:
 

@@ -141,7 +141,7 @@ The `@tauri-apps/plugin-fs` `readDir()` also follows symlinks transparently. The
 ### Edge Cases
 
 1. **Broken symlinks:** If a repo is deleted but the symlink remains, `fs::read_dir()` will fail. Desktop should catch this and show a "broken link" indicator.
-2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`~/Documents/HQ/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
+2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`$HQ_ROOT/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
 3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {Product} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
 
 ---

@@ -20,7 +20,7 @@ Optional:
 
 2. **Generate Animation via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY $HQ_ROOT/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat {file} package.json | GEMINI_API_KEY=$KEY \
      gemini -p "Add a {type} animation to this component using {framework}.
 

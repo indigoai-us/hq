@@ -34,7 +34,7 @@ Check `workspace/threads/` for a recent thread file. If none exists, write a bas
   "type": "handoff",
   "created_at": "ISO8601",
   "updated_at": "ISO8601",
-  "workspace_root": "~/Documents/HQ",
+  "workspace_root": "$HQ_ROOT",
   "cwd": "current/working/dir",
   "git": {
     "branch": "current-branch",
@@ -74,7 +74,7 @@ done
 ### 3b. Commit HQ Changes
 
 ```bash
-cd ~/Documents/HQ
+cd $HQ_ROOT
 if [ -n "$(git status --porcelain)" ]; then
   git add -A
   git commit -m "checkpoint: auto-commit before handoff"

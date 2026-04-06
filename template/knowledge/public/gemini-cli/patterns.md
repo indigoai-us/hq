@@ -3,7 +3,7 @@
 ## Loading API Key
 
 ```bash
-KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+KEY=$(grep GEMINI_API_KEY $HQ_ROOT/settings/gemini/credentials.env | cut -d= -f2)
 ```
 
 ## One-Shot Generation

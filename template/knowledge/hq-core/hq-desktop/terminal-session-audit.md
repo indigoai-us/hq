@@ -8,7 +8,7 @@ Comprehensive audit of the HQ Desktop terminal subsystem: PTY implementation, co
 
 | Command | Signature | Behavior |
 |---------|-----------|----------|
-| `spawn_pty` | `(cmd, cwd, cols, rows) -> session_id` | Spawns PTY via `portable_pty`. Defaults to `$SHELL -l` (login shell), cwd defaults to `~/Documents/HQ`. Inherits full env, sets `TERM=xterm-256color`. Spawns reader thread that emits `pty-output` events. On exit, emits `pty-exit` with exit code and auto-cleans session. |
+| `spawn_pty` | `(cmd, cwd, cols, rows) -> session_id` | Spawns PTY via `portable_pty`. Defaults to `$SHELL -l` (login shell), cwd defaults to `$HQ_ROOT`. Inherits full env, sets `TERM=xterm-256color`. Spawns reader thread that emits `pty-output` events. On exit, emits `pty-exit` with exit code and auto-cleans session. |
 | `write_pty` | `(session_id, data: Vec<u8>)` | Writes raw bytes to PTY master. Flushes after write. |
 | `resize_pty` | `(session_id, cols, rows)` | Resizes PTY via master handle. |
 | `kill_pty` | `(session_id)` | Removes session from HashMap, kills child process. |
