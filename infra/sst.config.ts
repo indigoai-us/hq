@@ -179,6 +179,12 @@ export default $config({
       link: [userPool, bucket],
     });
 
+    // GitHub diff proxy — fetches compare data using GitHub App token (US-008)
+    api.route("GET /api/teams/{id}/github-diff", {
+      handler: "functions/github-proxy.getGitHubDiff",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
     // Team invite operations
     api.route("POST /api/teams/{id}/invites", {
       handler: "functions/teams.createInvite",

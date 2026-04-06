@@ -12,6 +12,7 @@ import {
 } from "../lib/api";
 import { PackEditor } from "../components/PackEditor";
 import { EntitlementAssigner } from "../components/EntitlementAssigner";
+import { SubmissionReview } from "../components/SubmissionReview";
 
 interface TeamMember {
   userId: string;
@@ -43,6 +44,17 @@ export function Team() {
   // Pack editor modal
   const [packEditorTeam, setPackEditorTeam] = useState<string | null>(null);
   const [packEditorName, setPackEditorName] = useState<string | null>(null); // null = new
+
+  // Active tab per team: "packs" | "submissions"
+  const [activeTabs, setActiveTabs] = useState<Record<string, "packs" | "submissions">>({});
+
+  function getTab(teamId: string): "packs" | "submissions" {
+    return activeTabs[teamId] ?? "packs";
+  }
+
+  function setTab(teamId: string, tab: "packs" | "submissions") {
+    setActiveTabs((prev) => ({ ...prev, [teamId]: tab }));
+  }
 
   // Debounce save timers
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -280,7 +292,25 @@ export function Team() {
               </div>
             )}
 
+            {/* Tab switcher: Packs | Submissions */}
+            <div className="flex border-b border-neutral-800">
+              {(["packs", "submissions"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTab(team.id, tab)}
+                  className={`px-4 py-2.5 text-xs font-medium capitalize transition-colors ${
+                    getTab(team.id) === tab
+                      ? "text-neutral-200 border-b-2 border-neutral-200 -mb-px"
+                      : "text-neutral-500 hover:text-neutral-300"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
             {/* Packs section */}
+            {getTab(team.id) === "packs" && (
             <div className="border-b border-neutral-800 p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-500">
@@ -341,6 +371,17 @@ export function Team() {
                 </div>
               )}
             </div>
+            )}
+
+            {/* Submissions section */}
+            {getTab(team.id) === "submissions" && (
+            <div className="border-b border-neutral-800 p-4">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-3">
+                Submissions
+              </h3>
+              <SubmissionReview teamId={team.id} members={team.members} />
+            </div>
+            )}
 
             {/* Member list with entitlement assignment */}
             <div className="p-4">
