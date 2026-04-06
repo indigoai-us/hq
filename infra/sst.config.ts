@@ -37,6 +37,12 @@ export default $config({
 
     const inviteSecret = new sst.Secret("InviteSecret");
 
+    // GitHub App secrets for credential brokering (US-009)
+    // Set via: npx sst secret set GitHubAppId <app-id>
+    // Set via: npx sst secret set GitHubAppPrivateKey -- "$(cat private-key.pem)"
+    const githubAppId = new sst.Secret("GitHubAppId");
+    const githubAppPrivateKey = new sst.Secret("GitHubAppPrivateKey");
+
     // IAM role for user-scoped S3 credentials (assumed via STS by auth Lambda)
     const s3AccessRoleArn = "arn:aws:iam::804849608251:role/hq-cloud-s3-access";
 
@@ -129,6 +135,22 @@ export default $config({
     api.route("GET /api/teams/{id}/entitlements/mine", {
       handler: "functions/entitlements.getMyEntitlements",
       link: [userPool, bucket],
+    });
+
+    // Repo config and GitHub App credential brokering (US-009)
+    api.route("GET /api/teams/{id}/repo-config", {
+      handler: "functions/repo.getRepoCredential",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("POST /api/teams/{id}/repo-config", {
+      handler: "functions/repo.setRepoConfig",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("GET /api/teams/{id}/github-status", {
+      handler: "functions/repo.getGitHubStatus",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
     });
 
     // Team invite operations
