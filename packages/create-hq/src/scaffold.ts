@@ -9,8 +9,9 @@ import { initGit, hasGit } from "./git.js";
 import { execSync } from "child_process";
 import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
-import { startAuthFlow, saveToken, loadToken, isTokenExpired } from "./auth.js";
+import { startAuthFlow, startDeviceCodeFlow, saveToken, loadToken, isTokenExpired } from "./auth.js";
 import type { AuthToken } from "./auth.js";
+import { setupTeams } from "./team-setup.js";
 import {
   getRegistryUrl,
   fetchPublicPackages,
@@ -58,6 +59,47 @@ export async function scaffold(
 ): Promise<void> {
   // Show banner with installer version; hqVersion will be added after template fetch
   banner(pkg.version);
+
+  // 0. Setup mode choice: personal HQ or team sign-in
+  let setupMode: "personal" | "team" = "personal";
+  let teamAuthToken: AuthToken | null = null;
+
+  if (!options.join) {
+    const modeAnswer = await prompt(
+      `${chalk.bold("How would you like to get started?")}\n` +
+        `    ${chalk.cyan("[1]")} Set up personal HQ\n` +
+        `    ${chalk.cyan("[2]")} Sign in to join a team\n` +
+        `\n  Choose (1/2)`,
+      "1"
+    );
+
+    if (modeAnswer === "2") {
+      setupMode = "team";
+
+      // Check for existing valid token first
+      const existing = loadToken();
+      if (existing && !isTokenExpired(existing)) {
+        teamAuthToken = existing;
+        info(`Already signed in as ${chalk.cyan(teamAuthToken.email)}`);
+      } else {
+        // Start device code auth flow
+        const authLabel = "Signing in to HQ";
+        stepStatus(authLabel, "running");
+        try {
+          teamAuthToken = await startDeviceCodeFlow("https://hq.indigoai.com/api");
+          stepStatus(authLabel, "done");
+          success(`Signed in as ${chalk.cyan(teamAuthToken.email)}`);
+        } catch (err) {
+          stepStatus(authLabel, "failed");
+          warn(
+            `Sign-in failed: ${err instanceof Error ? err.message : "Unknown error"}`
+          );
+          info("Continuing with personal HQ setup — you can sign in later with: hq team join");
+          setupMode = "personal";
+        }
+      }
+    }
+  }
 
   // 1. Resolve target directory
   const targetDir = path.resolve(directory);
@@ -180,6 +222,20 @@ export async function scaffold(
   const alreadySynced = await detectExistingSync(targetDir);
   if (alreadySynced) {
     success("Cloud sync already configured — skipping setup");
+  }
+
+  // 6a. Team setup (if user chose team sign-in)
+  let teamSetupResult: { teams: { name: string; slug: string }[]; companySlugs: string[] } | null = null;
+  if (setupMode === "team" && teamAuthToken) {
+    console.log();
+    teamSetupResult = await setupTeams(teamAuthToken, targetDir);
+
+    if (teamSetupResult.teams.length > 0) {
+      console.log();
+      success(
+        `${teamSetupResult.teams.length} team${teamSetupResult.teams.length === 1 ? "" : "s"} configured`
+      );
+    }
   }
 
   // 6b. Package discovery & installation
@@ -372,6 +428,14 @@ export async function scaffold(
     console.log(chalk.bold("  Installed packages:"));
     for (const slug of installedPackageSlugs) {
       console.log(chalk.green("  ✓ ") + slug);
+    }
+  }
+
+  if (teamSetupResult && teamSetupResult.teams.length > 0) {
+    console.log();
+    console.log(chalk.bold("  Team content:"));
+    for (const team of teamSetupResult.teams) {
+      console.log(chalk.green("  ✓ ") + `${team.name} → companies/${team.slug}/`);
     }
   }
 

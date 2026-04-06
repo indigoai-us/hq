@@ -1,5 +1,9 @@
 /**
- * Auth utilities for create-hq — OAuth PKCE flow for Clerk (US-008)
+ * Auth utilities for create-hq (US-008 + US-005)
+ *
+ * Two auth flows:
+ * - OAuth PKCE (startAuthFlow) — used for package install during scaffold
+ * - Device code flow (startDeviceCodeFlow) — used for team sign-in (US-005)
  *
  * Reuses the same patterns as hq-cli/src/utils/auth.ts and
  * hq-cli/src/utils/token-store.ts but bundled inline so create-hq
@@ -14,6 +18,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { exec } from "child_process";
+import chalk from "chalk";
 
 // ─── Token types & paths ─────────────────────────────────────────────────────
 
@@ -204,4 +209,155 @@ export async function startAuthFlow(registryUrl: string): Promise<AuthToken> {
       reject(new Error("Authentication timed out after 2 minutes"));
     }, 120_000);
   });
+}
+
+// ─── Device code flow (US-005) ──────────────────────────────────────────────
+
+/**
+ * Response from the device authorization endpoint.
+ * The user visits verification_uri_complete (or verification_uri + enters
+ * user_code) in their browser, while the CLI polls the token endpoint.
+ */
+interface DeviceAuthResponse {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  expires_in: number;
+  interval: number;
+}
+
+/**
+ * Token response from polling the device code token endpoint.
+ * When authorization is still pending, the endpoint returns
+ * { error: "authorization_pending" } — we keep polling until
+ * we get a real token or timeout.
+ */
+interface DeviceTokenResponse {
+  clerk_session_token?: string;
+  user_id?: string;
+  email?: string;
+  expires_at?: string;
+  error?: string;
+  error_description?: string;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Start the Cognito device code auth flow:
+ * 1. POST to /auth/device to get device_code + user_code + verification URL
+ * 2. Display the code and open browser to the verification URL
+ * 3. Poll /auth/device/token until the user completes auth or timeout
+ * 4. Save token and return AuthToken
+ *
+ * This flow avoids needing a local HTTP server or redirect URI,
+ * making it ideal for CLI sign-in during team onboarding.
+ */
+export async function startDeviceCodeFlow(
+  apiBase: string
+): Promise<AuthToken> {
+  // 1. Request device authorization
+  const deviceRes = await fetch(`${apiBase}/auth/device`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: "create-hq" }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!deviceRes.ok) {
+    const body = await deviceRes.text().catch(() => "");
+    throw new Error(`Device authorization failed (${deviceRes.status}): ${body}`);
+  }
+
+  const device = (await deviceRes.json()) as DeviceAuthResponse;
+  const pollInterval = Math.max((device.interval ?? 5) * 1000, 5000);
+  const expiresAt = Date.now() + (device.expires_in ?? 600) * 1000;
+
+  // 2. Display code and open browser
+  console.log();
+  console.log(chalk.bold("  Sign in to HQ"));
+  console.log();
+  console.log(
+    `  Open this URL in your browser:\n  ${chalk.cyan(device.verification_uri_complete || device.verification_uri)}`
+  );
+  console.log();
+  console.log(
+    `  Your code: ${chalk.bold.white(device.user_code)}`
+  );
+  console.log();
+
+  // Try to open the browser automatically
+  openBrowser(device.verification_uri_complete || device.verification_uri);
+
+  // 3. Poll for token
+  while (Date.now() < expiresAt) {
+    await sleep(pollInterval);
+
+    let tokenRes: Response;
+    try {
+      tokenRes = await fetch(`${apiBase}/auth/device/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_code: device.device_code,
+          client_id: "create-hq",
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      // Network error — keep polling
+      continue;
+    }
+
+    if (!tokenRes.ok && tokenRes.status !== 400 && tokenRes.status !== 428) {
+      const body = await tokenRes.text().catch(() => "");
+      throw new Error(`Token polling failed (${tokenRes.status}): ${body}`);
+    }
+
+    const data = (await tokenRes.json()) as DeviceTokenResponse;
+
+    if (data.error === "authorization_pending" || data.error === "slow_down") {
+      // Keep polling — user hasn't completed auth yet
+      continue;
+    }
+
+    if (data.error === "expired_token") {
+      throw new Error("Device code expired — please try again");
+    }
+
+    if (data.error === "access_denied") {
+      throw new Error("Authentication was denied");
+    }
+
+    if (data.error) {
+      throw new Error(
+        `Authentication error: ${data.error}${data.error_description ? ` — ${data.error_description}` : ""}`
+      );
+    }
+
+    // Success — we have a token
+    if (
+      data.clerk_session_token &&
+      data.user_id &&
+      data.email &&
+      data.expires_at
+    ) {
+      const token: AuthToken = {
+        clerk_session_token: data.clerk_session_token,
+        user_id: data.user_id,
+        email: data.email,
+        expires_at: data.expires_at,
+      };
+
+      saveToken(token);
+      return token;
+    }
+
+    throw new Error("Unexpected token response — missing required fields");
+  }
+
+  throw new Error("Authentication timed out — please try again");
 }
