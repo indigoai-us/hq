@@ -117,3 +117,34 @@ export async function removeMember(
     method: "DELETE",
   });
 }
+
+// --- Entitlements API ---
+
+export interface Pack {
+  paths: string[];
+  description: string;
+}
+
+export interface EntitlementsManifest {
+  packs: Record<string, Pack>;
+  assignments: Record<string, string[]>; // userId or "role:member" → pack names
+}
+
+export async function getEntitlements(
+  token: string,
+  teamId: string
+): Promise<EntitlementsManifest> {
+  const res = await request(`/api/teams/${teamId}/entitlements`, token);
+  return res.json();
+}
+
+export async function setEntitlements(
+  token: string,
+  teamId: string,
+  manifest: EntitlementsManifest
+): Promise<void> {
+  await request(`/api/teams/${teamId}/entitlements`, token, {
+    method: "POST",
+    body: JSON.stringify(manifest),
+  });
+}
