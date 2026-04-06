@@ -137,7 +137,12 @@ export default $config({
       link: [userPool, bucket],
     });
 
-    // Repo config and GitHub App credential brokering (US-009)
+    // Repo provisioning and GitHub App credential brokering (US-009, US-002)
+    api.route("POST /api/teams/{id}/repo", {
+      handler: "functions/repo.provisionRepo",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
     api.route("GET /api/teams/{id}/repo-config", {
       handler: "functions/repo.getRepoCredential",
       link: [userPool, bucket, githubAppId, githubAppPrivateKey],
