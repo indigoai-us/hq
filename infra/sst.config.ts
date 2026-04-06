@@ -44,7 +44,9 @@ export default $config({
     const githubAppPrivateKey = new sst.Secret("GitHubAppPrivateKey");
 
     // IAM role for user-scoped S3 credentials (assumed via STS by auth Lambda)
-    const s3AccessRoleArn = "arn:aws:iam::804849608251:role/hq-cloud-s3-access";
+    // Set via: npx sst secret set S3AccessRoleArn "arn:aws:iam::<account-id>:role/hq-cloud-s3-access"
+    const s3AccessRoleArnSecret = new sst.Secret("S3AccessRoleArn");
+    const s3AccessRoleArn = s3AccessRoleArnSecret.value;
 
     // --- API ---
     const api = new sst.aws.ApiGatewayV2("HqApi");
