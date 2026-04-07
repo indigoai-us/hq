@@ -1,6 +1,6 @@
 version: 1
-hqVersion: "10.2.0"
-updatedAt: "2026-04-03T03:51:49Z"
+hqVersion: "10.5.0"
+updatedAt: "2026-04-04T20:00:00Z"
 rules:
   locked:
     - .claude/CLAUDE.md
@@ -22,14 +22,14 @@ rules:
   open:
     - "**"
 checksums:
-  .claude/CLAUDE.md: 96f0a1612d908f6e40ac9d0bb49db8fc32d094ce5d5c47de4469c0e57284b0b8
-  .claude/hooks: f8bb68ed0aa82771d88c514db0db133ac5001aa07984e11134d9c72f74499cf5
-  .claude/policies: aa5c09983a718c8b7c1ad0c59b57cbbf2ff5793c47ed0465f2ed9558278d9a6e
-  .claude/settings.json: 0d2f9b2ea70f10b72461d5be99c0a6be59db8d17189766e8fafd63c83d38cf3c
-  CHANGELOG.md: 1a5350d2029b55e6c49a16c81770bc4445dc9c419a92d1b394ff3ba3acb881c3
-  MIGRATION.md: f341189eab6e79349bf7ec7c93b1aee4354ab9ffab13b5e61148ca1b34fc0239
-  companies/_template: 989a2d928de46bd5933d2f9d803bb9b5d58cb33dfb65d88f8b2fbd7f1b553d6a
+  .claude/CLAUDE.md: 2283463b7f7556be043e50b1d8c51b51985c8a88b3e8bdd325c2e418300f1cca
+  .claude/hooks: 12371d277eae10aa003da39e702d45777e60902f3dc04c323a9bebdf739d45fd
+  .claude/policies: 4fc8cc8055346d7a59550fd0cc92e233f7d8ac32fa840f066a60df3e9aa7dc82
+  .claude/settings.json: fc8f5a2543e961539bc4007c6de28ebdd268c94b488e256cc8de2cb0ae57be56
+  CHANGELOG.md: 8b1a31a339084ecc78548d55c398c4aad17f0add38815b05c323a5b0d75455a1
+  MIGRATION.md: 43bb1c90e9c7c4c1dd5bf65b4d1d7870682428648377516000a5fdd2b0c6e355
+  companies/_template: 92bba93c2b7499bdfd6a6cf5ead28e1c1526b986461ba7c10e173d44f8cc624e
   companies/manifest.yaml: 61b9cc98d7f3f80361f59affc3f50dab3d2dfe2da332ee5d6d44e948ae75802c
-  modules: eb0049afa1521921a4d5e67e358185ebf138e83819a11aeb4d7dea26f270399b
-  scripts: 5e752f566fbfa5f91d8fc2b6037b6c67bc8773966480b0a7d87eb12d27ac948a
-  workers/registry.yaml: cbebef441e57d2873ac2ec43fda1cd89db652dbd972550369950ec69e67b029d
+  modules: d2e40fa43f89d76b48af47f0bf3cff625d812c22daca4663ab83593ea8ad9cec
+  scripts: a6e15109dca61a8e361f2519e245af41b4f8ff2e1f17aa10f36d5b42b82b7b98
+  workers/registry.yaml: a2c92095883bdfaa810a491d04e564fd69435c3ee046b894c8d349d75f80f866

@@ -11,7 +11,7 @@ execution:
   max_runtime: 15m
   retry_attempts: 1
   spawn_method: task_tool
-  model: sonnet
+  model: opus
   codex_model: gpt-5.4
   codex_flags: --reasoning high --fast
 

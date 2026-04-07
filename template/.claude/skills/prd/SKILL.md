@@ -459,13 +459,13 @@ qmd update 2>/dev/null || true
 
 Note: Registration with orchestrator state.json happens when `$run-project` or `$execute-task` is invoked.
 
-## Step 7: Linear Sync (best-effort, optional)
+## Step 7: Linear Sync (best-effort, {Product}/{Product} only)
 
-If the company has Linear credentials configured, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
+If `{co}` is `{company}`, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
 
-1. Read `companies/{co}/settings/linear/credentials.json` and `config.json`
-2. Validate workspace name in config matches expected company
-3. Create Linear project linked to best-fit initiative, with `leadId` and `targetDate` (default: today+1d)
+1. Read `companies/{company}/settings/linear/credentials.json` and `config.json`
+2. Validate `workspace` field in config matches expected company
+3. Create Linear project linked to best-fit initiative, with `leadId` (default: {your-name}) and `targetDate` (default: today+1d)
 4. Create issue per story with `assigneeId` (resolved by team routing) and `dueDate` (matches project targetDate)
 5. Store all IDs in prd.json: `metadata.linearProjectId`, `metadata.linearCredentials`, per-story `linearIssueId`, `linearAssigneeId`
 

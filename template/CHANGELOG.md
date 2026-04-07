@@ -1,5 +1,30 @@
 # Changelog
 
+## [10.5.0] — 2026-04-04
+
+### Added
+- **`/run-pipeline` command** — orchestrate multi-step pipelines with parallel execution, retry logic, and checkpoint recovery
+- **`land-batch` skill** — batch-land multiple PRs in dependency order with CI monitoring
+- **8 new policies** — `hq-bugfix-requires-tests`, `hq-data-collection-isolation`, `hq-github-review-thread-resolution`, `hq-no-test-shortcuts`, `hq-no-worktree-for-repo-work`, `paper-text-wrapping`, plus 2 tool-scoped policies
+- **`context-manager` worker** (dev-team) — discover, maintain, and audit project context
+
+### Changed
+- **18 commands updated** — refreshed with latest workflow improvements, policy references, and Codex compatibility
+- **13 skills updated** — enhanced instructions, better error handling, updated checklists
+- **161 policies synced** (up from 154) — scope-filtered: global, command, cross-cutting, tool only
+- **11 hooks** — updated hook-gate routing, screenshot-resize-trigger, observe-patterns
+- **Knowledge bases refreshed** — 294 files synced across Ralph, hq-core, dev-team, design-styles, workers, projects, and more
+- **CLAUDE.md** — updated content counts, refreshed sections, removed legacy references
+- **USER-GUIDE.md** — cleaner company section, updated command tables
+- **modules.yaml** — cleaned up, hq-core now points to `indigoai-us/hq` (was `hq-starter-kit`)
+- **settings.json** — added `PATH` env var for consistent tool resolution
+- **Workers** — codex workers updated with latest model references (opus/gpt-5.4)
+- **41 skills** — all Codex-ready with `agents/openai.yaml` (100% coverage)
+
+### Removed
+- `knowledge/Ralph/11-team-training-guide.md` (private content)
+- `workers/dev-team/qa-tester/skills/electron-e2e.md` (deprecated)
+
 ## [10.4.0] — 2026-04-03
 
 ### Added

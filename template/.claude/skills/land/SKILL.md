@@ -75,7 +75,7 @@ Determine merge strategy:
 - If user specified: use their preference
 
 ```bash
-gh pr merge {pr_number} --repo {repo} --squash
+gh pr merge {pr_number} --repo {repo} --squash --delete-branch
 ```
 
 **If branch protection blocks merge:**
@@ -88,21 +88,6 @@ Verify merge:
 gh pr view {pr_number} --repo {repo} --json state,mergedAt,mergeCommit
 ```
 
-### 3b: Branch Cleanup
-
-After successful merge, offer branch cleanup with smart defaults:
-- **Feature branches** (`feature/*`, `fix/*`, `chore/*`): default to delete — ask user to confirm
-- **Release branches** (`release/*`, `hotfix/*`): default to keep — ask user before deleting
-- **Other branches**: ask user
-
-If user confirms deletion:
-```bash
-gh pr view {pr_number} --repo {repo} --json headRefName -q '.headRefName' | xargs -I {} git push origin --delete {}
-git branch -d {local_branch}  # if exists locally
-```
-
-If user declines or branch is protected, skip silently.
-
 ## Step 4: Monitor Production
 
 Post-merge verification. This step is context-dependent — the skill adapts based on what was changed.
@@ -110,15 +95,15 @@ Post-merge verification. This step is context-dependent — the skill adapts bas
 ### 4a: Identify what to monitor
 
 From the PR diff, determine:
-- **Lambda/serverless changes** → check if deployment is needed (code on main ≠ deployed)
+- **Lambda/serverless changes** → check if SST deployment is needed (code on main ≠ deployed)
 - **Database changes** → query for expected state changes
 - **API changes** → test endpoints
 - **Frontend changes** → check deployment status (Vercel, etc.)
 
 ### 4b: Execute monitoring
 
-**For Lambda changes:**
-- Note: merging to main does NOT auto-deploy Lambda. Deployment is separate
+**For Lambda changes ({PRODUCT} pattern):**
+- Note: merging to main does NOT auto-deploy Lambda. SST deployment is separate
 - Query DB for expected state changes (e.g. stale messages expiring)
 - Check CloudWatch logs if accessible
 - Report: "Code is on main. Lambda redeploy needed for changes to take effect"
@@ -160,4 +145,4 @@ If production verification reveals issues, flag immediately and offer to investi
 - Never skip CI checks without explicit user approval
 - Always verify merge succeeded before reporting completion
 - If production monitoring reveals a regression, prioritize flagging over completing the skill
-- Respect repo-specific merge policies
+- Respect repo-specific merge policies ({PRODUCT}: `bun run pr:create` for creation, but `gh pr merge` for merging is fine)

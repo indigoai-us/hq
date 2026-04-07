@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/{your-username}/hq-starter-kit.git
+    repo: https://github.com/indigoai-us/hq.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
@@ -25,7 +25,7 @@ modules:
   # Strategy: link (repos live locally at repos/public/ or repos/private/).
 
   - name: knowledge-ralph
-    repo: https://github.com/{your-name}/ralph-methodology.git
+    repo: https://github.com/{your-username}/ralph-methodology.git
     branch: main
     strategy: link
     access: public
@@ -33,7 +33,7 @@ modules:
       docs: knowledge/public/Ralph
 
   - name: knowledge-ai-security
-    repo: https://github.com/{your-name}/knowledge-ai-security.git
+    repo: https://github.com/{your-username}/knowledge-ai-security.git
     branch: main
     strategy: link
     access: public
@@ -49,7 +49,7 @@ modules:
       .: knowledge/public/impeccable
 
   - name: knowledge-design-styles
-    repo: https://github.com/{your-name}/knowledge-design-styles.git
+    repo: https://github.com/{your-username}/knowledge-design-styles.git
     branch: main
     strategy: link
     access: public
@@ -57,7 +57,7 @@ modules:
       .: knowledge/public/design-styles
 
   - name: knowledge-dev-team
-    repo: https://github.com/{your-name}/knowledge-dev-team.git
+    repo: https://github.com/{your-username}/knowledge-dev-team.git
     branch: main
     strategy: link
     access: public
@@ -65,7 +65,7 @@ modules:
       .: knowledge/public/dev-team
 
   - name: knowledge-hq-core
-    repo: https://github.com/{your-name}/knowledge-hq-core.git
+    repo: https://github.com/{your-username}/knowledge-hq-core.git
     branch: main
     strategy: link
     access: public
@@ -73,7 +73,7 @@ modules:
       .: knowledge/public/hq-core
 
   - name: knowledge-loom
-    repo: https://github.com/{your-name}/knowledge-loom.git
+    repo: https://github.com/{your-username}/knowledge-loom.git
     branch: main
     strategy: link
     access: public
@@ -81,7 +81,7 @@ modules:
       .: knowledge/public/loom
 
   - name: knowledge-workers
-    repo: https://github.com/{your-name}/knowledge-workers.git
+    repo: https://github.com/{your-username}/knowledge-workers.git
     branch: main
     strategy: link
     access: public
@@ -89,7 +89,7 @@ modules:
       .: knowledge/public/workers
 
   - name: knowledge-projects
-    repo: https://github.com/{your-name}/knowledge-projects.git
+    repo: https://github.com/{your-username}/knowledge-projects.git
     branch: main
     strategy: link
     access: public
@@ -115,7 +115,7 @@ modules:
   # ─── Private Knowledge Repos ──────────────────────────────────────────
 
   - name: knowledge-linear
-    repo: https://github.com/{your-name}/knowledge-linear.git
+    repo: https://github.com/{your-username}/knowledge-linear.git
     branch: main
     strategy: link
     access: team
@@ -123,161 +123,17 @@ modules:
       .: knowledge/private/linear
 
   # ─── Company Knowledge Repos ──────────────────────────────────────────
-
-  - name: knowledge-{company}
-    repo: https://github.com/{your-name}/knowledge-{company}.git
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: https://github.com/{your-name}/knowledge-{company}.git
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-personal
-    repo: https://github.com/{your-name}/knowledge-personal.git
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/personal/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: {company}-docs-internal
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/repos/{company}-docs-internal
-
-  - name: {company}-docs-customer
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/repos/{company}-docs-customer
-
-  - name: knowledge-dripkit
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/dripkit/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/knowledge
+  # Add your company knowledge repos here. Example:
+  #
+  # - name: knowledge-{company}
+  #   repo: https://github.com/{your-username}/knowledge-{company}.git
+  #   branch: main
+  #   strategy: embedded
+  #   access: team
+  #   paths:
+  #     .: companies/{company}/knowledge
 
   # ─── Add-On Kits ────────────────────────────────────────────────────
-
-  - name: hq-social-kit
-    repo: https://github.com/{your-name}/hq-social-kit.git
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      commands: .claude/commands
 
   - name: gstack
     repo: https://github.com/garrytan/gstack.git

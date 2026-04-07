@@ -324,7 +324,7 @@ Styled as a glass dropdown:
 │ ─── HQ ───               │
 │ HQ (2,285 files)         │
 │ ─── Company ───           │
-│ {company} (121 files)  │
+│ {Product} (121 files)  │
 │ {company} (87 files)        │
 │ {Product} (15 files)        │
 │ Personal (8 files)       │
@@ -401,7 +401,7 @@ Styled as a glass dropdown:
 | File path | `result.file` (strip `qmd://{collection}/` prefix) | `text-white/40`, `text-xs`, monospace |
 | Snippet | `result.snippet` | `text-white/60`, `text-xs`, max 2 lines with ellipsis. Matched terms highlighted with `text-white/90` + subtle background `rgba(255,255,255,0.06)` |
 | Score | `result.score` | Right-aligned, rendered as a horizontal bar or numeric value (0.00-1.00). Bar uses `--status-working` color scaled by score |
-| Collection badge | Extracted from `result.file` prefix | Small pill badge: `text-xs`, e.g., "HQ", "{company}" |
+| Collection badge | Extracted from `result.file` prefix | Small pill badge: `text-xs`, e.g., "HQ", "{Product}" |
 
 **Result card styling:**
 - Background: `rgba(255,255,255,0.03)` (glass-inset)
@@ -509,7 +509,7 @@ The `StatsHeader` component already has a company filter dropdown. The knowledge
 | Company Filter State | Knowledge Browser Behavior |
 |---------------------|--------------------------|
 | "All" | Show all knowledge bases (HQ public, HQ private, all companies) |
-| "{company}" | Show HQ public + HQ private + {company} knowledge only |
+| "{Product}" | Show HQ public + HQ private + {Product} knowledge only |
 | "{company}" | Show HQ public + HQ private + {company} knowledge only |
 | (etc.) | Same pattern per company |
 
@@ -583,7 +583,7 @@ For v1: single collection selection only.
 
 ### 6.4 Virtual Scrolling Decision
 
-**For the file tree:** Not needed in v1. Even the largest knowledge base ({company}, ~40 files) produces a tree of ~100 nodes when fully expanded. Standard DOM rendering handles this fine.
+**For the file tree:** Not needed in v1. Even the largest knowledge base ({Product}, ~40 files) produces a tree of ~100 nodes when fully expanded. Standard DOM rendering handles this fine.
 
 **For search results:** Not needed in v1 with pagination (10 results per page). If switching to infinite scroll, add `react-virtuoso` for the result list.
 
@@ -638,7 +638,7 @@ function useQmdCollections(): {
 ```typescript
 interface KnowledgeBase {
   name: string              // "Ralph", "hq-core", "{company}"
-  displayName: string       // Title-cased: "Ralph", "HQ Core", "{company}"
+  displayName: string       // Title-cased: "Ralph", "HQ Core", "{Product}"
   scope: 'hq-public' | 'hq-private' | `company:${string}`
   repoPath: string          // Relative: "repos/public/ralph-methodology/docs"
   isSymlink: boolean        // true for knowledge/public/*, false for company knowledge

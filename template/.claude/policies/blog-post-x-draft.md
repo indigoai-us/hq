@@ -15,7 +15,7 @@ When publishing a new blog article to {your-name}.com (writing MDX to `repos/pri
 2. Draft an X teaser post for @{your-name} that hooks the reader and links to the article
 3. Show the draft to the user for approval before posting
 4. Deploy the site so the OG image is live before the post goes out
-5. Post via Post-Bridge API (account ID {account-id})
+5. Post via Post-Bridge API (account ID 34528)
 6. Update `workspace/social-drafts/blog-queue.json` — set item status to `published` after deploy, `done` after share
 
 **X post format:**

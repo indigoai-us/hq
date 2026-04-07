@@ -13,7 +13,7 @@ Before scheduling a batch of posts via Post-Bridge:
 1. Query `GET /v1/posts?status=scheduled&limit=100` (paginate if >100) to get ALL existing scheduled posts
 2. Map existing posts by date and account ID to identify occupied time slots
 3. Schedule new posts only in free slots — avoid same-account same-hour collisions
-4. {product} posts go to BOTH accounts ({account-id} + {account-id-2}) every 3 days — account for this when scheduling X-only or LinkedIn-only posts
+4. {product} posts go to BOTH accounts (34528 + 34531) every 3 days — account for this when scheduling X-only or LinkedIn-only posts
 
 ## Rationale
 
