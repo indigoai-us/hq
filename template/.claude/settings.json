@@ -150,6 +150,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh observe-patterns .claude/hooks/observe-patterns.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh cleanup-mcp-processes .claude/hooks/cleanup-mcp-processes.sh",
+            "timeout": 5
           }
         ]
       }

@@ -4,6 +4,55 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.6.0 (from v10.5.0)
+
+### Updated Commands (21)
+
+Diff and merge updated commands:
+```bash
+diff -rq template/.claude/commands/ your-hq/.claude/commands/
+```
+
+Key commands to review: `audit`, `checkpoint`, `cleanup`, `garden`, `handoff`, `harness-audit`, `hq-growth-dashboard`, `learn`, `newworker`, `pr`, `prd`, `reanchor`, `recover-session`, `remember`, `run-pipeline`, `run-project`, `run`, `search-reindex`, `search`, `startwork`, `understand-project`
+
+### Updated Skills (11)
+
+Diff and merge updated skills:
+```bash
+diff -rq template/.claude/skills/ your-hq/.claude/skills/
+```
+
+Updated: `ascii-graphic`, `colorize`, `consolidate`, `execute-task`, `handoff`, `land`, `prd`, `run-project`, `run`, `search`, `social-graphic`
+
+### New Hook
+
+Copy the new MCP cleanup hook:
+```bash
+cp template/.claude/hooks/cleanup-mcp-processes.sh your-hq/.claude/hooks/
+chmod +x your-hq/.claude/hooks/cleanup-mcp-processes.sh
+```
+
+Then add the Stop hook entry to your `.claude/settings.json` hooks section:
+```json
+{
+  "type": "command",
+  "command": ".claude/hooks/hook-gate.sh cleanup-mcp-processes .claude/hooks/cleanup-mcp-processes.sh",
+  "timeout": 5
+}
+```
+
+### Updated Policies
+
+Sync 154 scope-filtered policies:
+```bash
+diff -rq template/.claude/policies/ your-hq/.claude/policies/
+```
+
+### Breaking Changes
+- (none this release)
+
+---
+
 ## Migrating to v10.5.0 (from v10.4.0)
 
 ### New Command

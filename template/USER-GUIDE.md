@@ -39,43 +39,18 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Content & Social
 | Command | What it does |
 |---------|--------------|
-| `/contentidea` | Build content ideas |
-| `/suggestposts` | Research post ideas |
 | `/post` | Post or schedule content to X/LinkedIn via Post-Bridge |
-| `/post-results` | Check post delivery status |
-| `/preview-post` | Preview social post drafts, select images |
-| `/social-setup` | Configure voice, accounts, queue, worker |
-
-### Communication
-| Command | What it does |
-|---------|--------------|
-| `/email` | Manage email across Gmail accounts |
-| `/checkemail` | Quick inbox cleanup and triage |
-| `/imessage` | Send iMessage to saved contact |
-
-### Design & Assets
-| Command | What it does |
-|---------|--------------|
-| `/generateimage` | Generate images via Gemini |
 
 ### Deploy & Ops
 | Command | What it does |
 |---------|--------------|
-| `/pr` | {company} PR operations |
-| `/publish-kit` | Publish kit |
+| `/pr` | PR operations |
 
 ### Company & Infrastructure
 | Command | What it does |
 |---------|--------------|
 | `/newcompany` | Scaffold new company with full infrastructure |
-| `/launch-brand` | Launch new DTC brand end-to-end |
-| `/pb-connect` | Connect Post-Bridge social accounts |
 | `/personal-interview` | Deep interview to populate profile/voice |
-
-### Linear
-| Command | What it does |
-|---------|--------------|
-| `/check-linear-{company}` | Interactive triage for {company} workspace |
 
 ### System
 | Command | What it does |
@@ -92,8 +67,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ```
 /run                    # see all
-/run cfo-{company} mrr
-/run x-{your-name} contentidea "AI"
+/run frontend-designer audit
+/run qa-tester smoke-test
 ```
 
 **Public (`workers/public/`):**
@@ -127,26 +102,46 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 **Company Workers** (`companies/{co}/workers/`):
 
-Company workers are scoped to specific companies. Create them with `/newworker`. Examples:
-
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {company} | Data analysis |
-| cmo-{company} | {company} | Social/content (X, LinkedIn) |
-| x-{your-name} | personal | X/Twitter posting |
+| cfo-{company} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| {company}-analyst | {Product} | Data analysis |
+| infobip-admin | {Product} | Infobip channel management |
+| {company}-gtm | {Product} | GTM operations |
+| lr-qa | {Product} | QA testing |
+| {product}-deploy | {Product} | Deployment automation |
+| cmo-{company} | {Product} | Social/content (X, LinkedIn) |
+| x-{your-name} | Personal | X/Twitter posting |
+| invoices | Personal | Invoice generation |
+| social-council | Personal | Social strategy council |
 | pr-coordinator | {company} | PR campaign coordination |
+| pr-strategist | {company} | PR strategy |
+| pr-writer | {company} | PR content writing |
+| pr-outreach | {company} | Journalist outreach |
+| pr-monitor | {company} | Media monitoring |
+| {company}-site-builder | {company} | Site generation |
+| {company}-research-agent | {company} | Research automation |
 
-## Companies
+## Companies (14)
 
 Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {company-1}/   # Your first company
-├── {company-2}/   # Your second company
-├── personal/      # Personal tools + social
-└── _template/     # Template for new companies
+├── {company}/    # SMS/e-commerce + AI platform
+├── {company}/         # AI venture
+├── personal/       # Personal tools + social
+├── {company}/  # Band/music
+├── {company}/     # Artist site + admin
+├── {company}/    # Artist management
+├── {company}/      # PR agency
+├── {company}/     # {Product} AI
+├── {company}/ # Estate platform
+├── {company}/       # Agency + tools
+├── {company}/          # Shopify store
+├── {company}/       # Wellness mobile app
+├── {company}/       # Domain management
+└── {company}/            # GTM/growth
 ```
 
 ## Projects

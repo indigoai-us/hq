@@ -20,7 +20,9 @@ Called programmatically by `/execute-task` and `/run-project` after task complet
 
 ## Core Principle
 
-**Policy files are the primary output.** Learnings become structured policy files in scope-appropriate directories:
+**Two output types, one pipeline.** Content is classified (Step 1.5) and routed to the appropriate format:
+
+### Rules → Policy files (operational directives)
 
 | Scope | Target directory | Format |
 |-------|-----------------|--------|
@@ -30,7 +32,18 @@ Called programmatically by `/execute-task` and `/run-project` after task complet
 | Global | `.claude/policies/{slug}.md` | Policy file |
 | Worker (legacy) | `workers/*/{id}/worker.yaml` | Instructions block `## Learnings` |
 
-**Before creating:** always scan existing policies for updates (Step 4.5). Update > duplicate.
+### Insights → Insight files (educational understanding)
+
+| Scope | Target directory | Format |
+|-------|-----------------|--------|
+| Global / repo | `workspace/insights/global/{slug}.md` | Insight file (YAML frontmatter + Insight + Context) |
+| Company | `companies/{co}/knowledge/insights/{slug}.md` | Insight file (inside company knowledge repo) |
+| Tool | `workspace/insights/tools/{slug}.md` | Insight file |
+| Conceptual | `workspace/insights/concepts/{slug}.md` | Insight file |
+
+See `knowledge/public/hq-core/insights-spec.md` for the insight file format.
+
+**Before creating:** always scan existing policies/insights for updates (Step 4.5). Update > duplicate.
 
 ## Step 1: Parse Input
 
@@ -91,6 +104,23 @@ Example `.observe-patterns-latest.json`:
 **If free text** (manual invocation or /remember delegation):
 - Parse for keywords to determine scope
 - Generate rule statement from description
+
+## Step 1.5: Classify Content Type
+
+Determine if input is an operational rule or an educational insight:
+
+| Signal | Type | Route to |
+|--------|------|----------|
+| NEVER/ALWAYS/condition→action | rule | Policy file (existing Steps 2–6) |
+| "why X works", "pattern behind", conceptual explanation | insight | `workspace/insights/` or `companies/{co}/knowledge/insights/` (Step 5b) |
+| User correction (`/remember`) | rule | Policy file (always) |
+| `back_pressure_failures` | rule | Policy file (always) |
+| `patterns_discovered` (educational) | insight | Insight file (Step 5b) |
+| `source: "session-insight"` | insight | Insight file (always — from `/handoff` or `/checkpoint` step 0c) |
+
+**Default:** If ambiguous, route as policy (existing behavior). Insights are opt-in.
+
+If content type is **insight**, skip Steps 2–6 (rule extraction, scope classification for policies, policy creation, global promotion). Instead proceed to Step 3 for scope classification, Step 4 for dedup, then Step 5b for insight file creation.
 
 ## Step 2: Extract Rules
 
@@ -230,6 +260,53 @@ Only used for **global promotion** of critical/user-correction rules (Step 6). N
 - **{NEVER|ALWAYS}**: {rule} <!-- {source} | {date} -->
 ```
 
+## Step 5b: Create Insight File (insight content type only)
+
+If Step 1.5 classified content as **insight**, skip Step 5 (policy creation) and create an insight file instead.
+
+**Target directory by scope:**
+- Global / repo-scoped → `workspace/insights/global/{slug}.md`
+- Company-scoped → `companies/{co}/knowledge/insights/{slug}.md` (create `insights/` subdir if needed)
+- Tool-specific → `workspace/insights/tools/{slug}.md`
+- Conceptual/theoretical → `workspace/insights/concepts/{slug}.md`
+
+**Insight file format** (per `knowledge/public/hq-core/insights-spec.md`):
+
+```markdown
+---
+type: insight
+domain: [engineering]
+tags: [topic-tags]
+scope: global | company:{co} | repo:{repo} | tool:{tool}
+source_session: T-{timestamp}-{slug}
+created: {YYYY-MM-DD}
+confidence: high | medium
+relates_to: []
+---
+
+# {Title}
+
+## Insight
+
+{Core conceptual understanding, 2-4 paragraphs. Educational, not directive.}
+
+## Context
+
+{When/why this matters. What situation makes this knowledge valuable.}
+
+## Example
+
+{Optional. Concrete example showing the insight in practice.}
+```
+
+**Slug generation:** Kebab-case from title keywords, max 60 chars. No scope prefix (subdirectory provides scope).
+
+**Confidence mapping:**
+- Validated through execution/testing → `confidence: high`
+- Observed but not extensively tested → `confidence: medium`
+
+**After writing:** Skip Step 6 (global promotion — insights never go in CLAUDE.md). Proceed to Step 7 (event logging).
+
 ## Step 6: Evaluate Global Promotion
 
 If the rule was injected into a scoped file (worker/command/knowledge), also add to `.claude/CLAUDE.md` `## Learned Rules` if ANY:
@@ -256,6 +333,7 @@ Write `workspace/learnings/learn-{YYYYMMDD-HHMMSS}.json`:
 ```json
 {
   "event_id": "learn-{timestamp}",
+  "content_type": "rule|insight",
   "rules": [
     {
       "rule": "NEVER: ...",
@@ -264,7 +342,7 @@ Write `workspace/learnings/learn-{YYYYMMDD-HHMMSS}.json`:
       "severity": "high"
     }
   ],
-  "source": "back-pressure-failure",
+  "source": "back-pressure-failure|session-insight",
   "task_id": "TASK-001",
   "project": "my-project",
   "dedup_action": "new|merged|skipped",
@@ -281,6 +359,7 @@ qmd update 2>/dev/null || true
 
 ## Step 9: Report
 
+**For rules (content_type: rule):**
 ```
 Learning captured:
   Rule: {rule}
@@ -291,7 +370,17 @@ Learning captured:
   Event: workspace/learnings/learn-{timestamp}.json
 ```
 
-If multiple rules extracted, report each.
+**For insights (content_type: insight):**
+```
+Insight captured:
+  Title: {insight title}
+  Target: {insight file path}
+  Action: {created-insight | updated-insight | merged-into-insight}
+  Dedup: {new|merged|skipped}
+  Event: workspace/learnings/learn-{timestamp}.json
+```
+
+If multiple rules/insights extracted, report each.
 
 ## Rules
 

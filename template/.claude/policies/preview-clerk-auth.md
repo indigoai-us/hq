@@ -12,4 +12,4 @@ Preview tools (preview_screenshot, preview_snapshot) render blank for apps using
 
 ## Rationale
 
-Clerk-protected admin apps blank-screen in preview. Build verification (TypeScript + Next.js static generation) catches structural issues. Visual verification requires a real browser session.
+Admin dashboards and other Clerk-protected apps all blank-screen in preview. Build verification (TypeScript + Next.js static generation) catches structural issues. Visual verification requires a real browser session.

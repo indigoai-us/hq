@@ -137,7 +137,7 @@ I want to make sure I understand the PURPOSE correctly.
 
 1. {Specific question about purpose based on analysis}
    Example: "The README mentions 'AI meeting assistant' - does this mean
-   {company} joins meetings, or processes recordings after?"
+   {Product} joins meetings, or processes recordings after?"
 
 2. {Question about goals/success criteria}
    Example: "What does success look like? More meetings processed?
@@ -321,7 +321,7 @@ interviewee: {user}
 
 ## Purpose Questions
 
-**Q1.1:** Does {company} join meetings or process recordings after?
+**Q1.1:** Does {Product} join meetings or process recordings after?
 **A:** It uses Recall.ai to join and record, then processes async.
 
 **Q1.2:** What does success look like?

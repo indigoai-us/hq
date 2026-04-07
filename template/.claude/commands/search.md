@@ -29,8 +29,7 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available company collections: `{company}`, `{company}`, `{company}`, `personal`
-Also: `hq` (all HQ), `{product}` ({PRODUCT} codebase)
+Available collections: `hq` (all HQ), `{product}` ({PRODUCT} codebase), `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -102,10 +101,10 @@ Display: "qmd unavailable, falling back to grep"
 /search "how do workers execute" --mode vsearch  # Semantic across all
 /search auth middleware -c {product}                    # Search {PRODUCT} codebase only
 /search "webhook handler" -c {product} --mode vsearch  # Semantic search in {PRODUCT}
-/search {company} brand --mode query                # Hybrid with re-ranking
+/search {company} brand --mode query             # Hybrid with re-ranking
 /search stripe -n 20                             # More results
 /search authentication --full                    # Show top match content
-/search "brand guidelines" -c {company}             # Search {company} knowledge only
+/search "brand guidelines" -c {company}         # Search {company} knowledge only
 /search "recovery metrics" -c {company}        # Search {Product} knowledge only
 # If cwd is companies/{company}/:
 /search "case study"                             # Auto-detects → -c {company}
@@ -116,7 +115,7 @@ Display: "qmd unavailable, falling back to grep"
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `{company}`, `personal`
+- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, + 7 more (run `qmd status` for full list)
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0-1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content

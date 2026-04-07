@@ -172,3 +172,14 @@ This worker demonstrates the key practices:
 6. **Structured output** — JSON format allows orchestrator to parse results without reading full context
 
 When creating your own worker, follow this pattern: describe inputs clearly, show execution phases, include verification checks, and structure output for next-worker handoff.
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
