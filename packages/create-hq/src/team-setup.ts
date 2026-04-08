@@ -1,367 +1,335 @@
 /**
- * Team setup for create-hq — team discovery, clone, sparse checkout (US-005)
+ * Member team discovery + clone flow.
  *
- * After a user authenticates via device code flow, this module:
- * 1. Fetches available teams from /api/teams
- * 2. Presents team selection UI
- * 3. For each selected team: fetches entitlements + repo config
- * 4. Clones the team repo with sparse checkout (entitled paths only)
- * 5. Sets up companies/{team-slug}/ directory structure
+ * For users who already have access to one or more HQ team repos via the
+ * hq-team-sync GitHub App, enumerate their installations, find the {org}/hq
+ * repo for each, present a checklist, and clone the selected repos into
+ * companies/{slug}/.
+ *
+ * No backend involved — all data comes from api.github.com using the user's
+ * GitHub App user token.
  */
 
 import * as fs from "fs";
 import * as path from "path";
-import { createInterface } from "readline";
+import * as os from "os";
 import { execSync } from "child_process";
+import { createInterface } from "readline";
 import chalk from "chalk";
-import type { AuthToken } from "./auth.js";
+import {
+  type GitHubAuth,
+  HQ_GITHUB_APP_SLUG,
+  githubApi,
+} from "./auth.js";
+import { ensureCompanyStructure } from "./company-template.js";
 import { stepStatus, success, warn, info } from "./ui.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface Team {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  member_count?: number;
-  role?: string;
-}
-
-interface TeamEntitlement {
-  pack_slug: string;
-  paths: string[];
-}
-
-interface RepoConfig {
-  repo_url: string;
-  git_credentials: {
-    username: string;
-    password: string;
+interface GitHubInstallation {
+  id: number;
+  app_slug: string;
+  account: {
+    login: string;
+    id: number;
+    type: string;
   };
+}
+
+interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  html_url: string;
+  clone_url: string;
   default_branch: string;
+  owner: {
+    login: string;
+    id: number;
+  };
 }
 
-// ─── API helpers ────────────────────────────────────────────────────────────
-
-const API_BASE = "https://hq.indigoai.com/api";
-
-async function apiGet<T>(urlPath: string, token: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${urlPath}`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`API ${urlPath} failed (${res.status}): ${text}`);
-  }
-
-  return (await res.json()) as T;
+export interface DiscoveredTeam {
+  /** Org login (used as companies/{slug}/ directory name) */
+  slug: string;
+  /** Display name (defaults to org login). */
+  name: string;
+  /** GitHub HTML URL for the team repo. */
+  repoHtmlUrl: string;
+  /** HTTPS clone URL. */
+  cloneUrl: string;
+  /** GitHub installation ID for the App on this org. */
+  installationId: number;
 }
 
-// ─── Team discovery ─────────────────────────────────────────────────────────
-
-/** Fetch teams the authenticated user belongs to. */
-export async function fetchTeams(token: string): Promise<Team[]> {
-  const data = await apiGet<{ teams: Team[] }>("/teams", token);
-  return data.teams ?? [];
+export interface MemberJoinResult {
+  joined: DiscoveredTeam[];
+  skipped: DiscoveredTeam[];
+  failed: { team: DiscoveredTeam; error: string }[];
 }
 
-/** Fetch entitlements (entitled content paths) for a specific team. */
-async function fetchTeamEntitlements(
-  teamId: string,
-  token: string
-): Promise<TeamEntitlement[]> {
-  const data = await apiGet<{ entitlements: TeamEntitlement[] }>(
-    `/teams/${encodeURIComponent(teamId)}/entitlements`,
-    token
-  );
-  return data.entitlements ?? [];
-}
+// ─── Prompt helper ──────────────────────────────────────────────────────────
 
-/** Fetch repo config (clone URL + credentials) for a specific team. */
-async function fetchRepoConfig(
-  teamId: string,
-  token: string
-): Promise<RepoConfig> {
-  return apiGet<RepoConfig>(
-    `/teams/${encodeURIComponent(teamId)}/repo-config`,
-    token
-  );
-}
-
-// ─── Team selection TUI ─────────────────────────────────────────────────────
-
-function promptLine(question: string): Promise<string> {
+function prompt(question: string, defaultVal?: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const suffix = defaultVal ? ` (${defaultVal})` : "";
   return new Promise((resolve) => {
-    rl.question(`  ? ${question} `, (answer) => {
+    rl.question(`  ? ${question}${suffix} `, (answer) => {
       rl.close();
-      resolve(answer.trim());
+      resolve(answer.trim() || defaultVal || "");
     });
   });
 }
 
+// ─── Git with embedded token (mirrors admin-onboarding.ts) ──────────────────
+
+function runGitWithToken(args: string[], cwd: string, auth: GitHubAuth): void {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-git-"));
+  const isWindows = process.platform === "win32";
+  const askpassPath = path.join(tmpDir, isWindows ? "askpass.cmd" : "askpass.sh");
+
+  try {
+    if (isWindows) {
+      fs.writeFileSync(
+        askpassPath,
+        `@echo off\nif "%~1"=="" (echo %GIT_TOKEN%) else (echo %GIT_TOKEN%)\n`,
+        "utf-8"
+      );
+    } else {
+      fs.writeFileSync(askpassPath, `#!/bin/sh\necho "$GIT_TOKEN"\n`, "utf-8");
+      fs.chmodSync(askpassPath, 0o700);
+    }
+
+    execSync(`git ${args.join(" ")}`, {
+      cwd,
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        GIT_TOKEN: auth.access_token,
+        GIT_ASKPASS: askpassPath,
+        GIT_TERMINAL_PROMPT: "0",
+        GCM_INTERACTIVE: "never",
+      },
+    });
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function tokenAuthUrl(cloneUrl: string): string {
+  const u = new URL(cloneUrl);
+  u.username = "x-access-token";
+  return u.toString();
+}
+
+// ─── Discovery ──────────────────────────────────────────────────────────────
+
+async function fetchHqInstallations(auth: GitHubAuth): Promise<GitHubInstallation[]> {
+  const data = await githubApi<{ installations: GitHubInstallation[] }>(
+    "/user/installations?per_page=100",
+    auth
+  );
+  return (data.installations ?? []).filter((i) => i.app_slug === HQ_GITHUB_APP_SLUG);
+}
+
+async function findHqRepoInInstallation(
+  auth: GitHubAuth,
+  installation: GitHubInstallation
+): Promise<GitHubRepo | null> {
+  // GitHub App user token can list repos accessible through this installation
+  const data = await githubApi<{ repositories: GitHubRepo[] }>(
+    `/user/installations/${installation.id}/repositories?per_page=100`,
+    auth
+  );
+  const repos = data.repositories ?? [];
+  return repos.find((r) => r.name.toLowerCase() === "hq") ?? null;
+}
+
 /**
- * Display teams and let user select which to join.
- * Returns the selected teams.
+ * Enumerate the user's HQ team memberships by walking their App installations.
+ * Returns one DiscoveredTeam per org that has both the App installed AND a
+ * repo named "hq".
  */
-export async function selectTeams(teams: Team[]): Promise<Team[]> {
+export async function discoverTeams(auth: GitHubAuth): Promise<DiscoveredTeam[]> {
+  const installations = await fetchHqInstallations(auth);
+  const teams: DiscoveredTeam[] = [];
+
+  for (const inst of installations) {
+    try {
+      const repo = await findHqRepoInInstallation(auth, inst);
+      if (!repo) continue;
+      teams.push({
+        slug: inst.account.login.toLowerCase(),
+        name: inst.account.login,
+        repoHtmlUrl: repo.html_url,
+        cloneUrl: repo.clone_url,
+        installationId: inst.id,
+      });
+    } catch {
+      // Per-installation errors should not abort the whole discovery
+      continue;
+    }
+  }
+
+  return teams;
+}
+
+// ─── Selection UI ───────────────────────────────────────────────────────────
+
+/**
+ * Present discovered teams as a numbered list with all pre-selected, and
+ * let the user deselect any they want to skip.
+ *
+ * Input format:
+ *   - empty / "all"  → keep all
+ *   - "none"         → skip all
+ *   - "1,3"          → deselect entries 1 and 3
+ */
+export async function selectTeams(
+  teams: DiscoveredTeam[]
+): Promise<{ selected: DiscoveredTeam[]; skipped: DiscoveredTeam[] }> {
   if (teams.length === 0) {
-    return [];
+    return { selected: [], skipped: [] };
   }
 
   if (teams.length === 1) {
     console.log();
-    console.log(chalk.bold("  Your team:"));
-    console.log(
-      chalk.green("  [1] ") +
-        chalk.white(teams[0].name) +
-        (teams[0].description ? chalk.dim(` — ${teams[0].description}`) : "")
-    );
+    console.log(chalk.bold("  Found 1 HQ team:"));
+    console.log(chalk.green("  [✓] ") + chalk.white(teams[0].name));
     console.log();
-
-    const answer = await promptLine(
-      `Join ${chalk.cyan(teams[0].name)}? (Y/n)`
-    );
-    if (answer && !answer.toLowerCase().startsWith("y")) {
-      return [];
+    const answer = await prompt(`Set up ${chalk.cyan(teams[0].name)}? (Y/n)`, "y");
+    if (answer.toLowerCase().startsWith("y")) {
+      return { selected: [teams[0]], skipped: [] };
     }
-    return [teams[0]];
+    return { selected: [], skipped: [teams[0]] };
   }
 
-  // Multiple teams — show numbered list
   console.log();
-  console.log(chalk.bold("  Your teams:"));
+  console.log(chalk.bold(`  Found ${teams.length} HQ teams (all pre-selected):`));
   for (let i = 0; i < teams.length; i++) {
-    const team = teams[i];
-    const roleTag = team.role ? chalk.dim(` [${team.role}]`) : "";
     console.log(
-      chalk.cyan(`  [${i + 1}] `) +
-        chalk.white(team.name) +
-        roleTag +
-        (team.description ? chalk.dim(` — ${team.description}`) : "")
+      chalk.green("  [✓] ") + chalk.cyan(`${i + 1}. `) + chalk.white(teams[i].name)
     );
   }
   console.log();
-
-  const answer = await promptLine(
-    `Select teams to join (e.g. ${chalk.dim("1,2")} or ${chalk.dim("all")})`
-  );
+  console.log(chalk.dim("  Press Enter to set up all, or type numbers to skip (e.g. 2,3)"));
+  const answer = await prompt("Skip");
 
   if (!answer || answer.toLowerCase() === "all") {
-    return [...teams];
+    return { selected: [...teams], skipped: [] };
+  }
+  if (answer.toLowerCase() === "none") {
+    return { selected: [], skipped: [...teams] };
   }
 
-  const indices = answer
-    .split(",")
-    .map((s) => parseInt(s.trim(), 10) - 1)
-    .filter((i) => i >= 0 && i < teams.length);
-
-  if (indices.length === 0) {
-    warn("No valid selection — skipping team setup");
-    return [];
-  }
-
-  return indices.map((i) => teams[i]);
-}
-
-// ─── Git clone with sparse checkout ─────────────────────────────────────────
-
-/**
- * Clone a team repo into companies/{team-slug}/ with sparse checkout
- * configured to only check out entitled paths.
- */
-function cloneWithSparseCheckout(
-  repoConfig: RepoConfig,
-  entitledPaths: string[],
-  targetDir: string
-): void {
-  // Build authenticated URL
-  const repoUrl = new URL(repoConfig.repo_url);
-  repoUrl.username = repoConfig.git_credentials.username;
-  repoUrl.password = repoConfig.git_credentials.password;
-
-  // Clone with no checkout first
-  execSync(
-    `git clone --no-checkout --filter=blob:none "${repoUrl.toString()}" "${targetDir}"`,
-    { stdio: "pipe" }
+  const skipIdx = new Set(
+    answer
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10) - 1)
+      .filter((n) => Number.isInteger(n) && n >= 0 && n < teams.length)
   );
 
-  // Enable sparse checkout
-  execSync("git sparse-checkout init --cone", {
-    cwd: targetDir,
-    stdio: "pipe",
-  });
+  const selected = teams.filter((_, i) => !skipIdx.has(i));
+  const skipped = teams.filter((_, i) => skipIdx.has(i));
 
-  // Configure sparse checkout paths
-  if (entitledPaths.length > 0) {
-    const pathList = entitledPaths.join(" ");
-    execSync(`git sparse-checkout set ${pathList}`, {
-      cwd: targetDir,
-      stdio: "pipe",
-    });
-  }
-
-  // Checkout default branch
-  execSync(`git checkout ${repoConfig.default_branch}`, {
-    cwd: targetDir,
-    stdio: "pipe",
-  });
-
-  // Strip credentials from the remote URL (store clean URL only)
-  execSync(`git remote set-url origin "${repoConfig.repo_url}"`, {
-    cwd: targetDir,
-    stdio: "pipe",
-  });
+  return { selected, skipped };
 }
 
-// ─── Company directory structure ────────────────────────────────────────────
+// ─── Clone ──────────────────────────────────────────────────────────────────
 
-/**
- * Ensure the standard company directory structure exists inside
- * companies/{team-slug}/.
- */
-function ensureCompanyStructure(companyDir: string, team: Team): void {
-  const dirs = [
-    "knowledge",
-    "settings",
-    "data",
-    "workers",
-    "repos",
-    "projects",
-    "policies",
-  ];
-
-  for (const dir of dirs) {
-    const fullPath = path.join(companyDir, dir);
-    if (!fs.existsSync(fullPath)) {
-      fs.mkdirSync(fullPath, { recursive: true });
-    }
-  }
-
-  // Write a minimal team metadata file
-  const metadataPath = path.join(companyDir, "team.json");
-  if (!fs.existsSync(metadataPath)) {
-    fs.writeFileSync(
-      metadataPath,
-      JSON.stringify(
-        {
-          team_id: team.id,
-          team_name: team.name,
-          team_slug: team.slug,
-          joined_at: new Date().toISOString(),
-        },
-        null,
-        2
-      ) + "\n",
-      "utf-8"
-    );
-  }
-}
-
-// ─── Main team setup flow ───────────────────────────────────────────────────
-
-export interface TeamSetupResult {
-  teams: Team[];
-  companySlugs: string[];
-}
-
-/**
- * Run the full team setup flow:
- * 1. Fetch teams → 2. Select → 3. For each: entitlements + clone + structure
- *
- * Returns the list of set-up teams and their company slugs.
- */
-export async function setupTeams(
-  authToken: AuthToken,
-  hqRoot: string
-): Promise<TeamSetupResult> {
-  const result: TeamSetupResult = { teams: [], companySlugs: [] };
-
-  // 1. Fetch available teams
-  const teamsLabel = "Discovering your teams";
-  stepStatus(teamsLabel, "running");
-
-  let teams: Team[];
-  try {
-    teams = await fetchTeams(authToken.clerk_session_token);
-    stepStatus(teamsLabel, "done");
-  } catch (err) {
-    stepStatus(teamsLabel, "failed");
-    warn(
-      `Could not fetch teams: ${err instanceof Error ? err.message : "Unknown error"}`
-    );
-    info("You can join a team later with: hq team join");
-    return result;
-  }
-
-  if (teams.length === 0) {
-    info("No teams found for your account");
-    info("You can join a team later with: hq team join");
-    return result;
-  }
-
-  // 2. Let user select teams
-  const selected = await selectTeams(teams);
-  if (selected.length === 0) {
-    info("No teams selected — continuing with personal setup");
-    return result;
-  }
-
-  // 3. Set up each selected team
+function cloneTeam(team: DiscoveredTeam, hqRoot: string, auth: GitHubAuth): string {
   const companiesDir = path.join(hqRoot, "companies");
   if (!fs.existsSync(companiesDir)) {
     fs.mkdirSync(companiesDir, { recursive: true });
   }
 
+  const companyDir = path.join(companiesDir, team.slug);
+  if (fs.existsSync(companyDir) && fs.readdirSync(companyDir).length > 0) {
+    throw new Error(`companies/${team.slug}/ already exists and is not empty`);
+  }
+
+  const remoteUrl = tokenAuthUrl(team.cloneUrl);
+  runGitWithToken(
+    ["clone", `"${remoteUrl}"`, `"${companyDir}"`],
+    companiesDir,
+    auth
+  );
+
+  // Strip token from stored remote URL
+  execSync(`git remote set-url origin "${team.cloneUrl}"`, {
+    cwd: companyDir,
+    stdio: "pipe",
+  });
+
+  // Make sure all standard subdirs exist
+  ensureCompanyStructure(companyDir);
+
+  return companyDir;
+}
+
+// ─── Main flow ──────────────────────────────────────────────────────────────
+
+/**
+ * Discover, select, and clone team repos for an authenticated member.
+ *
+ * Returns a result with joined / skipped / failed lists. Returns null if
+ * the user has no HQ teams at all (caller can route to admin onboarding).
+ */
+export async function runMemberJoin(
+  auth: GitHubAuth,
+  hqRoot: string
+): Promise<MemberJoinResult | null> {
+  const discoveryLabel = "Looking up your HQ teams";
+  stepStatus(discoveryLabel, "running");
+
+  let teams: DiscoveredTeam[];
+  try {
+    teams = await discoverTeams(auth);
+    stepStatus(discoveryLabel, "done");
+  } catch (err) {
+    stepStatus(discoveryLabel, "failed");
+    const message = err instanceof Error ? err.message : String(err);
+    warn(`Could not look up your teams: ${message}`);
+    return null;
+  }
+
+  if (teams.length === 0) {
+    return null;
+  }
+
+  const { selected, skipped } = await selectTeams(teams);
+  if (selected.length === 0) {
+    info("No teams selected — continuing.");
+    return { joined: [], skipped, failed: [] };
+  }
+
+  const joined: DiscoveredTeam[] = [];
+  const failed: { team: DiscoveredTeam; error: string }[] = [];
+
   for (const team of selected) {
-    const teamLabel = `Setting up ${team.name}`;
-    stepStatus(teamLabel, "running");
-
-    const companyDir = path.join(companiesDir, team.slug);
-
+    const label = `Cloning ${team.name} → companies/${team.slug}`;
+    stepStatus(label, "running");
     try {
-      // Fetch entitlements for this team
-      const entitlements = await fetchTeamEntitlements(
-        team.id,
-        authToken.clerk_session_token
-      );
-      const entitledPaths = entitlements.flatMap((e) => e.paths);
-
-      // Fetch repo config (clone URL + credentials)
-      const repoConfig = await fetchRepoConfig(
-        team.id,
-        authToken.clerk_session_token
-      );
-
-      // Clone with sparse checkout
-      cloneWithSparseCheckout(repoConfig, entitledPaths, companyDir);
-
-      // Ensure standard company directory structure
-      ensureCompanyStructure(companyDir, team);
-
-      stepStatus(teamLabel, "done");
-      success(
-        `${team.name} — ${entitlements.length} pack${entitlements.length === 1 ? "" : "s"}, ` +
-          `${entitledPaths.length} path${entitledPaths.length === 1 ? "" : "s"}`
-      );
-
-      result.teams.push(team);
-      result.companySlugs.push(team.slug);
+      cloneTeam(team, hqRoot, auth);
+      stepStatus(label, "done");
+      joined.push(team);
     } catch (err) {
-      stepStatus(teamLabel, "failed");
-      warn(
-        `Failed to set up ${team.name}: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
-      warn("You can retry later with: hq team join");
+      stepStatus(label, "failed");
+      const message = err instanceof Error ? err.message : String(err);
+      warn(`Could not set up ${team.name}: ${message}`);
+      failed.push({ team, error: message });
     }
   }
 
-  return result;
+  if (joined.length > 0) {
+    success(
+      `${joined.length} team${joined.length === 1 ? "" : "s"} ready`
+    );
+  }
+
+  return { joined, skipped, failed };
 }

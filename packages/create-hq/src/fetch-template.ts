@@ -4,6 +4,7 @@ import * as os from "os";
 import { execSync } from "child_process";
 
 const REPO = "indigoai-us/hq";
+const REPO_HTTPS = `https://github.com/${REPO}.git`;
 const GITHUB_API = "https://api.github.com";
 
 interface ReleaseInfo {
@@ -18,8 +19,7 @@ async function getLatestRelease(): Promise<ReleaseInfo> {
   if (!response.ok) {
     throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
   }
-  const data = (await response.json()) as ReleaseInfo;
-  return data;
+  return (await response.json()) as ReleaseInfo;
 }
 
 async function getTagRelease(tag: string): Promise<ReleaseInfo> {
@@ -29,8 +29,7 @@ async function getTagRelease(tag: string): Promise<ReleaseInfo> {
   if (!response.ok) {
     throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
   }
-  const data = (await response.json()) as ReleaseInfo;
-  return data;
+  return (await response.json()) as ReleaseInfo;
 }
 
 async function downloadAndExtractViaApi(tarballUrl: string, targetDir: string): Promise<void> {
@@ -60,10 +59,9 @@ function extractTemplateDirFromTar(tarPath: string, targetDir: string): void {
   const tmpExtract = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-extract-"));
 
   try {
-    // Extract the full tarball to a temp location
+    // tar is part of git for windows + present on macOS/Linux
     execSync(`tar -xzf "${tarPath}" -C "${tmpExtract}"`, { stdio: "pipe" });
 
-    // Find the top-level directory created by GitHub's tarball
     const entries = fs.readdirSync(tmpExtract);
     if (entries.length === 0) {
       throw new Error("Tarball was empty");
@@ -75,7 +73,6 @@ function extractTemplateDirFromTar(tarPath: string, targetDir: string): void {
       throw new Error("template/ directory not found in HQ tarball");
     }
 
-    // Copy template contents to targetDir
     fs.ensureDirSync(targetDir);
     fs.copySync(templateSrc, targetDir, { overwrite: true });
   } finally {
@@ -83,18 +80,52 @@ function extractTemplateDirFromTar(tarPath: string, targetDir: string): void {
   }
 }
 
-function extractTemplateDirViaGhCli(tag: string, targetDir: string): void {
-  const ref = tag || "HEAD";
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-gh-"));
-  const tarPath = path.join(tmpDir, "hq.tar.gz");
+/**
+ * Fallback: shallow git clone the public HQ repo and copy template/ out.
+ * Used when the GitHub REST API tarball download fails (network, rate limit,
+ * proxy issues). Requires git, which is checked as a hard dep before this
+ * function is reached.
+ */
+function fetchViaGitClone(targetDir: string, tag: string | undefined): { version: string } {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-git-"));
 
   try {
-    // Use sh -c so that output redirection works
-    execSync(`gh api repos/${REPO}/tarball/${ref} > "${tarPath}"`, {
-      stdio: "pipe",
-      shell: "/bin/sh",
-    });
-    extractTemplateDirFromTar(tarPath, targetDir);
+    if (tag) {
+      // Clone with a specific tag (still shallow)
+      execSync(
+        `git clone --depth 1 --branch "${tag}" "${REPO_HTTPS}" "${tmpDir}"`,
+        { stdio: "pipe" }
+      );
+    } else {
+      // Default branch shallow clone
+      execSync(`git clone --depth 1 "${REPO_HTTPS}" "${tmpDir}"`, {
+        stdio: "pipe",
+      });
+    }
+
+    const templateSrc = path.join(tmpDir, "template");
+    if (!fs.existsSync(templateSrc)) {
+      throw new Error("template/ directory not found in cloned HQ repo");
+    }
+
+    fs.ensureDirSync(targetDir);
+    fs.copySync(templateSrc, targetDir, { overwrite: true });
+
+    // Best-effort version detection: read the cloned tag, or fall back
+    let version = tag || "latest";
+    if (!tag) {
+      try {
+        const described = execSync(`git -C "${tmpDir}" describe --tags --abbrev=0`, {
+          stdio: "pipe",
+          encoding: "utf-8",
+        }).trim();
+        if (described) version = described;
+      } catch {
+        // No tags reachable in shallow clone — keep "latest"
+      }
+    }
+
+    return { version };
   } finally {
     fs.removeSync(tmpDir);
   }
@@ -105,8 +136,8 @@ function extractTemplateDirViaGhCli(tag: string, targetDir: string): void {
  *
  * Strategy:
  * 1. GitHub REST API → download tarball_url
- * 2. Fallback: gh CLI (`gh api repos/indigoai-us/hq/tarball/{ref}`)
- * 3. If both fail: throw with manual clone instructions
+ * 2. Fallback: `git clone --depth 1` (git is a hard dep, checked up front)
+ * 3. If both fail: throw with manual instructions
  *
  * Returns the version tag that was fetched.
  */
@@ -115,41 +146,30 @@ export async function fetchTemplate(
   tag?: string
 ): Promise<{ version: string }> {
   let version = tag || "";
-  let tarballUrl = "";
   let apiError: unknown = null;
 
   // --- Attempt 1: GitHub API ---
   try {
     const release = tag ? await getTagRelease(tag) : await getLatestRelease();
     version = release.tag_name;
-    tarballUrl = release.tarball_url;
-    await downloadAndExtractViaApi(tarballUrl, targetDir);
+    await downloadAndExtractViaApi(release.tarball_url, targetDir);
     return { version };
   } catch (err) {
     apiError = err;
   }
 
-  // --- Attempt 2: gh CLI fallback ---
+  // --- Attempt 2: git clone fallback ---
   try {
-    const ref = tag || "HEAD";
-    extractTemplateDirViaGhCli(ref, targetDir);
-    // If we got a version from the API response (even if download failed later), keep it.
-    // Otherwise mark as unknown.
-    if (!version) {
-      version = tag || "latest";
-    }
-    return { version };
-  } catch (ghErr) {
-    // Both failed — provide a clear error message.
+    return fetchViaGitClone(targetDir, tag);
+  } catch (gitErr) {
     const apiMsg = apiError instanceof Error ? apiError.message : String(apiError);
-    const ghMsg = ghErr instanceof Error ? ghErr.message : String(ghErr);
+    const gitMsg = gitErr instanceof Error ? gitErr.message : String(gitErr);
     throw new Error(
       `Failed to fetch HQ template from GitHub.\n\n` +
         `  GitHub API error: ${apiMsg}\n` +
-        `  gh CLI error:     ${ghMsg}\n\n` +
-        `You appear to be offline or rate-limited.\n` +
-        `To set up HQ manually, clone the repo and copy the template directory:\n\n` +
-        `  git clone https://github.com/indigoai-us/hq.git\n` +
+        `  git clone error:  ${gitMsg}\n\n` +
+        `Check your network connection and try again. To set up HQ manually:\n\n` +
+        `  git clone https://github.com/${REPO}.git\n` +
         `  cp -R hq/template ${targetDir}\n`
     );
   }

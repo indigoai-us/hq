@@ -42,6 +42,14 @@ const deps: Dep[] = [
     installCommands: {},
   },
   {
+    name: "git",
+    command: "git --version",
+    required: true,
+    installHint: "https://git-scm.com/downloads",
+    autoInstallable: false,
+    installCommands: {},
+  },
+  {
     name: "Claude Code CLI",
     command: "claude --version",
     required: true,

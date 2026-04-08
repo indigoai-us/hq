@@ -110,6 +110,72 @@ export function step(msg: string): void {
   console.log(chalk.cyan("  →") + " " + msg);
 }
 
+// ─── Team Orientation ────────────────────────────────────────────────────────
+
+export type TeamOrientationOptions =
+  | {
+      mode: "admin";
+      displayDir: string;
+      teamName: string;
+      teamSlug: string;
+      orgLogin: string;
+      repoUrl: string;
+    }
+  | {
+      mode: "member";
+      displayDir: string;
+      teams: { name: string; slug: string; repoUrl: string }[];
+    };
+
+export function teamOrientation(opts: TeamOrientationOptions): void {
+  console.log();
+  console.log(chalk.bold("  All done! Your HQ is ready."));
+  console.log();
+
+  if (opts.mode === "admin") {
+    console.log(chalk.bold(`  Team: ${chalk.cyan(opts.teamName)}`));
+    console.log(`  ${chalk.dim("repo:")} ${opts.repoUrl}`);
+    console.log(`  ${chalk.dim("local:")} companies/${opts.teamSlug}/`);
+    console.log();
+    console.log(chalk.bold("  Adding members:"));
+    console.log(
+      "    " +
+        chalk.dim("Invite teammates by adding them to the ") +
+        chalk.cyan(opts.orgLogin) +
+        chalk.dim(" GitHub org,")
+    );
+    console.log(
+      "    " + chalk.dim("or grant them access to the repo via the HQ App settings.")
+    );
+    console.log(
+      "    " +
+        chalk.dim("They run ") +
+        chalk.cyan("npx create-hq") +
+        chalk.dim(" and pick up the team automatically.")
+    );
+  } else {
+    const count = opts.teams.length;
+    console.log(
+      chalk.bold(`  ${count} team${count === 1 ? "" : "s"} ready:`)
+    );
+    for (const t of opts.teams) {
+      console.log(
+        `  ${chalk.green("✓")} ${chalk.cyan(t.name)} ${chalk.dim("→")} companies/${t.slug}/`
+      );
+    }
+    console.log();
+    console.log(
+      chalk.dim("  Pull updates later with: ") + chalk.cyan("git -C companies/<slug> pull")
+    );
+  }
+
+  console.log();
+  console.log(chalk.bold("  Get started:"));
+  console.log(`    cd ${opts.displayDir}`);
+  console.log(`    claude`);
+  console.log();
+}
+
 export function nextSteps(dir: string): void {
   const W = 48;
   const line = "─".repeat(W);
