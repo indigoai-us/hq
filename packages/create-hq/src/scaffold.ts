@@ -1,9 +1,18 @@
 import * as path from "path";
 import fs from "fs-extra";
-import { createInterface } from "readline";
 import { createRequire } from "node:module";
 import chalk from "chalk";
-import { banner, success, warn, step, info, nextSteps, stepStatus } from "./ui.js";
+import {
+  text,
+  confirm,
+  group,
+  spinner,
+  isCancel,
+  cancel,
+  log,
+  note,
+} from "@clack/prompts";
+import { banner, success, warn, info, step, nextSteps, createSpinner } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit } from "./git.js";
 import { execSync } from "child_process";
@@ -29,37 +38,20 @@ interface ScaffoldOptions {
   skipCli?: boolean;
   skipSync?: boolean;
   skipPackages?: boolean;
+  skipSetup?: boolean;
   tag?: string;
   localTemplate?: string;
   join?: string;
-}
-
-async function prompt(question: string, defaultVal?: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const suffix = defaultVal ? ` (${defaultVal})` : "";
-  return new Promise((resolve) => {
-    rl.question(`  ? ${question}${suffix} `, (answer) => {
-      rl.close();
-      resolve(answer.trim() || defaultVal || "");
-    });
-  });
-}
-
-async function confirm(question: string, defaultYes = true): Promise<boolean> {
-  const hint = defaultYes ? "Y/n" : "y/N";
-  const answer = await prompt(`${question} (${hint})`);
-  if (!answer) return defaultYes;
-  return answer.toLowerCase().startsWith("y");
 }
 
 export async function scaffold(
   directory: string,
   options: ScaffoldOptions
 ): Promise<void> {
-  // Show banner with installer version; hqVersion will be added after template fetch
+  // Show banner with installer version
   banner(pkg.version);
 
-  // 1. Resolve target directory
+  // ── 1. Resolve target directory ───────────────────────────────────────────
   const targetDir = path.resolve(directory);
   const displayDir = directory.startsWith("/")
     ? directory
@@ -69,22 +61,23 @@ export async function scaffold(
   if (fs.existsSync(targetDir)) {
     const contents = fs.readdirSync(targetDir);
     if (contents.length > 0) {
-      const proceed = await confirm(
-        `Directory ${displayDir} already exists and is not empty. Continue anyway?`,
-        false
-      );
-      if (!proceed) {
-        console.log("  Aborted.");
+      const proceed = await confirm({
+        message: `Directory ${displayDir} already exists and is not empty. Continue anyway?`,
+        initialValue: false,
+      });
+      if (isCancel(proceed) || !proceed) {
+        cancel("Aborted.");
         process.exit(0);
       }
     }
   }
 
-  // 2. Fetch template (from local path or GitHub)
+  // ── 2. Fetch template ────────────────────────────────────────────────────
   let hqVersion = "";
+  const s = createSpinner();
+
   if (options.localTemplate) {
-    const localLabel = "Copying local HQ template...";
-    stepStatus(localLabel, "running");
+    s.start("Copying local HQ template...");
     try {
       const templateSrc = path.resolve(options.localTemplate);
       if (!fs.existsSync(templateSrc)) {
@@ -94,98 +87,82 @@ export async function scaffold(
       fs.copySync(templateSrc, targetDir, { overwrite: true });
       hqVersion = "local";
 
-      const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
-        ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
-        : 0;
-      const workerCount = fs.existsSync(path.join(targetDir, "workers"))
-        ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
-            .filter((f) => String(f).endsWith("worker.yaml")).length
-        : 0;
+      const commandCount = countFiles(targetDir, ".claude/commands", ".md");
+      const workerCount = countWorkers(targetDir);
 
-      stepStatus(localLabel, "done");
-      success(`HQ template (local) (${commandCount} commands, ${workerCount} workers)`);
+      s.stop(`HQ template (local) — ${commandCount} commands, ${workerCount} workers`);
     } catch (err) {
-      stepStatus(localLabel, "failed");
+      s.stop("Failed to copy local template");
       throw err;
     }
   } else {
-    const fetchLabel = "Fetching HQ template from GitHub...";
-    stepStatus(fetchLabel, "running");
+    s.start("Fetching HQ template from GitHub...");
     try {
       const { version } = await fetchTemplate(targetDir, options.tag);
       hqVersion = version;
 
-      const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
-        ? fs.readdirSync(path.join(targetDir, ".claude", "commands")).filter((f) => f.endsWith(".md")).length
-        : 0;
-      const workerCount = fs.existsSync(path.join(targetDir, "workers"))
-        ? fs.readdirSync(path.join(targetDir, "workers"), { recursive: true })
-            .filter((f) => String(f).endsWith("worker.yaml")).length
-        : 0;
+      const commandCount = countFiles(targetDir, ".claude/commands", ".md");
+      const workerCount = countWorkers(targetDir);
 
-      stepStatus(fetchLabel, "done");
-      success(`HQ template ${version} (${commandCount} commands, ${workerCount} workers)`);
+      s.stop(`HQ template ${version} — ${commandCount} commands, ${workerCount} workers`);
     } catch (err) {
-      stepStatus(fetchLabel, "failed");
+      s.stop("Failed to fetch template");
       throw err;
     }
   }
 
-  // 3. Git init
-  const gitLabel = "Initializing git repository";
-  stepStatus(gitLabel, "running");
+  // ── 3. Git init ──────────────────────────────────────────────────────────
+  const gs = createSpinner();
+  gs.start("Initializing git repository");
   if (hasGit()) {
     initGit(targetDir);
-    stepStatus(gitLabel, "done");
+    gs.stop("Git repository initialized");
   } else {
-    stepStatus(gitLabel, "failed");
-    warn("git not found — skipping git init");
+    gs.stop("git not found — skipped");
+    warn("Install git to enable version control");
   }
 
-  // 4. Governance bootstrap — compute checksums and verify integrity
-  const integrityLabel = "Verifying kernel integrity";
-  stepStatus(integrityLabel, "running");
+  // ── 4. Governance bootstrap ──────────────────────────────────────────────
+  const is = createSpinner();
+  is.start("Verifying kernel integrity");
   try {
     const computeChecksumsScript = path.join(targetDir, "scripts", "compute-checksums.sh");
     const coreIntegrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
-    const hasComputeChecksums = fs.existsSync(computeChecksumsScript);
-    const hasCoreIntegrity = fs.existsSync(coreIntegrityScript);
-    if (hasComputeChecksums && hasCoreIntegrity) {
+    if (fs.existsSync(computeChecksumsScript) && fs.existsSync(coreIntegrityScript)) {
       execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
       try {
         execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
-        stepStatus(integrityLabel, "done");
+        is.stop("Kernel integrity verified");
       } catch {
-        stepStatus(integrityLabel, "failed");
-        warn("Kernel integrity check found issues — run scripts/core-integrity.sh to investigate");
+        is.stop("Kernel integrity issues found");
+        warn("Run scripts/core-integrity.sh to investigate");
       }
     } else {
-      // Scripts not present in this template version — skip silently
-      stepStatus(integrityLabel, "done");
+      is.stop("Kernel integrity verified");
     }
   } catch {
-    stepStatus(integrityLabel, "failed");
-    // governance bootstrap should never abort the scaffold
+    is.stop("Kernel integrity check skipped");
   }
 
-  // 5. Check dependencies
-  const depsLabel = "Checking dependencies";
-  stepStatus(depsLabel, "running");
+  // ── 5. Check dependencies ────────────────────────────────────────────────
   if (!options.skipDeps) {
     await checkDeps();
   }
-  stepStatus(depsLabel, "done");
 
-  // 6. Smart cloud sync detection
+  // ── 6. Setup wizard (personalization) ────────────────────────────────────
+  if (!options.skipSetup) {
+    await runSetupWizard(targetDir);
+  }
+
+  // ── 7. Cloud sync detection ──────────────────────────────────────────────
   const alreadySynced = await detectExistingSync(targetDir);
   if (alreadySynced) {
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 6b. Package discovery & installation
+  // ── 8. Package discovery & installation ──────────────────────────────────
   const installedPackageSlugs: string[] = [];
   if (!options.skipPackages) {
-    console.log();
     const registryUrl = getRegistryUrl(targetDir);
     let authToken: AuthToken | null = null;
 
@@ -195,18 +172,25 @@ export async function scaffold(
       authToken = existingToken;
       info(`Already signed in as ${chalk.cyan(authToken.email)}`);
     } else {
-      const hasAccount = await confirm("Do you have an HQ account?");
+      const hasAccount = await confirm({
+        message: "Do you have an HQ account?",
+        initialValue: false,
+      });
+
+      if (isCancel(hasAccount)) {
+        cancel("Setup cancelled");
+        process.exit(0);
+      }
+
       if (hasAccount) {
-        const authLabel = "Authenticating with HQ registry";
-        stepStatus(authLabel, "running");
+        const as = createSpinner();
+        as.start("Authenticating with HQ registry");
         try {
           authToken = await startAuthFlow(registryUrl);
-          stepStatus(authLabel, "done");
-          success(`Signed in as ${chalk.cyan(authToken.email)}`);
+          as.stop(`Signed in as ${chalk.cyan(authToken.email)}`);
         } catch {
-          stepStatus(authLabel, "failed");
-          warn("Authentication failed — continuing without login");
-          info("You can sign in later with: hq login");
+          as.stop("Authentication failed");
+          warn("Continuing without login — sign in later with: hq login");
         }
       } else {
         info("Visit " + chalk.cyan("hq.sh") + " to create an account and browse packages");
@@ -214,8 +198,8 @@ export async function scaffold(
     }
 
     // Fetch packages
-    const packagesLabel = "Discovering packages";
-    stepStatus(packagesLabel, "running");
+    const ps = createSpinner();
+    ps.start("Discovering packages");
 
     let choices: PackageChoice[] = [];
     try {
@@ -231,23 +215,21 @@ export async function scaffold(
         }
 
         choices = buildPackageChoices(allPackages, entitlements);
-        stepStatus(packagesLabel, "done");
+        ps.stop("Packages discovered");
 
         // Display package list
         const entitled = choices.filter((c) => c.entitled);
         const available = choices.filter((c) => !c.entitled);
 
         if (entitled.length > 0) {
-          console.log();
-          console.log(chalk.bold("  Your packages:"));
+          log.message(chalk.bold("Your packages:"));
           for (const choice of entitled) {
             console.log(chalk.green("  [✓] ") + formatPackageChoice(choice));
           }
         }
 
         if (available.length > 0) {
-          console.log();
-          console.log(chalk.bold("  Available packages:"));
+          log.message(chalk.bold("Available packages:"));
           for (const choice of available) {
             console.log(chalk.dim("  [ ] ") + formatPackageChoice(choice));
           }
@@ -259,15 +241,20 @@ export async function scaffold(
           : choices.filter((c) => c.pkg.tier === "free");
 
         if (installable.length > 0) {
-          console.log();
-          const installAll = await confirm(
-            `Install ${installable.length} package${installable.length === 1 ? "" : "s"}?`
-          );
+          const installAll = await confirm({
+            message: `Install ${installable.length} package${installable.length === 1 ? "" : "s"}?`,
+            initialValue: true,
+          });
+
+          if (isCancel(installAll)) {
+            cancel("Setup cancelled");
+            process.exit(0);
+          }
 
           if (installAll) {
             const slugsToInstall = installable.map((c) => c.pkg.slug);
-            const installLabel = `Installing ${slugsToInstall.length} package${slugsToInstall.length === 1 ? "" : "s"}`;
-            stepStatus(installLabel, "running");
+            const pis = createSpinner();
+            pis.start(`Installing ${slugsToInstall.length} package${slugsToInstall.length === 1 ? "" : "s"}`);
 
             const installed = await installSelectedPackages(
               registryUrl,
@@ -277,65 +264,76 @@ export async function scaffold(
             );
 
             if (installed.length === slugsToInstall.length) {
-              stepStatus(installLabel, "done");
+              pis.stop(`${installed.length} package${installed.length === 1 ? "" : "s"} installed`);
             } else if (installed.length > 0) {
-              stepStatus(installLabel, "done");
+              pis.stop(`${installed.length}/${slugsToInstall.length} packages installed`);
               warn(
                 `${slugsToInstall.length - installed.length} package${slugsToInstall.length - installed.length === 1 ? "" : "s"} failed to install`
               );
             } else {
-              stepStatus(installLabel, "failed");
-              warn("Package installation failed — you can install packages later with: hq install <name>");
+              pis.stop("Package installation failed");
+              warn("Install packages later with: hq install <name>");
             }
 
             installedPackageSlugs.push(...installed);
           }
         }
       } else {
-        stepStatus(packagesLabel, "done");
-        info("No packages available");
+        ps.stop("No packages available");
       }
     } catch {
-      stepStatus(packagesLabel, "failed");
-      info("Package registry unavailable — you can install packages later with: hq install <name>");
+      ps.stop("Package registry unavailable");
+      info("Install packages later with: hq install <name>");
     }
   }
 
-  // 7. Install hq-cli
+  // ── 9. Install hq-cli ───────────────────────────────────────────────────
   if (!options.skipCli) {
-    console.log();
-    const installCli = await confirm(
-      "Install @indigoai-us/hq-cli globally for module management?"
-    );
+    const installCli = await confirm({
+      message: "Install @indigoai-us/hq-cli globally for module management?",
+      initialValue: true,
+    });
+
+    if (isCancel(installCli)) {
+      cancel("Setup cancelled");
+      process.exit(0);
+    }
+
     if (installCli) {
-      const cliLabel = "Installing @indigoai-us/hq-cli";
-      stepStatus(cliLabel, "running");
+      const cs = createSpinner();
+      cs.start("Installing @indigoai-us/hq-cli");
       try {
         execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
-        stepStatus(cliLabel, "done");
+        cs.stop("@indigoai-us/hq-cli installed");
       } catch {
-        stepStatus(cliLabel, "failed");
-        warn("Failed to install @indigoai-us/hq-cli — you can install it later with: npm install -g @indigoai-us/hq-cli");
+        cs.stop("@indigoai-us/hq-cli installation failed");
+        warn("Install later with: npm install -g @indigoai-us/hq-cli");
       }
     }
   }
 
-  // 8. Cloud sync setup
+  // ── 10. Cloud sync setup ─────────────────────────────────────────────────
   if (!options.skipSync && !alreadySynced) {
-    console.log();
-    const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
-    );
+    const setupSync = await confirm({
+      message: "Set up cloud sync? (enables mobile access via hq.indigoai.com)",
+      initialValue: false,
+    });
+
+    if (isCancel(setupSync)) {
+      cancel("Setup cancelled");
+      process.exit(0);
+    }
+
     if (setupSync) {
       step("Cloud sync setup will be available after running /setup in Claude Code");
       step("Run: hq sync init");
     }
   }
 
-  // 7b. Team join flow
+  // ── 11. Team join flow ───────────────────────────────────────────────────
   if (options.join) {
-    const joinLabel = "Joining team...";
-    stepStatus(joinLabel, "running");
+    const js = createSpinner();
+    js.start("Joining team...");
     try {
       const response = await fetch("https://hq.indigoai.com/api/teams/join", {
         method: "POST",
@@ -349,16 +347,15 @@ export async function scaffold(
       }
 
       const result = (await response.json()) as { teamId: string; teamName: string };
-      stepStatus(joinLabel, "done");
-      success(`Joined team: ${result.teamName}`);
+      js.stop(`Joined team: ${result.teamName}`);
     } catch (err) {
-      stepStatus(joinLabel, "failed");
-      warn(`Team join failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-      warn("HQ was still scaffolded — you can join a team later with 'hq team join'");
+      js.stop("Team join failed");
+      warn(`${err instanceof Error ? err.message : "Unknown error"}`);
+      warn("HQ was still scaffolded — join a team later with 'hq team join'");
     }
   }
 
-  // 8. Index with qmd
+  // ── 12. Index with qmd ──────────────────────────────────────────────────
   try {
     execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
     success("Indexed HQ for search");
@@ -366,15 +363,144 @@ export async function scaffold(
     // qmd not installed, skip silently — already warned in deps check
   }
 
-  // 10. Setup summary
+  // ── 13. Setup summary ───────────────────────────────────────────────────
   if (installedPackageSlugs.length > 0) {
-    console.log();
-    console.log(chalk.bold("  Installed packages:"));
+    log.message(chalk.bold("Installed packages:"));
     for (const slug of installedPackageSlugs) {
       console.log(chalk.green("  ✓ ") + slug);
     }
   }
 
-  // 11. Next steps
+  // ── 14. Next steps ──────────────────────────────────────────────────────
   nextSteps(displayDir);
+}
+
+// ── Setup Wizard ──────────────────────────────────────────────────────────────
+
+async function runSetupWizard(targetDir: string): Promise<void> {
+  log.step("Personalize your HQ");
+
+  const agentsPath = path.join(targetDir, "agents.md");
+
+  // Skip if agents.md already exists (idempotency)
+  if (fs.existsSync(agentsPath)) {
+    info("Profile already exists (agents.md) — skipping setup wizard");
+    info("Run /personal-interview inside Claude Code to update your profile");
+    return;
+  }
+
+  const setup = await group(
+    {
+      name: () =>
+        text({
+          message: "What's your name?",
+          placeholder: "e.g. Jane Smith",
+          validate: (value) => {
+            if (!value || !value.trim()) return "Name is required";
+          },
+        }),
+      role: () =>
+        text({
+          message: "What do you do? (role, industry)",
+          placeholder: "e.g. Full-stack developer at Acme",
+        }),
+      goals: () =>
+        text({
+          message: "What are your main goals for HQ?",
+          placeholder: "e.g. Automate code reviews, manage multiple projects",
+        }),
+    },
+    {
+      onCancel: () => {
+        cancel("Setup cancelled");
+        process.exit(0);
+      },
+    }
+  );
+
+  // Write agents.md profile
+  const name = setup.name || "HQ User";
+  const role = setup.role || "";
+  const goals = setup.goals || "";
+  const today = new Date().toISOString().split("T")[0];
+
+  const agentsContent = [
+    `# ${name}'s Profile`,
+    "",
+    "## About",
+    role ? `${name} — ${role}` : name,
+    "",
+    "## Goals",
+    goals || "_(run /personal-interview to fill in)_",
+    "",
+    "## Setup",
+    `- Created: ${today}`,
+    "- Run `/personal-interview` for a deeper profile with voice and communication style.",
+    "",
+  ].join("\n");
+
+  fs.writeFileSync(agentsPath, agentsContent);
+  success("Profile created (agents.md)");
+
+  // Scaffold personal knowledge repo
+  await scaffoldKnowledgeRepo(targetDir);
+}
+
+// ── Knowledge Repo Scaffold ───────────────────────────────────────────────────
+
+async function scaffoldKnowledgeRepo(targetDir: string): Promise<void> {
+  const knowledgeDir = path.join(targetDir, "repos", "public", "knowledge-personal");
+  const symlinkPath = path.join(targetDir, "knowledge", "personal");
+
+  // Skip if already exists
+  if (fs.existsSync(knowledgeDir)) {
+    info("Personal knowledge repo already exists — skipping");
+    return;
+  }
+
+  const ks = createSpinner();
+  ks.start("Scaffolding personal knowledge repo...");
+
+  try {
+    fs.ensureDirSync(knowledgeDir);
+    fs.writeFileSync(
+      path.join(knowledgeDir, "README.md"),
+      "# Personal Knowledge\n\nYour personal knowledge base.\n"
+    );
+
+    // Init git repo if git is available
+    if (hasGit()) {
+      execSync("git init && git add -A && git commit -m 'init: personal knowledge repo'", {
+        cwd: knowledgeDir,
+        stdio: "pipe",
+      });
+    }
+
+    // Create symlink
+    if (!fs.existsSync(symlinkPath)) {
+      fs.ensureDirSync(path.dirname(symlinkPath));
+      fs.symlinkSync("../../repos/public/knowledge-personal", symlinkPath);
+    }
+
+    ks.stop("Personal knowledge repo created");
+  } catch (err) {
+    ks.stop("Knowledge repo setup failed");
+    warn("You can create it later: mkdir -p repos/public/knowledge-personal");
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function countFiles(targetDir: string, subdir: string, ext: string): number {
+  const dir = path.join(targetDir, subdir);
+  if (!fs.existsSync(dir)) return 0;
+  return fs.readdirSync(dir).filter((f) => f.endsWith(ext)).length;
+}
+
+function countWorkers(targetDir: string): number {
+  const dir = path.join(targetDir, "workers");
+  if (!fs.existsSync(dir)) return 0;
+  return fs
+    .readdirSync(dir, { recursive: true })
+    .filter((f) => String(f).endsWith("worker.yaml")).length;
 }

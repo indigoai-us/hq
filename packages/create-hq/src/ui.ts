@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import ora, { type Ora } from "ora";
+import { spinner as clackSpinner, log, note, outro, isCancel, cancel } from "@clack/prompts";
 
 // ─── ASCII Art Banner ────────────────────────────────────────────────────────
 
@@ -40,92 +40,39 @@ export function banner(installerVersion?: string, hqVersion?: string): void {
   }
 }
 
-// ─── Step Status Tracking ────────────────────────────────────────────────────
+// ─── Spinner Helper ─────────────────────────────────────────────────────────
 
-const spinners = new Map<string, Ora>();
-
-export function stepStatus(
-  label: string,
-  status: "pending" | "running" | "done" | "failed"
-): void {
-  switch (status) {
-    case "pending":
-      console.log(chalk.dim("  [ ] ") + chalk.dim(label));
-      break;
-
-    case "running": {
-      // Stop any existing spinner for this label
-      const existing = spinners.get(label);
-      if (existing) existing.stop();
-
-      const spinner = ora({
-        text: chalk.white(label),
-        prefixText: "  ",
-        spinner: "dots",
-        color: "cyan",
-      }).start();
-      spinners.set(label, spinner);
-      break;
-    }
-
-    case "done": {
-      const s = spinners.get(label);
-      if (s) {
-        s.succeed(chalk.white(label));
-        spinners.delete(label);
-      } else {
-        console.log(chalk.green("  [✓] ") + chalk.white(label));
-      }
-      break;
-    }
-
-    case "failed": {
-      const sf = spinners.get(label);
-      if (sf) {
-        sf.fail(chalk.white(label));
-        spinners.delete(label);
-      } else {
-        console.log(chalk.red("  [✗] ") + chalk.white(label));
-      }
-      break;
-    }
-  }
+export function createSpinner() {
+  return clackSpinner();
 }
 
-// ─── Basic Output Helpers ────────────────────────────────────────────────────
+// ─── Logging Helpers (delegates to @clack/prompts log) ──────────────────────
 
 export function success(msg: string): void {
-  console.log(chalk.green("  ✓") + " " + msg);
+  log.success(msg);
 }
 
 export function warn(msg: string): void {
-  console.log(chalk.yellow("  ✗") + " " + msg);
+  log.warn(msg);
 }
 
 export function info(msg: string): void {
-  console.log(chalk.dim("  ~") + " " + msg);
+  log.info(msg);
 }
 
 export function step(msg: string): void {
-  console.log(chalk.cyan("  →") + " " + msg);
+  log.step(msg);
 }
+
+// ─── Next Steps ─────────────────────────────────────────────────────────────
 
 export function nextSteps(dir: string): void {
-  const W = 48;
-  const line = "─".repeat(W);
-  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - text.length));
-  const row = (text: string) =>
-    chalk.dim("  │") + pad(text, W) + chalk.dim("│");
-
-  console.log();
-  console.log(chalk.dim("  ┌" + line + "┐"));
-  console.log(row(chalk.bold.white("  All done! Your HQ is ready.")));
-  console.log(chalk.dim("  ├" + line + "┤"));
-  console.log(row(""));
-  console.log(row(`    cd ${dir}`));
-  console.log(row("    claude"));
-  console.log(row("    /setup  " + chalk.dim("← personalize your HQ")));
-  console.log(row(""));
-  console.log(chalk.dim("  └" + line + "┘"));
-  console.log();
+  note(
+    `cd ${dir}\nclaude\n/setup  ${chalk.dim("← re-run setup anytime")}`,
+    "All done! Your HQ is ready."
+  );
 }
+
+// ─── Re-exports for convenience ─────────────────────────────────────────────
+
+export { isCancel, cancel, note };

@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { createInterface } from "readline";
+import { confirm as clackConfirm, isCancel, cancel } from "@clack/prompts";
 import chalk from "chalk";
 import { success, warn, info } from "./ui.js";
 import { detectPlatform } from "./platform.js";
@@ -144,26 +144,6 @@ function checkCommand(command: string): string | null {
   }
 }
 
-/**
- * Standalone confirm helper using readline directly.
- * Avoids importing from scaffold.ts to prevent circular dependencies.
- */
-async function confirm(question: string, defaultYes: boolean): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const hint = defaultYes ? "Y/n" : "y/N";
-  return new Promise((resolve) => {
-    rl.question(`  ? ${question} (${hint}) `, (answer) => {
-      rl.close();
-      const trimmed = answer.trim();
-      if (!trimmed) {
-        resolve(defaultYes);
-      } else {
-        resolve(trimmed.toLowerCase().startsWith("y"));
-      }
-    });
-  });
-}
-
 export async function checkDeps(): Promise<{ allRequired: boolean }> {
   console.log();
   console.log("  Checking dependencies...");
@@ -186,12 +166,16 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
 
     if (installCmd) {
       // Can offer auto-install
-      const defaultYes = dep.required;
       const optionalTag = dep.required ? "" : " (optional)";
-      const accepted = await confirm(
-        `Install ${dep.name}?${optionalTag} [${installCmd}]`,
-        defaultYes,
-      );
+      const accepted = await clackConfirm({
+        message: `Install ${dep.name}?${optionalTag} [${installCmd}]`,
+        initialValue: dep.required,
+      });
+
+      if (isCancel(accepted)) {
+        cancel("Setup cancelled");
+        process.exit(0);
+      }
 
       if (accepted) {
         info(`Running: ${installCmd}`);
