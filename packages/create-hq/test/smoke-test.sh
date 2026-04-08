@@ -110,12 +110,10 @@ echo ""
 # tools like claude, qmd, yq). In a headless container with /dev/null stdin,
 # prompts auto-accept but npm install -g fails as non-root. Dep install is
 # for real users at a terminal — the smoke test validates the scaffold output.
-echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --skip-deps --skip-cli --skip-sync"
+echo "Running: create-hq ${TEST_DIR} --local-template ${TEMPLATE_DIR} --yes"
 "$CREATE_HQ_BIN" "${TEST_DIR}" \
   --local-template "${TEMPLATE_DIR}" \
-  --skip-deps \
-  --skip-cli \
-  --skip-sync \
+  --yes \
   < /dev/null 2>&1 || {
   echo "FATAL: create-hq exited with non-zero status"
   exit 1

@@ -70,22 +70,54 @@ for image in "${IMAGES[@]}"; do
   JSON_LINE=$(echo "$OUTPUT" | sed -n '/^JSON_REPORT_START$/,/^JSON_REPORT_END$/p' | grep -v '^JSON_REPORT_' || echo "")
 
   if [ -z "$JSON_LINE" ]; then
-    # No JSON report — container likely crashed
-    JSON_LINE="{\"image\":\"${image}\",\"passed\":false,\"pass_count\":0,\"fail_count\":1,\"duration_ms\":0,\"assertions\":[{\"name\":\"container-run\",\"passed\":false,\"duration_ms\":0,\"message\":\"Container exited without producing a report\"}],\"logs_on_failure\":$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')}"
+    # No JSON report — container likely crashed.
+    # Write logs to a temp file and let python read it (never interpolate
+    # untrusted output into a python -c source string).
+    LOGS_FILE=$(mktemp)
+    printf '%s' "$OUTPUT" > "$LOGS_FILE"
+    JSON_LINE=$(IMAGE="$image" LOGS_FILE="$LOGS_FILE" python3 -c '
+import json, os
+with open(os.environ["LOGS_FILE"], "r", errors="replace") as f:
+    logs = f.read()
+print(json.dumps({
+    "image": os.environ["IMAGE"],
+    "passed": False,
+    "pass_count": 0,
+    "fail_count": 1,
+    "duration_ms": 0,
+    "assertions": [{
+        "name": "container-run",
+        "passed": False,
+        "duration_ms": 0,
+        "message": "Container exited without producing a report",
+    }],
+    "logs_on_failure": logs,
+}))
+')
+    rm -f "$LOGS_FILE"
     ALL_PASSED=false
   else
     # Check if this image passed
     PASSED=$(echo "$JSON_LINE" | python3 -c "import sys,json; print(json.load(sys.stdin)['passed'])" 2>/dev/null || echo "False")
     if [ "$PASSED" != "True" ]; then
       ALL_PASSED=false
-      # Add logs on failure
-      LOGS=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')
-      JSON_LINE=$(echo "$JSON_LINE" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-d['logs_on_failure'] = $LOGS
+      # Add logs on failure — use temp files to avoid bash → python source interpolation,
+      # which crashed on quotes/newlines/dollar signs in container output and left
+      # latest.json un-updated on failed runs.
+      LOGS_FILE=$(mktemp)
+      JSON_FILE=$(mktemp)
+      printf '%s' "$OUTPUT" > "$LOGS_FILE"
+      printf '%s' "$JSON_LINE" > "$JSON_FILE"
+      JSON_LINE=$(LOGS_FILE="$LOGS_FILE" JSON_FILE="$JSON_FILE" python3 -c '
+import json, os
+with open(os.environ["LOGS_FILE"], "r", errors="replace") as f:
+    logs = f.read()
+with open(os.environ["JSON_FILE"], "r", errors="replace") as f:
+    d = json.load(f)
+d["logs_on_failure"] = logs
 print(json.dumps(d))
-" 2>/dev/null || echo "$JSON_LINE")
+' 2>/dev/null || echo "$JSON_LINE")
+      rm -f "$LOGS_FILE" "$JSON_FILE"
     fi
   fi
 
@@ -102,18 +134,32 @@ echo "Removed tarball: $TARBALL_NAME"
 echo ""
 echo "=== Step 5: Generating report ==="
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-IMAGES_JSON=$(printf '%s,' "${IMAGE_RESULTS[@]}" | sed 's/,$//')
 
-REPORT=$(python3 -c "
-import json
-images = json.loads('[${IMAGES_JSON}]')
+# Write per-image JSON lines to a temp file (one per line). Reading them from
+# disk avoids the shell → python source interpolation that crashed when image
+# results contained quotes/newlines (e.g. logs_on_failure embedded text).
+IMAGES_FILE=$(mktemp)
+for img_json in "${IMAGE_RESULTS[@]}"; do
+  printf '%s\n' "$img_json" >> "$IMAGES_FILE"
+done
+
+REPORT=$(TIMESTAMP="$TIMESTAMP" IMAGES_FILE="$IMAGES_FILE" python3 -c '
+import json, os
+images = []
+with open(os.environ["IMAGES_FILE"], "r", errors="replace") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        images.append(json.loads(line))
 report = {
-    'timestamp': '${TIMESTAMP}',
-    'passed': all(i['passed'] for i in images),
-    'images': images
+    "timestamp": os.environ["TIMESTAMP"],
+    "passed": all(i["passed"] for i in images),
+    "images": images,
 }
 print(json.dumps(report, indent=2))
-" 2>/dev/null)
+')
+rm -f "$IMAGES_FILE"
 
 echo "$REPORT" > "$RESULTS_DIR/latest.json"
 echo "Report written to: $RESULTS_DIR/latest.json"

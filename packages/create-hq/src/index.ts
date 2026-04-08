@@ -18,6 +18,7 @@ program
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
   .option("--skip-packages", "don't prompt for package discovery and installation")
+  .option("-y, --yes", "non-interactive mode — implies all --skip-* flags; safe for CI / smoke tests with /dev/null stdin")
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
   .option("--join <token>", "join a team with an invite token after scaffolding")

@@ -29,6 +29,7 @@ interface ScaffoldOptions {
   skipCli?: boolean;
   skipSync?: boolean;
   skipPackages?: boolean;
+  yes?: boolean;
   tag?: string;
   localTemplate?: string;
   join?: string;
@@ -56,6 +57,16 @@ export async function scaffold(
   directory: string,
   options: ScaffoldOptions
 ): Promise<void> {
+  // Non-interactive mode: --yes implies skipping every prompt-driven side flow.
+  // We treat --yes as "personal HQ, no account, no package discovery" so the
+  // scaffold can run end-to-end against /dev/null stdin (CI, smoke tests).
+  if (options.yes) {
+    options.skipPackages = true;
+    options.skipCli = true;
+    options.skipSync = true;
+    options.skipDeps = true;
+  }
+
   // Show banner with installer version; hqVersion will be added after template fetch
   banner(pkg.version);
 
