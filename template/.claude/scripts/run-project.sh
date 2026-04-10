@@ -2628,35 +2628,35 @@ spawn_cmux_monitor() {
   [[ "$MONITOR" != true ]] && return 0
   [[ -z "$PROJECT" ]] && return 0
 
-  local cmux_bin="/Applications/cmux.app/Contents/Resources/bin/cmux"
   local monitor_script="$HQ_ROOT/workspace/orchestrator/monitor-project.sh"
-
-  if [[ ! -x "$cmux_bin" ]]; then
-    return 0  # cmux not installed — silently skip
-  fi
   if [[ ! -x "$monitor_script" ]]; then
-    echo -e "${DIM}(monitor script not found at $monitor_script — skipping cmux spawn)${NC}"
+    echo -e "${DIM}(monitor script not found at $monitor_script — skipping monitor spawn)${NC}"
     return 0
   fi
 
-  # Ensure cmux is running (launch the app if socket is down, wait up to 4s)
-  if ! "$cmux_bin" ping >/dev/null 2>&1; then
-    open -a cmux >/dev/null 2>&1 || return 0
-    local i
-    for i in 1 2 3 4 5 6 7 8; do
-      sleep 0.5
-      "$cmux_bin" ping >/dev/null 2>&1 && break
-    done
-    "$cmux_bin" ping >/dev/null 2>&1 || { echo -e "${DIM}(cmux socket not responding — skipping monitor spawn)${NC}"; return 0; }
-  fi
+  # Launch the monitor dashboard in a new Terminal.app window via AppleScript.
+  # Terminal.app is always scriptable on macOS (no TCC gate, no config flag),
+  # so this works regardless of whether /run-project was invoked from a cmux
+  # shell or from Claude Code running inside Claude.app desktop. We previously
+  # tried the cmux CLI (blocked by socket-ancestry auth) and cmux AppleScript
+  # dictionary (gated by the `macos-applescript` ghostty setting, off by
+  # default) — both failed silently in the Claude.app case.
+  local monitor_cmd="cd '$HQ_ROOT' && clear && bash workspace/orchestrator/monitor-project.sh '$PROJECT' --watch"
 
-  # Spawn a new workspace running the monitor in --watch mode
-  if "$cmux_bin" new-workspace \
-       --cwd "$HQ_ROOT" \
-       --command "bash workspace/orchestrator/monitor-project.sh $PROJECT --watch" \
-       >/dev/null 2>&1; then
-    echo -e "${DIM}Spawned cmux monitor workspace for ${PROJECT}${NC}"
+  local osa_out osa_status
+  osa_out=$(osascript 2>&1 <<APPLESCRIPT
+tell application "Terminal"
+  activate
+  do script "${monitor_cmd}"
+end tell
+APPLESCRIPT
+)
+  osa_status=$?
+  if [[ $osa_status -ne 0 ]]; then
+    echo -e "${DIM}(monitor spawn failed: ${osa_out})${NC}"
+    return 0
   fi
+  echo -e "${DIM}Spawned monitor window for ${PROJECT} (Terminal.app)${NC}"
 }
 
 spawn_cmux_monitor

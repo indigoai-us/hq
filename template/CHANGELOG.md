@@ -14,6 +14,9 @@ Performance Audit Complete — ~50% session-start context reduction via pre-buil
 - `.claude/policies/qmd-collection-masks.md` — qmd collection scoping policy
 - `.claude/commands/audit-log.md` — renamed from `audit.md`, expanded to 208 lines
 - `knowledge/hq-core/quick-reference.md` — new `## Command ↔ Skill Shapes` section (Archetype A/C docs)
+- `workspace/orchestrator/monitor-project.sh` — single-project TUI dashboard (state.json
+  + executions + progress.txt) now shipped with the template so `run-project.sh`'s
+  auto-spawned monitor window has something to run
 
 ### Changed
 - **7 commands flipped to Archetype A** (~20-line delegator stubs):
@@ -21,9 +24,11 @@ Performance Audit Complete — ~50% session-start context reduction via pre-buil
   → Canonical implementations now live in `.claude/skills/{name}/SKILL.md`
 - `run-project.md` gained thin-router HTML comment (Archetype C marker)
 - `.claude/settings.json` — `SessionStart` hook entry wired for digest loader
-- `.claude/settings.json` — `CLAUDE_CODE_SUBAGENT_MODEL` default set to `sonnet`
-  (cheaper default for downstream kit users; use `opus` if you want quality parity)
 - `.claude/settings.json` — `cleanup-mcp-processes` Stop-hook timeout bumped 5 → 10s
+- `.claude/scripts/run-project.sh` — `spawn_cmux_monitor()` rewritten to use
+  Terminal.app via `osascript` instead of the cmux CLI. The cmux path failed
+  silently under Claude.app (socket-ancestry auth + macos-applescript gate);
+  Terminal.app is always scriptable so the monitor window actually opens.
 - `.claude/settings.json` — added 5 rc-file deny rules (`~/.zshrc`, `~/.zprofile`,
   `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`)
 - 4 hooks refreshed — `auto-checkpoint-trigger`, `hook-gate`, `observe-patterns`,

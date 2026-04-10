@@ -66,18 +66,7 @@ of them, your edits will be **overwritten** when you sync the template:
 For each, diff the old `.md` against the new SKILL.md, port your customizations
 into the SKILL, and let the stub remain as a thin delegator.
 
-### Step 5 — Subagent model default flipped to `sonnet`
-
-`.claude/settings.json` now defaults `CLAUDE_CODE_SUBAGENT_MODEL=sonnet`. This is
-significantly cheaper than `opus` and matches quality on the parallelized,
-mostly-mechanical work that subagents do. If you prefer the previous behavior,
-flip it back:
-
-```jsonc
-"CLAUDE_CODE_SUBAGENT_MODEL": "opus",
-```
-
-### Step 6 — Optional: rebuild your digests
+### Step 5 — Optional: rebuild your digests
 
 If you've modified policies locally, regenerate `_digest.md`:
 
@@ -92,7 +81,6 @@ The pre-commit hook from Step 2 will keep this in sync going forward.
 - **−50% session-start context** on most cwds (HQ root, personal, vyg-class)
 - **Faster orientation** — the policy digest lands in the first turn instead of
   burning a tool round-trip
-- **Lower cost on subagents** — `sonnet` default
 - **Auto-maintained digests** — no manual rebuild required after the pre-commit
   hook is installed
 
