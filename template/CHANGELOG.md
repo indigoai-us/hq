@@ -1,5 +1,60 @@
 # Changelog
 
+## [10.7.0] — 2026-04-09
+
+### Headline
+Performance Audit Complete — ~50% session-start context reduction via pre-built policy digests. 8 commands consolidated to Archetype A (stub + SKILL).
+
+### Added
+- `.claude/hooks/load-policies-for-session.sh` — SessionStart digest loader
+- `scripts/build-policy-digest.sh` — builds `_digest.md` from policy frontmatter
+- `scripts/read-policy-frontmatter.sh` — YAML frontmatter parser helper
+- `scripts/git-hooks/pre-commit` — auto-rebuilds digests on policy commits
+- `.claude/policies/_digest.md` — pre-built global digest (94 hard + 78 soft)
+- `.claude/policies/qmd-collection-masks.md` — qmd collection scoping policy
+- `.claude/commands/audit-log.md` — renamed from `audit.md`, expanded to 208 lines
+- `knowledge/hq-core/quick-reference.md` — new `## Command ↔ Skill Shapes` section (Archetype A/C docs)
+
+### Changed
+- **7 commands flipped to Archetype A** (~20-line delegator stubs):
+  `prd`, `handoff`, `learn`, `execute-task`, `search`, `startwork`, `brainstorm`
+  → Canonical implementations now live in `.claude/skills/{name}/SKILL.md`
+- `run-project.md` gained thin-router HTML comment (Archetype C marker)
+- `.claude/settings.json` — `SessionStart` hook entry wired for digest loader
+- `.claude/settings.json` — `CLAUDE_CODE_SUBAGENT_MODEL` default set to `sonnet`
+  (cheaper default for downstream kit users; use `opus` if you want quality parity)
+- `.claude/settings.json` — `cleanup-mcp-processes` Stop-hook timeout bumped 5 → 10s
+- `.claude/settings.json` — added 5 rc-file deny rules (`~/.zshrc`, `~/.zprofile`,
+  `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`)
+- 4 hooks refreshed — `auto-checkpoint-trigger`, `hook-gate`, `observe-patterns`,
+  `screenshot-resize-trigger`
+- 14 commands refreshed (non-Archetype-A bug fixes & polish)
+- 8 net-new policies synced (now 171 total, up from 163)
+
+### Performance
+- HQ root session start: **−53% context** (37.2 KB → 17.3 KB)
+- personal cwd: **−58% context** (45.5 KB → 19.1 KB)
+- liverecover-class cwd: **−61% context** (58.7 KB → 22.8 KB)
+- vyg-class cwd: **−62% context** (67.1 KB → 25.5 KB)
+
+### Removed
+- `.claude/commands/audit.md` — orphan (renamed to `audit-log.md`)
+
+### Breaking Changes
+- The 7 commands listed under "Changed" above now delegate to `SKILL.md`. Any local
+  edits to those `.md` files will be overwritten on upgrade — move edits into
+  `.claude/skills/{name}/SKILL.md` instead, or fork the stub.
+
+### Migration (v10.6.0 → v10.7.0)
+1. Pull latest kit
+2. `chmod +x scripts/git-hooks/pre-commit`
+3. `ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit`
+   (or merge into existing pre-commit wrapper)
+4. Verify SessionStart hook fires: start a new Claude Code session in the project
+   dir; look for `<policy-digest>` banner in the first turn
+5. If any of the 7 consolidated commands had local edits, port them to the
+   corresponding `.claude/skills/{name}/SKILL.md`
+
 ## [10.6.0] — 2026-04-07
 
 ### Added

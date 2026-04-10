@@ -4,6 +4,100 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.7.0 (from v10.6.0)
+
+### Headline
+
+This release ships the **HQ Performance Audit** — a ~50% reduction in session-start
+context burn via pre-built policy digests, plus 8 commands consolidated to the new
+**Archetype A** shape (thin delegator stub + canonical `SKILL.md`).
+
+### Step 1 — Pull and verify scaffolding
+
+```bash
+git pull
+ls .claude/hooks/load-policies-for-session.sh
+ls .claude/policies/_digest.md
+ls scripts/build-policy-digest.sh scripts/git-hooks/pre-commit
+```
+
+If any of those four are missing, your pull is incomplete — re-run.
+
+### Step 2 — Wire the auto-rebuild pre-commit hook
+
+The new `scripts/git-hooks/pre-commit` rebuilds `_digest.md` whenever you commit
+policy changes. Install it:
+
+```bash
+chmod +x scripts/git-hooks/pre-commit
+ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+```
+
+If you already have a `.git/hooks/pre-commit` wrapper, append a call to
+`scripts/git-hooks/pre-commit` rather than overwriting.
+
+### Step 3 — Verify the SessionStart hook fires
+
+Start a fresh Claude Code session in the repo. Look for a `<policy-digest>` block
+in the first system reminder. If you don't see it:
+
+```bash
+grep -A1 SessionStart .claude/settings.json
+```
+
+You should see the `load-policies-for-session.sh` entry. If missing, your
+`settings.json` needs the SessionStart block — copy from `template/.claude/settings.json`.
+
+### Step 4 — Port any local edits to the 7 consolidated commands
+
+These commands now delegate to `SKILL.md`. If you had local customizations in any
+of them, your edits will be **overwritten** when you sync the template:
+
+| Command | Canonical home |
+|---|---|
+| `prd` | `.claude/skills/prd/SKILL.md` |
+| `handoff` | `.claude/skills/handoff/SKILL.md` |
+| `learn` | `.claude/skills/learn/SKILL.md` |
+| `execute-task` | `.claude/skills/execute-task/SKILL.md` |
+| `search` | `.claude/skills/search/SKILL.md` |
+| `startwork` | `.claude/skills/startwork/SKILL.md` |
+| `brainstorm` | `.claude/skills/brainstorm/SKILL.md` |
+
+For each, diff the old `.md` against the new SKILL.md, port your customizations
+into the SKILL, and let the stub remain as a thin delegator.
+
+### Step 5 — Subagent model default flipped to `sonnet`
+
+`.claude/settings.json` now defaults `CLAUDE_CODE_SUBAGENT_MODEL=sonnet`. This is
+significantly cheaper than `opus` and matches quality on the parallelized,
+mostly-mechanical work that subagents do. If you prefer the previous behavior,
+flip it back:
+
+```jsonc
+"CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+```
+
+### Step 6 — Optional: rebuild your digests
+
+If you've modified policies locally, regenerate `_digest.md`:
+
+```bash
+bash scripts/build-policy-digest.sh
+```
+
+The pre-commit hook from Step 2 will keep this in sync going forward.
+
+### What you get after migrating
+
+- **−50% session-start context** on most cwds (HQ root, personal, vyg-class)
+- **Faster orientation** — the policy digest lands in the first turn instead of
+  burning a tool round-trip
+- **Lower cost on subagents** — `sonnet` default
+- **Auto-maintained digests** — no manual rebuild required after the pre-commit
+  hook is installed
+
+---
+
 ## Migrating to v10.6.0 (from v10.5.0)
 
 ### Updated Commands (21)
@@ -153,9 +247,9 @@ If you use `/publish-kit`, update your `scrub-denylist.yaml` with the new `excep
 
 ```yaml
 exceptions:
-  "{company}ai-us": "indigoai-us"
-  "@{company}ai-us": "@indigoai-us"
-  "{company}ai-us/hq": "indigoai-us/hq"
+  "indigoai-us": "indigoai-us"
+  "@indigoai-us": "@indigoai-us"
+  "indigoai-us/hq": "indigoai-us/hq"
 ```
 
 ### Updated Policies
@@ -1310,7 +1404,7 @@ Copy these directories to your `knowledge/`:
 go install github.com/tobi/qmd@latest
 
 # Index your HQ
-cd ~/Documents/HQ
+cd ~/HQ
 qmd update && qmd embed
 ```
 

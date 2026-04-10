@@ -269,6 +269,22 @@ modules:
     paths:
       .: companies/{company}/repos/{company}-docs-customer
 
+  - name: knowledge-dripkit
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/dripkit/knowledge
+
+  - name: knowledge-{company}
+    repo: local
+    branch: main
+    strategy: link
+    access: team
+    paths:
+      .: companies/{company}/knowledge
+
   - name: knowledge-{company}
     repo: local
     branch: main

@@ -24,7 +24,7 @@ set -euo pipefail
 #   --tmux              Launch in tmux session with Remote Control
 # =============================================================================
 
-HQ_ROOT="~/Documents/HQ"
+HQ_ROOT="~/HQ"
 export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
@@ -207,6 +207,7 @@ SWARM_MODE=false
 SWARM_MAX=4
 CHECKIN_INTERVAL=180  # seconds between check-in status prints
 CODEX_AUTOFIX=false
+MONITOR=true  # auto-spawn cmux monitor workspace (disable with --no-monitor)
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -251,6 +252,7 @@ while [[ $# -gt 0 ]]; do
       shift ;;
     --checkin-interval) CHECKIN_INTERVAL="$2"; shift 2 ;;
     --codex-autofix)  CODEX_AUTOFIX=true; shift ;;
+    --no-monitor)     MONITOR=false; shift ;;
     --help|-h)
       cat <<'HELP'
 Usage: scripts/run-project.sh <project> [flags]
@@ -270,6 +272,7 @@ Flags:
   --swarm [N]         Run eligible stories in parallel (max N concurrent, default 4)
   --checkin-interval N  Seconds between check-in status prints (default: 180)
   --codex-autofix     Auto-fix P1/P2 codex review findings (opt-in)
+  --no-monitor        Skip auto-spawning the cmux monitor workspace
 HELP
       exit 0
       ;;
@@ -2617,6 +2620,46 @@ _swarm_retry_inc() {
   [[ "$found" == false ]] && new_entries+=("$id:1")
   SWARM_RETRY_ENTRIES=("${new_entries[@]}")
 }
+
+# =============================================================================
+# Auto-spawn cmux monitor workspace for live progress viewing
+# =============================================================================
+spawn_cmux_monitor() {
+  [[ "$MONITOR" != true ]] && return 0
+  [[ -z "$PROJECT" ]] && return 0
+
+  local cmux_bin="/Applications/cmux.app/Contents/Resources/bin/cmux"
+  local monitor_script="$HQ_ROOT/workspace/orchestrator/monitor-project.sh"
+
+  if [[ ! -x "$cmux_bin" ]]; then
+    return 0  # cmux not installed — silently skip
+  fi
+  if [[ ! -x "$monitor_script" ]]; then
+    echo -e "${DIM}(monitor script not found at $monitor_script — skipping cmux spawn)${NC}"
+    return 0
+  fi
+
+  # Ensure cmux is running (launch the app if socket is down, wait up to 4s)
+  if ! "$cmux_bin" ping >/dev/null 2>&1; then
+    open -a cmux >/dev/null 2>&1 || return 0
+    local i
+    for i in 1 2 3 4 5 6 7 8; do
+      sleep 0.5
+      "$cmux_bin" ping >/dev/null 2>&1 && break
+    done
+    "$cmux_bin" ping >/dev/null 2>&1 || { echo -e "${DIM}(cmux socket not responding — skipping monitor spawn)${NC}"; return 0; }
+  fi
+
+  # Spawn a new workspace running the monitor in --watch mode
+  if "$cmux_bin" new-workspace \
+       --cwd "$HQ_ROOT" \
+       --command "bash workspace/orchestrator/monitor-project.sh $PROJECT --watch" \
+       >/dev/null 2>&1; then
+    echo -e "${DIM}Spawned cmux monitor workspace for ${PROJECT}${NC}"
+  fi
+}
+
+spawn_cmux_monitor
 
 if [[ "$SWARM_MODE" == true ]]; then
   echo -e "${BOLD}Starting execution loop (swarm mode, max $SWARM_MAX concurrent)...${NC}\n"

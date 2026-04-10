@@ -9,7 +9,12 @@
       "Read(~/.aws/config)",
       "Read(~/.gnupg/**)",
       "Read(~/.env)",
-      "Read(~/.netrc)"
+      "Read(~/.netrc)",
+      "Read(~/.zshrc)",
+      "Read(~/.zprofile)",
+      "Read(~/.zshenv)",
+      "Read(~/.bashrc)",
+      "Read(~/.bash_profile)"
     ]
   },
   "env": {
@@ -17,7 +22,7 @@
     "MAX_THINKING_TOKENS": "31999",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
     "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "hooks": {
@@ -154,6 +159,18 @@
           {
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh cleanup-mcp-processes .claude/hooks/cleanup-mcp-processes.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh load-policies .claude/hooks/load-policies-for-session.sh",
             "timeout": 5
           }
         ]

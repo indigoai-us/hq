@@ -79,9 +79,11 @@ Credential access: policy `credential-access-protocol.md`. Hook: `warn-cross-com
 
 ## Sensitive Path Deny Lists
 
-Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
+Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`, `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`. These protect SSH keys, AWS credentials, GPG secrets, local environment files, and shell rc files (which historically have contained hardcoded API keys — see `companies/{company}/policies/no-secrets-in-shell-rc.md`). User can override with explicit approval when prompted. For rc-file mutations, use append-only (`printf >> file`) or pattern-delete (`sed '/pattern/d' file`) rather than Read+Edit — both avoid pulling file contents into context. Company credential isolation is handled separately by hooks (see Company Isolation section).
 
+## {Product} Linear Integration
 
+All {PRODUCT}/{Product} work tracked in Linear (workspace: `voyage`). Creds: `companies/{company}/settings/linear/`. Policies: `companies/{company}/policies/voyage-linear-integration.md` + `linear-cross-tracking.md`. Triage: `/check-linear-voyage`.
 
 ## Infrastructure-First
 
@@ -153,7 +155,7 @@ Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/`
 
 ## Search (qmd)
 
-HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v2.1.0).
+HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v1.0.0).
 
 **Collections (17):** `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`. Use `-c {collection}` to scope.
 
@@ -191,7 +193,9 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
 
+## {PRODUCT} Commit Rules
 
+Quality gates, code location rules, and learned rules: `repos/private/{product}/CLAUDE.md`. Use `/{product}-pr` for PRs.
 
 ## Vercel Deployments
 

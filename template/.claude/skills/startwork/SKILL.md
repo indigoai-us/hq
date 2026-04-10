@@ -68,20 +68,22 @@ Determine mode from the user's argument (first match wins):
 
 Once company `{co}` is resolved (from any mode):
 
-1. **Company policies**: If `{co}` known, read all files in `companies/{co}/policies/` (skip `example-policy.md`). Note count + any `enforcement: hard` rules
-2. **Repo policies**: If repo context resolved, check `{repoPath}/.claude/policies/` (if dir exists). Note count
-3. **Global policies**: Count files in `.claude/policies/`. Don't load all — just count and note hard-enforcement ones
+1. **Company policies**: If `{co}` known, read frontmatter-only for each policy in `companies/{co}/policies/` via `bash scripts/read-policy-frontmatter.sh {file}` (skip `example-policy.md`). Note count + titles of any `enforcement: hard` rules. For hard-enforcement policies only, additionally read the `## Rule` section with targeted Read + range.
+2. **Repo policies**: If repo context resolved, check `{repoPath}/.claude/policies/` (if dir exists). Same frontmatter-only pattern.
+3. **Global policies**: Count files in `.claude/policies/`. Prefer the compiled digest at `.claude/policies/_digest.md` if present (auto-loaded by SessionStart hook — this step becomes a no-op when digest is available). If no digest, filter to policies whose `trigger` matches current context — don't load all.
 
 Display in orientation block:
 ```
 Policies: {N} company, {M} repo, {K} global ({H} hard-enforcement)
 ```
 
-Hard-enforcement policies: list titles in orientation block so user sees constraints upfront.
+**Hard-enforcement policies** with triggers matching current context: list titles in orientation block so user sees constraints upfront.
 
 Rules:
 - Only READ policy frontmatter (title, enforcement, trigger) — don't load full body into context
 - Exception: hard-enforcement policies — read full `## Rule` section
+- If no company resolved (resume mode with no company context), skip company policies
+- Precedence: company > repo > global
 
 ### 3. Present Options
 

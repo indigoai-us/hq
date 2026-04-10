@@ -39,18 +39,45 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Content & Social
 | Command | What it does |
 |---------|--------------|
+| `/contentidea` | Build content ideas |
+| `/suggestposts` | Research post ideas |
 | `/post` | Post or schedule content to X/LinkedIn via Post-Bridge |
+| `/post-results` | Check post delivery status |
+| `/preview-post` | Preview social post drafts, select images |
+| `/social-setup` | Configure voice, accounts, queue, worker |
+
+### Communication
+| Command | What it does |
+|---------|--------------|
+| `/email` | Manage email across Gmail accounts |
+| `/checkemail` | Quick inbox cleanup and triage |
+| `/imessage` | Send iMessage to saved contact |
+
+### Design & Assets
+| Command | What it does |
+|---------|--------------|
+| `/generateimage` | Generate images via Gemini |
 
 ### Deploy & Ops
 | Command | What it does |
 |---------|--------------|
-| `/pr` | PR operations |
+| `/pr` | {company} PR operations |
+| `/publish-kit` | Publish kit |
 
 ### Company & Infrastructure
 | Command | What it does |
 |---------|--------------|
 | `/newcompany` | Scaffold new company with full infrastructure |
+| `/launch-brand` | Launch new DTC brand end-to-end |
+| `/pb-connect` | Connect Post-Bridge social accounts |
+| `/bootcamp-student` | Onboard AGI bootcamp student |
 | `/personal-interview` | Deep interview to populate profile/voice |
+
+### Linear
+| Command | What it does |
+|---------|--------------|
+| `/check-linear-voyage` | Interactive triage for {Product} workspace |
+| `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
 
 ### System
 | Command | What it does |
@@ -67,8 +94,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ```
 /run                    # see all
-/run frontend-designer audit
-/run qa-tester smoke-test
+/run cfo-{company} mrr
+/run x-{your-name} contentidea "AI"
 ```
 
 **Public (`workers/public/`):**

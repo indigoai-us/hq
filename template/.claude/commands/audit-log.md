@@ -5,9 +5,14 @@ argument-hint: [--project name] [--company slug] [--failures] [--since YYYY-MM-D
 visibility: public
 ---
 
-# /audit - Audit Log
+# /audit-log - Orchestrator Audit Log
 
 Query and display HQ orchestrator audit log events.
+
+> **Note:** Renamed from `/audit` → `/audit-log` to resolve a namespace
+> collision with `.claude/skills/audit/` (the frontend design quality audit).
+> `/audit` now resolves to the design quality skill; use `/audit-log` for
+> orchestrator log queries.
 
 **Arguments:** $ARGUMENTS
 
@@ -37,7 +42,7 @@ Based on flags parsed above, choose one of three modes:
 
 **If no `--since` and no `--company` flags**, call the script's built-in summary:
 ```bash
-cd ~/Documents/HQ && bash scripts/audit-log.sh summary 2>/dev/null
+cd ~/HQ && bash scripts/audit-log.sh summary 2>/dev/null
 ```
 Display the output directly — it already includes by-project and by-worker tables.
 
@@ -45,7 +50,7 @@ Display the output directly — it already includes by-project and by-worker tab
 
 Compute `SINCE_DATE`: if `--since` was provided use that value, otherwise use 7 days ago in `YYYY-MM-DD` format.
 ```bash
-cd ~/Documents/HQ && \
+cd ~/HQ && \
   SINCE="$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '7 days ago' +%Y-%m-%d)" && \
   bash scripts/audit-log.sh query --since "$SINCE" 2>/dev/null
 ```
@@ -114,7 +119,7 @@ Sort by tasks descending.
 
 Run:
 ```bash
-cd ~/Documents/HQ && \
+cd ~/HQ && \
   bash scripts/audit-log.sh query --event task_failed 2>/dev/null
 ```
 
@@ -147,7 +152,7 @@ If zero results: print `No task failures found.`
 
 Build query:
 ```bash
-cd ~/Documents/HQ && \
+cd ~/HQ && \
   bash scripts/audit-log.sh query --project <name> 2>/dev/null
 ```
 
@@ -186,13 +191,13 @@ If zero results: print `No events found for project "{name}".`
 ## Examples
 
 ```bash
-/audit                              # Summary: last 7 days
-/audit --since 2026-03-01           # Summary since March 1
-/audit --project hq-observability   # All events for that project
-/audit --company {company}             # Summary filtered to {company}
-/audit --failures                   # All failures across all projects
-/audit --failures --project {product}     # Failures for a specific project
-/audit --project assistant-standalone --since 2026-03-05
+/audit-log                              # Summary: last 7 days
+/audit-log --since 2026-03-01           # Summary since March 1
+/audit-log --project hq-observability   # All events for that project
+/audit-log --company {company}             # Summary filtered to {company}
+/audit-log --failures                   # All failures across all projects
+/audit-log --failures --project {product}     # Failures for a specific project
+/audit-log --project assistant-standalone --since 2026-03-05
 ```
 
 ## Notes

@@ -5,6 +5,8 @@ argument-hint: [project-name] or [--status] or [--help]
 visibility: public
 ---
 
+<!-- THIN-ROUTER SPLIT — this .md is the canonical docs/examples/flags source. The paired SKILL.md is a minimal bash wrapper that execs scripts/run-project.sh. They stay forked on purpose: one is human-facing docs, the other is a dispatch shim. -->
+
 # /run-project - Ralph Loop Project Orchestrator
 
 Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` — the single spawner for `claude -p` process isolation, worktree management, swarm mode, codex autofix, regression gates, and retry queues.
@@ -53,7 +55,7 @@ Parse `$ARGUMENTS` into project name + passthrough flags:
 
 ```bash
 # Bash tool with run_in_background: true
-cd ~/Documents/HQ && \
+cd ~/HQ && \
   nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
   > workspace/orchestrator/{project}/run.log 2>&1 &
 echo "PID:$!"

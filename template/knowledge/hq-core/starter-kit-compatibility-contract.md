@@ -273,7 +273,7 @@ This section is the formal contract that Desktop code MUST adhere to.
 ### MUST NOT
 
 1. Desktop MUST NOT crash or show unhandled errors when any optional structure is missing.
-2. Desktop MUST NOT hardcode `~/Documents/HQ` as the HQ path (currently 17 places do this -- see US-001 Section 5).
+2. Desktop MUST NOT hardcode `~/HQ` as the HQ path (currently 17 places do this -- see US-001 Section 5).
 3. Desktop MUST NOT assume `companies/` exists (it is optional, not present in template).
 4. Desktop MUST NOT assume `workers/public/` or `workers/private/` layout (template uses flat `workers/`).
 5. Desktop MUST NOT assume `knowledge/public/` layout (template uses flat `knowledge/`).
@@ -296,7 +296,7 @@ This section is the formal contract that Desktop code MUST adhere to.
 
 The current Rust backend (see US-001, Section 5) needs these changes to comply with this contract:
 
-1. **Config-based HQ path:** Replace all 17 hardcoded `~/Documents/HQ` references with a config value loaded at startup. The HQ path comes from a config file (e.g., `~/.hq-desktop/config.json`) or the Tauri app's settings store.
+1. **Config-based HQ path:** Replace all 17 hardcoded `~/HQ` references with a config value loaded at startup. The HQ path comes from a config file (e.g., `~/.hq-desktop/config.json`) or the Tauri app's settings store.
 
 2. **Validation command:** Add a `validate_hq_instance(path: String)` Tauri command that runs the 7-item check and returns the `HQDetectionResult` (see US-001 detection algorithm).
 

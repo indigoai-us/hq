@@ -19,7 +19,7 @@ Optional:
 
 2. **Analyze via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ~/HQ/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && find src -name "*.tsx" | xargs grep -l "{flow}" | head -20 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "User flow analysis for the {flow} flow. Persona: {persona:-general user}.
 

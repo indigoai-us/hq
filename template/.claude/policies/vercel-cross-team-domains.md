@@ -12,4 +12,4 @@ Vercel does NOT allow adding a domain registered on Team A to a project on Team 
 
 ## Rationale
 
-Discovered 2026-03-25 when setting up {company}brands.com ({company}-brands team) → {company}brandsgroup.com ({company} team). `vercel domains add {company}brands.com --scope {company}-f0dc7e1b` returned "Not authorized to use {company}brands.com (403)". Solution was a minimal `{company}brands-redirect` project on the {company}-brands team.
+Discovered 2026-03-25 when setting up amassbrands.com ({company}-brands team) → amassbrandsgroup.com ({company} team). `vercel domains add amassbrands.com --scope {company}-f0dc7e1b` returned "Not authorized to use amassbrands.com (403)". Solution was a minimal `amassbrands-redirect` project on the {company}-brands team.
