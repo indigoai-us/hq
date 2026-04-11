@@ -82,7 +82,6 @@ Credential access: policy `credential-access-protocol.md`. Hook: `warn-cross-com
 Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
 
 
-
 ## Infrastructure-First
 
 When work implies new infrastructure, scaffold it BEFORE doing the work:

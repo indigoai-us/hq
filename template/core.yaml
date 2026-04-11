@@ -1,6 +1,6 @@
 version: 1
 hqVersion: "10.5.0"
-updatedAt: "2026-04-04T20:00:00Z"
+updatedAt: "2026-04-11T12:37:53Z"
 rules:
   locked:
     - .claude/CLAUDE.md
@@ -22,14 +22,14 @@ rules:
   open:
     - "**"
 checksums:
-  .claude/CLAUDE.md: 2283463b7f7556be043e50b1d8c51b51985c8a88b3e8bdd325c2e418300f1cca
-  .claude/hooks: 12371d277eae10aa003da39e702d45777e60902f3dc04c323a9bebdf739d45fd
-  .claude/policies: 4fc8cc8055346d7a59550fd0cc92e233f7d8ac32fa840f066a60df3e9aa7dc82
-  .claude/settings.json: fc8f5a2543e961539bc4007c6de28ebdd268c94b488e256cc8de2cb0ae57be56
-  CHANGELOG.md: 8b1a31a339084ecc78548d55c398c4aad17f0add38815b05c323a5b0d75455a1
-  MIGRATION.md: 43bb1c90e9c7c4c1dd5bf65b4d1d7870682428648377516000a5fdd2b0c6e355
-  companies/_template: 92bba93c2b7499bdfd6a6cf5ead28e1c1526b986461ba7c10e173d44f8cc624e
-  companies/manifest.yaml: 61b9cc98d7f3f80361f59affc3f50dab3d2dfe2da332ee5d6d44e948ae75802c
-  modules: d2e40fa43f89d76b48af47f0bf3cff625d812c22daca4663ab83593ea8ad9cec
-  scripts: a6e15109dca61a8e361f2519e245af41b4f8ff2e1f17aa10f36d5b42b82b7b98
-  workers/registry.yaml: a2c92095883bdfaa810a491d04e564fd69435c3ee046b894c8d349d75f80f866
+  .claude/CLAUDE.md: 118475be637de85b710d6e9510c45d96d50657c6196f0bd64c806a70806de2c0
+  .claude/hooks: aadcbaa79a77cfb2e7f43fb0404c9eef70bbe323e649513adc67d8aa3b4b33e4
+  .claude/policies: 968a85874ba1861cb204c0e2a40c820d1f5e600a05f95f774e1c4f397b9a4cab
+  .claude/settings.json: 9dda864e4c462d6cfb88549ce6c75e2b014ce5391b9913408052cda3ab4578f8
+  CHANGELOG.md: 2869e0d837c2f3b3458568a7d9aa844415e510639eca75dfcf8d0824b88d0ef7
+  companies/_template: 82de3103e2fee44daccad652896946090106907a454b93346342238466ecae3c
+  companies/manifest.yaml: c9a664bb510b5c4b40e2d327f51b1d962b1bc52edfc6b3bab8bb2bf8b3b9092d
+  MIGRATION.md: 16d72e5c4bff347577b172772fb2caab0964d390a68028085555ffb02c6d5cbc
+  modules: 9614c88a604f7a2529682265c7abe6a402bc995544ec473af15c53b6b9bb04d2
+  scripts: 7a1e01f93bdc9de8f941c23804dda75593cb0c6fdc7bf98061645290aad9e3a8
+  workers/registry.yaml: 1ef3af2a22e40f932376f5f67b43bf20afebcdef643d71e3febbf24e6ed1b07a

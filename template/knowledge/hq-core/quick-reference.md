@@ -45,13 +45,9 @@ HQ/
 
 | Company | Workers | Key Resources |
 |---------|---------|---------------|
-| {company} | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear (voyage) |
-| {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
-| personal | x-{your-name}, invoices, social-council | Slack, Gmail, LinkedIn, X |
-| {company} | pr-coordinator, pr-strategist, pr-writer, pr-outreach, pr-monitor, pr-shared | PR team |
-| {company} | site-builder, research-agent | Stripe |
-| {company} | — | Band/music |
-| {company} | — | Artist site + admin |
+| {company} | cfo, analyst, cmo | Stripe, Gusto, Deel, QB, Shopify, Linear |
+| {company} | pr-strategist, pr-writer, pr-outreach, pr-monitor | PR team |
+| personal | x-{your-name} | Slack, Gmail, LinkedIn, X |
 | {company} | — | Artist manager monorepo |
 | {company} | — | {Product} AI |
 | {company} | — | Estate platform |

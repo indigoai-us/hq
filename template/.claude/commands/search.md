@@ -29,7 +29,7 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available collections: `hq` (all HQ), `{product}` ({PRODUCT} codebase), `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`
+Available collections: `hq` (all HQ), `{product}` (product codebase), `personal`, plus one per company (run `qmd status` for full list)
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -115,7 +115,7 @@ Display: "qmd unavailable, falling back to grep"
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, + 7 more (run `qmd status` for full list)
+- Use `-c` to scope to a collection: `hq`, `{product}`, `personal`, or any company slug (run `qmd status` for full list)
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0-1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content
