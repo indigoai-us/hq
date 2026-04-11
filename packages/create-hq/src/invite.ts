@@ -20,6 +20,7 @@
  */
 
 import chalk from "chalk";
+import { execSync } from "child_process";
 import { type GitHubAuth, githubApi, openBrowser } from "./auth.js";
 
 // ─── Token types ────────────────────────────────────────────────────────────
@@ -314,4 +315,29 @@ export function openInviteEmail(
 ): void {
   const url = buildMailtoUrl(payload, token, recipientEmail);
   openBrowser(url);
+}
+
+/**
+ * Copy text to the system clipboard. Cross-platform: pbcopy (macOS),
+ * clip (Windows), xclip/xsel (Linux). Returns true on success.
+ */
+export function copyToClipboard(text: string): boolean {
+  try {
+    const platform = process.platform;
+    if (platform === "darwin") {
+      execSync("pbcopy", { input: text });
+    } else if (platform === "win32") {
+      execSync("clip", { input: text });
+    } else {
+      // Try xclip first, fall back to xsel
+      try {
+        execSync("xclip -selection clipboard", { input: text });
+      } catch {
+        execSync("xsel --clipboard --input", { input: text });
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }

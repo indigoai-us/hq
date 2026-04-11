@@ -31,6 +31,8 @@ import {
   encodeInviteToken,
   printInviteSummary,
   openInviteEmail,
+  formatInviteMessage,
+  copyToClipboard,
   type InvitePayload,
 } from "./invite.js";
 
@@ -559,14 +561,27 @@ export async function generateInviteInteractive(
 
   printInviteSummary(payload, token, false, email || undefined);
 
-  // Open the admin's email client with the invite message pre-populated
+  // Copy invite message to clipboard
+  const msg = formatInviteMessage(payload, token, email || undefined);
+  const copied = copyToClipboard(msg);
+
+  // Try to open mailto: with pre-populated email (works well on macOS/first use)
   if (email) {
     openInviteEmail(payload, token, email);
-    info("Email opened in your default mail app — review and hit Send.");
-    console.log();
-    info(`Don't forget to add them to the ${meta.org_login} GitHub org:`);
-    info(`  https://github.com/orgs/${meta.org_login}/people`);
   }
+
+  // Always show clipboard status — mailto: is unreliable on Windows after first use
+  if (copied) {
+    success("Invite message copied to clipboard — if your email client didn't open, just paste into a new email and send.");
+  } else if (!email) {
+    info("No email provided — share the invite message above via email, Slack, or text.");
+  }
+
+  // Remind admin to send the GitHub org invite
+  console.log();
+  info(`Send them a GitHub org invite (required for access):`);
+  info(`  https://github.com/orgs/${meta.org_login}/people`);
+  info(`  Click "Invite member" and enter${email ? ": " + email : " their email or GitHub username"}`);
 }
 
 /**
