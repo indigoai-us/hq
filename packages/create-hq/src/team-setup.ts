@@ -136,23 +136,31 @@ async function fetchHqInstallations(auth: GitHubAuth): Promise<GitHubInstallatio
   return (data.installations ?? []).filter((i) => i.app_slug === HQ_GITHUB_APP_SLUG);
 }
 
-async function findHqRepoInInstallation(
+async function findHqReposInInstallation(
   auth: GitHubAuth,
   installation: GitHubInstallation
-): Promise<GitHubRepo | null> {
+): Promise<GitHubRepo[]> {
   // GitHub App user token can list repos accessible through this installation
   const data = await githubApi<{ repositories: GitHubRepo[] }>(
     `/user/installations/${installation.id}/repositories?per_page=100`,
     auth
   );
   const repos = data.repositories ?? [];
-  return repos.find((r) => r.name.toLowerCase() === "hq") ?? null;
+  // Match repos named hq-* (e.g. hq-indigo, hq-frogbear)
+  return repos.filter((r) => /^hq-.+$/i.test(r.name));
+}
+
+/**
+ * Derive a team slug from the repo name. Repo naming convention: hq-{teamSlug}.
+ * e.g. "hq-indigo" → "indigo", "hq-frogbear" → "frogbear"
+ */
+function teamSlugFromRepoName(repoName: string): string {
+  return repoName.replace(/^hq-/i, "").toLowerCase();
 }
 
 /**
  * Enumerate the user's HQ team memberships by walking their App installations.
- * Returns one DiscoveredTeam per org that has both the App installed AND a
- * repo named "hq".
+ * Returns one DiscoveredTeam per hq-* repo found across all installed orgs.
  */
 export async function discoverTeams(auth: GitHubAuth): Promise<DiscoveredTeam[]> {
   const installations = await fetchHqInstallations(auth);
@@ -160,15 +168,17 @@ export async function discoverTeams(auth: GitHubAuth): Promise<DiscoveredTeam[]>
 
   for (const inst of installations) {
     try {
-      const repo = await findHqRepoInInstallation(auth, inst);
-      if (!repo) continue;
-      teams.push({
-        slug: inst.account.login.toLowerCase(),
-        name: inst.account.login,
-        repoHtmlUrl: repo.html_url,
-        cloneUrl: repo.clone_url,
-        installationId: inst.id,
-      });
+      const repos = await findHqReposInInstallation(auth, inst);
+      for (const repo of repos) {
+        const slug = teamSlugFromRepoName(repo.name);
+        teams.push({
+          slug,
+          name: `${inst.account.login}/${slug}`,
+          repoHtmlUrl: repo.html_url,
+          cloneUrl: repo.clone_url,
+          installationId: inst.id,
+        });
+      }
     } catch {
       // Per-installation errors should not abort the whole discovery
       continue;

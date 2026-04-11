@@ -13,7 +13,7 @@ program
   .name("create-hq")
   .description("Create a new HQ by Indigo — Personal OS for AI Workers")
   .version(pkg.version)
-  .argument("[directory]", "where to create HQ", "hq")
+  .argument("[directory]", "where to create HQ (prompts if omitted)")
   .option("--skip-deps", "skip dependency checks")
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
@@ -21,7 +21,7 @@ program
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
   .option("--join <token>", "join a team with an invite token after scaffolding")
-  .action(async (directory: string, options) => {
+  .action(async (directory: string | undefined, options) => {
     try {
       await scaffold(directory, options);
     } catch (err) {

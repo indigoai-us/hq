@@ -149,12 +149,13 @@ function findHqInstallation(
 async function createOrgRepo(
   auth: GitHubAuth,
   orgLogin: string,
+  repoName: string,
   description: string
 ): Promise<CreateRepoResponse> {
   return githubApi<CreateRepoResponse>(`/orgs/${orgLogin}/repos`, auth, {
     method: "POST",
     body: JSON.stringify({
-      name: "hq",
+      name: repoName,
       private: true,
       description,
       auto_init: false,
@@ -380,8 +381,9 @@ export async function runAdminOnboarding(
     hq_version: hqVersion,
   };
 
-  // 5. Create the {org}/hq repo (or adopt existing)
-  const repoLabel = `Creating ${chosenOrg.login}/hq private repo`;
+  // 5. Create the {org}/hq-{teamSlug} repo
+  const repoName = `hq-${teamSlug}`;
+  const repoLabel = `Creating ${chosenOrg.login}/${repoName} private repo`;
   stepStatus(repoLabel, "running");
 
   let repo: CreateRepoResponse | null = null;
@@ -389,18 +391,26 @@ export async function runAdminOnboarding(
     repo = await createOrgRepo(
       auth,
       chosenOrg.login,
+      repoName,
       `HQ Teams workspace for ${teamName}`
     );
     stepStatus(repoLabel, "done");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("422") && /already exists/i.test(message)) {
+      // Repo already exists — could be from a prior run. Confirm before reusing.
       stepStatus(repoLabel, "done");
-      info(`A repo named "hq" already exists in ${chosenOrg.login} — reusing it.`);
-      repo = await getExistingRepo(auth, chosenOrg.login, "hq");
+      console.log();
+      info(`${chosenOrg.login}/${repoName} already exists.`);
+      const reuse = await prompt("Reuse this repo? (Y/n)", "y");
+      if (!reuse.toLowerCase().startsWith("y")) {
+        warn("Aborting — choose a different team name next time to avoid the conflict.");
+        return null;
+      }
+      repo = await getExistingRepo(auth, chosenOrg.login, repoName);
       if (!repo) {
         stepStatus(repoLabel, "failed");
-        warn(`Could not load existing ${chosenOrg.login}/hq repo: ${message}`);
+        warn(`Could not load existing ${chosenOrg.login}/${repoName}: ${message}`);
         return null;
       }
     } else {

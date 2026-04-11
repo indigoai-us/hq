@@ -53,7 +53,7 @@ async function confirm(question: string, defaultYes: boolean): Promise<boolean> 
  * Authenticate the user, reusing a stored token if it's still valid.
  * If the user doesn't have a GitHub account yet, walk them through creating one.
  */
-async function authenticate(): Promise<GitHubAuth | null> {
+export async function authenticate(): Promise<GitHubAuth | null> {
   // Try existing token first
   const existing = loadGitHubAuth();
   if (existing) {
@@ -103,9 +103,10 @@ async function authenticate(): Promise<GitHubAuth | null> {
 export async function runTeamsFlow(
   mode: TeamsFlowMode,
   hqRoot: string,
-  hqVersion: string
+  hqVersion: string,
+  preAuth?: GitHubAuth
 ): Promise<TeamsFlowResult | null> {
-  const auth = await authenticate();
+  const auth = preAuth ?? await authenticate();
   if (!auth) return null;
 
   const result: TeamsFlowResult = { auth, member: null, admin: null };

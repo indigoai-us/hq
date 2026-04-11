@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
 
-export type SystemPackageManager = "brew" | "apt" | "dnf" | "yum" | "pacman" | null;
+export type SystemPackageManager = "brew" | "apt" | "dnf" | "yum" | "pacman" | "winget" | "choco" | null;
 
-export type OsType = "macos" | "linux-debian" | "linux-fedora" | "linux-arch" | "linux" | "unix";
+export type OsType = "macos" | "linux-debian" | "linux-fedora" | "linux-arch" | "linux" | "windows" | "unix";
 
 export interface PlatformInfo {
   os: OsType;
@@ -12,7 +12,11 @@ export interface PlatformInfo {
 
 function hasBin(name: string): boolean {
   try {
-    execSync(`which ${name}`, { stdio: "pipe" });
+    if (process.platform === "win32") {
+      execSync(`where ${name}`, { stdio: "pipe" });
+    } else {
+      execSync(`which ${name}`, { stdio: "pipe" });
+    }
     return true;
   } catch {
     return false;
@@ -21,6 +25,7 @@ function hasBin(name: string): boolean {
 
 function detectOs(): OsType {
   const platform = process.platform;
+  if (platform === "win32") return "windows";
   if (platform === "darwin") return "macos";
   if (platform !== "linux") return "unix";
 
@@ -38,6 +43,10 @@ function detectOs(): OsType {
 
 function detectSystemPm(os: OsType): SystemPackageManager {
   switch (os) {
+    case "windows":
+      if (hasBin("winget")) return "winget";
+      if (hasBin("choco")) return "choco";
+      return null;
     case "macos":
       return hasBin("brew") ? "brew" : null;
     case "linux-debian":

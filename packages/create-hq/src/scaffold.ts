@@ -18,7 +18,8 @@ import { initGit, hasGit } from "./git.js";
 import { execSync } from "child_process";
 import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
-import { runTeamsFlow, type TeamsFlowResult } from "./teams-flow.js";
+import { runTeamsFlow, authenticate, type TeamsFlowResult } from "./teams-flow.js";
+import type { GitHubAuth } from "./auth.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -70,7 +71,7 @@ async function chooseEntryMode(): Promise<EntryMode> {
 
   const wantsTeam = await confirm(
     `${chalk.bold("Would you like to create an HQ Teams account?")}`,
-    false
+    true
   );
   if (wantsTeam) return "teams-new";
 
@@ -84,7 +85,7 @@ async function chooseEntryMode(): Promise<EntryMode> {
 }
 
 export async function scaffold(
-  directory: string,
+  directory: string | undefined,
   options: ScaffoldOptions
 ): Promise<void> {
   banner(pkg.version);
@@ -97,10 +98,31 @@ export async function scaffold(
     process.exit(0);
   }
 
-  // 2. Resolve target directory
-  const targetDir = path.resolve(directory);
-  const displayDir = directory.startsWith("/")
-    ? directory
+  // 2. Authenticate immediately if teams (pure HTTP — no local deps needed)
+  let teamsAuth: GitHubAuth | null = null;
+  if (mode === "teams-existing" || mode === "teams-new") {
+    teamsAuth = await authenticate();
+    if (!teamsAuth) {
+      console.log();
+      warn("GitHub sign-in is required for HQ Teams.");
+      const fallback = await confirm("Set up a personal HQ instead?", true);
+      if (!fallback) {
+        info("No problem — come back any time with: npx create-hq");
+        process.exit(0);
+      }
+      // Fall through to personal mode
+    }
+  }
+
+  // 3. Resolve target directory (prompt if not provided)
+  let dir = directory;
+  if (!dir) {
+    console.log();
+    dir = await prompt("Where should HQ be installed?", "hq");
+  }
+  const targetDir = path.resolve(dir);
+  const displayDir = dir.startsWith("/")
+    ? dir
     : path.relative(process.cwd(), targetDir) || ".";
 
   if (fs.existsSync(targetDir)) {
@@ -117,19 +139,15 @@ export async function scaffold(
     }
   }
 
-  // 3. Dependency check — runs FIRST so missing git/node aborts before any I/O
+  // 4. Dependency check (no spinner — checkDeps is interactive with prompts)
   if (!options.skipDeps) {
-    const depsLabel = "Checking dependencies";
-    stepStatus(depsLabel, "running");
     const { allRequired } = await checkDeps();
     if (!allRequired) {
-      stepStatus(depsLabel, "failed");
       console.log();
       warn("Required dependencies are missing — cannot continue.");
       info("Install the missing dependencies above, then run create-hq again.");
       process.exit(1);
     }
-    stepStatus(depsLabel, "done");
   }
 
   // 4. Fetch core HQ template (every user gets this — personal or team)
@@ -222,13 +240,14 @@ export async function scaffold(
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 8. Teams flow (only for teams-existing or teams-new modes)
+  // 8. Teams flow (only if auth succeeded earlier)
   let teamsResult: TeamsFlowResult | null = null;
-  if (mode === "teams-existing" || mode === "teams-new") {
+  if (teamsAuth && (mode === "teams-existing" || mode === "teams-new")) {
     teamsResult = await runTeamsFlow(
       mode === "teams-existing" ? "existing" : "new",
       targetDir,
-      hqVersion
+      hqVersion,
+      teamsAuth
     );
     if (!teamsResult) {
       console.log();
