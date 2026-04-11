@@ -21,7 +21,8 @@ program
   .option("--skip-packages", "don't prompt for package discovery and installation")
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
-  .option("--join <token>", "join a team with an invite token")
+  .option("--join <token>", "join a team with an invite token (interactive prompt)")
+  .option("--invite <token>", "join a team via invite — direct, no extra prompts")
   .action(async (directory: string | undefined, options) => {
     try {
       await scaffold(directory, options);

@@ -203,46 +203,51 @@ export function formatInviteMessage(
   token: string,
   memberEmail?: string
 ): string {
+  const orgInviteUrl = `https://github.com/orgs/${payload.org}/invitation`;
   const lines: string[] = [
     `You've been invited to join ${payload.teamName} on HQ!`,
     "",
   ];
 
-  const orgInviteUrl = `https://github.com/orgs/${payload.org}/invitation`;
-
+  // Step 1: Accept org invite (which handles GitHub account creation too)
   if (memberEmail) {
     lines.push(
-      `Step 1: Create a GitHub account (if you don't have one): https://github.com/signup`,
-      `        Use this email address: ${memberEmail}`,
-      "",
-      `Step 2: Accept the organization invite: ${orgInviteUrl}`,
-      `        (you should also receive an email from GitHub)`,
+      `Step 1: Accept the GitHub invitation sent to ${memberEmail}`,
+      `        (if you don't have a GitHub account yet, you'll be guided to create one)`,
+      `        Direct link: ${orgInviteUrl}`,
       ""
     );
   } else {
     lines.push(
-      `Step 1: Create a GitHub account (if you don't have one): https://github.com/signup`,
-      "",
-      `Step 2: Ask @${payload.invitedBy} to add you to the ${payload.org} GitHub organization`,
-      `        Then accept the invite at: ${orgInviteUrl}`,
+      `Step 1: Accept your GitHub organization invite`,
+      `        Direct link: ${orgInviteUrl}`,
+      `        (if you haven't received one, ask @${payload.invitedBy} to send it)`,
       ""
     );
   }
 
+  // Step 2: Install Node.js (platform-specific instructions)
   lines.push(
-    `Step 3: Install Node.js (if you don't have it): https://nodejs.org`,
+    `Step 2: Install Node.js (if you don't have it already)`,
     "",
-    `Step 4: Open your terminal and run:`,
+    `   Windows (PowerShell, run as Administrator):`,
+    `     winget install OpenJS.NodeJS.LTS`,
     "",
-    `   npx create-hq`,
+    `   Mac (Terminal):`,
+    `     brew install node`,
+    `     (if you don't have brew: https://brew.sh)`,
     "",
-    `Step 5: When asked "Do you have an HQ Teams account?", choose Yes`,
+    `   Or download from: https://nodejs.org`,
+    ""
+  );
+
+  // Step 3: Single command with token
+  lines.push(
+    `Step 3: Open your terminal and run this command:`,
     "",
-    `Step 6: Paste this invite code when prompted:`,
+    `   npx create-hq --invite ${token}`,
     "",
-    `   ${token}`,
-    "",
-    `Step 7: Follow the remaining prompts to complete setup`,
+    `   Then follow the prompts to sign in with GitHub and complete setup.`,
     "",
     `---`,
     `Questions? Ask @${payload.invitedBy} or visit https://getindigo.ai/hq`,

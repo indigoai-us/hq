@@ -32,6 +32,7 @@ interface ScaffoldOptions {
   tag?: string;
   localTemplate?: string;
   join?: string;
+  invite?: string;
 }
 
 type EntryMode = "personal" | "teams-existing" | "teams-new" | "exit";
@@ -90,8 +91,9 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode — if --join is provided, force teams-existing
-  const mode = options.join ? "teams-existing" as EntryMode : await chooseEntryMode();
+  // 1. Entry mode — if --invite or --join is provided, force teams-existing
+  const inviteToken = options.invite || options.join;
+  const mode = inviteToken ? "teams-existing" as EntryMode : await chooseEntryMode();
   if (mode === "exit") {
     console.log();
     info("No problem — come back any time with: npx create-hq");
@@ -253,7 +255,7 @@ export async function scaffold(
       targetDir,
       hqVersion,
       teamsAuth,
-      options.join
+      inviteToken
     );
     if (!teamsResult) {
       console.log();
