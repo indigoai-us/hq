@@ -13,7 +13,7 @@ import { execSync } from "child_process";
 import { createInterface } from "readline";
 import chalk from "chalk";
 import { authenticate } from "./teams-flow.js";
-import { generateInviteInteractive } from "./admin-onboarding.js";
+import { inviteLoop } from "./admin-onboarding.js";
 import type { TeamMetadata } from "./company-template.js";
 import { warn, info } from "./ui.js";
 
@@ -127,5 +127,5 @@ export async function runInviteCommand(): Promise<void> {
     return;
   }
 
-  await generateInviteInteractive(auth, selected.meta, selected.cloneUrl);
+  await inviteLoop(auth, selected.meta, selected.cloneUrl);
 }

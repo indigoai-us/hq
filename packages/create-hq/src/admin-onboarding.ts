@@ -507,11 +507,7 @@ export async function runAdminOnboarding(
       info(`  git clone ${repo.clone_url} companies/${teamSlug}`);
 
       // Still offer invite generation
-      console.log();
-      const wantsInvite = await prompt("Invite a team member now? (Y/n)", "y");
-      if (wantsInvite.toLowerCase().startsWith("y")) {
-        await generateInviteInteractive(auth, meta, repo.clone_url);
-      }
+      await inviteLoop(auth, meta, repo.clone_url);
 
       return {
         team: meta,
@@ -524,12 +520,8 @@ export async function runAdminOnboarding(
   console.log();
   success(`Team "${teamName}" created — ${repo.html_url}`);
 
-  // 8. Offer to generate a member invite
-  console.log();
-  const wantsInvite = await prompt("Invite a team member now? (Y/n)", "y");
-  if (wantsInvite.toLowerCase().startsWith("y")) {
-    await generateInviteInteractive(auth, meta, repo.clone_url);
-  }
+  // 8. Offer to generate member invites
+  await inviteLoop(auth, meta, repo.clone_url);
 
   return {
     team: meta,
@@ -541,8 +533,8 @@ export async function runAdminOnboarding(
 // ─── Invite generation (used by admin onboarding + standalone) ──────────────
 
 /**
- * Interactive invite generation. Prompts for email, sends org invite,
- * generates token, and prints instructions.
+ * Interactive invite generation for a single member. Prompts for email,
+ * sends org invite, generates token, and prints instructions.
  */
 export async function generateInviteInteractive(
   auth: GitHubAuth,
@@ -580,4 +572,27 @@ export async function generateInviteInteractive(
   }
 
   printInviteSummary(payload, token, emailSent, email || undefined);
+}
+
+/**
+ * Invite loop — asks "Invite a team member?" and repeats until the admin
+ * says no. Used after team creation and from the standalone invite command.
+ */
+export async function inviteLoop(
+  auth: GitHubAuth,
+  meta: TeamMetadata,
+  cloneUrl: string
+): Promise<void> {
+  let first = true;
+  while (true) {
+    console.log();
+    const question = first
+      ? "Invite a team member now? (Y/n)"
+      : "Invite another team member? (y/N)";
+    const defaultAnswer = first ? "y" : "n";
+    const answer = await prompt(question, defaultAnswer);
+    if (!answer.toLowerCase().startsWith("y")) break;
+    await generateInviteInteractive(auth, meta, cloneUrl);
+    first = false;
+  }
 }
