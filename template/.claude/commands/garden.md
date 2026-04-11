@@ -75,6 +75,7 @@ Process each chunk sequentially (scout→audit→curate per chunk)
 _orphans chunk = everything not claimed by any company:
   workspace/threads/
   workspace/reports/
+  workspace/insights/ (global/tools/concepts — not company-scoped)
   workspace/orchestrator/ (runs not tied to a company)
   projects/ (projects not matching any company repo)
   workers/public/ (non-team, non-company workers)

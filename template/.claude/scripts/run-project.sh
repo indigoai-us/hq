@@ -25,7 +25,7 @@ set -euo pipefail
 # =============================================================================
 
 HQ_ROOT="~/Documents/HQ"
-export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
 SESSION_ID="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -201,6 +201,7 @@ RETRY_FAILED=false
 TIMEOUT=""
 VERBOSE=false
 TMUX_MODE=false
+HEADLESS=false
 IN_PLACE=false
 SWARM_MODE=false
 SWARM_MAX=4
@@ -280,6 +281,11 @@ HELP
       PROJECT="$1"; shift ;;
   esac
 done
+
+# Headless detection: non-interactive when permissions bypassed (pipeline mode)
+if [[ "$NO_PERMISSIONS" == true ]]; then
+  HEADLESS=true
+fi
 
 # =============================================================================
 # --tmux: Launch in tmux session with Remote Control

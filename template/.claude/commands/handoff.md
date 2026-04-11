@@ -87,6 +87,26 @@ Prepare for a new session to continue this work.
     - Session already updated knowledge/docs directly → scan for remaining coverage gaps only
     - Repo README already comprehensive → skip (don't re-propose what's already covered)
 
+0c. **Extract session insights**
+    Complements step 0 (operational rules) and step 0b (domain knowledge).
+    Insights = educational understanding (why things work, patterns, concepts).
+
+    **Quick gate — skip if:**
+    Session was purely mechanical (deploys, config, quick fixes) with no
+    educational ★ Insight blocks or explanatory content generated.
+
+    **If insights exist:**
+    Self-reflect on session for 0-5 educational/conceptual takeaways worth persisting.
+    For each, call `/learn` with source: "session-insight":
+    - Title + core insight text (2-4 sentences)
+    - `/learn` handles dedup, scope classification, and writes to workspace/insights/
+
+    **Rules:**
+    - Only persist genuinely reusable understanding, not session-specific facts
+    - An insight about "why EventBridge retries reset on DLQ republish" = good
+    - "We deployed to staging" = not an insight, skip
+    - Max 5 per handoff (cap token cost)
+
 1. **Ensure thread exists**
    - Check `workspace/threads/` for recent thread
    - If none, run `/checkpoint` first to create one

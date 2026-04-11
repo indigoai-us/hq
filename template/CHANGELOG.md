@@ -1,5 +1,25 @@
 # Changelog
 
+## [10.6.0] — 2026-04-07
+
+### Added
+- **`cleanup-mcp-processes` hook** — kills orphan MCP server processes on session Stop
+
+### Changed
+- **21 commands updated** — audit, checkpoint, cleanup, garden, handoff, harness-audit, hq-growth-dashboard, learn, newworker, pr, prd, reanchor, recover-session, remember, run-pipeline, run-project, run, search-reindex, search, startwork, understand-project
+- **11 skills updated** — ascii-graphic, colorize, consolidate, execute-task, handoff, land, prd, run-project, run, search, social-graphic
+- **154 policies synced** — scope-filtered (global + command); removed cross-cutting scope from sync
+- **5 hooks updated** — auto-checkpoint-trigger, hook-gate, observe-patterns, screenshot-resize-trigger, cleanup-mcp-processes (new)
+- **CLAUDE.md** — refreshed all sections, removed stale references
+- **USER-GUIDE.md** — cleaned private command references, updated examples
+- **modules.yaml** — removed company-specific module entries
+- **settings.json** — added cleanup-mcp-processes Stop hook, synced env keys
+- **Workers** — codex-coder, codex-debugger, codex-engine, sample-worker updated
+- **Registry** — bumped to v10.6.0
+
+### Removed
+- (none)
+
 ## [10.5.0] — 2026-04-04
 
 ### Added

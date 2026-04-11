@@ -12,4 +12,4 @@ Always web-search current Anthropic pricing before hardcoding cost constants. Pr
 
 ## Rationale
 
-Discovered Mar 2026 when wiring LLM cost tracking. The hardcoded constants were from an earlier pricing era. Cost dashboards showed wildly inflated numbers.
+Discovered Mar 2026 when wiring LLM cost tracking for an agent fleet. The hardcoded constants were from an earlier pricing era. Cost dashboards showed wildly inflated numbers.

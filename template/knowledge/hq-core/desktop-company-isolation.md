@@ -31,7 +31,7 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company} | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
+| {company} | {product}, {product}-app-2 | stripe, gusto, deel, quickbooks, linear + (on disk: gmail, google-cloud, meta) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
 | {company} | {your-repo}, {your-repo} | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
 | {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
 | personal | (none) | slack + (on disk: gmail, linkedin, x) | x-{your-name}, invoices | yes | personal |
@@ -120,7 +120,7 @@ Since HQ has no explicit schema for classifying settings sensitivity, Desktop mu
 
 1. **File name patterns (Secret)**: `*credentials*`, `*secret*`, `*token*`, `*key*`, `*auth*`, `*.pem`, `*.p12`
 2. **Content patterns (Secret)**: Files containing `apiKey`, `api_key`, `secret`, `token`, `client_secret`, `private_key`, `-----BEGIN`
-3. **Known secret dirs**: `stripe`, `gusto`, `deel`, `quickbooks`, `shopify-partner`, `linear*`, `figma`, `google-drive`, `google-cloud`, `gmail`, `slack`, `meta`, `infobip`, `attio`, `clerk`, `retool`, `loops` -- all of these contain credentials
+3. **Known secret dirs**: `stripe`, `gusto`, `deel`, `quickbooks`, `linear*`, `figma`, `google-drive`, `google-cloud`, `gmail`, `slack`, `meta`, `clerk`, `retool`, `loops` -- all of these contain credentials
 4. **Default assumption**: If uncertain, treat as Secret (fail safe)
 
 ### Implementation Approach

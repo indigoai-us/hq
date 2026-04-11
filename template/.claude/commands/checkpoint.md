@@ -16,6 +16,11 @@ Save current work state as a thread to survive context loss.
 0. **Capture session learnings**
    Reflect on this session. If any reusable learnings exist (mistakes, patterns, gotchas, workflow improvements), call `/learn` for each before proceeding. Skip if nothing novel was learned. See CLAUDE.md `## Session Learnings` for guidance.
 
+0c. **Extract session insights (lightweight)**
+    Same as /handoff step 0c but briefer — max 2 insights.
+    Skip if session just started or no explanatory content generated.
+    Call `/learn` with source: "session-insight" for each.
+
 1. **Check for recent auto-checkpoint** (upgrade instead of duplicate)
    ```bash
    # Find auto-checkpoints from last 5 minutes

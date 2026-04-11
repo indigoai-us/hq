@@ -18,6 +18,7 @@ Audit HQ for policy violations, migrate outdated structures, and fix inconsisten
 - **--fix**: Auto-fix simple issues (git cleanup, archive stale files)
 - **--reindex**: Regenerate ALL INDEX.md files from disk (full rebuild)
 - **--consolidate-learnings**: Deduplicate, merge, and reorganize learned rules across all target files
+- **--consolidate-insights**: Deduplicate, merge, and flag stale insights in `workspace/insights/` and `companies/*/knowledge/insights/`
 
 ## The Job
 
@@ -321,6 +322,7 @@ Run `/cleanup --migrate` to convert prd.json files
 Run `/cleanup --fix` to clean git and archive stale files
 Run `/cleanup --reindex` to regenerate all INDEX.md files
 Run `/cleanup --consolidate-learnings` to dedup and reorganize learned rules
+Run `/cleanup --consolidate-insights` to dedup and flag stale insights
 ```
 
 ### After Migration
@@ -414,6 +416,83 @@ Stale rules:
 
 Contradictions:
   - {rule_a} vs {rule_b} — {explanation}
+  ...
+```
+
+---
+
+## Consolidate Insights (--consolidate-insights)
+
+Deduplicate, merge, and flag stale insights across all insight directories.
+
+### Step 1: Collect all insights
+
+Scan these locations:
+
+| Location | How to find |
+|----------|-------------|
+| `workspace/insights/global/` | `ls workspace/insights/global/*.md` |
+| `workspace/insights/tools/` | `ls workspace/insights/tools/*.md` |
+| `workspace/insights/concepts/` | `ls workspace/insights/concepts/*.md` |
+| `companies/*/knowledge/insights/` | `ls companies/*/knowledge/insights/*.md 2>/dev/null` |
+
+Build master list: `{title, slug, scope, confidence, created, file_path}` from YAML frontmatter.
+
+### Step 2: Cross-file dedup
+
+For each insight:
+```bash
+qmd vsearch "{insight title + first sentence}" --json -n 10
+```
+
+Flag:
+- **Exact duplicates** (similarity > 0.85): keep the more detailed version, remove the other
+- **Near-duplicates** (0.6–0.85): merge into one insight with combined context, remove the weaker copy
+- **Cross-scope overlap**: company insight that duplicates a global insight → keep company version (more specific)
+
+### Step 3: Flag stale insights
+
+Insights older than 90 days with `confidence: medium` are stale candidates:
+```bash
+# Find medium-confidence insights older than 90 days
+for f in workspace/insights/**/*.md companies/*/knowledge/insights/*.md; do
+  [ -f "$f" ] || continue
+  confidence=$(grep "^confidence:" "$f" | awk '{print $2}')
+  created=$(grep "^created:" "$f" | awk '{print $2}')
+  [ "$confidence" = "medium" ] && echo "STALE CANDIDATE: $f (created: $created)"
+done
+```
+
+Present stale candidates for user review. Don't auto-delete.
+
+### Step 4: Apply changes
+
+For each proposed change (remove/merge), apply using Edit tool. Update `updated` date on merged insights.
+
+### Step 5: Reindex
+
+```bash
+qmd update && qmd embed
+```
+
+### Step 6: Report
+
+```
+Insight Consolidation
+=====================
+Insights scanned: {total}
+  - Global: {n}
+  - Tools: {n}
+  - Concepts: {n}
+  - Company-scoped: {n} across {m} companies
+
+Actions taken:
+  ✓ Removed {n} duplicates
+  ✓ Merged {n} near-duplicates
+  ⚠ {n} stale insights flagged (review below)
+
+Stale candidates:
+  - {title} in {file} — medium confidence, created {date}
   ...
 ```
 

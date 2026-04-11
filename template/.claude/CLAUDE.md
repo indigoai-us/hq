@@ -36,36 +36,7 @@ Toggle thinking with Option+T.
 
 ## Hook Profiles
 
-Runtime-configurable hook execution via environment variables (no settings.json edits needed).
-
-**Profiles** (set via `HQ_HOOK_PROFILE` env var):
-
-| Profile | Hooks | Use Case |
-|---------|-------|----------|
-| `minimal` | block-hq-glob, block-hq-grep, warn-cross-company-settings, detect-secrets | Critical safety only (no checkpoint nudges) |
-| `standard` | All minimal + auto-checkpoint-trigger, auto-handoff-trigger, observe-patterns, block-inline-story-impl | Default (all current hooks active) |
-| `strict` | All standard + future quality/format hooks | Development/testing (reserved) |
-
-**Default:** `standard` (all hooks active)
-
-**Disable individual hooks** (comma-separated):
-```
-HQ_DISABLED_HOOKS=auto-checkpoint-trigger,auto-handoff-trigger
-```
-
-**Usage examples:**
-```bash
-# Minimal mode (safety hooks only)
-HQ_HOOK_PROFILE=minimal bash -c 'claude code ...'
-
-# Disable checkpoint nudges
-HQ_DISABLED_HOOKS=auto-checkpoint-trigger claude code
-
-# Combine
-HQ_HOOK_PROFILE=standard HQ_DISABLED_HOOKS=auto-handoff-trigger claude code
-```
-
-**Technical:** All hooks route through `.claude/hooks/hook-gate.sh` which reads profile/disabled lists before delegating.
+Runtime profiles via `HQ_HOOK_PROFILE` env var: `minimal` (safety only), `standard` (default, all hooks), `strict` (reserved). Disable individual hooks: `HQ_DISABLED_HOOKS=hook1,hook2`. All hooks route through `.claude/hooks/hook-gate.sh`.
 
 ## Session Handoffs
 
@@ -77,13 +48,7 @@ When the user corrects factual content (pricing, session descriptions, product d
 
 ## INDEX.md System
 
-Hierarchical INDEX.md files provide a navigable map of HQ. Read parent INDEX before diving into subdirectories.
-
-**Key indexes:** `projects/INDEX.md`, `workspace/orchestrator/INDEX.md`, `companies/*/knowledge/INDEX.md`, `workers/*/INDEX.md`, `knowledge/public/INDEX.md`, `workspace/reports/INDEX.md`
-
-**Spec:** `knowledge/public/hq-core/index-md-spec.md`
-**Rebuild all:** `/cleanup --reindex`
-**Auto-updated by:** `/checkpoint`, `/handoff`, `/reanchor`, `/prd`, `/run-project`, `/newworker`, content commands
+Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/public/hq-core/index-md-spec.md`. Rebuild all: `/cleanup --reindex`. Auto-updated by checkpoint/handoff/prd/run-project commands.
 
 ## Structure
 
@@ -95,18 +60,9 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 ## Company Isolation
 
-Manifest: `companies/manifest.yaml` — maps each company → repos, workers, knowledge, deploy targets, infrastructure.
+Manifest: `companies/manifest.yaml` — maps companies to repos, workers, knowledge, deploy targets. Fields: `services`, `vercel_team`, `aws_profile`, `dns_zones`.
 
-**Manifest fields for infrastructure routing:**
-- `services` — which credential types the company has (aws, linear, slack, etc.)
-- `vercel_team` — Vercel scope ID for deploys (`--scope {team}`)
-- `aws_profile` — AWS CLI profile name (`AWS_PROFILE={profile}`)
-- `dns_zones` — domain → Route 53 hosted zone ID mapping
-
-**Before any company-scoped operation:**
-1. Identify active company from context (cwd, repo → manifest lookup, domain, worker)
-2. Read `companies/{co}/policies/` — company policies have service-specific instructions
-3. Use manifest infrastructure fields — don't guess Vercel scopes, AWS profiles, or zone IDs
+**Before company-scoped operations:** identify company from context → read `companies/{co}/policies/` → use manifest infrastructure fields (don't guess).
 
 **Hard rules:**
 - NEVER read/use credentials from a different company's settings
@@ -119,9 +75,7 @@ Manifest: `companies/manifest.yaml` — maps each company → repos, workers, kn
 - If prd.json `linearCredentials` path doesn't match active company per manifest, ABORT and warn
 - When task spans multiple companies (rare), explicitly acknowledge cross-company scope
 
-**Credential access:** See policy `credential-access-protocol.md`. Always: manifest lookup → company policies → company settings. Never guess.
-
-**Hook:** `warn-cross-company-settings.sh` (PreToolUse on Read) warns when reading a company's settings that doesn't match current cwd context.
+Credential access: policy `credential-access-protocol.md`. Hook: `warn-cross-company-settings.sh`.
 
 ## Sensitive Path Deny Lists
 
@@ -161,26 +115,12 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Policies
 
-Before executing tasks, load applicable policies from all three directories:
-1. `companies/{co}/policies/` — company-scoped rules (infer company from context)
-2. `repos/{repo}/.claude/policies/` — repo-scoped rules (if working inside a repo)
-3. `.claude/policies/` — cross-cutting + command-scoped rules
+Rules stored as policy files (YAML frontmatter + `## Rule` + `## Rationale`). Three directories, checked in precedence:
+1. `companies/{co}/policies/` — company-scoped (highest)
+2. `repos/{repo}/.claude/policies/` — repo-scoped
+3. `.claude/policies/` — cross-cutting + command-scoped (lowest)
 
-Hard enforcement policies block on violation; soft enforcement policies note deviations.
-
-**Spec:** `knowledge/public/hq-core/policies-spec.md`
-**Template:** `companies/_template/policies/example-policy.md`
-**Format:** YAML frontmatter (id, title, scope, trigger, enforcement) + `## Rule` + `## Rationale`
-**Precedence:** company > repo > command > global
-
-**Standard Policy Loading Protocol (for all commands):**
-When a command resolves a company and/or repo context:
-1. Company: `companies/{co}/policies/` — read all (skip `example-policy.md`)
-2. Repo: `{repoPath}/.claude/policies/` — read all (if dir exists)
-3. Global: `.claude/policies/` — filter by `trigger` field relevance to current task
-4. Hard-enforcement → must follow; soft-enforcement → note deviations
-5. Display policy count in any orientation/status output
-Commands implementing this: `/startwork`, `/run-project`, `/execute-task`, `/prd`, `/run`, `/learn`
+Hard enforcement blocks on violation; soft notes deviations. Commands auto-load applicable policies (`/startwork`, `/run-project`, `/execute-task`, `/prd`, `/run`, `/learn`). Spec: `knowledge/public/hq-core/policies-spec.md`. Template: `companies/_template/policies/example-policy.md`.
 
 ## Sub-Agent Rules
 
@@ -204,117 +144,44 @@ Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-sec
 
 ## Knowledge Repos
 
-Every knowledge folder is its own git repo with independent versioning.
-
-**Company knowledge** (`companies/{co}/knowledge/`): Embedded git repos — the `.git/` lives inside the directory. HQ gitignores the content. To commit: `cd companies/{co}/knowledge/ && git add && git commit && git push`.
-
-**Shared knowledge** (`knowledge/public/`): Symlinks to `repos/public/knowledge-{name}/`. To commit: `cd` to the symlink target repo.
-
-**Reading/searching:** Transparent. `qmd`, `Glob`, `Grep`, `Read` all work directly.
-
-**Adding new knowledge:** Company: `git init` in `companies/{co}/knowledge/`. Shared: create repo in `repos/public/knowledge-{name}`, symlink to `knowledge/public/`. Register in `modules/modules.yaml`.
+Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/` (embedded git). Shared: `knowledge/public/` (symlinks to `repos/public/knowledge-{name}/`). Register new repos in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
 
 ## Skills
 
-`.claude/skills/` is the canonical HQ skill tree. Do not duplicate skill definitions for Codex.
-
-Use a bridge instead of copying files:
-- `scripts/codex-skill-bridge.sh install` creates `~/.codex/skills/hq` pointing at `.claude/skills/`
-- The same install also mirrors `.claude/` into project-local `.codex/claude` and exposes `.claude/commands/` as project-local `.codex/prompts`
-- New skills created under `.claude/skills/` become available to Codex without a sync step
-- New command files created under `.claude/commands/` become available to Codex through the prompt bridge without a sync step
-- Inference: Codex may need a fresh session to notice brand-new bridged content, but the filesystem bridge stays current
-
-**Dual-format approach (Codex promotion):** Some skills have both `SKILL.md` (Codex version) and a corresponding `command.md` (Claude Code source of truth). `SKILL.md` is a Codex-adapted derivative — same goal, adapted execution model. When a skill exists in `.claude/skills/{name}/`, it is Codex-ready if it also has `agents/openai.yaml`.
-
-**Codex-ready skill structure:**
-```
-.claude/skills/{name}/
-  SKILL.md              # Codex-adapted instructions (frontmatter: name:, description:)
-  agents/
-    openai.yaml         # display_name + short_description — required for Codex discovery
-```
-
-**Codex adaptation rules (apply when writing new SKILL.md files):**
-- No Claude Code-only tools: never reference `Task`, `EnterPlanMode`, `TodoWrite`
-- Search: `qmd` CLI first (`qmd search/vsearch/query`), Grep as fallback
-- Orchestration: inline execution only — no sub-agent spawning (describe as "inline phases")
-- Rephrase anti-instructions: "Do NOT use TodoWrite" → "Track state in your context, not via TodoWrite"
-
-**12 promoted skills (Codex-ready as of 2026-04-03):**
-`review`, `investigate`, `retro`, `startwork`, `handoff`, `brainstorm`, `prd`, `search`, `learn`, `run`, `execute-task`, `run-project`
-
-**Coverage tool:** `bash scripts/codex-skill-bridge.sh status` — shows skills count, openai.yaml coverage, and which commands lack corresponding skills. Run after adding new skills or commands.
+`.claude/skills/` is the canonical skill tree. Codex bridge: `scripts/codex-skill-bridge.sh install`. Dual-format: `command.md` (Claude Code) + `SKILL.md` (Codex). 12 promoted skills (Codex-ready). Coverage: `bash scripts/codex-skill-bridge.sh status`. Full pattern: `knowledge/public/hq-core/codex-skill-pattern.md`.
 
 ## Search (qmd)
 
-HQ and active codebases are indexed with [qmd](https://github.com/tobi/qmd) for local semantic + full-text search.
+HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v2.1.0).
 
-**Collections:** `hq` (all HQ), `{product}` ({PRODUCT} monorepo), `{company}`, `{company}`, `personal` (per-company). Use `-c {collection}` to scope searches. When working on a specific company, prefer `-c {company}` to avoid cross-company results.
+**Collections (17):** `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`. Use `-c {collection}` to scope.
 
-**When to search:** Before any planning, research, or context-gathering task, search with `qmd` first. This includes codebase exploration — use qmd for conceptual search instead of Grep.
+**Commands:**
+- `qmd search "<query>" --json -n 10` — BM25 keyword (fast, default)
+- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual
+- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality)
+- `qmd get "<path>"` / `qmd multi-get "<pattern>"` — retrieve by path/glob
+- Add `-c {collection}` to scope to a specific collection
 
-**Commands (run via Bash tool):**
-- `qmd search "<query>" --json -n 10` — BM25 keyword search (fast, default)
-- `qmd vsearch "<query>" --json -n 10` — semantic/conceptual search
-- `qmd query "<query>" --json -n 10` — hybrid BM25 + vector + re-ranking (best quality, slower)
-- Add `-c {collection}` to scope to a specific collection (e.g. `-c {product}`)
+**Search rules:**
 
-**Slash commands:** `/search <query>`, `/search-reindex`
+| Need | Tool |
+|------|------|
+| HQ content by topic | `qmd search` or `qmd vsearch` |
+| Code by concept | `qmd vsearch -c {collection}` |
+| Project PRD / worker yaml | `qmd search` or direct Read (registry/manifest) |
+| Files by path pattern | `Glob` with scoped `path:` |
+| Exact pattern in code | `Grep` |
 
-### Search rules (all commands/skills must follow)
-
-| Need | Tool | Example |
-|------|------|---------|
-| Find HQ content by topic | `qmd search` or `qmd vsearch` | "Find knowledge about Stripe integration" |
-| Find code by concept | `qmd vsearch -c {product}` | "where auth middleware is defined" |
-| Find project PRD | `qmd search` or direct `Read` | `qmd search "project-name prd.json" --json -n 5` |
-| Find worker yaml | `Read workers/registry.yaml` → path | Never Glob — registry has all paths |
-| Find companies | `Read companies/manifest.yaml` | Never Glob — manifest lists all companies |
-| Find files by path pattern | `Glob` with scoped `path:` | `Glob pattern="*.ts" path="repos/private/{product}/apps/"` |
-| Exact pattern match in code | `Grep` (works from HQ root) | `import.*AuthService` with `glob: "*.ts"` |
-| Validate structured files | `grep` in Bash | Checking YAML fields, git branch filtering |
-
-**Never use Glob for prd.json or worker.yaml discovery.** Use `qmd search` or read index files directly (`manifest.yaml`, `registry.yaml`). Hook enforced — Glob with these patterns is blocked.
-
-**Prefer qmd for codebase exploration.** Use Grep for exact pattern matching. Commands/skills scanning HQ must use `qmd vsearch` or `qmd search`, not Grep.
-
-**`.ignore` file protects Grep** — HQ has a `.ignore` (ripgrep ignore) that blocks `repos/`, `node_modules/`, `**/.git/`. Grep from HQ root is safe. Glob from HQ root still times out — always pass a scoped `path:` to Glob.
-
-**Glob rules:**
-- NEVER Glob for `prd.json` or `worker.yaml` — blocked by hook, use qmd or direct Read
-- ALWAYS pass `path:` scoped to a subdirectory (`companies/`, `workers/`, `workspace/`)
-- NEVER Glob from HQ root — `.ignore` does NOT protect Glob (only Grep)
-- Parallel Glob calls: if one times out, ALL sibling tool calls in the same message die ("Sibling tool call errored")
-
-**When in doubt:** `qmd search "project name"` finds files by topic without any timeout risk
-
-## Policies (Learned Rules)
-
-Rules are stored as policy files — structured markdown with YAML frontmatter. Migrated from inline `## Learned Rules` on 2026-02-22.
-
-**Directories (check before executing tasks):**
-- `companies/{co}/policies/` — company-scoped rules
-- `repos/{pub|priv}/{repo}/.claude/policies/` — repo-scoped rules
-- `.claude/policies/` — cross-cutting + command-scoped rules
-
-**Precedence:** company > repo > command > global. Hard enforcement blocks on violation; soft notes deviations.
-
-**Spec:** `knowledge/public/hq-core/policies-spec.md`
-**Template:** `companies/_template/policies/example-policy.md`
+**Hard rules:** Never Glob for `prd.json`/`worker.yaml` (hook blocked). Always pass `path:` to Glob (never from HQ root). Prefer qmd for codebase exploration; Grep for exact matching. `.ignore` protects Grep from HQ root but NOT Glob. Parallel Glob calls: if one times out, ALL sibling calls die.
 
 ## Learning System
 
-Learnings are captured as **policy files** in scope-appropriate directories:
-- Company rules → `companies/{co}/policies/{slug}.md`
-- Repo rules → `repos/{pub|priv}/{repo}/.claude/policies/{slug}.md`
-- Command rules → `.claude/policies/{slug}.md` (with `scope: command`)
-- Cross-cutting rules → `.claude/policies/{slug}.md`
+Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). `/remember` delegates to `/learn` with `enforcement: hard`. Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
 
-- `/learn` captures, classifies, and writes policy files automatically after task execution
-- `/remember` delegates to `/learn` — user corrections get `enforcement: hard`
+## Insights
 
-Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
+Educational insights persist at `workspace/insights/`. Captured via `/learn`, auto-triggered by `/handoff` and `/checkpoint`. Spec: `knowledge/public/hq-core/insights-spec.md`.
 
 ## Git Workflow Rules
 
@@ -323,7 +190,6 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 - If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
 
-## Project Repos - Commit Rules
 
 
 ## Vercel Deployments
@@ -332,22 +198,13 @@ Event log: `workspace/learnings/*.json` (append-only, for analytics/dedup).
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
 
-## Auto-Learn (Build Activities)
-
-When building HQ infrastructure, auto-capture structural changes via `/learn`. See **Infrastructure-First** section for the full creation checklist and reindex triggers.
-
-**Why:** Fresh sessions discover resources via `qmd`, `registry.yaml`, and `companies/{co}/projects/*/prd.json`. Global learned rules are reserved for cross-cutting safety rules. Worker-scoped rules go in `worker.yaml`.
-
 ## Auto-Checkpoint (PostToolUse Hook)
 
-PostToolUse hooks on Bash, Edit, and Write tool calls detect checkpoint-worthy events and inject an `AUTO-CHECKPOINT REQUIRED` nudge. When you see this nudge, **immediately write a lightweight thread file** and continue working.
+PostToolUse hooks detect checkpoint-worthy events and inject `AUTO-CHECKPOINT REQUIRED`. When you see this, write a lightweight thread file immediately and continue.
 
-**Triggers (hook-detected):**
-
-| Tool | Pattern | Trigger | Debounce? |
-|------|---------|---------|-----------|
-| Bash | `git commit` | `git-commit` | NO (always) |
-| Bash | `git push` | `git-push` | NO (always) |
+| Tool | Pattern | Trigger | Debounce |
+|------|---------|---------|----------|
+| Bash | `git commit` / `git push` | `git-commit` / `git-push` | NO |
 | Bash | `gh pr create/merge` | `pr-operation` | 5min |
 | Bash | `vercel deploy/--prod` | `deployment` | 5min |
 | Bash | `npm/bun publish` | `package-publish` | 5min |
@@ -356,48 +213,7 @@ PostToolUse hooks on Bash, Edit, and Write tool calls detect checkpoint-worthy e
 | Edit | any file (excl. `workspace/threads/`) | `file-edit` | 5min |
 | Write | `workspace/reports/`, `social-drafts/`, `companies/*/data/` | `file-generation` | 5min |
 
-**Debounce:** Most triggers suppress duplicate nudges within 5 minutes (tracked via `/tmp/hq-checkpoint-last-${PPID}`). Git commit and git push always fire immediately regardless of debounce.
-
-**Also checkpoint after (instruction-based, no hook):**
-- Worker skill completion (via `/run`) — write auto-checkpoint before reporting results
-
-**Lightweight auto-checkpoint format:**
-```json
-{
-  "thread_id": "T-{YYYYMMDD}-{HHMMSS}-auto-{slug}",
-  "version": 1,
-  "type": "auto-checkpoint",
-  "created_at": "ISO8601",
-  "updated_at": "ISO8601",
-  "workspace_root": "~/Documents/HQ",
-  "cwd": "current/working/dir",
-  "git": {
-    "branch": "main",
-    "current_commit": "abc1234",
-    "dirty": false
-  },
-  "conversation_summary": "1 sentence of what just happened",
-  "files_touched": ["relative/paths"],
-  "metadata": {
-    "title": "Auto: brief description",
-    "tags": ["auto-checkpoint"],
-    "trigger": "git-commit | git-push | pr-operation | deployment | package-publish | test-run | api-mutation | file-edit | file-generation | worker-completion"
-  }
-}
-```
-
-**Do NOT** on auto-checkpoints: rebuild INDEX files, update `recent.md`, run `qmd update`, write legacy checkpoint files. Just write the JSON and move on.
-
-**Knowledge repos:** When edits touch knowledge files (`companies/{co}/knowledge/` or `knowledge/public/`), commit those changes to the knowledge repo — not HQ git. See "Knowledge Repos" section above.
-
-## Session Learnings
-
-Before `/handoff` or `/checkpoint`, reflect on the session and extract reusable learnings:
-
-1. **What to capture:** Mistakes that cost time, unexpected behaviors, patterns that worked well, gotchas about specific tools/APIs/files, workflow improvements
-2. **What to skip:** Session-specific context, "task completed", things already in learned rules
-3. **How:** Call `/learn` with each learning — it handles scoping, dedup, injection, and reindex
-4. **When nothing learned:** Skip — not every session produces novel insights
+Also checkpoint after worker skill completion. Schema: `knowledge/public/hq-core/thread-schema.md`. Do NOT rebuild INDEX, update `recent.md`, run `qmd update`, or write legacy checkpoint files on auto-checkpoints. When edits touch knowledge files, commit to the knowledge repo — not HQ git.
 
 ## Auto-Handoff (PreCompact Hook)
 
