@@ -27,6 +27,12 @@ import {
 } from "./auth.js";
 import { writeCompanyTemplate, type TeamMetadata } from "./company-template.js";
 import { stepStatus, success, warn, info } from "./ui.js";
+import {
+  encodeInviteToken,
+  sendOrgInviteByEmail,
+  printInviteSummary,
+  type InvitePayload,
+} from "./invite.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -492,16 +498,86 @@ export async function runAdminOnboarding(
       stepStatus(cloneLabel, "failed");
       const message = err instanceof Error ? err.message : String(err);
       warn(`Could not clone into companies/${teamSlug}/: ${message}`);
-      return null;
+      // Team repo was created on GitHub — still return success so the user
+      // gets the admin orientation (with repo URL) instead of generic next steps.
+      // They can clone manually later.
+      console.log();
+      success(`Team "${teamName}" created at ${repo.html_url}`);
+      info("Local clone failed — clone manually with:");
+      info(`  git clone ${repo.clone_url} companies/${teamSlug}`);
+
+      // Still offer invite generation
+      console.log();
+      const wantsInvite = await prompt("Invite a team member now? (Y/n)", "y");
+      if (wantsInvite.toLowerCase().startsWith("y")) {
+        await generateInviteInteractive(auth, meta, repo.clone_url);
+      }
+
+      return {
+        team: meta,
+        companyDir,
+        repoHtmlUrl: repo.html_url,
+      };
     }
   }
 
   console.log();
   success(`Team "${teamName}" created — ${repo.html_url}`);
 
+  // 8. Offer to generate a member invite
+  console.log();
+  const wantsInvite = await prompt("Invite a team member now? (Y/n)", "y");
+  if (wantsInvite.toLowerCase().startsWith("y")) {
+    await generateInviteInteractive(auth, meta, repo.clone_url);
+  }
+
   return {
     team: meta,
     companyDir,
     repoHtmlUrl: repo.html_url,
   };
+}
+
+// ─── Invite generation (used by admin onboarding + standalone) ──────────────
+
+/**
+ * Interactive invite generation. Prompts for email, sends org invite,
+ * generates token, and prints instructions.
+ */
+export async function generateInviteInteractive(
+  auth: GitHubAuth,
+  meta: TeamMetadata,
+  cloneUrl: string
+): Promise<void> {
+  const payload: InvitePayload = {
+    org: meta.org_login,
+    repo: `hq-${meta.team_slug}`,
+    slug: meta.team_slug,
+    teamName: meta.team_name,
+    cloneUrl,
+    invitedBy: auth.login,
+  };
+
+  const token = encodeInviteToken(payload);
+
+  // Ask for email to send GitHub org invite
+  const email = await prompt(
+    "New member's email (for GitHub org invite, or press Enter to skip)"
+  );
+
+  let emailSent = false;
+  if (email) {
+    const inviteLabel = `Sending org invite to ${email}`;
+    stepStatus(inviteLabel, "running");
+    const result = await sendOrgInviteByEmail(auth, meta.org_login, email);
+    if (result.ok) {
+      stepStatus(inviteLabel, "done");
+      emailSent = true;
+    } else {
+      stepStatus(inviteLabel, "failed");
+      warn(result.error);
+    }
+  }
+
+  printInviteSummary(payload, token, emailSent, email || undefined);
 }

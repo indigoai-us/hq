@@ -90,8 +90,8 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode
-  const mode = await chooseEntryMode();
+  // 1. Entry mode — if --join is provided, force teams-existing
+  const mode = options.join ? "teams-existing" as EntryMode : await chooseEntryMode();
   if (mode === "exit") {
     console.log();
     info("No problem — come back any time with: npx create-hq");
@@ -252,7 +252,8 @@ export async function scaffold(
       mode === "teams-existing" ? "existing" : "new",
       targetDir,
       hqVersion,
-      teamsAuth
+      teamsAuth,
+      options.join
     );
     if (!teamsResult) {
       console.log();
@@ -309,6 +310,16 @@ export async function scaffold(
       teamSlug: teamsResult.admin.team.team_slug,
       orgLogin: teamsResult.admin.team.org_login,
       repoUrl: teamsResult.admin.repoHtmlUrl,
+    });
+  } else if (teamsResult?.joinedByInvite) {
+    teamOrientation({
+      mode: "member",
+      displayDir,
+      teams: [{
+        name: teamsResult.joinedByInvite.teamName,
+        slug: teamsResult.joinedByInvite.slug,
+        repoUrl: teamsResult.joinedByInvite.repoUrl,
+      }],
     });
   } else if (teamsResult?.member && teamsResult.member.joined.length > 0) {
     teamOrientation({

@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { createRequire } from "node:module";
 import { scaffold } from "./scaffold.js";
+import { runInviteCommand } from "./invite-command.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -20,10 +21,25 @@ program
   .option("--skip-packages", "don't prompt for package discovery and installation")
   .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
   .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
-  .option("--join <token>", "join a team with an invite token after scaffolding")
+  .option("--join <token>", "join a team with an invite token")
   .action(async (directory: string | undefined, options) => {
     try {
       await scaffold(directory, options);
+    } catch (err) {
+      console.error(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
+      process.exit(1);
+    }
+  });
+
+// Standalone invite subcommand for admins to generate invites
+program
+  .command("invite")
+  .description("Generate an invite code for a new team member")
+  .action(async () => {
+    try {
+      await runInviteCommand();
     } catch (err) {
       console.error(
         err instanceof Error ? err.message : "An unexpected error occurred"
