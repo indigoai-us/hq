@@ -367,7 +367,7 @@ export async function runAdminOnboarding(
   console.log();
   const defaultName = chosenOrg.login;
   const teamName = (await prompt("Team name", defaultName)) || defaultName;
-  const teamSlug = slugify(chosenOrg.login);
+  const teamSlug = slugify(teamName);
   const teamId = crypto.randomUUID();
 
   const meta: TeamMetadata = {

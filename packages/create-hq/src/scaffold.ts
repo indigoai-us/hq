@@ -205,8 +205,13 @@ export async function scaffold(
   const gitLabel = "Initializing git repository";
   stepStatus(gitLabel, "running");
   if (hasGit()) {
-    initGit(targetDir);
-    stepStatus(gitLabel, "done");
+    try {
+      initGit(targetDir);
+      stepStatus(gitLabel, "done");
+    } catch (err: any) {
+      stepStatus(gitLabel, "failed");
+      warn(`git init failed (non-fatal): ${err.message}`);
+    }
   } else {
     stepStatus(gitLabel, "failed");
     warn("git not found — skipping git init");
@@ -255,36 +260,36 @@ export async function scaffold(
     }
   }
 
-  // 9. Optional: install hq-cli globally
-  if (!options.skipCli) {
-    console.log();
-    const installCli = await confirm(
-      "Install @indigoai-us/hq-cli globally for module management?"
-    );
-    if (installCli) {
-      const cliLabel = "Installing @indigoai-us/hq-cli";
-      stepStatus(cliLabel, "running");
-      try {
-        execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
-        stepStatus(cliLabel, "done");
-      } catch {
-        stepStatus(cliLabel, "failed");
-        warn("Failed to install @indigoai-us/hq-cli — install manually with: npm install -g @indigoai-us/hq-cli");
-      }
-    }
-  }
+  // 9. Optional: install hq-cli globally (disabled for now)
+  // if (!options.skipCli) {
+  //   console.log();
+  //   const installCli = await confirm(
+  //     "Install @indigoai-us/hq-cli globally for module management?"
+  //   );
+  //   if (installCli) {
+  //     const cliLabel = "Installing @indigoai-us/hq-cli";
+  //     stepStatus(cliLabel, "running");
+  //     try {
+  //       execSync("npm install -g @indigoai-us/hq-cli", { stdio: "pipe" });
+  //       stepStatus(cliLabel, "done");
+  //     } catch {
+  //       stepStatus(cliLabel, "failed");
+  //       warn("Failed to install @indigoai-us/hq-cli — install manually with: npm install -g @indigoai-us/hq-cli");
+  //     }
+  //   }
+  // }
 
-  // 10. Cloud sync setup
-  if (!options.skipSync && !alreadySynced) {
-    console.log();
-    const setupSync = await confirm(
-      "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
-    );
-    if (setupSync) {
-      step("Cloud sync setup will be available after running /setup in Claude Code");
-      step("Run: hq sync init");
-    }
-  }
+  // 10. Cloud sync setup (disabled for now)
+  // if (!options.skipSync && !alreadySynced) {
+  //   console.log();
+  //   const setupSync = await confirm(
+  //     "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
+  //   );
+  //   if (setupSync) {
+  //     step("Cloud sync setup will be available after running /setup in Claude Code");
+  //     step("Run: hq sync init");
+  //   }
+  // }
 
   // 11. qmd index
   try {
