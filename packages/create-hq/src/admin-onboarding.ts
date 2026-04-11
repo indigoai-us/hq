@@ -31,6 +31,7 @@ import {
   encodeInviteToken,
   sendOrgInviteByEmail,
   printInviteSummary,
+  openInviteEmail,
   type InvitePayload,
 } from "./invite.js";
 
@@ -572,6 +573,12 @@ export async function generateInviteInteractive(
   }
 
   printInviteSummary(payload, token, emailSent, email || undefined);
+
+  // Open the admin's email client with the invite message pre-populated
+  if (email) {
+    openInviteEmail(payload, token, email);
+    info("Email opened in your default mail app — just review and hit Send.");
+  }
 }
 
 /**

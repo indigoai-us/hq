@@ -20,7 +20,7 @@
  */
 
 import chalk from "chalk";
-import { type GitHubAuth, githubApi } from "./auth.js";
+import { type GitHubAuth, githubApi, openBrowser } from "./auth.js";
 
 // ─── Token types ────────────────────────────────────────────────────────────
 
@@ -208,36 +208,44 @@ export function formatInviteMessage(
     "",
   ];
 
+  const orgInviteUrl = `https://github.com/orgs/${payload.org}/invitation`;
+
   if (memberEmail) {
     lines.push(
-      `Step 1: Accept the GitHub organization invite sent to ${memberEmail}`,
-      `        (check your email from GitHub — you may need to create a GitHub account first)`,
+      `Step 1: Create a GitHub account (if you don't have one): https://github.com/signup`,
+      `        Use this email address: ${memberEmail}`,
+      "",
+      `Step 2: Accept the organization invite: ${orgInviteUrl}`,
+      `        (you should also receive an email from GitHub)`,
       ""
     );
   } else {
     lines.push(
-      `Step 1: Ask ${payload.invitedBy} to add you to the ${payload.org} GitHub organization`,
+      `Step 1: Create a GitHub account (if you don't have one): https://github.com/signup`,
+      "",
+      `Step 2: Ask @${payload.invitedBy} to add you to the ${payload.org} GitHub organization`,
+      `        Then accept the invite at: ${orgInviteUrl}`,
       ""
     );
   }
 
   lines.push(
-    `Step 2: Install Node.js if you don't have it: https://nodejs.org`,
+    `Step 3: Install Node.js (if you don't have it): https://nodejs.org`,
     "",
-    `Step 3: Open your terminal and run:`,
+    `Step 4: Open your terminal and run:`,
     "",
     `   npx create-hq`,
     "",
-    `Step 4: When asked "Do you have an HQ Teams account?", choose Yes`,
+    `Step 5: When asked "Do you have an HQ Teams account?", choose Yes`,
     "",
-    `Step 5: Paste this invite code when prompted:`,
+    `Step 6: Paste this invite code when prompted:`,
     "",
     `   ${token}`,
     "",
-    `Step 6: Follow the remaining prompts to complete setup`,
+    `Step 7: Follow the remaining prompts to complete setup`,
     "",
     `---`,
-    `Questions? Ask ${payload.invitedBy} or visit https://getindigo.ai/hq`,
+    `Questions? Ask @${payload.invitedBy} or visit https://getindigo.ai/hq`,
   );
 
   return lines.join("\n");
@@ -280,4 +288,32 @@ export function printInviteSummary(
   }
   console.log(chalk.dim("  ─".repeat(30)));
   console.log();
+}
+
+// ─── Mailto helper ──────────────────────────────────────────────────────────
+
+/**
+ * Build a mailto: URL pre-populated with the invite message.
+ * Opens in the admin's default email client — they just hit Send.
+ */
+export function buildMailtoUrl(
+  payload: InvitePayload,
+  token: string,
+  recipientEmail: string
+): string {
+  const subject = `You're invited to join ${payload.teamName} on HQ`;
+  const body = formatInviteMessage(payload, token, recipientEmail);
+  return `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/**
+ * Open the admin's email client with a pre-populated invite email.
+ */
+export function openInviteEmail(
+  payload: InvitePayload,
+  token: string,
+  recipientEmail: string
+): void {
+  const url = buildMailtoUrl(payload, token, recipientEmail);
+  openBrowser(url);
 }
