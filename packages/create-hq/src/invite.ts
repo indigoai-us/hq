@@ -262,7 +262,7 @@ export function formatInviteMessage(
 export function printInviteSummary(
   payload: InvitePayload,
   token: string,
-  emailSent: boolean,
+  _emailSent?: boolean,
   memberEmail?: string
 ): void {
   console.log();
@@ -272,13 +272,6 @@ export function printInviteSummary(
   console.log(`  ${chalk.dim("Org:")}      ${payload.org}`);
   if (memberEmail) {
     console.log(`  ${chalk.dim("Email:")}    ${memberEmail}`);
-    if (emailSent) {
-      console.log(`  ${chalk.dim("Status:")}   ${chalk.green("GitHub org invite sent")}`);
-    } else {
-      console.log(
-        `  ${chalk.dim("Status:")}   ${chalk.yellow("Manual invite needed")} — add them at https://github.com/orgs/${payload.org}/people`
-      );
-    }
   }
   console.log();
   console.log(chalk.bold("  Invite code (share with the new member):"));

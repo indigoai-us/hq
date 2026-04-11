@@ -29,7 +29,6 @@ import { writeCompanyTemplate, type TeamMetadata } from "./company-template.js";
 import { stepStatus, success, warn, info } from "./ui.js";
 import {
   encodeInviteToken,
-  sendOrgInviteByEmail,
   printInviteSummary,
   openInviteEmail,
   type InvitePayload,
@@ -553,31 +552,20 @@ export async function generateInviteInteractive(
 
   const token = encodeInviteToken(payload);
 
-  // Ask for email to send GitHub org invite
+  // Ask for email — used for the mailto invite, not for API calls
   const email = await prompt(
-    "New member's email (for GitHub org invite, or press Enter to skip)"
+    "New member's email (or press Enter to skip)"
   );
 
-  let emailSent = false;
-  if (email) {
-    const inviteLabel = `Sending org invite to ${email}`;
-    stepStatus(inviteLabel, "running");
-    const result = await sendOrgInviteByEmail(auth, meta.org_login, email);
-    if (result.ok) {
-      stepStatus(inviteLabel, "done");
-      emailSent = true;
-    } else {
-      stepStatus(inviteLabel, "failed");
-      warn(result.error);
-    }
-  }
-
-  printInviteSummary(payload, token, emailSent, email || undefined);
+  printInviteSummary(payload, token, false, email || undefined);
 
   // Open the admin's email client with the invite message pre-populated
   if (email) {
     openInviteEmail(payload, token, email);
-    info("Email opened in your default mail app — just review and hit Send.");
+    info("Email opened in your default mail app — review and hit Send.");
+    console.log();
+    info(`Don't forget to add them to the ${meta.org_login} GitHub org:`);
+    info(`  https://github.com/orgs/${meta.org_login}/people`);
   }
 }
 
