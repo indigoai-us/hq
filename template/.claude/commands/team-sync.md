@@ -276,6 +276,57 @@ git -C companies/{slug} add -A
 git -C companies/{slug} diff --cached --quiet || git -C companies/{slug} commit -m "sync: local changes from $(whoami)"
 ```
 
+#### 4e-pre. Pre-push secrets scan
+
+Before pushing, scan the changes for accidental secrets or PII. Compare what will be pushed against the remote:
+
+```bash
+git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' ':!**/credentials.json' 2>/dev/null
+```
+
+**Note:** The `':!team.json'` and `':!**/credentials.json'` exclusions prevent false positives on expected team metadata files.
+
+Scan the diff output for these patterns:
+
+| Pattern | Description |
+|---------|-------------|
+| `(?i)(api[_-]?key\|api[_-]?secret)\s*[:=]\s*\S+` | API keys |
+| `(?i)(password\|passwd\|pwd)\s*[:=]\s*\S+` | Passwords |
+| `(?i)(secret\|token)\s*[:=]\s*['"]?[A-Za-z0-9+/=_-]{20,}` | Tokens/secrets |
+| `-----BEGIN (RSA\|DSA\|EC\|OPENSSH) PRIVATE KEY-----` | Private keys |
+| `(?i)(aws_access_key_id\|aws_secret_access_key)\s*=\s*\S+` | AWS credentials |
+| `ghp_[A-Za-z0-9]{36}\|gho_[A-Za-z0-9]{36}\|ghu_[A-Za-z0-9]{36}` | GitHub tokens |
+| `sk-[A-Za-z0-9]{20,}` | OpenAI/Stripe-style keys |
+| `^\+.*\.env` | .env file additions |
+
+Run the scan:
+```bash
+git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' ':!**/credentials.json' 2>/dev/null | grep -nE '(api[_-]?key|api[_-]?secret|password|passwd|pwd|secret|token)\s*[:=]|-----BEGIN .* PRIVATE KEY-----|aws_(access_key_id|secret_access_key)\s*=|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|ghu_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}' || true
+```
+
+**If matches found:**
+
+```
+Pre-push security scan found potential secrets:
+
+  {filename}:{line}: {matched pattern preview}
+  {filename}:{line}: {matched pattern preview}
+
+These look like they might contain sensitive data (API keys, tokens, passwords, or private keys).
+Pushing secrets to a shared repo is hard to undo — they persist in git history.
+
+Options:
+  1. Remove the sensitive data and re-run /sync
+  2. Push anyway (I've verified these are safe to share)
+```
+
+If the user chooses option 1: skip the push for this team. The user will edit files and re-run /sync.
+If the user chooses option 2: continue to push.
+
+**If no matches found:** Continue to push silently (no output needed).
+
+#### 4e-push. Push to remote
+
 Then push:
 ```bash
 git -c credential.helper= -C companies/{slug} push origin main 2>&1
