@@ -207,7 +207,81 @@ rm -rf "$ASKPASS_DIR"
 unset GIT_TOKEN GIT_ASKPASS GIT_TERMINAL_PROMPT GCM_INTERACTIVE
 ```
 
-### 5. Report results
+### 5. Sync command symlinks
+
+After all teams have been synced, manage command symlinks so team-distributed commands are available as slash commands.
+
+#### 5a. Scan for team commands
+
+For each synced team, check if the team directory contains distributed commands:
+```bash
+ls companies/{slug}/.claude/commands/*.md 2>/dev/null
+```
+
+If the directory doesn't exist or has no `.md` files, skip this team for symlink management.
+
+#### 5b. Create symlinks for new commands
+
+For each `.md` file found in `companies/{slug}/.claude/commands/`:
+
+1. Determine the symlink name using the pattern `{slug}--{command}.md` (double-dash separates team slug from command name). For example: `companies/acme/.claude/commands/deploy.md` → `.claude/commands/acme--deploy.md`
+
+2. Check if the symlink target already exists at `.claude/commands/{slug}--{command}.md`:
+   - If it's already a symlink pointing to the correct source → skip (already linked)
+   - If it exists but is NOT a symlink (a real file or symlink to wrong target) → warn and skip:
+     ```
+     ⚠ Skipping {slug}--{command}.md — file already exists (not a team symlink)
+     ```
+   - If it doesn't exist → create the symlink:
+     ```bash
+     ln -s "../../companies/{slug}/.claude/commands/{command}.md" ".claude/commands/{slug}--{command}.md"
+     ```
+
+3. Track linked commands for the report.
+
+**Note on relative paths:** Symlinks use relative paths (`../../companies/...`) so they work regardless of HQ's absolute location. The path is relative from `.claude/commands/` to `companies/{slug}/.claude/commands/`.
+
+If `--dry-run`:
+```
+[dry-run] Would link commands for {team_name}:
+  {slug}--{command}.md → companies/{slug}/.claude/commands/{command}.md
+```
+Do not create actual symlinks.
+
+#### 5c. Remove stale symlinks
+
+Scan `.claude/commands/` for symlinks that match the team pattern (`{slug}--*.md`) but whose targets no longer exist (the source command was removed from the team repo):
+
+```bash
+for link in .claude/commands/{slug}--*.md; do
+  if [ -L "$link" ] && [ ! -e "$link" ]; then
+    rm "$link"
+    # Track as unlinked for report
+  fi
+done
+```
+
+Also remove symlinks for commands that were removed from the team's `.claude/commands/` directory — compare the set of existing symlinks against the set of current source files:
+
+```bash
+# Get current team commands
+CURRENT=$(ls companies/{slug}/.claude/commands/*.md 2>/dev/null | xargs -I{} basename {})
+# Get current symlinks for this team
+LINKED=$(ls -la .claude/commands/{slug}--*.md 2>/dev/null | grep "^l" | awk '{print $NF}' | xargs -I{} basename {})
+# Any symlink not matching a current command → remove
+```
+
+If `--dry-run`, show what would be removed without removing.
+
+#### 5d. Symlink summary (per team)
+
+Collect results for the final report:
+- Commands linked (new symlinks created)
+- Commands already linked (unchanged)
+- Commands unlinked (stale symlinks removed)
+- Commands skipped (name collision)
+
+### 6. Report results
 
 After syncing all teams, display a summary:
 
