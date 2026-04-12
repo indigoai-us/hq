@@ -4,6 +4,111 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.8.0 (from v10.7.1)
+
+### Headline
+
+Design worker consolidation: 6 design workers → 2 (`frontend-designer` + `ux-auditor`). Style pack system. Configurable models.
+
+### Step 1 — Create ux-auditor and move audit skills
+
+```bash
+mkdir -p workers/ux-auditor/skills
+# From impeccable-designer (directory-based)
+for skill in audit critique harden normalize; do
+  mv "workers/impeccable-designer/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+# From gemini-ux-auditor (flat files)
+for skill in ux-audit.md flow-review.md copy-review.md competitive-scan.md; do
+  mv "workers/gemini-ux-auditor/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+# From gemini-designer (flat files)
+for skill in design-audit.md design-system-check.md visual-diff.md; do
+  mv "workers/gemini-designer/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+```
+
+### Step 2 — Move build/refine skills to frontend-designer
+
+```bash
+mkdir -p workers/frontend-designer/skills
+# From impeccable-designer (18 directory-based skills)
+for skill in adapt animate arrange bolder clarify colorize consolidate delight distill extract frontend-design onboard optimize overdrive polish quieter teach-impeccable typeset; do
+  mv "workers/impeccable-designer/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-stylist (4 flat files)
+for skill in add-animation.md responsive-polish.md dark-mode.md css-refactor.md; do
+  mv "workers/gemini-stylist/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-frontend (4 flat files)
+for skill in build-component.md style-component.md responsive-check.md a11y-audit.md; do
+  mv "workers/gemini-frontend/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-designer (1 flat file)
+mv "workers/gemini-designer/skills/design-tokens.md" "workers/frontend-designer/skills/design-tokens.md"
+```
+
+### Step 3 — Copy new worker.yamls
+
+Copy `workers/frontend-designer/worker.yaml` and `workers/ux-auditor/worker.yaml` from the release. These contain the merged skill blocks, instructions, and model configuration.
+
+### Step 4 — Delete absorbed workers
+
+```bash
+rm -rf workers/impeccable-designer/
+rm -rf workers/gemini-designer/
+rm -rf workers/gemini-stylist/
+rm -rf workers/gemini-frontend/
+rm -rf workers/gemini-ux-auditor/
+```
+
+### Step 5 — Update registry.yaml
+
+- Remove entries for: impeccable-designer, gemini-designer, gemini-stylist, gemini-frontend, gemini-ux-auditor
+- Add entry for: ux-auditor
+- Update frontend-designer description
+- Update Standalone Workers count (11→9) and Gemini Team count (6→2)
+- Bump version to 10.8.0
+
+### Step 6 — Update invocations
+
+Old commands → new equivalents:
+
+| Old | New |
+|-----|-----|
+| `/run impeccable-designer audit` | `/run ux-auditor audit` |
+| `/run impeccable-designer critique` | `/run ux-auditor critique` |
+| `/run impeccable-designer harden` | `/run ux-auditor harden` |
+| `/run impeccable-designer normalize` | `/run ux-auditor normalize` |
+| `/run impeccable-designer {any other skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-stylist {skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-frontend {skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-designer design-tokens` | `/run frontend-designer design-tokens` |
+| `/run gemini-designer {audit skills}` | `/run ux-auditor {skill}` |
+| `/run gemini-ux-auditor {skill}` | `/run ux-auditor {skill}` |
+
+### Step 7 — (Optional) Add style to .impeccable.md
+
+If your project has an `.impeccable.md`, add a `style:` field to enable automatic style pack loading:
+
+```markdown
+## Style
+style: american-industrial
+```
+
+Or re-run `teach-impeccable` to go through the style selection flow.
+
+### Step 8 — Verify
+
+```bash
+ls workers/frontend-designer/skills/ | wc -l  # 27
+ls workers/ux-auditor/skills/ | wc -l          # 11
+# Ensure no stale references
+grep -r "impeccable-designer\|gemini-designer\|gemini-stylist\|gemini-frontend\|gemini-ux-auditor" workers/ --include="*.yaml" | grep -v CHANGELOG
+```
+
+---
+
 ## Migrating to v10.7.1 (from v10.7.0)
 
 ### Headline

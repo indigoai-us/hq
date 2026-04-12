@@ -9,7 +9,7 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "10.7.1"
+version: "10.8.0"
 updated: "2026-04-11"
 
 workers:
@@ -26,7 +26,7 @@ workers:
     description: "Example worker — copy and customize for your own"
 
   # ===================
-  # Standalone Workers (11)
+  # Standalone Workers (12)
   # ===================
 
   - id: paper-designer
@@ -35,17 +35,17 @@ workers:
     status: active
     description: "Bidirectional Paper Desktop design bridge — extract specs, preview components, edit designs via MCP"
 
-  - id: impeccable-designer
-    path: workers/impeccable-designer/
-    type: OpsWorker
-    status: active
-    description: "Quality-obsessed design — audit, polish, typeset, animate, and the full Impeccable skill chain"
-
   - id: frontend-designer
     path: workers/frontend-designer/
     type: OpsWorker
     status: active
-    description: "Bold UI generation using Anthropic skill"
+    description: "Full-spectrum design — 27 skills for building, refining, and shipping UI (cinematic + impeccable + Gemini)"
+
+  - id: ux-auditor
+    path: workers/ux-auditor/
+    type: CodeWorker
+    status: active
+    description: "Design review & quality gate — 11 skills for auditing, critiquing, and hardening UI (read-only)"
 
   - id: qa-tester
     path: workers/qa-tester/
@@ -102,8 +102,9 @@ workers:
     description: "gstack sprint loop — autoplan, review, qa, ship using g-prefixed gstack skills"
 
   # ===================
-  # Gemini Team (6)
+  # Gemini Team (2)
   # ===================
+  # Previously 6 workers. 4 design workers absorbed into frontend-designer + ux-auditor in v10.8.0.
 
   - id: gemini-coder
     path: workers/gemini-coder/
@@ -118,34 +119,6 @@ workers:
     team: gemini-team
     status: active
     description: "Code review and analysis via Gemini CLI — PR review, file review, security scanning, improvement suggestions"
-
-  - id: gemini-frontend
-    path: workers/gemini-frontend/
-    type: CodeWorker
-    team: gemini-team
-    status: active
-    description: "Frontend development via Gemini CLI — component building, styling, responsiveness, accessibility"
-
-  - id: gemini-designer
-    path: workers/gemini-designer/
-    type: CodeWorker
-    team: gemini-team
-    status: active
-    description: "Gemini CLI design system analysis and visual audit — design tokens, consistency checks, visual diffs, holistic audits"
-
-  - id: gemini-stylist
-    path: workers/gemini-stylist/
-    type: CodeWorker
-    team: gemini-team
-    status: active
-    description: "CSS and animation specialist via Google Gemini CLI — animations, responsive polish, dark mode, CSS refactoring"
-
-  - id: gemini-ux-auditor
-    path: workers/gemini-ux-auditor/
-    type: CodeWorker
-    team: gemini-team
-    status: active
-    description: "UX and usability audit via Google Gemini CLI — heuristic evaluation, flow review, copy review, competitive analysis"
 
   # ===================
   # Dev Team (17)

@@ -102,7 +102,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 | Worker | Purpose |
 |--------|---------|
-| frontend-designer | UI generation |
+| frontend-designer | Full-spectrum design — 27 skills for building, refining, and shipping UI |
+| ux-auditor | Design review & quality gate — 11 skills for auditing and hardening UI |
 | qa-tester | Automated website testing (Playwright) |
 | security-scanner | Security scanning |
 | pretty-mermaid | Mermaid diagram generation |
@@ -124,8 +125,8 @@ social-shared (library), social-strategist, social-reviewer, social-publisher, s
 **Gardener Team (3):** `workers/public/gardener-team/`
 garden-scout, garden-auditor, garden-curator
 
-**Gemini Team (3):** `workers/public/gemini-*/`
-gemini-coder, gemini-reviewer, gemini-frontend
+**Gemini Team (2):** `workers/public/gemini-*/`
+gemini-coder, gemini-reviewer
 
 **Company Workers** (`companies/{co}/workers/`):
 

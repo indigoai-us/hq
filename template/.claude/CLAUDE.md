@@ -107,7 +107,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, impeccable-designer (22 design skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer (27 skills), ux-auditor (11 skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (2) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): per-company workers listed in `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.

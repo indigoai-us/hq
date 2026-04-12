@@ -62,7 +62,7 @@ HQ/
 
 ## Workers
 
-**Public (`workers/public/`):** frontend-designer, qa-tester, security-scanner, pretty-mermaid, site-builder, knowledge-tagger, exec-summary, accessibility-auditor, performance-benchmarker
+**Public (`workers/public/`):** frontend-designer (27 skills), ux-auditor (11 skills), qa-tester, security-scanner, pretty-mermaid, site-builder, knowledge-tagger, exec-summary, accessibility-auditor, performance-benchmarker
 
 **Dev Team (17):** `workers/public/dev-team/`
 project-manager, task-executor, architect, backend-dev, database-dev, frontend-dev, infra-dev, motion-designer, code-reviewer, knowledge-curator, product-planner, dev-qa-tester, codex-engine, codex-coder, codex-reviewer, codex-debugger, reality-checker
@@ -76,8 +76,8 @@ social-shared, social-strategist, social-reviewer, social-publisher, social-veri
 **Gardener Team (3):** `workers/public/gardener-team/`
 garden-scout, garden-auditor, garden-curator
 
-**Gemini Team (3):** `workers/public/gemini-*/`
-gemini-coder, gemini-reviewer, gemini-frontend
+**Gemini Team (2):** `workers/public/gemini-*/`
+gemini-coder, gemini-reviewer
 
 **Company Workers:** Located at `companies/{co}/workers/`. See manifest.yaml for full list per company.
 
