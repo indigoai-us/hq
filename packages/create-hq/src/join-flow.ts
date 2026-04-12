@@ -24,6 +24,7 @@ import {
   checkRepoAccess,
   type InvitePayload,
 } from "./invite.js";
+import { linkTeamCommands } from "./team-setup.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -231,6 +232,12 @@ export async function runJoinByInvite(
       info(`Ask @${payload.invitedBy} to verify the repo exists at: https://github.com/${payload.org}/${payload.repo}`);
       return null;
     }
+  }
+
+  // Link team-distributed commands as slash commands
+  const symlinks = linkTeamCommands(hqRoot, payload.slug);
+  if (symlinks.linked.length > 0) {
+    info(`Linked ${symlinks.linked.length} team command${symlinks.linked.length === 1 ? "" : "s"}`);
   }
 
   const repoUrl = `https://github.com/${payload.org}/${payload.repo}`;
