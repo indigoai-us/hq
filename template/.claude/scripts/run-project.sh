@@ -1380,10 +1380,28 @@ RULES:
   if [[ -n "${REPO_PATH:-}" && -d "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
     _build_cwd="$REPO_PATH"
   fi
+
+  # Codex builder has no /execute-task skill writeback — seed phase file
+  # and spawn a background poller so monitor-project.sh sees liveness.
+  local _hb_pid=""
+  if [[ "$BUILDER" == "codex" ]]; then
+    codex_heartbeat_init "$story_id" "$PROJECT"
+    codex_heartbeat_loop "$story_id" "${REPO_PATH:-}" "$$" &
+    _hb_pid=$!
+  fi
+
   if [[ "$VERBOSE" == true ]]; then
     cd "$_build_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" HQ_EXECUTING_STORY=1 "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
   else
     cd "$_build_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" HQ_EXECUTING_STORY=1 "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
+  fi
+
+  # Stop the heartbeat and write a terminal status before the orchestrator
+  # moves on. Order matters: kill loop first so finalize owns the last write.
+  if [[ "$BUILDER" == "codex" && -n "$_hb_pid" ]]; then
+    kill "$_hb_pid" 2>/dev/null || true
+    wait "$_hb_pid" 2>/dev/null || true
+    codex_heartbeat_finalize "$story_id" "$exit_code"
   fi
 
   # Sweep any stray workspace/ or companies/ dirs the builder created at the
@@ -1433,6 +1451,161 @@ cleanup_builder_contamination() {
     log_warn "Cleaned stray '${dirname}/' from worktree (relative-path write by builder); merged any metrics into HQ workspace"
   done
   return 0
+}
+
+# =============================================================================
+# Codex builder heartbeat (observability parity with Claude builder)
+# =============================================================================
+# The Claude builder delegates stories to /execute-task, whose SKILL.md
+# instructs sub-agents to write phase state to executions/{story}.json at
+# each worker handoff. The Codex builder bypasses that skill entirely —
+# `codex exec <prompt>` is one opaque LLM call that never learns the HQ
+# writeback protocol. Without intervention, monitor-project.sh reads a
+# missing phase file and renders `starting → pending` for the full run
+# even though codex is actively committing work in the worktree.
+#
+# Fix: the orchestrator writes a lightweight heartbeat file while codex
+# runs, polling the worktree's git log and mapping each new commit to a
+# completed pseudo-phase. Restores observability parity without coupling
+# codex's internal prompt structure to HQ internals.
+#
+# Lifecycle:
+#   codex_heartbeat_init   — seed executions/{story}.json before codex starts
+#   codex_heartbeat_loop   — background poller (killed after codex exits)
+#   codex_heartbeat_finalize — mark terminal status from codex's exit code
+
+codex_heartbeat_init() {
+  local story_id="$1"
+  local project="$2"
+  local exec_file="$EXEC_DIR/${story_id}.json"
+  local now
+  now=$(ts)
+
+  # If some other writer already owns the phase file (legacy runs, leftover
+  # from a Claude retry, etc.) leave it alone — never clobber foreign state.
+  [[ -f "$exec_file" ]] && return 0
+
+  cat > "$exec_file" <<EOF
+{
+  "task_id": "${story_id}",
+  "project": "${project}",
+  "builder": "codex",
+  "started_at": "${now}",
+  "updated_at": "${now}",
+  "status": "in_progress",
+  "current_phase": 1,
+  "phases": [
+    {"worker": "codex-exec", "status": "in_progress", "started_at": "${now}"}
+  ],
+  "commits": []
+}
+EOF
+}
+
+codex_heartbeat_loop() {
+  # Background poller. Tails git log in the worktree and appends each new
+  # commit as a completed pseudo-phase on executions/{story}.json. Exits
+  # when parent_pid (the orchestrator) dies, or when receiving SIGTERM from
+  # the caller after codex exits. Failures are non-fatal — this is purely
+  # an observability feed.
+  local story_id="$1"
+  local repo="$2"
+  local parent_pid="$3"
+  local exec_file="$EXEC_DIR/${story_id}.json"
+
+  # Detach from the controlling terminal so the poller does not interfere
+  # with codex's stdio.
+  exec </dev/null >/dev/null 2>&1
+
+  local last_sha=""
+  if [[ -n "$repo" && -d "$repo" ]] && is_git_repo "$repo"; then
+    last_sha=$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo "")
+  fi
+
+  # Poll interval: 20s is frequent enough to feel live in the monitor
+  # (5s refresh) without burning CPU on idle codex runs.
+  while kill -0 "$parent_pid" 2>/dev/null; do
+    sleep 20
+    [[ ! -f "$exec_file" ]] && continue
+    [[ -z "$repo" || ! -d "$repo" ]] && continue
+    is_git_repo "$repo" || continue
+
+    local cur_sha
+    cur_sha=$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo "")
+    [[ -z "$cur_sha" ]] && continue
+
+    local now_ts
+    now_ts=$(ts)
+
+    if [[ -n "$last_sha" && "$cur_sha" != "$last_sha" ]]; then
+      # New commits detected — append each as a completed pseudo-phase.
+      # Worker name derived from the commit subject's conventional prefix
+      # (feat, fix, refactor, test, chore, ...) so the monitor surfaces
+      # meaningful labels instead of opaque commit SHAs.
+      local commit_lines
+      commit_lines=$(git -C "$repo" log --format="%h %s" "${last_sha}..${cur_sha}" --reverse 2>/dev/null || echo "")
+      local line sha_short subject worker
+      while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        sha_short="${line%% *}"
+        subject="${line#* }"
+        worker=$(printf '%s' "$subject" | sed -E 's/^([a-zA-Z][a-zA-Z0-9_-]*)(\(.*\))?:.*/\1/' | tr '[:upper:]' '[:lower:]')
+        # Fallback if the subject wasn't conventional-commits shaped.
+        if [[ -z "$worker" || "$worker" == "$subject" ]]; then
+          worker="commit"
+        fi
+        jq --arg now "$now_ts" \
+           --arg sha "$sha_short" \
+           --arg subj "$subject" \
+           --arg worker "codex:${worker}" '
+          .updated_at = $now |
+          .commits += [{sha: $sha, subject: $subj, at: $now}] |
+          .phases = ((.phases // []) | map(
+            if .status == "in_progress" then
+              .status = "completed" | .completed_at = $now
+            else . end
+          ) + [{worker: $worker, status: "in_progress", started_at: $now, sha: $sha, subject: $subj}]) |
+          .current_phase = (.phases | length)
+        ' "$exec_file" > "$exec_file.tmp" 2>/dev/null && mv "$exec_file.tmp" "$exec_file" 2>/dev/null || true
+      done <<< "$commit_lines"
+      last_sha="$cur_sha"
+    else
+      # No new commits — just bump updated_at so the monitor reads liveness.
+      jq --arg now "$now_ts" '.updated_at = $now' "$exec_file" > "$exec_file.tmp" 2>/dev/null && mv "$exec_file.tmp" "$exec_file" 2>/dev/null || true
+    fi
+  done
+}
+
+codex_heartbeat_finalize() {
+  local story_id="$1"
+  local exit_code="$2"
+  local exec_file="$EXEC_DIR/${story_id}.json"
+  [[ ! -f "$exec_file" ]] && return 0
+
+  # Only finalize if we own this file (builder: codex). Leave foreign
+  # phase files written by /execute-task sub-agents alone.
+  local owner
+  owner=$(jq -r '.builder // ""' "$exec_file" 2>/dev/null || echo "")
+  [[ "$owner" != "codex" ]] && return 0
+
+  local now final_status
+  now=$(ts)
+  if (( exit_code == 0 )); then
+    final_status="completed"
+  else
+    final_status="failed"
+  fi
+
+  jq --arg now "$now" --arg status "$final_status" '
+    .updated_at = $now |
+    .status = $status |
+    .completed_at = $now |
+    .phases = ((.phases // []) | map(
+      if .status == "in_progress" then
+        .status = $status | .completed_at = $now
+      else . end
+    ))
+  ' "$exec_file" > "$exec_file.tmp" 2>/dev/null && mv "$exec_file.tmp" "$exec_file" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -2517,8 +2690,23 @@ RULES:
   elif [[ -n "${REPO_PATH:-}" && -d "$REPO_PATH" ]]; then
     _swarm_cwd="$REPO_PATH"
   fi
+
+  # Seed codex phase file before launch so monitor-project.sh has something
+  # to read from the first refresh.
+  if [[ "$BUILDER" == "codex" ]]; then
+    codex_heartbeat_init "$story_id" "$PROJECT"
+  fi
+
   (cd "$_swarm_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" "${cmd[@]}" >"$output_file" 2>"$stderr_file") &
   LAST_BG_PID=$!
+
+  # Spawn a heartbeat poller tied to the codex PID. Exits when codex dies,
+  # so monitor_swarm_loop doesn't need to clean it up explicitly —
+  # process_swarm_completion still calls codex_heartbeat_finalize for the
+  # terminal status write.
+  if [[ "$BUILDER" == "codex" ]]; then
+    codex_heartbeat_loop "$story_id" "$_swarm_cwd" "$LAST_BG_PID" &
+  fi
 }
 
 # Create a per-story worktree for swarm isolation. Sets STORY_WORKTREE_PATH.
@@ -2633,6 +2821,10 @@ process_swarm_completion() {
 
   local saved_repo="$REPO_PATH"
   [[ -n "$worktree_path" && -d "$worktree_path" ]] && REPO_PATH="$worktree_path"
+
+  # Finalize codex phase file if this story was run under the codex builder.
+  # No-op for Claude builder (owner check guards the file).
+  codex_heartbeat_finalize "$story_id" "$exit_code"
 
   validate_git_state "$story_id"
   run_codex_review "$story_id"
