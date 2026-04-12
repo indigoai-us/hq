@@ -37,6 +37,74 @@ output:
   destination: "{target_repo}/"
   format: typescript
 
+skills:
+  - name: adapt
+    path: skills/adapt/SKILL.md
+    description: "Make design responsive — content-driven breakpoints"
+  - name: animate
+    path: skills/animate/SKILL.md
+    description: "Add purposeful motion and micro-interactions"
+  - name: arrange
+    path: skills/arrange/SKILL.md
+    description: "Spatial design — grids, rhythm, container queries"
+  - name: audit
+    path: skills/audit/SKILL.md
+    description: "Systematic design scan with prioritized issue list"
+  - name: bolder
+    path: skills/bolder/SKILL.md
+    description: "Push design bolder — too safe/boring -> more impact"
+  - name: clarify
+    path: skills/clarify/SKILL.md
+    description: "Improve UX copy — labels, errors, empty states"
+  - name: colorize
+    path: skills/colorize/SKILL.md
+    description: "Color system refinement — OKLCH palettes, dark mode"
+  - name: consolidate
+    path: skills/consolidate/SKILL.md
+    description: "Merge redundant components into unified patterns"
+  - name: critique
+    path: skills/critique/SKILL.md
+    description: "Design critique — diagnose what's wrong and why"
+  - name: delight
+    path: skills/delight/SKILL.md
+    description: "Add personality and surprise moments"
+  - name: distill
+    path: skills/distill/SKILL.md
+    description: "Simplify — too complex -> clean and focused"
+  - name: extract
+    path: skills/extract/SKILL.md
+    description: "Pull reusable components and design tokens"
+  - name: frontend-design
+    path: skills/frontend-design/SKILL.md
+    description: "Master design skill — cinematic, typography-first UI"
+  - name: harden
+    path: skills/harden/SKILL.md
+    description: "Edge case hardening — i18n, overflow, empty states"
+  - name: normalize
+    path: skills/normalize/SKILL.md
+    description: "Align a feature to the design system"
+  - name: onboard
+    path: skills/onboard/SKILL.md
+    description: "Improve onboarding flow and first-run experience"
+  - name: optimize
+    path: skills/optimize/SKILL.md
+    description: "Performance optimization — CLS, LCP, FID"
+  - name: overdrive
+    path: skills/overdrive/SKILL.md
+    description: "Technically ambitious — WebGL, View Transitions, scroll-driven"
+  - name: polish
+    path: skills/polish/SKILL.md
+    description: "Final quality pass before shipping"
+  - name: quieter
+    path: skills/quieter/SKILL.md
+    description: "Tone down — too loud/aggressive -> more restrained"
+  - name: teach-impeccable
+    path: skills/teach-impeccable/SKILL.md
+    description: "Gather design context, write .impeccable.md for a project"
+  - name: typeset
+    path: skills/typeset/SKILL.md
+    description: "Typography refinement — scales, pairing, loading"
+
 state_machine:
   enabled: true
   max_retries: 1
@@ -140,5 +208,9 @@ instructions: |
 
   Consult these for specific technical decisions. They encode non-obvious insights
   (OKLCH vs HSL, 80ms perception threshold, metric-matched font fallbacks, etc.)
+
+  ## Skills (moved from .claude/skills/ in v10.7.1)
+  All design skills now live at `workers/impeccable-designer/skills/`.
+  Invoke via `/run impeccable-designer {skill}`.
 
   ## Learned Rules

@@ -1,5 +1,25 @@
 # Changelog
 
+## [10.7.1] — 2026-04-11
+
+### Headline
+Core cleanup: design skills moved to impeccable-designer worker, niche commands removed from core. Template ships a leaner, generic baseline.
+
+### Breaking — Commands Removed from Core
+- `/pr` — company-scoped (PR coordinator workflow)
+- `/hq-growth-dashboard` — personal/niche metrics
+
+### Breaking — Skills Moved to Workers
+- **22 design skills** moved from `.claude/skills/` to `workers/impeccable-designer/skills/`. Invoke via `/run impeccable-designer {skill}`.
+  - adapt, animate, arrange, audit, bolder, clarify, colorize, consolidate, critique, delight, distill, extract, frontend-design, harden, normalize, onboard, optimize, overdrive, polish, quieter, teach-impeccable, typeset
+- **social-graphic** moved from `.claude/skills/` to `workers/social-strategist/skills/`.
+
+### Changed
+- `workers/impeccable-designer/worker.yaml` — added full `skills:` block (22 entries)
+- `workers/social-strategist/worker.yaml` — added `social-graphic` skill entry
+- `.claude/CLAUDE.md` — command count updated (44→36), workers section updated
+- `workers/registry.yaml` — version bump to 10.7.1
+
 ## [10.7.0] — 2026-04-09
 
 ### Headline

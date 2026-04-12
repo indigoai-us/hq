@@ -4,6 +4,48 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.7.1 (from v10.7.0)
+
+### Headline
+
+Core cleanup — 22 design skills moved from `.claude/skills/` to `workers/impeccable-designer/skills/`, 2 niche commands removed, `social-graphic` moved to `social-strategist`.
+
+### Step 1 — Remove deleted commands
+
+```bash
+rm -f .claude/commands/pr.md .claude/commands/hq-growth-dashboard.md
+```
+
+### Step 2 — Move design skills to impeccable-designer
+
+```bash
+mkdir -p workers/impeccable-designer/skills
+for skill in adapt animate arrange audit bolder clarify colorize consolidate critique delight distill extract frontend-design harden normalize onboard optimize overdrive polish quieter teach-impeccable typeset; do
+  mv ".claude/skills/$skill" "workers/impeccable-designer/skills/$skill"
+done
+```
+
+### Step 3 — Move social-graphic to social-strategist
+
+```bash
+mkdir -p workers/social-strategist/skills
+mv .claude/skills/social-graphic workers/social-strategist/skills/social-graphic
+```
+
+### Step 4 — Update worker.yamls
+
+Copy the updated `workers/impeccable-designer/worker.yaml` and `workers/social-strategist/worker.yaml` from the release, or manually add the new `skills:` blocks.
+
+### Step 5 — Verify
+
+```bash
+ls .claude/commands/*.md | wc -l    # Should be 36
+ls .claude/skills/ | wc -l          # Should be ~18 (core skills only)
+ls workers/impeccable-designer/skills/ | wc -l  # Should be 22
+```
+
+---
+
 ## Migrating to v10.7.0 (from v10.6.0)
 
 ### Headline

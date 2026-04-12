@@ -26,6 +26,9 @@ skills:
   - name: adapt
     description: Adapt a draft for a different profile or platform
     trigger: "/run social-strategist adapt {draft-id} --from {profile} --to {profile}"
+  - name: social-graphic
+    path: skills/social-graphic/SKILL.md
+    description: "Generate 1080x1080 HTML social graphics for HQ update posts"
 
 knowledge:
   - workers/public/social-shared/lib/queue-ops.md

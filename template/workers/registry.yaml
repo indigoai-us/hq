@@ -9,8 +9,8 @@
 # - OpsWorker: Reports, monitoring, automation
 # - Library: Shared utilities (not executable)
 
-version: "10.6.0"
-updated: "2026-04-07"
+version: "10.7.1"
+updated: "2026-04-11"
 
 workers:
   # ===================
