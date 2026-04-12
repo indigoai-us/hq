@@ -24,7 +24,7 @@ import {
   checkRepoAccess,
   type InvitePayload,
 } from "./invite.js";
-import { linkTeamCommands } from "./team-setup.js";
+import { linkTeamCommands, installTeamCommands } from "./team-setup.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -234,6 +234,11 @@ export async function runJoinByInvite(
     }
   }
 
+  // Install bundled team commands (invite, sync, promote)
+  const installed = installTeamCommands(hqRoot);
+  if (installed.length > 0) {
+    info(`Installed ${installed.length} team command${installed.length === 1 ? "" : "s"}: ${installed.join(", ")}`);
+  }
   // Link team-distributed commands as slash commands
   const symlinks = linkTeamCommands(hqRoot, payload.slug);
   if (symlinks.linked.length > 0) {

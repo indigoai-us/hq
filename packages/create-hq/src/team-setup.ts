@@ -68,6 +68,45 @@ export interface MemberJoinResult {
   failed: { team: DiscoveredTeam; error: string }[];
 }
 
+// ─── Bundled Team Commands ──────────────────────────────────────────────────
+
+/** Team-specific commands bundled with create-hq (not part of core HQ template). */
+const TEAM_COMMANDS = ["invite.md", "team-sync.md", "promote.md"];
+
+/**
+ * Install the bundled team management commands into .claude/commands/.
+ * These ship with the create-hq npm package (in commands/) and are only
+ * installed when a user joins or creates a team.
+ *
+ * Returns the list of files installed (skips files that already exist).
+ */
+export function installTeamCommands(hqRoot: string): string[] {
+  const hqCommandsDir = path.join(hqRoot, ".claude", "commands");
+  if (!fs.existsSync(hqCommandsDir)) {
+    fs.mkdirSync(hqCommandsDir, { recursive: true });
+  }
+
+  // Resolve the bundled commands directory relative to this module.
+  // In the built package: dist/team-setup.js → ../commands/
+  const bundledDir = path.resolve(__dirname, "..", "commands");
+  if (!fs.existsSync(bundledDir)) {
+    // Fallback: running from source (ts-node / vitest)
+    // src/team-setup.ts → ../commands/
+    return [];
+  }
+
+  const installed: string[] = [];
+  for (const file of TEAM_COMMANDS) {
+    const src = path.join(bundledDir, file);
+    const dest = path.join(hqCommandsDir, file);
+    if (!fs.existsSync(src)) continue;
+    if (fs.existsSync(dest)) continue; // don't overwrite — user may have customized
+    fs.copyFileSync(src, dest);
+    installed.push(file);
+  }
+  return installed;
+}
+
 // ─── Command Symlinks ───────────────────────────────────────────────────────
 
 export interface SymlinkResult {
@@ -412,6 +451,11 @@ export async function runMemberJoin(
     try {
       cloneTeam(team, hqRoot, auth);
       stepStatus(label, "done");
+      // Install bundled team commands (invite, sync, promote)
+      const installed = installTeamCommands(hqRoot);
+      if (installed.length > 0) {
+        info(`Installed ${installed.length} team command${installed.length === 1 ? "" : "s"}: ${installed.join(", ")}`);
+      }
       // Link team-distributed commands as slash commands
       const symlinks = linkTeamCommands(hqRoot, team.slug);
       if (symlinks.linked.length > 0) {
