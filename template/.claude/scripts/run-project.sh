@@ -24,7 +24,7 @@ set -euo pipefail
 #   --tmux              Launch in tmux session with Remote Control
 # =============================================================================
 
-HQ_ROOT="~/HQ"
+HQ_ROOT="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
@@ -148,6 +148,7 @@ cleanup_on_signal() {
 
   # Kill background check-in timer if running
   [[ -n "${CHECKIN_PID:-}" ]] && kill "$CHECKIN_PID" 2>/dev/null || true
+  [[ -n "${HEARTBEAT_PID:-}" ]] && kill "$HEARTBEAT_PID" 2>/dev/null || true
 
   # Kill swarm background processes
   if [[ ${#SWARM_PIDS[@]:-0} -gt 0 ]]; then
@@ -186,9 +187,62 @@ cleanup_on_signal() {
   exit 130
 }
 
+# --- repo-run-registry integration (added by HQ repo-run-coordination) ---
+REPO_RUN_REGISTRY="$HQ_ROOT/scripts/repo-run-registry.sh"
+REPO_RUN_ID=""
+HEARTBEAT_PID=""
+
+_repo_run_parent_pid() {
+  local pid=$PPID
+  local max=15
+  while [[ -n "$pid" && "$pid" != "1" && $max -gt 0 ]]; do
+    if ps -p "$pid" -o comm= 2>/dev/null | grep -qi 'claude'; then
+      echo "$pid"
+      return
+    fi
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' \n')
+    max=$((max - 1))
+  done
+  # Fallback: immediate parent
+  echo "$PPID"
+}
+
+repo_run_register_for_repo() {
+  local repo="$1"
+  [[ -z "$repo" || ! -x "$REPO_RUN_REGISTRY" ]] && return 0
+  local parent_pid
+  parent_pid=$(_repo_run_parent_pid)
+  REPO_RUN_ID=$("$REPO_RUN_REGISTRY" register \
+    --pid "$parent_pid" \
+    --session-id "$SESSION_ID" \
+    --command "/run-project" \
+    --project "$PROJECT" \
+    --repo "$repo" \
+    --scope "repo" 2>/dev/null) || return 0
+  [[ -n "$REPO_RUN_ID" ]] || return 0
+
+  # Background heartbeat every 60s — auto-exits if registry deregisters the entry
+  (
+    while true; do
+      sleep 60
+      "$REPO_RUN_REGISTRY" heartbeat --run-id "$REPO_RUN_ID" >/dev/null 2>&1 || break
+    done
+  ) &
+  HEARTBEAT_PID=$!
+  log_info "repo-run-registry: registered $REPO_RUN_ID (pid=$parent_pid scope=repo) → $repo"
+}
+
+repo_run_cleanup_registry() {
+  [[ -n "${HEARTBEAT_PID:-}" ]] && kill "$HEARTBEAT_PID" 2>/dev/null || true
+  if [[ -n "${REPO_RUN_ID:-}" && -x "${REPO_RUN_REGISTRY:-}" ]]; then
+    "$REPO_RUN_REGISTRY" deregister --run-id "$REPO_RUN_ID" >/dev/null 2>&1 || true
+  fi
+}
+# --- end repo-run-registry integration ---
+
 trap 'cleanup_on_signal INT' INT
 trap 'cleanup_on_signal TERM' TERM
-trap 'cleanup_worktree' EXIT
+trap 'repo_run_cleanup_registry; cleanup_worktree' EXIT
 
 # --- Defaults ---
 PROJECT=""
@@ -196,6 +250,7 @@ RESUME=false
 STATUS=false
 DRY_RUN=false
 MODEL=""
+BUILDER=""  # "" = claude (default), "codex" = use `codex exec` for build phase
 NO_PERMISSIONS=false
 RETRY_FAILED=false
 TIMEOUT=""
@@ -237,6 +292,7 @@ while [[ $# -gt 0 ]]; do
     --status)       STATUS=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     --model)        MODEL="$2"; shift 2 ;;
+    --builder)      BUILDER="$2"; shift 2 ;;
     --no-permissions) NO_PERMISSIONS=true; shift ;;
     --retry-failed) RETRY_FAILED=true; shift ;;
     --timeout)      TIMEOUT="$2"; shift 2 ;;
@@ -262,7 +318,11 @@ Flags:
   --resume            Resume from next incomplete story (auto-detected)
   --status            Show all project statuses, exit
   --dry-run           Show story order without executing
-  --model MODEL       Override model for all stories
+  --model MODEL       Override model for all stories (claude builder only)
+  --builder BUILDER   Build agent: "claude" (default) or "codex" — when "codex",
+                      each story is executed via `codex exec` instead of `claude -p`.
+                      Completion is detected via the same 3-layer parser (termination
+                      JSON on any line → git commit heuristic fallback).
   --no-permissions    Pass --dangerously-skip-permissions to claude
   --retry-failed      Re-run previously failed stories only
   --timeout N         Per-story wall-clock timeout in minutes
@@ -499,6 +559,53 @@ WORKTREE_ENABLED=$(yq e '.worktree.enabled // true' "$HQ_ROOT/settings/orchestra
 BRANCH_NAME=$(jq -r '.branchName // empty' "$PRD_PATH")
 BASE_BRANCH=$(jq -r '.metadata.baseBranch // "main"' "$PRD_PATH")
 
+# Auto-create worktree when metadata.repoPath points to a path that does not
+# exist yet. Derive the source repo by stripping the trailing `-suffix` from
+# basename(REPO_PATH). Example: repos/private/{product}-sms-guardrails -> repos/private/{product}.
+if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && ! is_git_repo "$REPO_PATH"; then
+  _source_repo=""
+  _candidate="$REPO_PATH"
+  while [[ -n "$_candidate" && "$_candidate" != "$(dirname "$_candidate")" ]]; do
+    _base=$(basename "$_candidate")
+    _parent=$(dirname "$_candidate")
+    if [[ "$_base" == *-* ]]; then
+      _candidate="$_parent/${_base%-*}"
+      if is_git_repo "$_candidate"; then
+        _source_repo="$_candidate"
+        break
+      fi
+    else
+      break
+    fi
+  done
+  unset _candidate _base _parent
+  if [[ -n "$_source_repo" ]]; then
+    log_info "Target repoPath ${REPO_PATH} does not exist — creating worktree from ${_source_repo}"
+    if git -C "$_source_repo" show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
+      git -C "$_source_repo" worktree add "$REPO_PATH" "$BRANCH_NAME" 2>&1 || {
+        log_err "Failed to create worktree at $REPO_PATH"
+        exit 1
+      }
+    else
+      git -C "$_source_repo" worktree add -b "$BRANCH_NAME" "$REPO_PATH" "$BASE_BRANCH" 2>&1 || {
+        log_err "Failed to create worktree at $REPO_PATH with new branch $BRANCH_NAME"
+        exit 1
+      }
+    fi
+    if [[ -f "$REPO_PATH/bun.lock" || -f "$REPO_PATH/bun.lockb" ]]; then
+      log_info "Installing dependencies in worktree (frozen lockfile)..."
+      (cd "$REPO_PATH" && bun install --frozen-lockfile 2>/dev/null || bun install 2>/dev/null) || true
+    fi
+    USING_WORKTREE=true
+    WORKTREE_PATH="$REPO_PATH"
+    ORIGINAL_REPO_PATH="$_source_repo"
+    log_ok "Worktree ready: $REPO_PATH"
+  else
+    log_warn "Target repoPath '${REPO_PATH}' does not exist and no source repo could be derived — builder will run from HQ_ROOT"
+  fi
+  unset _source_repo
+fi
+
 if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
   if [[ "$IN_PLACE" == true || "$WORKTREE_ENABLED" != true ]]; then
     # Opt-out: legacy checkout behavior (no worktree)
@@ -535,6 +642,12 @@ if [[ -n "$BRANCH_NAME" && -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
     fi
     log_info "Detected existing worktree at $REPO_PATH"
   fi
+fi
+
+# =============================================================================
+# Register with repo-run-registry (after worktree setup so REPO_PATH is final)
+if [[ -n "${REPO_PATH:-}" ]]; then
+  repo_run_register_for_repo "$REPO_PATH"
 fi
 
 # =============================================================================
@@ -1153,6 +1266,13 @@ run_story() {
   story_labels=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .labels // [] | join(", ")' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
   story_files=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .files // [] | join(", ")' "$HQ_ROOT/$prd_path" 2>/dev/null) || true
 
+  local worktree_note=""
+  if [[ -n "${REPO_PATH:-}" && -d "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
+    worktree_note="
+WORKTREE: ${REPO_PATH}
+Use this worktree as the working directory for all file operations."
+  fi
+
   local prompt="Execute /execute-task ${project}/${story_id}.
 
 CRITICAL — Follow the FULL Ralph worker pipeline:
@@ -1173,6 +1293,7 @@ Labels: ${story_labels}
 Files: ${story_files}
 PRD: ${prd_path}
 Codex model hint: ${codex_model_hint:-none}
+${worktree_note}
 
 Do NOT skip worker phases. Do NOT use EnterPlanMode or TodoWrite.
 Do NOT implement directly — delegate to workers via the execute-task pipeline.
@@ -1187,26 +1308,45 @@ RULES:
 - Do NOT include this JSON mid-task and then continue talking.
 - Wrong format = task marked FAILED by orchestrator."
 
-  local flags=(-p --output-format json)
-
-  if [[ "$NO_PERMISSIONS" == true ]]; then
-    flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
-  fi
-
-  # Model resolution: CLI flag > story model_hint > default
-  if [[ -n "$MODEL" ]]; then
-    flags+=(--model "$MODEL")
-  elif [[ -n "$model_hint" ]]; then
-    flags+=(--model "$model_hint")
-    log_info "Using model hint: $model_hint (from story $story_id)"
-  fi
-
   local output_file="$EXEC_DIR/${story_id}.output.json"
   local stderr_file="$EXEC_DIR/${story_id}.stderr"
   local exit_code=0
 
-  # Build the command
-  local cmd=(claude "${flags[@]}" "$prompt")
+  local cmd=()
+  if [[ "$BUILDER" == "codex" ]]; then
+    # Codex CLI builder — invokes `codex exec` with the same prompt payload.
+    # Completion detection: Layer 2 (grep for task_id+status on the raw file)
+    # and Layer 3 (git heuristic) both work on codex's plain-text output.
+    local codex_flags=(exec --skip-git-repo-check)
+    if [[ "$NO_PERMISSIONS" == true ]]; then
+      codex_flags+=(--dangerously-bypass-approvals-and-sandbox)
+    else
+      codex_flags+=(--full-auto)
+    fi
+    # Codex ignores claude's --model hints; only pass --model if explicitly set.
+    if [[ -n "$MODEL" ]]; then
+      codex_flags+=(-m "$MODEL")
+    fi
+    log_info "Builder: codex exec (story $story_id)"
+    cmd=(codex "${codex_flags[@]}" "$prompt")
+  else
+    # Default: claude -p headless invocation
+    local flags=(-p --output-format json)
+
+    if [[ "$NO_PERMISSIONS" == true ]]; then
+      flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
+    fi
+
+    # Model resolution: CLI flag > story model_hint > default
+    if [[ -n "$MODEL" ]]; then
+      flags+=(--model "$MODEL")
+    elif [[ -n "$model_hint" ]]; then
+      flags+=(--model "$model_hint")
+      log_info "Using model hint: $model_hint (from story $story_id)"
+    fi
+
+    cmd=(claude "${flags[@]}" "$prompt")
+  fi
 
   if [[ -n "$TIMEOUT" ]]; then
     # macOS doesn't ship GNU timeout — try gtimeout (coreutils), then perl fallback
@@ -1234,13 +1374,65 @@ RULES:
 
   # Execute (unset CLAUDECODE to allow nested claude sessions)
   # HQ_EXECUTING_STORY=1 signals to block-inline-story-impl hook that this is a legitimate sub-agent context
+  # Run the builder from REPO_PATH (worktree) so codex/claude edit the right tree.
+  # Fall back to HQ_ROOT only when REPO_PATH is missing or not a git repo.
+  local _build_cwd="$HQ_ROOT"
+  if [[ -n "${REPO_PATH:-}" && -d "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
+    _build_cwd="$REPO_PATH"
+  fi
   if [[ "$VERBOSE" == true ]]; then
-    cd "$HQ_ROOT" && env -u CLAUDECODE HQ_EXECUTING_STORY=1 "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
+    cd "$_build_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" HQ_EXECUTING_STORY=1 "${cmd[@]}" 2>"$stderr_file" | tee "$output_file" || exit_code=$?
   else
-    cd "$HQ_ROOT" && env -u CLAUDECODE HQ_EXECUTING_STORY=1 "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
+    cd "$_build_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" HQ_EXECUTING_STORY=1 "${cmd[@]}" >"$output_file" 2>"$stderr_file" || exit_code=$?
   fi
 
+  # Sweep any stray workspace/ or companies/ dirs the builder created at the
+  # worktree root via relative-path writes. Defense-in-depth for skills that
+  # ignore the HQ_ROOT / HQ_WORKSPACE_DIR env vars we exported above.
+  cleanup_builder_contamination "${REPO_PATH:-}" || true
+
   return $exit_code
+}
+
+# =============================================================================
+# Builder contamination cleanup
+# =============================================================================
+# Downstream builders (codex/claude) are spawned with cwd=REPO_PATH so their
+# edits land in the worktree. But some skill prompts tell workers to append to
+# relative paths like `workspace/metrics/model-usage.jsonl` or write task state
+# under `workspace/orchestrator/<project>/`. Those relative writes land inside
+# the worktree instead of HQ_ROOT, contaminating the feature branch. We now
+# export HQ_ROOT / HQ_WORKSPACE_DIR so well-behaved skills resolve to HQ, but
+# we also defensively sweep any stray `workspace/` or `companies/` trees that
+# a misbehaving skill may have created at the worktree root. Tracked paths
+# (the {product} repo legitimately has `apps/...`, never top-level `workspace/`) are
+# left alone. Append-only `.jsonl` metric files are merged into HQ_ROOT before
+# the stray tree is removed so we don't lose model-usage telemetry.
+cleanup_builder_contamination() {
+  local repo="${1:-$REPO_PATH}"
+  [[ -z "$repo" || ! -d "$repo" ]] && return 0
+  local dirname stray cleaned=0
+  for dirname in workspace companies; do
+    stray="$repo/$dirname"
+    [[ ! -d "$stray" ]] && continue
+    # Skip if the repo legitimately tracks this top-level dir.
+    if (cd "$repo" && git ls-files --error-unmatch "$dirname" >/dev/null 2>&1); then
+      continue
+    fi
+    # Rescue append-only metric files before deletion.
+    if [[ -d "$stray/metrics" ]]; then
+      mkdir -p "$HQ_ROOT/workspace/metrics"
+      local f
+      for f in "$stray"/metrics/*.jsonl; do
+        [[ -f "$f" ]] || continue
+        cat "$f" >> "$HQ_ROOT/workspace/metrics/$(basename "$f")" 2>/dev/null || true
+      done
+    fi
+    rm -rf "$stray"
+    cleaned=$((cleaned + 1))
+    log_warn "Cleaned stray '${dirname}/' from worktree (relative-path write by builder); merged any metrics into HQ workspace"
+  done
+  return 0
 }
 
 # =============================================================================
@@ -1263,23 +1455,58 @@ validate_git_state() {
 }
 
 get_commit_sha() {
-  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && echo "n/a" && return
-  git -C "$REPO_PATH" rev-parse --short HEAD 2>/dev/null || echo "n/a"
+  # Defect B fix: attribution must be anchored to the story's own work.
+  # Accepts an optional $1 = pre_story_sha (the HEAD captured before the
+  # sub-agent ran). If HEAD has not moved relative to that anchor, the
+  # sub-agent did not commit on this branch — return "no-commit" instead of
+  # silently re-attributing the previous story's SHA.
+  # Accepts an optional $2 = repo path to read from (defaults to REPO_PATH).
+  local pre_sha="${1:-}"
+  local repo="${2:-$REPO_PATH}"
+  { [[ -z "$repo" ]] || ! is_git_repo "$repo"; } && echo "n/a" && return
+  local cur_sha
+  cur_sha=$(git -C "$repo" rev-parse --short HEAD 2>/dev/null) || { echo "n/a"; return; }
+  if [[ -n "$pre_sha" ]]; then
+    local pre_short="${pre_sha:0:${#cur_sha}}"
+    if [[ "$cur_sha" == "$pre_short" ]]; then
+      # HEAD did not advance — do not attribute the unchanged SHA to this story.
+      echo "no-commit"
+      return
+    fi
+  fi
+  echo "$cur_sha"
 }
 
 get_changed_files() {
   local story_id="$1"
-  { [[ -z "$REPO_PATH" ]] || ! is_git_repo "$REPO_PATH"; } && echo "[]" && return
-  # Files changed in last commit
-  local _result
-  _result=$(git -C "$REPO_PATH" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
-    | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null) || true
+  # Defect B fix: when a pre_story_sha is provided, return the union of files
+  # touched by commits since that anchor (scoped to the story's own commits)
+  # instead of blindly returning the tip commit's file list.
+  local pre_sha="${2:-}"
+  local repo="${3:-$REPO_PATH}"
+  { [[ -z "$repo" ]] || ! is_git_repo "$repo"; } && echo "[]" && return
+  local _result=""
+  if [[ -n "$pre_sha" ]] && git -C "$repo" cat-file -e "$pre_sha" 2>/dev/null; then
+    _result=$(git -C "$repo" diff --name-only "$pre_sha" HEAD 2>/dev/null \
+      | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null) || true
+  else
+    _result=$(git -C "$repo" diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
+      | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null) || true
+  fi
   # Validate JSON before returning — protects --argjson in update_state_completed
   if [[ -z "$_result" ]] || ! jq -e . <<< "$_result" &>/dev/null; then
     echo "[]"
   else
     echo "$_result"
   fi
+}
+
+# Capture the current HEAD as an anchor for later attribution. Returns empty
+# string (not "n/a") when there's no git repo, so callers can use -n checks.
+get_pre_story_sha() {
+  local repo="${1:-$REPO_PATH}"
+  { [[ -z "$repo" ]] || ! is_git_repo "$repo"; } && echo "" && return
+  git -C "$repo" rev-parse HEAD 2>/dev/null || echo ""
 }
 
 # =============================================================================
@@ -1631,9 +1858,13 @@ run_regression_gate() {
     local gate_key
     gate_key=$(echo "$gate" | tr ' ' '_')
 
-    # Capture baseline on first regression gate run
-    if [[ ! -f "$baseline_file" ]]; then
-      log "  Capturing baseline error counts..."
+    # Capture baseline per-gate (lazy: only when this gate first fails).
+    # Defect A fix: the outer guard used to check "file does not exist", which
+    # meant only the FIRST gate to fail ever got a baseline — every later gate
+    # silently fell back to `// 0` and reported phantom regressions.
+    if ! jq -e --arg key "$gate_key" 'has($key)' "$baseline_file" >/dev/null 2>&1; then
+      [[ -f "$baseline_file" ]] || echo "{}" > "$baseline_file"
+      log "  Capturing baseline error count for $gate..."
       # Run gate against baseBranch to get pre-existing error count.
       # When using a worktree, ORIGINAL_REPO_PATH stays on baseBranch — no checkout needed.
       # When in-place, fall back to stash/checkout on REPO_PATH.
@@ -1661,15 +1892,22 @@ run_regression_gate() {
       if [[ $base_exit -ne 0 ]]; then
         base_err_count=$(echo "$base_output" | grep -ci "error" 2>/dev/null) || base_err_count=0
       fi
-      # Initialize baseline file
-      echo "{}" > "$baseline_file"
+      # Merge new key into existing baseline object (do NOT overwrite the file,
+      # or we wipe previously-captured keys for other gates).
       jq --arg key "$gate_key" --argjson count "$base_err_count" \
         '. + {($key): $count}' "$baseline_file" > "$baseline_file.tmp" \
         && mv "$baseline_file.tmp" "$baseline_file"
     fi
 
+    # Defense-in-depth: if the capture block above didn't write our key for any
+    # reason, refuse to compare rather than silently fall back to phantom-zero.
+    if ! jq -e --arg key "$gate_key" 'has($key)' "$baseline_file" >/dev/null 2>&1; then
+      log_err "  No baseline for $gate_key — refusing to compare (would produce phantom-zero regression)"
+      gate_passed=false
+      continue
+    fi
     local baseline_count
-    baseline_count=$(jq -r --arg key "$gate_key" '.[$key] // 0' "$baseline_file" 2>/dev/null || echo "0")
+    baseline_count=$(jq -r --arg key "$gate_key" '.[$key]' "$baseline_file")
 
     if [[ "$err_count" -le "$baseline_count" ]]; then
       log_warn "  $gate: $err_count errors (≤ baseline $baseline_count — pre-existing, not a regression)"
@@ -1891,10 +2129,18 @@ update_state_remove_task() {
 update_state_current() {
   local story_id="$1"
   # In sequential mode, checkout_story already added to current_tasks[].
-  # Just update the started_at timestamp on the entry.
-  jq --arg id "$story_id" --arg ts "$(ts)" '
+  # Refresh started_at + PID on every call so retries don't leave stale data.
+  # Defect C fix: previously this only touched started_at, so the check-in
+  # printer would keep reading a stale .pid from a prior run/session (the
+  # "PID 91542 (exited)" sticky-display bug). Now we actively stamp the
+  # orchestrator PID + clear the legacy .pid slot on each attempt.
+  jq --arg id "$story_id" --arg ts "$(ts)" --arg pid "$$" --arg sid "$SESSION_ID" '
     .current_tasks = [(.current_tasks // [])[] |
-      if .id == $id then .started_at = $ts else . end
+      if .id == $id then
+        .started_at = $ts
+        | .pid = ($pid | tonumber)
+        | .checkedOutBy = {"pid": ($pid | tonumber), "startedAt": $ts, "sessionId": $sid}
+      else . end
     ] |
     .progress.in_progress = (.current_tasks | length) |
     .updated_at = $ts
@@ -2226,18 +2472,33 @@ RULES:
 - Do NOT include this JSON mid-task and then continue talking.
 - Wrong format = task marked FAILED by orchestrator."
 
-  local flags=(-p --output-format json)
-  [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
-
-  if [[ -n "$MODEL" ]]; then
-    flags+=(--model "$MODEL")
-  elif [[ -n "$model_hint" ]]; then
-    flags+=(--model "$model_hint")
-  fi
-
   local output_file="$EXEC_DIR/${story_id}.output.json"
   local stderr_file="$EXEC_DIR/${story_id}.stderr"
-  local cmd=(claude "${flags[@]}" "$prompt")
+  local cmd=()
+  if [[ "$BUILDER" == "codex" ]]; then
+    # Swarm mode codex builder — same invocation shape as sequential mode.
+    local codex_flags=(exec --skip-git-repo-check)
+    if [[ "$NO_PERMISSIONS" == true ]]; then
+      codex_flags+=(--dangerously-bypass-approvals-and-sandbox)
+    else
+      codex_flags+=(--full-auto)
+    fi
+    if [[ -n "$MODEL" ]]; then
+      codex_flags+=(-m "$MODEL")
+    fi
+    cmd=(codex "${codex_flags[@]}" "$prompt")
+  else
+    local flags=(-p --output-format json)
+    [[ "$NO_PERMISSIONS" == true ]] && flags+=(--dangerously-skip-permissions --permission-mode bypassPermissions)
+
+    if [[ -n "$MODEL" ]]; then
+      flags+=(--model "$MODEL")
+    elif [[ -n "$model_hint" ]]; then
+      flags+=(--model "$model_hint")
+    fi
+
+    cmd=(claude "${flags[@]}" "$prompt")
+  fi
   # macOS doesn't ship GNU timeout — mirror the sequential fallback chain
   if [[ -n "$TIMEOUT" ]]; then
     if command -v timeout &>/dev/null; then
@@ -2249,8 +2510,14 @@ RULES:
     fi
   fi
 
-  # Launch in background
-  (cd "$HQ_ROOT" && env -u CLAUDECODE "${cmd[@]}" >"$output_file" 2>"$stderr_file") &
+  # Launch in background — prefer the per-story worktree, fall back to project REPO_PATH, then HQ_ROOT
+  local _swarm_cwd="$HQ_ROOT"
+  if [[ -n "$story_worktree" && -d "$story_worktree" ]]; then
+    _swarm_cwd="$story_worktree"
+  elif [[ -n "${REPO_PATH:-}" && -d "$REPO_PATH" ]]; then
+    _swarm_cwd="$REPO_PATH"
+  fi
+  (cd "$_swarm_cwd" && env -u CLAUDECODE HQ_ROOT="$HQ_ROOT" HQ_WORKSPACE_DIR="$HQ_ROOT/workspace" "${cmd[@]}" >"$output_file" 2>"$stderr_file") &
   LAST_BG_PID=$!
 }
 
@@ -2734,6 +3001,9 @@ if [[ "$SWARM_MODE" == true ]]; then
 
       log_info "Running story $STORY_ID..."
       story_start=$(date +%s)
+      # Defect B: anchor attribution to HEAD-before-story so we can't latch
+      # onto a stale commit from an earlier story.
+      pre_story_sha=$(get_pre_story_sha)
 
       "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
         ${COMPANY:+--company "$COMPANY"} \
@@ -2765,8 +3035,11 @@ if [[ "$SWARM_MODE" == true ]]; then
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
 
       if [[ "$passes" == "true" ]]; then
-        commit_sha=$(get_commit_sha)
-        files_changed=$(get_changed_files "$STORY_ID")
+        commit_sha=$(get_commit_sha "$pre_story_sha")
+        if [[ "$commit_sha" == "no-commit" ]]; then
+          log_warn "$STORY_ID: HEAD did not advance — sub-agent committed elsewhere or not at all"
+        fi
+        files_changed=$(get_changed_files "$STORY_ID" "$pre_story_sha")
         update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
         release_checkout "$STORY_ID"
         echo "[$(ts)] $STORY_ID: $STORY_TITLE — completed (${duration}s) [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
@@ -2957,6 +3230,13 @@ else
     while [[ "$attempt" -le 2 ]]; do
       log_info "Running story $STORY_ID (attempt $attempt)..."
       story_start=$(date +%s)
+      # Defect B: anchor attribution to HEAD-before-story so we can't latch
+      # onto a stale commit from an earlier story.
+      pre_story_sha=$(get_pre_story_sha)
+      # Defect C: refresh state.json PID/timestamp on every attempt so the
+      # check-in printer shows the current attempt's orchestrator PID rather
+      # than stale data from a previous run/session.
+      update_state_current "$STORY_ID"
 
       "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
         ${COMPANY:+--company "$COMPANY"} \
@@ -2992,8 +3272,11 @@ else
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
 
       if [[ "$passes" == "true" ]]; then
-        commit_sha=$(get_commit_sha)
-        files_changed=$(get_changed_files "$STORY_ID")
+        commit_sha=$(get_commit_sha "$pre_story_sha")
+        if [[ "$commit_sha" == "no-commit" ]]; then
+          log_warn "$STORY_ID: HEAD did not advance — sub-agent committed elsewhere or not at all"
+        fi
+        files_changed=$(get_changed_files "$STORY_ID" "$pre_story_sha")
 
         update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
         release_checkout "$STORY_ID"
@@ -3094,6 +3377,9 @@ if [[ ${#retry_queue[@]} -gt 0 ]]; then
     echo -e "${BOLD}=== RETRY: $story_id: $title ===${NC}"
 
     retry_start=$(date +%s)
+    # Defect B: anchor attribution to HEAD-before-story so retries can't latch
+    # onto a previous story's SHA.
+    pre_story_sha=$(get_pre_story_sha)
 
     "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
       ${COMPANY:+--company "$COMPANY"} \
@@ -3111,8 +3397,11 @@ if [[ ${#retry_queue[@]} -gt 0 ]]; then
 
     passes=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
     if [[ "$passes" == "true" ]]; then
-      commit_sha=$(get_commit_sha)
-      files_changed=$(get_changed_files "$story_id")
+      commit_sha=$(get_commit_sha "$pre_story_sha")
+      if [[ "$commit_sha" == "no-commit" ]]; then
+        log_warn "$story_id: HEAD did not advance on retry — sub-agent committed elsewhere or not at all"
+      fi
+      files_changed=$(get_changed_files "$story_id" "$pre_story_sha")
       update_state_completed "$story_id" "$commit_sha" "$files_changed"
       echo "[$(ts)] $story_id: $title — completed on retry [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
       log_ok "$story_id completed on retry [$commit_sha]"

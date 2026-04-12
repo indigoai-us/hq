@@ -64,6 +64,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh detect-secrets .claude/hooks/detect-secrets.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
+            "timeout": 5
           }
         ]
       },
@@ -79,6 +84,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
+            "timeout": 5
           }
         ]
       },
@@ -93,6 +103,11 @@
           {
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
             "timeout": 5
           }
         ]
@@ -171,6 +186,11 @@
           {
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh load-policies .claude/hooks/load-policies-for-session.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh check-repo-active-runs .claude/hooks/check-repo-active-runs.sh",
             "timeout": 5
           }
         ]

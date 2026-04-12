@@ -137,6 +137,8 @@ Parent session should never accumulate >10 images. When reading/verifying image 
 
 Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orchestrator.yaml`. Stories declare `files: []` in prd.json. `/execute-task` acquires locks in `{repo}/.file-locks.json` + state.json `checkedOutFiles` on start, releases on completion/failure. `/run-project` skips conflicting stories during task selection (configurable: `hard_block`, `soft_block`, `read_only_fallback`). Stale locks (dead PID + timeout) auto-cleaned.
 
+**Repo Coordination (cross-session):** Repo-level active-run registry at `workspace/orchestrator/active-runs.json` prevents sibling sessions from editing a repo while `/run-project` owns it. Enforced by `scripts/repo-run-registry.sh` + SessionStart banner (`check-repo-active-runs.sh`) + PreToolUse hard block (`block-on-active-run.sh`). Blocks Edit/Write/destructive-Bash against owned repos with exit code 2; Read/Grep/Glob/`git status` always allowed. Config: `settings/orchestrator.yaml` → `repo_coordination:`. Bypass (emergency only): `HQ_IGNORE_ACTIVE_RUNS=1` — audit to `workspace/learnings/active-run-bypasses.jsonl`. Policy: `.claude/policies/repo-run-coordination.md`. Composes above story-level `.file-locks.json` without regression.
+
 ## Commands
 
 44 commands in `.claude/commands/` (and growing). Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`

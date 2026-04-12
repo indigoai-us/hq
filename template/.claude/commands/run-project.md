@@ -51,6 +51,40 @@ Parse `$ARGUMENTS` into project name + passthrough flags:
 2. Read prd.json → display: project name, total stories, completed, remaining
 3. Ensure `workspace/orchestrator/{project}/` dir exists (create if not)
 
+### Step 2.4 — Repo-Run Preflight (active-run coordination)
+
+**Why:** Prevents colliding with another live `/run-project` on the same repo.
+Policy: `.claude/policies/repo-run-coordination.md`. Registry:
+`workspace/orchestrator/active-runs.json`.
+
+1. Resolve `$REPO_PATH` from prd.json (`repoPath` or manifest reverse lookup).
+2. Run `bash scripts/repo-run-registry.sh check "$REPO_PATH"`.
+3. On exit 0: proceed to Step 2.5.
+4. On exit 2 (foreign owner found):
+   - The registry prints the owner row(s) to stderr: command, project, PID, started_at.
+   - Display them to the user verbatim.
+   - Ask the user (AskUserQuestion) to choose:
+     - **wait** — abort this `/run-project` invocation; re-run when the owner finishes.
+     - **worktree** — create a sibling worktree (`git worktree add ../{repo}-wt-{project}`), cd into it, re-run `/run-project` from the worktree (the new registration will use `scope: worktree:{path}`).
+     - **bypass** — pass `--ignore-active-runs` (sets `HQ_IGNORE_ACTIVE_RUNS=1` and appends a JSON audit row to `workspace/learnings/active-run-bypasses.jsonl`). Use only when the owner is verifiably dead.
+   - Never bypass silently. Always require explicit user confirmation.
+
+**Flag:** `--ignore-active-runs` — user-gated bypass. On confirmation, export
+`HQ_IGNORE_ACTIVE_RUNS=1` for the session environment and continue. Append
+`{ts, run_id, bypassed_by, target_repo, reason}` to
+`workspace/learnings/active-run-bypasses.jsonl` before launching.
+
+### Step 2.5 — Warm-Start (Checkpoint + Compact)
+
+**Unconditional.** Runs every invocation, regardless of current context usage. Preflight (PRD read, policy load, state rehydration, dry-run decisions) often consumes significant context before the orchestrator is even ready. Warm-start resets the parent session before the long-running poll loop begins.
+
+1. Run `/checkpoint` — writes a thread file capturing: project name, PRD path, incomplete story count, loaded policies, any preflight findings or blockers
+2. Run `/compact` — clears conversation context
+
+**Durability note:** All orchestration state is already on disk before this step runs — `workspace/orchestrator/{project}/state.json`, `{repo}/.file-locks.json`, `prd.json`, loaded policy digests. Compaction drops only conversation context, so Step 3's background launch and Step 4's poll loop read fresh from disk and continue without loss.
+
+**Skip conditions:** `--status`, `--dry-run`, and `--help` already exit before this point (Step 1 routes them synchronously), so warm-start never runs for them.
+
 ### Step 3 — Launch Background
 
 ```bash
@@ -135,6 +169,17 @@ Same as default mode:
 ### Step 3 — Load Policies
 
 Same as default: company → repo → global policies. Display count.
+
+### Step 3.5 — Warm-Start (Checkpoint + Compact)
+
+**Unconditional.** Runs after plan approval and policy load, before the first story executes. Inline mode runs all orchestration in-session, so preflight context (plan generation, user review, policy load) must be cleared to preserve headroom for the Ralph loop — which stays in-session for every story.
+
+1. Run `/checkpoint` — writes a thread file capturing: project name, approved plan (story order + workers), loaded policies, pending story list
+2. Run `/compact` — clears conversation context
+
+**Durability note:** The approved plan is durable in `prd.json` (`passes` flags + story order) and `workspace/orchestrator/{project}/state.json`. Compaction drops only conversation — the loop resumes reading from disk in Step 4.
+
+**Why both modes warm-start:** Default mode's parent session still runs the poll loop in-process (surfacing progress to the user), so preflight context bloat hurts it too. Inline mode is more obviously affected, but neither mode benefits from carrying preflight context into execution.
 
 ### Step 4 — Sequential Story Execution (In-Session Ralph Loop)
 

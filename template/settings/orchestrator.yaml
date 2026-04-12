@@ -52,3 +52,28 @@ swarm:
   max_concurrency: 4          # Max parallel stories per batch (--swarm N overrides)
   checkin_interval_seconds: 180  # Seconds between check-in status prints
   require_files_declared: true   # Only swarm stories that have files[] in prd.json
+
+# =============================================================================
+# Repo-level run coordination (cross-session)
+# =============================================================================
+# Signals to sibling Claude sessions that a /run-project is actively sweeping
+# a repo. Distinct from file_locking (which is story-scoped). Enforced by:
+#   - scripts/repo-run-registry.sh          (CLI + registry mutations)
+#   - .claude/hooks/check-repo-active-runs.sh  (SessionStart banner)
+#   - .claude/hooks/block-on-active-run.sh     (PreToolUse hard block)
+# Registry file: workspace/orchestrator/active-runs.json
+repo_coordination:
+  enabled: true
+
+  # A run is stale if its heartbeat is older than this OR its PID is dead.
+  # Tighter than file_locking.stale_lock_timeout_minutes because repo-level
+  # blocking is more disruptive — free it quickly once the owner is obviously gone.
+  stale_heartbeat_minutes: 15
+
+  # hard_block: PreToolUse hook exits 2 on Edit/Write/destructive-Bash in owned repo.
+  # soft_block: Hook prints a warning but allows the tool call (not yet implemented).
+  conflict_mode: hard_block
+
+  # If true, foreign sessions may edit freely inside a git worktree sibling
+  # of the owned repo (scope: "repo" entries do not cover worktree paths).
+  allow_worktree_override: true
