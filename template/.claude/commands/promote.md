@@ -4,9 +4,40 @@ Give a team member org admin privileges so they can invite new members and manag
 
 **Usage:** `/promote` or `/promote @username`
 
+**Requires:** `gh` CLI authenticated (`gh auth status`)
+
 ## Steps
 
-### 1. Discover teams
+### 1. Verify gh CLI
+
+Check that `gh` is installed and authenticated:
+```bash
+gh auth status 2>&1
+```
+
+If `gh` is not found:
+```
+GitHub CLI (gh) is required for team commands.
+Install it: https://cli.github.com
+```
+Stop here.
+
+If not authenticated:
+```
+GitHub CLI is not authenticated. Run:
+  gh auth login
+Then try /promote again.
+```
+Stop here.
+
+Get the current user's login:
+```bash
+gh api user --jq .login
+```
+
+Store as `{login}`.
+
+### 2. Discover teams
 
 Find all team.json files:
 ```bash
@@ -20,59 +51,23 @@ No teams found. Create a team first:
 ```
 Stop here.
 
-### 2. Select team
+### 3. Select team
 
 If multiple teams exist, present a numbered list and ask the user to select one.
 
 If only one team exists, use it automatically.
 
-### 3. Extract team metadata
+### 4. Extract team metadata
 
 Read the selected `companies/{slug}/team.json` and extract:
 - `team_name` — human-readable team name
 - `org_login` — GitHub org login (e.g. `indigoai-us`)
 
-### 4. Load credentials
+### 5. Verify current user is an admin
 
-Read `~/.hq/credentials.json`:
+Check the org role:
 ```bash
-cat ~/.hq/credentials.json
-```
-
-Extract `access_token` and `login`.
-
-**Never display the access_token value in output.**
-
-If credentials.json is missing or invalid:
-```
-No credentials found. Run `npx create-hq` to authenticate with GitHub.
-```
-Stop here.
-
-### 5. Validate token + verify current user is an admin
-
-First, validate the token:
-```bash
-curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  https://api.github.com/user
-```
-
-If **401**:
-```
-Your GitHub token has expired. Re-authenticate by running:
-  npx create-hq
-Then try /promote again.
-```
-Stop here.
-
-Then check the org role:
-```bash
-curl -s \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/orgs/{org_login}/memberships/{login}"
+gh api "orgs/{org_login}/memberships/{login}" --jq .role 2>&1
 ```
 
 If `role` is not `"admin"`:
@@ -84,15 +79,10 @@ Stop here.
 
 ### 6. List org members
 
-Fetch current org members:
+Fetch current non-admin org members:
 ```bash
-curl -s \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/orgs/{org_login}/members?role=member&per_page=100"
+gh api "orgs/{org_login}/members?role=member&per_page=100" --jq '.[].login' 2>&1
 ```
-
-Parse the response — extract `login` for each member. These are the non-admin members who can be promoted.
 
 If no non-admin members found:
 ```
@@ -136,17 +126,12 @@ Wait for explicit "yes" confirmation. Any other response cancels.
 ### 8. Send promotion API call
 
 ```bash
-curl -s -X PUT \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  -H "Content-Type: application/json" \
-  "https://api.github.com/orgs/{org_login}/memberships/{target_username}" \
-  -d '{"role": "admin"}'
+gh api "orgs/{org_login}/memberships/{target_username}" -X PUT -f role="admin" 2>&1
 ```
 
 Check the response:
 - If `role` is `"admin"` in response: success
-- If 403: insufficient permissions (the hq-team-sync App may not have the required scope)
+- If 403: insufficient permissions (the GitHub App may not have the required scope)
 - If 404: user not found in org
 
 ### 9. Report result
@@ -164,7 +149,6 @@ They can now:
 ```
 Could not promote @{target_username} — insufficient permissions.
 
-The hq-team-sync GitHub App may need additional org permissions.
 You can promote them manually:
   https://github.com/orgs/{org_login}/people
   Find @{target_username} → Change role → Owner

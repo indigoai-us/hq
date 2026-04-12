@@ -7,11 +7,11 @@
  *   1. POST github.com/login/device/code with our App's client_id
  *   2. Display user_code, open verification_uri in browser
  *   3. Poll github.com/login/oauth/access_token at the GitHub-specified interval
- *   4. On success: GET api.github.com/user → store { access_token, login, id, name, email }
+ *   4. On success: GET api.github.com/user → configure gh CLI with the token
  *
- * Token is stored at ~/.hq/credentials.json (mode 0600). Tokens are
- * GitHub App user-to-server tokens (ghu_…), so they ignore OAuth scopes —
- * permissions are configured on the App settings page.
+ * After authentication, the token is handed to `gh auth login --with-token`
+ * so that subsequent sessions can use `gh` for all GitHub operations.
+ * No credentials are persisted to disk by create-hq itself.
  *
  * Token values are NEVER written to stdout or logs.
  */
@@ -19,7 +19,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import chalk from "chalk";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -33,13 +33,12 @@ const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_API_USER_URL = "https://api.github.com/user";
 
 const HQ_DIR = path.join(os.homedir(), ".hq");
-const CREDENTIALS_FILE = path.join(HQ_DIR, "credentials.json");
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-/** Stored credentials for the authenticated GitHub user. */
+/** Authenticated GitHub user info. The access_token is held in-memory only. */
 export interface GitHubAuth {
-  /** ghu_ user-to-server token from GitHub App device flow. */
+  /** ghu_ user-to-server token from GitHub App device flow (in-memory only). */
   access_token: string;
   /** GitHub login (username). */
   login: string;
@@ -83,69 +82,140 @@ interface GitHubUserResponse {
   email: string | null;
 }
 
-// ─── Token store ────────────────────────────────────────────────────────────
+// ─── gh CLI helpers ────────────────────────────────────────────────────────
 
-function ensureHqDir(): void {
-  if (!fs.existsSync(HQ_DIR)) {
-    fs.mkdirSync(HQ_DIR, { recursive: true, mode: 0o700 });
+/** Check if `gh` CLI is installed. */
+function isGhInstalled(): boolean {
+  try {
+    execSync("gh --version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
   }
 }
 
-/** Save credentials to ~/.hq/credentials.json with 0600 perms. */
-export function saveGitHubAuth(auth: GitHubAuth): void {
-  ensureHqDir();
-  fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(auth, null, 2), {
-    mode: 0o600,
-  });
+/** Check if `gh` is authenticated with any GitHub host. */
+function isGhAuthenticated(): boolean {
+  try {
+    execSync("gh auth status", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-/** Load credentials, or null if missing/invalid. */
-export function loadGitHubAuth(): GitHubAuth | null {
+/**
+ * Configure `gh` CLI with a token and set up git credential helper.
+ * This makes the token available for all future `gh` and `git` operations.
+ */
+function configureGhAuth(token: string): void {
+  if (!isGhInstalled()) {
+    console.error(
+      chalk.dim(
+        "  (gh CLI not found — install it from https://cli.github.com for team commands)"
+      )
+    );
+    return;
+  }
+
   try {
-    if (!fs.existsSync(CREDENTIALS_FILE)) return null;
-    const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_FILE, "utf-8"));
-    if (
-      typeof parsed.access_token !== "string" ||
-      typeof parsed.login !== "string" ||
-      typeof parsed.id !== "number"
-    ) {
-      return null;
-    }
-    return parsed as GitHubAuth;
+    // Pipe token to gh auth login (stdin, non-interactive)
+    execSync("gh auth login --with-token", {
+      input: token,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+
+    // Configure git to use gh for HTTPS auth
+    execSync("gh auth setup-git", { stdio: "ignore" });
+  } catch (err) {
+    console.error(
+      chalk.dim("  (could not configure gh CLI — you can run `gh auth login` manually)")
+    );
+  }
+}
+
+/**
+ * Save the GitHub auth to gh CLI. The token is handed to `gh auth login`
+ * so it's stored in the OS keychain, not on disk as a plain file.
+ */
+export function saveGitHubAuth(auth: GitHubAuth): void {
+  configureGhAuth(auth.access_token);
+}
+
+/**
+ * Load GitHub auth from `gh` CLI. Returns null if gh is not installed
+ * or not authenticated. Fetches user profile from GitHub API via gh.
+ */
+export function loadGitHubAuth(): GitHubAuth | null {
+  if (!isGhInstalled() || !isGhAuthenticated()) return null;
+
+  try {
+    // Get the token from gh
+    const token = execSync("gh auth token", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+
+    if (!token) return null;
+
+    // Get user profile via gh api
+    const userJson = execSync('gh api user --jq \'{"login":.login,"id":.id,"name":.name,"email":.email}\'', {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+
+    const user = JSON.parse(userJson) as GitHubUserResponse;
+
+    return {
+      access_token: token,
+      login: user.login,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      issued_at: new Date().toISOString(),
+    };
   } catch {
     return null;
   }
 }
 
-/** Remove stored credentials. */
+/** Remove stored credentials by logging out of gh. */
 export function clearGitHubAuth(): void {
+  if (!isGhInstalled()) return;
   try {
-    if (fs.existsSync(CREDENTIALS_FILE)) {
-      fs.unlinkSync(CREDENTIALS_FILE);
-    }
+    execSync("gh auth logout --hostname github.com", {
+      input: "Y\n",
+      stdio: ["pipe", "ignore", "ignore"],
+    });
   } catch {
-    // ignore
+    // ignore — may already be logged out
   }
 }
 
 /**
  * Quick liveness probe — does the stored token still work?
- * Calls api.github.com/user with the token; returns true on 200.
+ * Uses `gh auth status` which validates the token against GitHub.
  */
 export async function isGitHubAuthValid(auth: GitHubAuth): Promise<boolean> {
-  try {
-    const res = await fetch(GITHUB_API_USER_URL, {
-      headers: {
-        Authorization: `token ${auth.access_token}`,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "create-hq",
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  // If we have a token in memory, verify it directly
+  if (auth.access_token) {
+    try {
+      const res = await fetch(GITHUB_API_USER_URL, {
+        headers: {
+          Authorization: `token ${auth.access_token}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "create-hq",
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
+
+  // Fall back to gh auth status
+  return isGhAuthenticated();
 }
 
 // ─── Browser open (cross-platform) ──────────────────────────────────────────
@@ -179,6 +249,10 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Run the GitHub App device authorization flow.
+ *
+ * On success, the token is:
+ *   1. Returned in-memory as part of GitHubAuth (for the current session)
+ *   2. Configured in `gh` CLI for future sessions (via gh auth login --with-token)
  *
  * Throws on:
  *   - Network errors talking to github.com
@@ -302,6 +376,7 @@ export async function startGitHubDeviceFlow(): Promise<GitHubAuth> {
       issued_at: new Date().toISOString(),
     };
 
+    // Configure gh CLI with the token for future sessions
     saveGitHubAuth(auth);
     return auth;
   }

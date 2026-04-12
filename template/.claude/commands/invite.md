@@ -4,6 +4,8 @@ Send an invite for a new team member. Only org admins can invite — members are
 
 **Usage:** `/invite`
 
+**Requires:** `gh` CLI authenticated (`gh auth status`)
+
 ## Process
 
 1. Find team metadata from `companies/*/team.json`
@@ -24,7 +26,36 @@ The token is a self-contained `hq_`-prefixed base64url string encoding:
 
 ## Steps
 
-### 1. Discover teams
+### 1. Verify gh CLI
+
+Check that `gh` is installed and authenticated:
+```bash
+gh auth status 2>&1
+```
+
+If `gh` is not found:
+```
+GitHub CLI (gh) is required for team commands.
+Install it: https://cli.github.com
+```
+Stop here.
+
+If not authenticated:
+```
+GitHub CLI is not authenticated. Run:
+  gh auth login
+Then try /invite again.
+```
+Stop here.
+
+Get the current user's login:
+```bash
+gh api user --jq .login
+```
+
+Store as `{login}`.
+
+### 2. Discover teams
 
 Find all team.json files:
 ```bash
@@ -38,13 +69,13 @@ No teams found. Create a team first:
 ```
 Stop here.
 
-### 2. Select team
+### 3. Select team
 
 If multiple teams exist, present a numbered list and ask the user to select one.
 
 If only one team exists, use it automatically.
 
-### 3. Extract team metadata
+### 4. Extract team metadata
 
 Read the selected `companies/{slug}/team.json` and extract:
 - `team_name` — human-readable team name
@@ -57,54 +88,18 @@ Get the clone URL:
 git -C companies/{slug} remote get-url origin
 ```
 
-### 4. Load credentials
+### 5. Check org role
 
-Read `~/.hq/credentials.json`:
+Check the current user's org membership:
 ```bash
-cat ~/.hq/credentials.json
+gh api "orgs/{org_login}/memberships/{login}" --jq .role 2>&1
 ```
 
-Extract `access_token` (a `ghu_` GitHub App token) and `login` (GitHub username).
-
-**Never display the access_token value in output.**
-
-If credentials.json is missing or invalid:
-```
-No credentials found. Run `npx create-hq` to authenticate with GitHub.
-```
-Stop here.
-
-### 5. Validate token + check org role
-
-First, validate the token is still active:
-```bash
-curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  https://api.github.com/user
-```
-
-If the response is **401** (bad credentials / expired token):
-```
-Your GitHub token has expired. Re-authenticate by running:
-  npx create-hq
-Then try /invite again.
-```
-**Stop here.** Do not fall through to the non-admin flow — a 401 means the token is invalid, not that the user lacks permissions.
-
-If the token is valid (200), check the org role:
-```bash
-curl -s \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/orgs/{org_login}/memberships/{login}"
-```
-
-Parse the response:
-- If `role` is `"admin"` → continue to step 6 (admin flow)
-- If `role` is `"member"` → go to step 5a (non-admin flow)
-- If **403** (not a member of the org) → tell the user they're not a member of `{org_login}` and suggest `npx create-hq` to join
-- If **404** or other error → go to step 5a (non-admin flow)
+Parse the result:
+- If `"admin"` → continue to step 6 (admin flow)
+- If `"member"` → go to step 5a (non-admin flow)
+- If error (403 — not a member) → tell the user they're not a member of `{org_login}` and suggest `npx create-hq` to join
+- If error (404 or other) → go to step 5a (non-admin flow)
 
 ### 5a. Non-admin: contact your admin
 
@@ -121,12 +116,8 @@ Try these sources in order until an email is found:
 
 2. **GitHub profile** — check public profile (often null, but worth trying):
    ```bash
-   curl -s \
-     -H "Authorization: token {access_token}" \
-     -H "Accept: application/vnd.github+json" \
-     "https://api.github.com/users/{created_by}"
+   gh api "users/{created_by}" --jq .email 2>/dev/null
    ```
-   Extract the `email` field.
 
 3. **Fallback** — if both return nothing, use `{created_by}@users.noreply.github.com`.
 
@@ -175,11 +166,7 @@ Ask: **"New member's email address? (leave blank to skip GitHub org invite)"**
 
 If the user provided an email, send the org invitation:
 ```bash
-curl -s -X POST "https://api.github.com/orgs/{org_login}/invitations" \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "{email}", "role": "direct_member"}'
+gh api "orgs/{org_login}/invitations" -X POST -f email="{email}" -f role="direct_member" 2>&1
 ```
 
 - On success (2xx): note that the invite was sent
@@ -188,8 +175,6 @@ curl -s -X POST "https://api.github.com/orgs/{org_login}/invitations" \
   Could not send org invite automatically.
   Invite them manually: https://github.com/orgs/{org_login}/people
   ```
-
-**Never display the access_token value in output.**
 
 ### 8. Generate invite token
 

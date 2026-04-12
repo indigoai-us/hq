@@ -1,8 +1,10 @@
 # Sync Team Content
 
-Pull latest team content and push local changes for all joined teams. Bidirectional git sync with credential injection — no manual git operations needed.
+Pull latest team content and push local changes for all joined teams. Bidirectional git sync using `gh` CLI for authentication — no manual git operations needed.
 
 **Usage:** `/sync` or `/sync --team <slug>` or `/sync --dry-run`
+
+**Requires:** `gh` CLI authenticated (`gh auth status`)
 
 ## Arguments
 
@@ -15,13 +17,41 @@ If no flags, sync all discovered teams.
 ## Process
 
 1. Discover teams from `companies/*/team.json`
-2. Authenticate via cached GitHub App token
+2. Verify `gh` CLI is authenticated
 3. For each team: pull remote changes, then push local changes
-4. Report what was pulled and pushed
+4. Sync command symlinks
+5. Report what was pulled and pushed
 
 ## Steps
 
-### 1. Discover teams
+### 1. Verify gh CLI
+
+Check that `gh` is installed and authenticated:
+```bash
+gh auth status 2>&1
+```
+
+If `gh` is not found:
+```
+GitHub CLI (gh) is required for team commands.
+Install it: https://cli.github.com
+```
+Stop here.
+
+If not authenticated:
+```
+GitHub CLI is not authenticated. Run:
+  gh auth login
+Then try /sync again.
+```
+Stop here.
+
+Ensure git is configured to use `gh` for HTTPS authentication:
+```bash
+gh auth setup-git 2>&1
+```
+
+### 2. Discover teams
 
 Find all team.json files:
 ```bash
@@ -42,45 +72,11 @@ Team "{slug}" not found. Available teams:
 ```
 Stop here.
 
-### 2. Load credentials
-
-Read `~/.hq/credentials.json`:
-```bash
-cat ~/.hq/credentials.json
-```
-
-Extract `access_token` (a `ghu_` GitHub App token) and `login` (GitHub username).
-
-**Never display the access_token value in output.**
-
-If credentials.json is missing or invalid:
-```
-No credentials found. Run `npx create-hq` to authenticate with GitHub.
-```
-Stop here.
-
-### 3. Validate token
-
-Check the token is still valid:
-```bash
-curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  https://api.github.com/user
-```
-
-If response is not `200`:
-```
-GitHub token expired or invalid. Re-authenticate:
-  npx create-hq
-```
-Stop here.
-
-### 4. Sync each team
+### 3. Sync each team
 
 For each team (or the single `--team` target):
 
-#### 4a. Read team metadata
+#### 3a. Read team metadata
 
 Read `companies/{slug}/team.json` and extract:
 - `team_name` — human-readable name
@@ -98,7 +94,7 @@ Try re-joining: npx create-hq
 ```
 Skip this team and continue.
 
-#### 4b. Check local status
+#### 3b. Check local status
 
 ```bash
 git -C companies/{slug} status --short
@@ -106,35 +102,12 @@ git -C companies/{slug} status --short
 
 Note which files have local modifications (these will be pushed after pulling).
 
-#### 4c. Set up credential helper
-
-Create a temporary askpass script for secure token injection:
-```bash
-ASKPASS_DIR=$(mktemp -d)
-ASKPASS_SCRIPT="$ASKPASS_DIR/askpass.sh"
-cat > "$ASKPASS_SCRIPT" << 'ASKPASS_EOF'
-#!/bin/sh
-echo "$GIT_TOKEN"
-ASKPASS_EOF
-chmod 700 "$ASKPASS_SCRIPT"
-```
-
-All subsequent git commands in this section use this environment:
-```bash
-export GIT_TOKEN="{access_token}"
-export GIT_ASKPASS="$ASKPASS_SCRIPT"
-export GIT_TERMINAL_PROMPT=0
-export GCM_INTERACTIVE=never
-```
-
-**Critical:** The `-c credential.helper=` flag MUST be included on every git command. This disables macOS Keychain and other system credential helpers that would otherwise cache or use the wrong token.
-
-#### 4d. Pull remote changes (--dry-run: fetch only)
+#### 3c. Pull remote changes (--dry-run: fetch only)
 
 If `--dry-run`:
 ```bash
-git -c credential.helper= -C companies/{slug} fetch origin 2>&1
-git -c credential.helper= -C companies/{slug} log HEAD..origin/main --oneline 2>/dev/null
+git -C companies/{slug} fetch origin 2>&1
+git -C companies/{slug} log HEAD..origin/main --oneline 2>/dev/null
 ```
 
 Show what would be pulled:
@@ -145,7 +118,7 @@ Show what would be pulled:
 
 If NOT `--dry-run`:
 ```bash
-git -c credential.helper= -C companies/{slug} pull origin main --ff-only 2>&1
+git -C companies/{slug} pull origin main --ff-only 2>&1
 ```
 
 Capture the output. If pull succeeds, parse the output for:
@@ -154,10 +127,10 @@ Capture the output. If pull succeeds, parse the output for:
 
 If `--ff-only` fails (diverged history):
 ```bash
-git -c credential.helper= -C companies/{slug} pull origin main --no-rebase 2>&1
+git -C companies/{slug} pull origin main --no-rebase 2>&1
 ```
 
-If the merge pull succeeds (auto-merged), continue to step 4e.
+If the merge pull succeeds (auto-merged), continue to step 3d.
 
 If the merge pull fails with conflicts, enter the **conflict resolution flow**:
 
@@ -208,7 +181,7 @@ Then complete the merge:
 git -C companies/{slug} commit -m "sync: resolved conflicts — kept local versions"
 ```
 Report: `Kept your local version for {N} file(s). Merge complete.`
-Continue to step 4e (push).
+Continue to step 3d (push).
 
 **Option 2 — Keep remote (team):**
 For each conflicting file:
@@ -221,7 +194,7 @@ Then complete the merge:
 git -C companies/{slug} commit -m "sync: resolved conflicts — kept team versions"
 ```
 Report: `Kept team version for {N} file(s). Merge complete.`
-Continue to step 4e (push).
+Continue to step 3d (push).
 
 **Option 3 — Manual merge:**
 ```
@@ -241,7 +214,7 @@ When you're done, run /sync again to complete the merge.
 
 ##### Never Silently Overwrite
 
-If at any point the merge would silently overwrite local changes (e.g., a force-pull), **do not proceed**. Always show the user what will change and let them choose. The `-c credential.helper=` and `--no-rebase` flags ensure git does not rewrite local history.
+If at any point the merge would silently overwrite local changes (e.g., a force-pull), **do not proceed**. Always show the user what will change and let them choose. The `--no-rebase` flag ensures git does not rewrite local history.
 
 ##### Post-Resolution State
 
@@ -253,13 +226,13 @@ git -C companies/{slug} status --short
 If clean: report `Conflicts resolved. Ready to push.` and continue.
 If still dirty: report remaining issues and skip push for this team.
 
-#### 4e. Push local changes (--dry-run: show status only)
+#### 3d. Push local changes (--dry-run: show status only)
 
-If there are local changes to push (from step 4b):
+If there are local changes to push (from step 3b):
 
 If `--dry-run`:
 ```bash
-git -c credential.helper= -C companies/{slug} diff --stat HEAD 2>/dev/null
+git -C companies/{slug} diff --stat HEAD 2>/dev/null
 ```
 
 Show what would be pushed:
@@ -276,15 +249,13 @@ git -C companies/{slug} add -A
 git -C companies/{slug} diff --cached --quiet || git -C companies/{slug} commit -m "sync: local changes from $(whoami)"
 ```
 
-#### 4e-pre. Pre-push secrets scan
+#### 3d-pre. Pre-push secrets scan
 
 Before pushing, scan the changes for accidental secrets or PII. Compare what will be pushed against the remote:
 
 ```bash
-git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' ':!**/credentials.json' 2>/dev/null
+git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' 2>/dev/null
 ```
-
-**Note:** The `':!team.json'` and `':!**/credentials.json'` exclusions prevent false positives on expected team metadata files.
 
 Scan the diff output for these patterns:
 
@@ -301,7 +272,7 @@ Scan the diff output for these patterns:
 
 Run the scan:
 ```bash
-git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' ':!**/credentials.json' 2>/dev/null | grep -nE '(api[_-]?key|api[_-]?secret|password|passwd|pwd|secret|token)\s*[:=]|-----BEGIN .* PRIVATE KEY-----|aws_(access_key_id|secret_access_key)\s*=|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|ghu_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}' || true
+git -C companies/{slug} diff origin/main..HEAD -- . ':!team.json' 2>/dev/null | grep -nE '(api[_-]?key|api[_-]?secret|password|passwd|pwd|secret|token)\s*[:=]|-----BEGIN .* PRIVATE KEY-----|aws_(access_key_id|secret_access_key)\s*=|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|ghu_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}' || true
 ```
 
 **If matches found:**
@@ -325,20 +296,20 @@ If the user chooses option 2: continue to push.
 
 **If no matches found:** Continue to push silently (no output needed).
 
-#### 4e-push. Push to remote
+#### 3d-push. Push to remote
 
 Then push:
 ```bash
-git -c credential.helper= -C companies/{slug} push origin main 2>&1
+git -C companies/{slug} push origin main 2>&1
 ```
 
 If push fails because remote has new changes (non-fast-forward):
 ```
 Remote has new changes. Pulling first, then retrying push...
 ```
-Pull again using the same credential setup (step 4d flow). If pull triggers conflicts, enter the conflict resolution flow above. After a clean pull, retry the push once:
+Pull again (step 3c flow). If pull triggers conflicts, enter the conflict resolution flow above. After a clean pull, retry the push once:
 ```bash
-git -c credential.helper= -C companies/{slug} push origin main 2>&1
+git -C companies/{slug} push origin main 2>&1
 ```
 If the retry also fails, report the error and skip this team:
 ```
@@ -346,18 +317,11 @@ Push failed for {team_name} after retry. Error: {error message}
 You can try again later with /sync --team {slug}
 ```
 
-#### 4f. Clean up credentials
-
-```bash
-rm -rf "$ASKPASS_DIR"
-unset GIT_TOKEN GIT_ASKPASS GIT_TERMINAL_PROMPT GCM_INTERACTIVE
-```
-
-### 5. Sync command symlinks
+### 4. Sync command symlinks
 
 After all teams have been synced, manage command symlinks so team-distributed commands are available as slash commands.
 
-#### 5a. Scan for team commands
+#### 4a. Scan for team commands
 
 For each synced team, check if the team directory contains distributed commands:
 ```bash
@@ -366,7 +330,7 @@ ls companies/{slug}/.claude/commands/*.md 2>/dev/null
 
 If the directory doesn't exist or has no `.md` files, skip this team for symlink management.
 
-#### 5b. Create symlinks for new commands
+#### 4b. Create symlinks for new commands
 
 For each `.md` file found in `companies/{slug}/.claude/commands/`:
 
@@ -376,7 +340,7 @@ For each `.md` file found in `companies/{slug}/.claude/commands/`:
    - If it's already a symlink pointing to the correct source → skip (already linked)
    - If it exists but is NOT a symlink (a real file or symlink to wrong target) → warn and skip:
      ```
-     ⚠ Skipping {slug}--{command}.md — file already exists (not a team symlink)
+     Skipping {slug}--{command}.md — file already exists (not a team symlink)
      ```
    - If it doesn't exist → create the symlink:
      ```bash
@@ -394,7 +358,7 @@ If `--dry-run`:
 ```
 Do not create actual symlinks.
 
-#### 5c. Remove stale symlinks
+#### 4c. Remove stale symlinks
 
 Scan `.claude/commands/` for symlinks that match the team pattern (`{slug}--*.md`) but whose targets no longer exist (the source command was removed from the team repo):
 
@@ -419,7 +383,7 @@ LINKED=$(ls -la .claude/commands/{slug}--*.md 2>/dev/null | grep "^l" | awk '{pr
 
 If `--dry-run`, show what would be removed without removing.
 
-#### 5d. Symlink summary (per team)
+#### 4d. Symlink summary (per team)
 
 Collect results for the final report:
 - Commands linked (new symlinks created)
@@ -427,7 +391,7 @@ Collect results for the final report:
 - Commands unlinked (stale symlinks removed)
 - Commands skipped (name collision)
 
-### 6. Report results
+### 5. Report results
 
 After syncing all teams, display a summary:
 
@@ -454,15 +418,14 @@ Dry run complete — no changes were made.
 
 ## Security Notes
 
-- The `access_token` is passed via `GIT_TOKEN` env var → `GIT_ASKPASS` script. It never appears in command arguments, remote URLs, or output.
-- `-c credential.helper=` prevents macOS Keychain from caching the team token (which would conflict with personal GitHub credentials).
-- The askpass script is created in a temp directory with 700 permissions and deleted after sync.
-- Credentials.json is stored with 0600 permissions at `~/.hq/credentials.json`.
+- Git authentication is handled by `gh auth setup-git`, which configures a credential helper that delegates to `gh`. No tokens are stored on disk or passed via environment variables.
+- No askpass scripts, no credential.helper overrides, no GIT_TOKEN env vars.
+- `gh` stores credentials in the OS keychain (macOS Keychain, Windows Credential Manager) and handles token refresh transparently.
 
 ## Troubleshooting
 
-- **"No credentials found"** — Run `npx create-hq` to authenticate
-- **"Token expired"** — Run `npx create-hq` to re-authenticate
+- **"gh: command not found"** — Install GitHub CLI: https://cli.github.com
+- **"not logged into any GitHub hosts"** — Run `gh auth login`
 - **"No git remote"** — Team directory wasn't set up correctly; re-join the team
-- **"Permission denied" on push** — Your GitHub App token may not have write access to this repo
+- **"Permission denied" on push** — Your GitHub account may not have write access to this repo
 - **Merge conflicts** — See conflict messages; resolve manually or wait for `/sync` conflict resolution
