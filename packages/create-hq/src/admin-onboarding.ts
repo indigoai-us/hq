@@ -33,6 +33,7 @@ import {
   openInviteEmail,
   formatInviteMessage,
   copyToClipboard,
+  sendOrgInviteByEmail,
   type InvitePayload,
 } from "./invite.js";
 
@@ -218,7 +219,7 @@ function runGitWithToken(
       fs.chmodSync(askpassPath, 0o700);
     }
 
-    execSync(`git ${args.join(" ")}`, {
+    execSync(`git -c credential.helper= ${args.join(" ")}`, {
       cwd,
       stdio: "pipe",
       env: {
@@ -577,11 +578,24 @@ export async function generateInviteInteractive(
     info("No email provided — share the invite message above via email, Slack, or text.");
   }
 
-  // Remind admin to send the GitHub org invite
-  console.log();
-  info(`Send them a GitHub org invite (required for access):`);
-  info(`  https://github.com/orgs/${meta.org_login}/people`);
-  info(`  Click "Invite member" and enter${email ? ": " + email : " their email or GitHub username"}`);
+  // Send the GitHub org invite via API (required for the member to accept)
+  if (email) {
+    const result = await sendOrgInviteByEmail(auth, meta.org_login, email);
+    if (result.ok) {
+      success(`GitHub org invite sent to ${email}`);
+    } else {
+      warn(`Could not send org invite automatically: ${result.error}`);
+      console.log();
+      info(`Send the invite manually (required for access):`);
+      info(`  https://github.com/orgs/${meta.org_login}/people`);
+      info(`  Click "Invite member" and enter: ${email}`);
+    }
+  } else {
+    console.log();
+    info(`Send them a GitHub org invite (required for access):`);
+    info(`  https://github.com/orgs/${meta.org_login}/people`);
+    info(`  Click "Invite member" and enter their email or GitHub username`);
+  }
 }
 
 /**

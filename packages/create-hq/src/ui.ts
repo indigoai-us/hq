@@ -128,51 +128,52 @@ export type TeamOrientationOptions =
     };
 
 export function teamOrientation(opts: TeamOrientationOptions): void {
-  console.log();
-  console.log(chalk.bold("  All done! Your HQ is ready."));
+  const W = 48;
+  const line = "─".repeat(W);
+  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - text.length));
+  const row = (text: string) =>
+    chalk.dim("  │") + pad(text, W) + chalk.dim("│");
+
   console.log();
 
   if (opts.mode === "admin") {
-    console.log(chalk.bold(`  Team: ${chalk.cyan(opts.teamName)}`));
-    console.log(`  ${chalk.dim("repo:")} ${opts.repoUrl}`);
-    console.log(`  ${chalk.dim("local:")} companies/${opts.teamSlug}/`);
-    console.log();
-    console.log(chalk.bold("  Adding members:"));
-    console.log(
-      "    " +
-        chalk.dim("Invite teammates by adding them to the ") +
-        chalk.cyan(opts.orgLogin) +
-        chalk.dim(" GitHub org,")
-    );
-    console.log(
-      "    " + chalk.dim("or grant them access to the repo via the HQ App settings.")
-    );
-    console.log(
-      "    " +
-        chalk.dim("They run ") +
-        chalk.cyan("npx create-hq") +
-        chalk.dim(" and pick up the team automatically.")
-    );
+    console.log(chalk.dim("  ┌" + line + "┐"));
+    console.log(row(chalk.bold.white("  All done! Your HQ is ready.")));
+    console.log(chalk.dim("  ├" + line + "┤"));
+    console.log(row(""));
+    console.log(row(`  ${chalk.dim("Team:")}  ${chalk.cyan(opts.teamName)}`));
+    console.log(row(`  ${chalk.dim("Repo:")}  ${opts.repoUrl}`));
+    console.log(row(`  ${chalk.dim("Local:")} companies/${opts.teamSlug}/`));
+    console.log(row(""));
+    console.log(row(chalk.bold.white("  Invite members:")));
+    console.log(row(`    claude`));
+    console.log(row(`    /invite  ${chalk.dim("← send team invitations")}`));
+    console.log(row(""));
+    console.log(row(chalk.bold.white("  Get started:")));
+    console.log(row(`    cd ${opts.displayDir}`));
+    console.log(row("    claude"));
+    console.log(row(""));
+    console.log(chalk.dim("  └" + line + "┘"));
   } else {
     const count = opts.teams.length;
-    console.log(
-      chalk.bold(`  ${count} team${count === 1 ? "" : "s"} ready:`)
-    );
+
+    console.log(chalk.dim("  ┌" + line + "┐"));
+    console.log(row(chalk.bold.white("  All done! Your HQ is ready.")));
+    console.log(chalk.dim("  ├" + line + "┤"));
+    console.log(row(""));
+    console.log(row(chalk.bold.white(`  ${count} team${count === 1 ? "" : "s"} joined:`)));
     for (const t of opts.teams) {
-      console.log(
-        `  ${chalk.green("✓")} ${chalk.cyan(t.name)} ${chalk.dim("→")} companies/${t.slug}/`
-      );
+      console.log(row(`  ${chalk.green("✓")} ${chalk.cyan(t.name)} ${chalk.dim("→")} companies/${t.slug}/`));
     }
-    console.log();
-    console.log(
-      chalk.dim("  Pull updates later with: ") + chalk.cyan("git -C companies/<slug> pull")
-    );
+    console.log(row(""));
+    console.log(row(chalk.bold.white("  Get started:")));
+    console.log(row(`    cd ${opts.displayDir}`));
+    console.log(row("    claude"));
+    console.log(row("    /setup  " + chalk.dim("← personalize your HQ")));
+    console.log(row(""));
+    console.log(chalk.dim("  └" + line + "┘"));
   }
 
-  console.log();
-  console.log(chalk.bold("  Get started:"));
-  console.log(`    cd ${opts.displayDir}`);
-  console.log(`    claude`);
   console.log();
 }
 

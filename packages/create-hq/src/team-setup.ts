@@ -100,7 +100,7 @@ function runGitWithToken(args: string[], cwd: string, auth: GitHubAuth): void {
       fs.chmodSync(askpassPath, 0o700);
     }
 
-    execSync(`git ${args.join(" ")}`, {
+    execSync(`git -c credential.helper= ${args.join(" ")}`, {
       cwd,
       stdio: "pipe",
       env: {
