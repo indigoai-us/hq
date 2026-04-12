@@ -66,7 +66,7 @@ export async function authenticate(): Promise<GitHubAuth | null> {
       info(`Already signed in as ${chalk.cyan("@" + existing.login)}`);
       return existing;
     }
-    info("Stored credentials expired — re-authenticating");
+    info("GitHub auth expired — re-authenticating");
     clearGitHubAuth();
   }
 

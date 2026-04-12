@@ -68,6 +68,92 @@ export interface MemberJoinResult {
   failed: { team: DiscoveredTeam; error: string }[];
 }
 
+// ─── Command Symlinks ───────────────────────────────────────────────────────
+
+export interface SymlinkResult {
+  linked: string[];
+  alreadyLinked: string[];
+  skipped: string[];
+  unlinked: string[];
+}
+
+/**
+ * Link team-distributed commands into .claude/commands/ so they're
+ * discoverable as slash commands. Mirrors the logic in /sync (Section 5).
+ *
+ * Naming convention: {slug}--{command}.md (double-dash separates team from command).
+ * Symlinks use relative paths so they work regardless of HQ's absolute location.
+ *
+ * @param hqRoot  - The HQ root directory
+ * @param slug    - Team slug (companies/{slug}/)
+ */
+export function linkTeamCommands(hqRoot: string, slug: string): SymlinkResult {
+  const result: SymlinkResult = { linked: [], alreadyLinked: [], skipped: [], unlinked: [] };
+
+  const teamCommandsDir = path.join(hqRoot, "companies", slug, ".claude", "commands");
+  const hqCommandsDir = path.join(hqRoot, ".claude", "commands");
+
+  // Ensure .claude/commands/ exists
+  if (!fs.existsSync(hqCommandsDir)) {
+    fs.mkdirSync(hqCommandsDir, { recursive: true });
+  }
+
+  // Scan for team commands
+  if (!fs.existsSync(teamCommandsDir)) {
+    return result;
+  }
+
+  const teamFiles = fs.readdirSync(teamCommandsDir).filter((f) => f.endsWith(".md"));
+  if (teamFiles.length === 0) {
+    return result;
+  }
+
+  // Create symlinks for new commands
+  for (const file of teamFiles) {
+    const symlinkName = `${slug}--${file}`;
+    const symlinkPath = path.join(hqCommandsDir, symlinkName);
+    // Relative path from .claude/commands/ to companies/{slug}/.claude/commands/
+    const relativeSrc = path.join("..", "..", "companies", slug, ".claude", "commands", file);
+
+    if (fs.existsSync(symlinkPath)) {
+      const stats = fs.lstatSync(symlinkPath);
+      if (stats.isSymbolicLink()) {
+        const target = fs.readlinkSync(symlinkPath);
+        if (target === relativeSrc) {
+          result.alreadyLinked.push(symlinkName);
+          continue;
+        }
+      }
+      // Exists but is not the right symlink — skip to avoid collision
+      result.skipped.push(symlinkName);
+      continue;
+    }
+
+    try {
+      fs.symlinkSync(relativeSrc, symlinkPath);
+      result.linked.push(symlinkName);
+    } catch {
+      result.skipped.push(symlinkName);
+    }
+  }
+
+  // Remove stale symlinks for this team
+  const teamPattern = `${slug}--`;
+  const existing = fs.readdirSync(hqCommandsDir).filter((f) => f.startsWith(teamPattern));
+  const expectedNames = new Set(teamFiles.map((f) => `${slug}--${f}`));
+
+  for (const link of existing) {
+    const linkPath = path.join(hqCommandsDir, link);
+    const stats = fs.lstatSync(linkPath);
+    if (stats.isSymbolicLink() && !expectedNames.has(link)) {
+      fs.unlinkSync(linkPath);
+      result.unlinked.push(link);
+    }
+  }
+
+  return result;
+}
+
 // ─── Prompt helper ──────────────────────────────────────────────────────────
 
 function prompt(question: string, defaultVal?: string): Promise<string> {
@@ -326,6 +412,11 @@ export async function runMemberJoin(
     try {
       cloneTeam(team, hqRoot, auth);
       stepStatus(label, "done");
+      // Link team-distributed commands as slash commands
+      const symlinks = linkTeamCommands(hqRoot, team.slug);
+      if (symlinks.linked.length > 0) {
+        info(`Linked ${symlinks.linked.length} team command${symlinks.linked.length === 1 ? "" : "s"} from ${team.name}`);
+      }
       joined.push(team);
     } catch (err) {
       stepStatus(label, "failed");
