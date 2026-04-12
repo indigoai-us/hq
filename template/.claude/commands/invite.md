@@ -2,6 +2,8 @@
 
 Generate an invite code for a new team member and optionally send them a GitHub org invitation.
 
+**Usage:** `/invite`
+
 ## Process
 
 1. Find team metadata from `companies/*/team.json` files in this HQ
@@ -23,25 +25,100 @@ The token is a self-contained `hq_`-prefixed base64url string encoding:
 
 ## Steps
 
-1. Read all `companies/*/team.json` files to find available teams
-2. If no teams found, tell the user they need to create a team first
-3. If multiple teams, present a numbered list and ask which one
-4. Read the selected team.json — extract: team_name, team_slug, org_login
-5. Get the clone URL: `git -C companies/{slug} remote get-url origin`
-6. Ask: "New member's email? (press Enter to skip)"
-7. If email provided:
-   - Use the GitHub API to send an org invite: `POST /orgs/{org}/invitations` with `{"email": "{email}", "role": "direct_member"}`
-   - This requires a GitHub token with org admin access — check `~/.hq/credentials.json`
-   - If the API call fails (permissions), tell the admin to invite manually at `https://github.com/orgs/{org}/people`
-8. Generate the invite token:
-   ```javascript
-   const payload = { org, repo: `hq-${slug}`, slug, teamName, cloneUrl, invitedBy };
-   const token = "hq_" + Buffer.from(JSON.stringify(payload)).toString("base64url");
-   ```
-9. Output:
-   - The invite code
-   - A ready-to-share message block (copy-paste into Slack/email/text)
-   - If email was sent, confirmation of the org invite
+### 1. Discover teams
+
+Find all team.json files:
+```bash
+find companies/*/team.json -maxdepth 0 2>/dev/null
+```
+
+If no files found:
+```
+No teams found. Create a team first:
+  npx create-hq
+```
+Stop here.
+
+### 2. Select team
+
+If multiple teams exist, present a numbered list and ask the user to select one.
+
+If only one team exists, use it automatically.
+
+### 3. Extract team metadata
+
+Read the selected `companies/{slug}/team.json` and extract:
+- `team_name` — human-readable team name
+- `team_slug` — directory slug under `companies/`
+- `org_login` — GitHub org login (e.g. `indigoai-us`)
+
+Get the clone URL:
+```bash
+git -C companies/{slug} remote get-url origin
+```
+
+### 4. Load credentials
+
+Read `~/.hq/credentials.json` to get the admin's auth:
+```bash
+cat ~/.hq/credentials.json
+```
+
+Extract `access_token` (a `ghu_` GitHub App token) and `login` (admin's GitHub username). These tokens are issued by the **hq-team-sync** GitHub App via device flow.
+
+If credentials.json is missing or invalid, tell the user to re-authenticate:
+```
+No credentials found. Run `npx create-hq` to authenticate with GitHub.
+```
+
+### 5. Ask for email
+
+Ask: **"New member's email address? (leave blank to skip GitHub org invite)"**
+
+### 6. Send GitHub org invite (if email provided)
+
+If the user provided an email, send the org invitation:
+```bash
+curl -s -X POST "https://api.github.com/orgs/{org_login}/invitations" \
+  -H "Authorization: token {access_token}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "{email}", "role": "direct_member"}'
+```
+
+- On success (2xx): note that the invite was sent
+- On failure (403/404): fall back to manual instructions:
+  ```
+  Could not send org invite automatically (insufficient permissions).
+  Invite them manually: https://github.com/orgs/{org_login}/people
+  ```
+
+**Never display the access_token value in output.**
+
+### 7. Generate invite token
+
+Build the token using python3 (available in all environments):
+```bash
+python3 -c "
+import json, base64
+payload = {
+    'org': '{org_login}',
+    'repo': 'hq-{slug}',
+    'slug': '{slug}',
+    'teamName': '{team_name}',
+    'cloneUrl': '{clone_url}',
+    'invitedBy': '{login}'
+}
+token = 'hq_' + base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip('=')
+print(token)
+"
+```
+
+### 8. Output results
+
+Display the invite code and a ready-to-share message block.
+
+If the GitHub org invite was sent, include a confirmation line.
 
 ## Ready-to-Share Message Template
 
