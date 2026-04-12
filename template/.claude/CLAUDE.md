@@ -29,7 +29,7 @@ Env vars and settings in `.claude/settings.json` control cost/style defaults:
 | `outputStyle` | `Explanatory` | Enables Insight blocks + educational explanations. Synced to starter-kit |
 | `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Triggers mandatory handoff at 60% context (compaction can't be blocked — handoff preserves state) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `75` | Autocompact fires at 75%; a separate Stop-hook advisory warns once at ~60% |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `opus` | Subagents (Task tool) use Opus — all Claude work runs on Opus 4.6 |
 
 Toggle thinking with Option+T.
@@ -215,18 +215,16 @@ PostToolUse hooks detect checkpoint-worthy events and inject `AUTO-CHECKPOINT RE
 
 Also checkpoint after worker skill completion. Schema: `knowledge/public/hq-core/thread-schema.md`. Do NOT rebuild INDEX, update `recent.md`, run `qmd update`, or write legacy checkpoint files on auto-checkpoints. When edits touch knowledge files, commit to the knowledge repo — not HQ git.
 
-## Auto-Handoff (PreCompact Hook)
+## Auto-Checkpoint (Two-Stage Advisory)
 
-A PreCompact hook fires at 60% context. Autocompact cannot be fully disabled in Claude Code — no off switch exists. The hook forces an immediate `/handoff` to preserve state before compaction destroys context.
+Context-usage advisories run in two stages. Both present the same three options (checkpoint, handoff, or continue) — neither forces action.
 
-**When you see the handoff banner: STOP immediately.**
+1. **60% advisory (Stop hook).** `.claude/hooks/context-warning-60.sh` fires after an assistant turn when the transcript size crosses ~60% of the context window. Prints once per session (gated via `workspace/.context-warnings/{session_id}`). Purely informational — runway still exists before autocompact.
+2. **75% advisory (PreCompact hook).** `.claude/hooks/auto-checkpoint-precompact.sh` fires immediately before autocompact runs (threshold set by `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=75`). Autocompact cannot be blocked in Claude Code, so the banner surfaces options right before compaction proceeds.
 
-1. Save any mid-edit file (don't leave partial edits)
-2. Run `/handoff` RIGHT NOW
-3. Do NOT continue working, do NOT "finish quickly"
-4. The next session picks up where you left off
+**When either banner appears**, present the 3 options to the user and wait for their decision. Do not auto-run `/checkpoint`; let the user pick.
 
-**Fallback (instruction-based):** If you notice context is running low (many long turns, compaction has occurred), proactively run `/handoff` without waiting for the hook.
+**Fallback (instruction-based):** If context feels heavy (many long turns, lots of file reads), proactively suggest `/checkpoint` or `/handoff`. For end-of-session wrap-up, run `/handoff` manually.
 
 ## Core Principles
 
