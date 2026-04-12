@@ -90,39 +90,62 @@ If the API call fails entirely (403, network error), assume the user is not an a
 
 ### 5a. Non-admin: contact your admin
 
-If the user is not an org admin, they cannot send invitations. Show:
+If the user is not an org admin, they cannot send invitations.
 
+#### Find the admin's email
+
+Try these sources in order until an email is found:
+
+1. **Git log** — the admin created the team repo, so the first commit has their email:
+   ```bash
+   git -C companies/{slug} log --format='%ae' --reverse | head -1
+   ```
+
+2. **GitHub profile** — check public profile (often null, but worth trying):
+   ```bash
+   curl -s \
+     -H "Authorization: token {access_token}" \
+     -H "Accept: application/vnd.github+json" \
+     "https://api.github.com/users/{created_by}"
+   ```
+   Extract the `email` field.
+
+3. **Fallback** — if both return nothing, use `{created_by}@users.noreply.github.com`.
+
+Use the first non-null email found as `{admin_email}`.
+
+#### Show message and copy draft to clipboard
+
+Show:
 ```
 Only org admins can invite new members to {team_name}.
 
-Your team admin is @{created_by}.
+Your team admin is @{created_by} ({admin_email}).
+I've prepared an email draft and copied it to your clipboard.
 ```
 
-Then look up the admin's public email (best-effort):
+Build the email draft:
+```
+Hey {created_by},
+
+Could you invite a new member to our {team_name} HQ team?
+You can run /invite from your HQ to generate an invite code,
+or go to https://github.com/orgs/{org_login}/people to add them directly.
+
+Thanks!
+```
+
+Copy the draft to the clipboard:
 ```bash
-curl -s \
-  -H "Authorization: token {access_token}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/users/{created_by}"
+printf 'Hey {created_by},\n\nCould you invite a new member to our {team_name} HQ team?\nYou can run /invite from your HQ to generate an invite code,\nor go to https://github.com/orgs/{org_login}/people to add them directly.\n\nThanks!' | pbcopy 2>/dev/null || true
 ```
 
-Extract the `email` field from the response. If null/empty, use `{created_by}@users.noreply.github.com` as fallback.
-
-Prepare a draft message for the user to send:
-
+Then open a pre-populated mailto link (macOS):
+```bash
+open "mailto:{admin_email}?subject=HQ%20team%20invite%20request%20%E2%80%94%20{team_name}&body=Hey%20{created_by}%2C%0A%0ACould%20you%20invite%20a%20new%20member%20to%20our%20{team_name}%20HQ%20team%3F%0AYou%20can%20run%20%2Finvite%20from%20your%20HQ%20to%20generate%20an%20invite%20code%2C%0Aor%20go%20to%20https%3A%2F%2Fgithub.com%2Forgs%2F{org_login}%2Fpeople%20to%20add%20them%20directly.%0A%0AThanks!" 2>/dev/null || true
 ```
-Here's a quick message you can send to @{created_by}:
 
-  To: {admin_email}
-  Subject: HQ team invite request — {team_name}
-
-  Hey {created_by},
-
-  Could you invite a new member to our {team_name} HQ team?
-  You can run /invite from your HQ to generate an invite code.
-
-  Thanks!
-```
+If `pbcopy` is not available (Linux), try `xclip -selection clipboard` or `xsel --clipboard` instead.
 
 **Stop here** — do not proceed to token generation.
 
