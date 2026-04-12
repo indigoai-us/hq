@@ -157,14 +157,101 @@ If `--ff-only` fails (diverged history):
 git -c credential.helper= -C companies/{slug} pull origin main --no-rebase 2>&1
 ```
 
-If this also fails due to merge conflicts, report them (US-003 handles resolution). For now:
-```
-Merge conflict detected in {slug}. Files with conflicts:
-  {list conflicting files}
+If the merge pull succeeds (auto-merged), continue to step 4e.
 
-Resolve conflicts manually, then re-run /sync.
+If the merge pull fails with conflicts, enter the **conflict resolution flow**:
+
+##### Conflict Detection
+
+List the conflicting files:
+```bash
+git -C companies/{slug} diff --name-only --diff-filter=U
 ```
-Skip the push step for this team.
+
+For each conflicting file, show a plain-language summary:
+```
+Sync conflict in {team_name} ({slug}):
+
+  {N} file(s) have changes on both your machine and the team repo:
+
+    {filename_1}:
+      Your change:  {brief description from local side of conflict}
+      Team change:  {brief description from remote side of conflict}
+
+    {filename_2}:
+      Your change:  ...
+      Team change:  ...
+```
+
+To generate descriptions, read each conflicting file and look for `<<<<<<<`, `=======`, `>>>>>>>` markers. Summarize the content between `<<<<<<<` and `=======` as "Your change" and between `=======` and `>>>>>>>` as "Team change". Keep descriptions short and jargon-free.
+
+##### Resolution Options
+
+Ask the user which resolution strategy to use:
+
+```
+How would you like to resolve these conflicts?
+
+  1. Keep my local version (discard team changes for conflicting files)
+  2. Keep team version (discard my local changes for conflicting files)
+  3. Let me resolve manually (I'll edit the files, then re-run /sync)
+```
+
+**Option 1 — Keep local:**
+For each conflicting file:
+```bash
+git -C companies/{slug} checkout --ours -- {filename}
+git -C companies/{slug} add {filename}
+```
+Then complete the merge:
+```bash
+git -C companies/{slug} commit -m "sync: resolved conflicts — kept local versions"
+```
+Report: `Kept your local version for {N} file(s). Merge complete.`
+Continue to step 4e (push).
+
+**Option 2 — Keep remote (team):**
+For each conflicting file:
+```bash
+git -C companies/{slug} checkout --theirs -- {filename}
+git -C companies/{slug} add {filename}
+```
+Then complete the merge:
+```bash
+git -C companies/{slug} commit -m "sync: resolved conflicts — kept team versions"
+```
+Report: `Kept team version for {N} file(s). Merge complete.`
+Continue to step 4e (push).
+
+**Option 3 — Manual merge:**
+```
+OK — the conflicting files have been left with merge markers.
+Open these files and look for lines like:
+
+  <<<<<<< HEAD
+  (your version)
+  =======
+  (team version)
+  >>>>>>>
+
+Edit each file to keep what you want, then delete the marker lines.
+When you're done, run /sync again to complete the merge.
+```
+**Do NOT push for this team.** Skip to the next team. The user will re-run /sync after editing.
+
+##### Never Silently Overwrite
+
+If at any point the merge would silently overwrite local changes (e.g., a force-pull), **do not proceed**. Always show the user what will change and let them choose. The `-c credential.helper=` and `--no-rebase` flags ensure git does not rewrite local history.
+
+##### Post-Resolution State
+
+After resolving (options 1 or 2), verify the working tree is clean:
+```bash
+git -C companies/{slug} status --short
+```
+
+If clean: report `Conflicts resolved. Ready to push.` and continue.
+If still dirty: report remaining issues and skip push for this team.
 
 #### 4e. Push local changes (--dry-run: show status only)
 
@@ -198,7 +285,15 @@ If push fails because remote has new changes (non-fast-forward):
 ```
 Remote has new changes. Pulling first, then retrying push...
 ```
-Pull again (step 4d), then retry push. If it still fails, report the error.
+Pull again using the same credential setup (step 4d flow). If pull triggers conflicts, enter the conflict resolution flow above. After a clean pull, retry the push once:
+```bash
+git -c credential.helper= -C companies/{slug} push origin main 2>&1
+```
+If the retry also fails, report the error and skip this team:
+```
+Push failed for {team_name} after retry. Error: {error message}
+You can try again later with /sync --team {slug}
+```
 
 #### 4f. Clean up credentials
 
