@@ -192,6 +192,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh check-repo-active-runs .claude/hooks/check-repo-active-runs.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/hook-gate.sh inject-local-context $CLAUDE_PROJECT_DIR/.claude/hooks/inject-local-context.sh",
+            "timeout": 5
           }
         ]
       }
