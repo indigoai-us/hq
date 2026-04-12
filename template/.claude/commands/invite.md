@@ -1,17 +1,16 @@
 # Invite a Team Member
 
-Generate an invite code for a new team member and optionally send them a GitHub org invitation.
+Send an invite for a new team member. Only org admins can invite — members are guided to contact their admin.
 
 **Usage:** `/invite`
 
 ## Process
 
-1. Find team metadata from `companies/*/team.json` files in this HQ
-2. If multiple teams exist, ask which team to invite to
-3. Ask for the new member's email (optional — used to send GitHub org invite)
-4. Generate the invite token (self-contained, no server needed)
-5. If email provided, send GitHub org invitation via API
-6. Output the invite code and a ready-to-share message
+1. Find team metadata from `companies/*/team.json`
+2. If multiple teams, ask which team
+3. Check if the current user is an org admin
+4. If admin: generate invite token + send GitHub org invite
+5. If not admin: show a message to contact the admin with a prepared email
 
 ## Invite Token
 
@@ -51,6 +50,7 @@ Read the selected `companies/{slug}/team.json` and extract:
 - `team_name` — human-readable team name
 - `team_slug` — directory slug under `companies/`
 - `org_login` — GitHub org login (e.g. `indigoai-us`)
+- `created_by` — GitHub username of the team admin/creator
 
 Get the clone URL:
 ```bash
@@ -59,23 +59,78 @@ git -C companies/{slug} remote get-url origin
 
 ### 4. Load credentials
 
-Read `~/.hq/credentials.json` to get the admin's auth:
+Read `~/.hq/credentials.json`:
 ```bash
 cat ~/.hq/credentials.json
 ```
 
-Extract `access_token` (a `ghu_` GitHub App token) and `login` (admin's GitHub username). These tokens are issued by the **hq-team-sync** GitHub App via device flow.
+Extract `access_token` (a `ghu_` GitHub App token) and `login` (GitHub username).
 
-If credentials.json is missing or invalid, tell the user to re-authenticate:
+**Never display the access_token value in output.**
+
+If credentials.json is missing or invalid:
 ```
 No credentials found. Run `npx create-hq` to authenticate with GitHub.
 ```
+Stop here.
 
-### 5. Ask for email
+### 5. Check org role
+
+Check if the current user is an org admin:
+```bash
+curl -s \
+  -H "Authorization: token {access_token}" \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/orgs/{org_login}/memberships/{login}"
+```
+
+Parse the response for `"role"`. If `role` is `"admin"`, continue to step 6 (admin flow). Otherwise, go to step 5a (member flow).
+
+If the API call fails entirely (403, network error), assume the user is not an admin and go to step 5a.
+
+### 5a. Non-admin: contact your admin
+
+If the user is not an org admin, they cannot send invitations. Show:
+
+```
+Only org admins can invite new members to {team_name}.
+
+Your team admin is @{created_by}.
+```
+
+Then look up the admin's public email (best-effort):
+```bash
+curl -s \
+  -H "Authorization: token {access_token}" \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/users/{created_by}"
+```
+
+Extract the `email` field from the response. If null/empty, use `{created_by}@users.noreply.github.com` as fallback.
+
+Prepare a draft message for the user to send:
+
+```
+Here's a quick message you can send to @{created_by}:
+
+  To: {admin_email}
+  Subject: HQ team invite request — {team_name}
+
+  Hey {created_by},
+
+  Could you invite a new member to our {team_name} HQ team?
+  You can run /invite from your HQ to generate an invite code.
+
+  Thanks!
+```
+
+**Stop here** — do not proceed to token generation.
+
+### 6. Ask for email (admin only)
 
 Ask: **"New member's email address? (leave blank to skip GitHub org invite)"**
 
-### 6. Send GitHub org invite (if email provided)
+### 7. Send GitHub org invite (if email provided)
 
 If the user provided an email, send the org invitation:
 ```bash
@@ -89,15 +144,15 @@ curl -s -X POST "https://api.github.com/orgs/{org_login}/invitations" \
 - On success (2xx): note that the invite was sent
 - On failure (403/404): fall back to manual instructions:
   ```
-  Could not send org invite automatically (insufficient permissions).
+  Could not send org invite automatically.
   Invite them manually: https://github.com/orgs/{org_login}/people
   ```
 
 **Never display the access_token value in output.**
 
-### 7. Generate invite token
+### 8. Generate invite token
 
-Build the token using python3 (available in all environments):
+Build the token using python3:
 ```bash
 python3 -c "
 import json, base64
@@ -114,7 +169,7 @@ print(token)
 "
 ```
 
-### 8. Output results
+### 9. Output results
 
 Display the invite code and a ready-to-share message block.
 
