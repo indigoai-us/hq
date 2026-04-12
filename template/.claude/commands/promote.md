@@ -49,8 +49,25 @@ No credentials found. Run `npx create-hq` to authenticate with GitHub.
 ```
 Stop here.
 
-### 5. Verify current user is an admin
+### 5. Validate token + verify current user is an admin
 
+First, validate the token:
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: token {access_token}" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/user
+```
+
+If **401**:
+```
+Your GitHub token has expired. Re-authenticate by running:
+  npx create-hq
+Then try /promote again.
+```
+Stop here.
+
+Then check the org role:
 ```bash
 curl -s \
   -H "Authorization: token {access_token}" \

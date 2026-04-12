@@ -74,9 +74,25 @@ No credentials found. Run `npx create-hq` to authenticate with GitHub.
 ```
 Stop here.
 
-### 5. Check org role
+### 5. Validate token + check org role
 
-Check if the current user is an org admin:
+First, validate the token is still active:
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: token {access_token}" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/user
+```
+
+If the response is **401** (bad credentials / expired token):
+```
+Your GitHub token has expired. Re-authenticate by running:
+  npx create-hq
+Then try /invite again.
+```
+**Stop here.** Do not fall through to the non-admin flow — a 401 means the token is invalid, not that the user lacks permissions.
+
+If the token is valid (200), check the org role:
 ```bash
 curl -s \
   -H "Authorization: token {access_token}" \
@@ -84,9 +100,11 @@ curl -s \
   "https://api.github.com/orgs/{org_login}/memberships/{login}"
 ```
 
-Parse the response for `"role"`. If `role` is `"admin"`, continue to step 6 (admin flow). Otherwise, go to step 5a (member flow).
-
-If the API call fails entirely (403, network error), assume the user is not an admin and go to step 5a.
+Parse the response:
+- If `role` is `"admin"` → continue to step 6 (admin flow)
+- If `role` is `"member"` → go to step 5a (non-admin flow)
+- If **403** (not a member of the org) → tell the user they're not a member of `{org_login}` and suggest `npx create-hq` to join
+- If **404** or other error → go to step 5a (non-admin flow)
 
 ### 5a. Non-admin: contact your admin
 
