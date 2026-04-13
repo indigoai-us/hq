@@ -6,7 +6,7 @@ trigger: before editing files after 10+ conversation turns or after compaction
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: session-learning
+source: brainstorm-session
 ---
 
 ## Rule

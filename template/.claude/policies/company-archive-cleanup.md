@@ -18,4 +18,4 @@ Stale collections pointing to deleted directories crash `qmd update` with ENOENT
 
 ## Rationale
 
-Discovered during Mar 2026 HQ cleanup — archived {company} and deleted Puffin left stale qmd collections that crashed the indexer.
+Discovered during Mar 2026 HQ cleanup — archived Abacus and deleted Puffin left stale qmd collections that crashed the indexer.

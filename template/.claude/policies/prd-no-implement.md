@@ -23,3 +23,7 @@ NEVER edit, modify, or create any files outside the `projects/{name}/` directory
 Even if plan mode approval is given, the plan MUST describe the PRD structure, NOT the direct edits to target files. Plan mode approval during `/prd` means "approved to generate the PRD files" — NOT "approved to implement the changes."
 
 Implementation happens via `/execute-task` or `/run-project` AFTER the PRD is created.
+
+## Rationale
+
+On 2026-02-22, a `/prd` session for the Indigo fundraising deck directly edited `companies/{company}/data/pitch-deck/index.html` (14 edits across 12 slides) instead of creating the PRD project files first. This bypassed HQ's project tracking, worker assignment, handoff, and quality gate systems. The plan mode approval was misinterpreted as permission to implement rather than permission to generate the PRD.

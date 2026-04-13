@@ -6,7 +6,7 @@ trigger: after completing file edits in any repo with a configured typecheck/lin
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: session-learning
+source: brainstorm-session
 ---
 
 ## Rule

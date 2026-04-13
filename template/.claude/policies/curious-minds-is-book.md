@@ -13,3 +13,7 @@ created: 2026-03-04
 - Knowledge tagging / ontology operations
 - Knowledge audits and gardening
 - Company doc categorization
+
+## Rationale
+
+Session 2026-03-04: Auto-tagging agent tagged ~20 curious-minds concept files before being stopped. User clarified it's a book. Changes were reverted.

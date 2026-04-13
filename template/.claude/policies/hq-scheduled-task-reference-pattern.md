@@ -15,3 +15,7 @@ source: success-pattern
 When creating or updating a scheduled task via the scheduled-tasks MCP tools, the system overwrites `SKILL.md` with the `prompt` parameter content. Any detailed reference material (SQL queries, message formats, remediation tables, thresholds) stored directly in SKILL.md will be lost on the next update.
 
 ALWAYS store detailed reference material in a separate `REFERENCE.md` file alongside `SKILL.md` in the same `~/.claude/scheduled-tasks/{taskId}/` directory. The prompt in SKILL.md should instruct the agent to "Read the REFERENCE.md for exact queries and full instructions."
+
+## Rationale
+
+Discovered during creation of `{product}-infra-health` scheduled task (2026-04-01). The full SKILL.md with SQL queries was overwritten twice — once on create and once on update — before the pattern was identified. REFERENCE.md is not managed by the scheduled-tasks system and persists across updates.

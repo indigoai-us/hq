@@ -12,10 +12,10 @@ Personal OS for AI Workers. Open-source (MIT). Published as **HQ by Indigo**.
 
 `template/` is the single source of truth for HQ content. `hq-starter-kit` (github.com/{your-username}/hq-starter-kit) is archived as of v10.2.1 — do not sync from it.
 
-Current content counts (as of v10.7.1):
-- 36 commands (`.claude/commands/`)
-- 18 core skills (`.claude/skills/`) + 27 on frontend-designer + 11 on ux-auditor + 1 on social-strategist
-- 132+ policies (`.claude/policies/`)
+Current content counts (as of v10.10.0):
+- 30 commands (`.claude/commands/`) + 8 template-only
+- 16 core skills (`.claude/skills/`) + 27 on frontend-designer + 11 on ux-auditor + 1 on social-strategist
+- 185 policies (`.claude/policies/`)
 - 24+ workers (`workers/`)
 - 20+ knowledge bases (`knowledge/public/`)
 

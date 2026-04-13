@@ -13,7 +13,7 @@ updated: 2026-03-12
 
 When using git worktrees for project execution:
 
-1. `.claude/launch.json` dev server configs reference the original repo path as `cwd`. A worktree lives at a different path (e.g. `repos/private/{company}-gtm-hq-wt-feature-...`). Update `launch.json` `cwd` to the worktree path before starting the dev server.
+1. `.claude/launch.json` dev server configs reference the original repo path as `cwd`. A worktree lives at a different path (e.g. `repos/private/{company}-{your-project}-wt-feature-...`). Update `launch.json` `cwd` to the worktree path before starting the dev server.
 2. Revert `launch.json` `cwd` back to the main repo path after merging the worktree back.
 3. Worktrees do NOT inherit `.env.local` from the main repo. Copy `.env.local` from the main repo root into the worktree root before starting the dev server.
 

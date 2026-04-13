@@ -7,7 +7,7 @@ enforcement: hard
 version: 2
 created: 2026-02-22
 updated: 2026-03-12
-source: session-learning
+source: {your-project}.get{company}.ai overwrite incident
 ---
 
 ## Rule
@@ -20,4 +20,8 @@ Before ANY Vercel deploy:
 4. **NEVER** remove a domain from one Vercel project to assign it to another — add new routes within the existing project instead
 5. **NEVER** deploy a repo whose registry entry shows a different `owner` without explicit user confirmation
 
-Protected domains (never reassign): Add your production domains to this list. Any domain serving live traffic should be protected from accidental reassignment.
+Protected domains (never reassign): `hq.get{company}.ai`, `{your-project}.get{company}.ai`, `get{company}.ai`, `{company}.com`, `{your-domain}.com`, `{your-domain}.com`, `{your-domain}.com`, `{your-domain}.band`, `{company}.com`, `{your-name}.com`, `{your-domain}.com`, `www.{company}.ai`
+
+## Rationale
+
+{your-project}.get{company}.ai was overwritten by another team member deploying to the wrong project (2026-03-12). hq.get{company}.ai was nearly replaced in a prior incident. The deploy registry (`settings/deploy-registry.yaml`) is the source of truth for repo → project → domain mapping.

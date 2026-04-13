@@ -22,7 +22,7 @@ Run `qmd cleanup` before `qmd update` whenever tombstones accumulate. Quick chec
 sqlite3 ~/.cache/qmd/index.sqlite "SELECT COUNT(*) FROM documents WHERE active=0"
 ```
 
-If the count is non-zero, run `qmd cleanup` first. `/search-reindex` already does this as step 1.
+If the count is non-zero, run `qmd cleanup` first.
 
 ## Rationale
 

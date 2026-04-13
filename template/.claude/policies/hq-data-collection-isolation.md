@@ -19,3 +19,7 @@ Instead:
 2. **Ad-hoc "run it now"** → spawn `Agent(run_in_background=true)` to collect data and format the dashboard. Parent receives only the compact summary.
 
 The parent session should only see the final formatted output, never raw query results.
+
+## Rationale
+
+During the {PRODUCT} health monitor build (2026-04-03), running the cron inline consumed ~50K tokens per 10-minute tick. Six ticks burned half the context window. Moving to scheduled tasks (isolated sessions) and background agents for ad-hoc runs eliminated context bleed entirely.

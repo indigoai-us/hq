@@ -18,4 +18,4 @@ To interleave new sections between existing ones: delete the sections that need 
 
 ## Rationale
 
-Discovered during {company} Collection page expansion (Mar 2026). Five new sections needed to be interleaved between existing Product Grid, Subscribe Banner, Comparison Table, and Footer. Without delete-rebuild, all new sections would stack below the footer.
+Discovered during HPO Collection page expansion (Mar 2026). Five new sections needed to be interleaved between existing Product Grid, Subscribe Banner, Comparison Table, and Footer. Without delete-rebuild, all new sections would stack below the footer.

@@ -12,4 +12,4 @@ When a paginated API serves data that the client filters by status/priority, add
 
 ## Rationale
 
-{company} field app loaded 50 accounts alphabetically — all churned. "Active" filter showed empty. Fix: `?sort=staleness` returns active accounts on page 1.
+Amass field app loaded 50 accounts alphabetically — all churned. "Active" filter showed empty. Fix: `?sort=staleness` returns active accounts on page 1.

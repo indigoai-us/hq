@@ -6,7 +6,7 @@ trigger: before multi-file structural refactors
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: session-learning
+source: brainstorm-session
 ---
 
 ## Rule

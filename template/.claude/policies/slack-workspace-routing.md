@@ -32,9 +32,9 @@ Default is `voyage`. Always pass `workspace:` param when targeting non-default.
 
 | Person | Workspace | Slack ID | Username |
 |--------|-----------|----------|----------|
-| {team-member} Johnson | {company} | `U065YSKUCJK` | `therealstefan` |
+| Stefan Johnson | {company} | `U065YSKUCJK` | `thereal{team-member}` |
 | {team-member} Kalim | {company} | `U0823D5QDJM` | `{team-member}` |
-| {your-name} Epstein | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
+| {your-name} | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
 | Ryan, Josh, {Product} team | voyage | — | — |
 
 **`find_user` gotcha**: Search matches `name` (username), not `real_name`. Use username or Slack ID directly if name search fails.
