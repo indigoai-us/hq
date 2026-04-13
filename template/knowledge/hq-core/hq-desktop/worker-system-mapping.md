@@ -26,7 +26,7 @@ worker:
 | Type | Count | Examples |
 |------|-------|---------|
 | CodeWorker | 16 | architect, frontend-dev, backend-dev, codex-coder |
-| OpsWorker | 10 | cfo-{company}, infobip-admin, qa-tester, pretty-mermaid |
+| OpsWorker | 10 | cfo-{company}, qa-tester, pretty-mermaid |
 | ContentWorker | 5 | content-brand, content-sales, {company}-brand-writer |
 | ResearchWorker | 2 | {company}-analyst, pr-monitor |
 | SocialWorker | 1 | x-{your-name} |
@@ -689,7 +689,7 @@ workers/registry.yaml
 companies/manifest.yaml
   │
   ├─ {company}:
-  │     workers: [cfo-{company}, {company}-analyst, {product}-deploy, infobip-admin, lr-qa, {company}-gtm]
+  │     workers: [cfo-{company}, {company}-analyst, {product}-deploy]
   │
   ├─ {company}:
   │     workers: [cmo-{company}, {company}-brand-writer, {company}-copy-auditor]

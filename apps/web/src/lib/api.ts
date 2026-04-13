@@ -117,3 +117,119 @@ export async function removeMember(
     method: "DELETE",
   });
 }
+
+// --- Entitlements API ---
+
+export interface Pack {
+  paths: string[];
+  description: string;
+}
+
+export interface EntitlementsManifest {
+  packs: Record<string, Pack>;
+  assignments: Record<string, string[]>; // userId or "role:member" → pack names
+}
+
+export async function getEntitlements(
+  token: string,
+  teamId: string
+): Promise<EntitlementsManifest> {
+  const res = await request(`/api/teams/${teamId}/entitlements`, token);
+  return res.json();
+}
+
+export async function setEntitlements(
+  token: string,
+  teamId: string,
+  manifest: EntitlementsManifest
+): Promise<void> {
+  await request(`/api/teams/${teamId}/entitlements`, token, {
+    method: "POST",
+    body: JSON.stringify(manifest),
+  });
+}
+
+// --- Submissions API ---
+
+export interface Submission {
+  id: string;
+  userId: string;
+  branchName: string;
+  title: string;
+  description: string;
+  status: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listSubmissions(
+  token: string,
+  teamId: string
+): Promise<Submission[]> {
+  const res = await request(`/api/teams/${teamId}/submissions`, token);
+  const data = await res.json();
+  return data.submissions ?? [];
+}
+
+export async function approveSubmission(
+  token: string,
+  teamId: string,
+  subId: string
+): Promise<{ submission: Submission; merge: { sha: string; repo: string } }> {
+  const res = await request(
+    `/api/teams/${teamId}/submissions/${subId}/approve`,
+    token,
+    { method: "PUT" }
+  );
+  return res.json();
+}
+
+export async function rejectSubmission(
+  token: string,
+  teamId: string,
+  subId: string,
+  reason?: string
+): Promise<{ submission: Submission }> {
+  const res = await request(
+    `/api/teams/${teamId}/submissions/${subId}/reject`,
+    token,
+    {
+      method: "PUT",
+      body: JSON.stringify({ reason: reason ?? "" }),
+    }
+  );
+  return res.json();
+}
+
+// --- GitHub Proxy API ---
+
+export interface DiffFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+}
+
+export interface CompareResult {
+  baseBranch: string;
+  headBranch: string;
+  aheadBy: number;
+  behindBy: number;
+  files: DiffFile[];
+}
+
+export async function getSubmissionDiff(
+  token: string,
+  teamId: string,
+  branchName: string
+): Promise<CompareResult> {
+  const params = new URLSearchParams({ branch: branchName });
+  const res = await request(
+    `/api/teams/${teamId}/github-diff?${params.toString()}`,
+    token
+  );
+  return res.json();
+}

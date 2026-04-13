@@ -130,46 +130,24 @@ gemini-coder, gemini-reviewer
 
 **Company Workers** (`companies/{co}/workers/`):
 
+Create company-scoped workers with `/newworker`. Examples:
+
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {Product} | Data analysis |
-| infobip-admin | {Product} | Infobip channel management |
-| {company}-gtm | {Product} | GTM operations |
-| lr-qa | {Product} | QA testing |
-| {product}-deploy | {Product} | Deployment automation |
-| cmo-{company} | {Product} | Social/content (X, LinkedIn) |
-| x-{your-name} | Personal | X/Twitter posting |
-| invoices | Personal | Invoice generation |
-| social-council | Personal | Social strategy council |
-| pr-coordinator | {company} | PR campaign coordination |
-| pr-strategist | {company} | PR strategy |
-| pr-writer | {company} | PR content writing |
-| pr-outreach | {company} | Journalist outreach |
-| pr-monitor | {company} | Media monitoring |
-| {company}-site-builder | {company} | Site generation |
-| {company}-research-agent | {company} | Research automation |
+| cfo-{company} | {company} | Financial reporting |
+| {company}-analyst | {company} | Data analysis |
+| cmo-{company} | {company} | Social/content |
+| x-{your-name} | personal | X/Twitter posting |
 
-## Companies (14)
+## Companies
 
-Each company owns its settings, data, and knowledge.
+Each company owns its settings, data, and knowledge. Add companies with `/newcompany`.
 
 ```
 companies/
-├── {company}/    # SMS/e-commerce + AI platform
-├── {company}/         # AI venture
-├── personal/       # Personal tools + social
-├── {company}/  # Band/music
-├── {company}/     # Artist site + admin
-├── {company}/    # Artist management
-├── {company}/      # PR agency
-├── {company}/     # {Product} AI
-├── {company}/ # Estate platform
-├── {company}/       # Agency + tools
-├── {company}/          # Shopify store
-├── {company}/       # Wellness mobile app
-├── {company}/       # Domain management
-└── {company}/            # GTM/growth
+├── {your-company}/  # Your first company
+├── personal/        # Personal tools + social
+└── _template/       # Template for new companies
 ```
 
 ## Projects
@@ -192,7 +170,7 @@ HQ/
 │   └── skills/        # Skill definitions (3)
 ├── agents-profile.md  # {your-name}'s profile
 ├── agents-companies.md # Company contexts
-├── companies/         # Company-scoped resources (14)
+├── companies/         # Company-scoped resources
 │   └── {co}/
 │       ├── knowledge/ # Embedded git repo
 │       ├── policies/  # Company rules
@@ -245,4 +223,4 @@ HQ/
 - `linear/` - Linear integration knowledge
 
 **Company-level** (in `companies/{co}/knowledge/`):
-- All 14 companies have embedded git repos
+- Each company has its own embedded git repo

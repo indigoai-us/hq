@@ -5,7 +5,7 @@ scope: tool
 trigger: mcp__paper__write_html
 enforcement: soft
 created: 2026-03-19
-source: dripkit-mvp/US-001 design session
+source: design session
 ---
 
 ## Rule
@@ -16,4 +16,4 @@ Also set `flexShrink: 0` on parent frames of text that must not compress (chips,
 
 ## Rationale
 
-Paper MCP does not auto-size text containers reliably. Every screen in the Dripkit design session required post-hoc width fixes on text nodes — buttons, tab labels, chip labels, profile card values, auth buttons all exhibited word-breaking. The fix pattern is always the same: explicit width + textAlign on the Text node. Catching this upfront saves multiple screenshot → fix → screenshot cycles per artboard.
+Paper MCP does not auto-size text containers reliably. Every screen in a multi-artboard design session required post-hoc width fixes on text nodes — buttons, tab labels, chip labels, profile card values, auth buttons all exhibited word-breaking. The fix pattern is always the same: explicit width + textAlign on the Text node. Catching this upfront saves multiple screenshot → fix → screenshot cycles per artboard.
