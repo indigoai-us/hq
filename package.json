@@ -11,9 +11,19 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
     "test:e2e": "RUN_E2E=true vitest run --config tests/e2e/vitest.config.ts",
-    "verify": "npm run typecheck --workspaces --if-present && npm run test:e2e"
+    "verify": "npm run typecheck --workspaces --if-present && npm run test:e2e",
+    "lint": "eslint .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "typescript-eslint": "^8.58.1",
     "vitest": "^4.1.2"
   },
   "engines": {

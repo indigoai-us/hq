@@ -100,11 +100,11 @@ Display: "qmd unavailable, falling back to Grep"
 
 If Grep is also unavailable, run:
 ```bash
-grep -rl "$QUERY" ~/Documents/HQ/knowledge/ \
-  ~/Documents/HQ/companies/ \
-  ~/Documents/HQ/workers/ \
-  ~/Documents/HQ/.claude/commands/ \
-  ~/Documents/HQ/workspace/ 2>/dev/null | head -20
+grep -rl "$QUERY" ${HQ_ROOT:-$HOME/hq}/knowledge/ \
+  ${HQ_ROOT:-$HOME/hq}/companies/ \
+  ${HQ_ROOT:-$HOME/hq}/workers/ \
+  ${HQ_ROOT:-$HOME/hq}/.claude/commands/ \
+  ${HQ_ROOT:-$HOME/hq}/workspace/ 2>/dev/null | head -20
 ```
 
 ## Examples

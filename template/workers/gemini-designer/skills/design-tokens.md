@@ -18,7 +18,7 @@ Optional:
 
 2. **Extract via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat tailwind.config.* src/styles/*.{css,ts} 2>/dev/null && find src/components -name "*.tsx" | head -30 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "Extract all design tokens from this codebase. Identify:
 

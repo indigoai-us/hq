@@ -19,7 +19,7 @@ Optional:
 
 2. **Generate Dark Mode via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat {files} tailwind.config.* src/styles/globals.css 2>/dev/null | GEMINI_API_KEY=$KEY \
      gemini -p "Add dark mode support using {strategy}.
 
