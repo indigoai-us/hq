@@ -7,11 +7,13 @@
  *   1. POST github.com/login/device/code with our App's client_id
  *   2. Display user_code, open verification_uri in browser
  *   3. Poll github.com/login/oauth/access_token at the GitHub-specified interval
- *   4. On success: GET api.github.com/user → configure gh CLI with the token
+ *   4. On success: GET api.github.com/user → save token to ~/.hq/app-token.json
  *
- * After authentication, the token is handed to `gh auth login --with-token`
- * so that subsequent sessions can use `gh` for all GitHub operations.
- * No credentials are persisted to disk by create-hq itself.
+ * The HQ App token is stored in ~/.hq/app-token.json (mode 0600) and is
+ * completely independent of the user's `gh` CLI auth. This means:
+ *   - Running `gh auth login` / `gh auth logout` does not affect HQ auth
+ *   - HQ auth does not overwrite the user's existing `gh` token
+ *   - The App token is only used for HQ-specific API calls (installations, etc.)
  *
  * Token values are NEVER written to stdout or logs.
  */
@@ -19,7 +21,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { exec, execSync } from "child_process";
+import { exec } from "child_process";
 import chalk from "chalk";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -33,6 +35,9 @@ const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_API_USER_URL = "https://api.github.com/user";
 
 const HQ_DIR = path.join(os.homedir(), ".hq");
+
+/** Where the HQ App token is persisted. Exported for tests. */
+export const HQ_APP_TOKEN_PATH = path.join(HQ_DIR, "app-token.json");
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,140 +87,124 @@ interface GitHubUserResponse {
   email: string | null;
 }
 
-// ─── gh CLI helpers ────────────────────────────────────────────────────────
+// ─── Token persistence (~/.hq/app-token.json) ────────────────────────────
 
-/** Check if `gh` CLI is installed. */
-function isGhInstalled(): boolean {
-  try {
-    execSync("gh --version", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
+/**
+ * Save the HQ App auth to ~/.hq/app-token.json.
+ *
+ * The file is written with mode 0600 (owner read+write only). The user's
+ * existing `gh` CLI auth is never touched.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
+ */
+export function saveGitHubAuth(auth: GitHubAuth, tokenPath = HQ_APP_TOKEN_PATH): void {
+  const dir = path.dirname(tokenPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-}
-
-/** Check if `gh` is authenticated with any GitHub host. */
-function isGhAuthenticated(): boolean {
-  try {
-    execSync("gh auth status", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+  fs.writeFileSync(tokenPath, JSON.stringify(auth, null, 2), {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
 }
 
 /**
- * Configure `gh` CLI with a token and set up git credential helper.
- * This makes the token available for all future `gh` and `git` operations.
+ * Load HQ App auth from ~/.hq/app-token.json.
+ *
+ * Returns null if the file doesn't exist, is corrupted, or is missing
+ * required fields. Does NOT fall back to `gh` CLI — the HQ App token
+ * is separate from the user's personal GitHub auth.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
  */
-function configureGhAuth(token: string): void {
-  if (!isGhInstalled()) {
-    console.error(
-      chalk.dim(
-        "  (gh CLI not found — install it from https://cli.github.com for team commands)"
-      )
-    );
-    return;
-  }
-
+export function loadGitHubAuth(tokenPath = HQ_APP_TOKEN_PATH): GitHubAuth | null {
   try {
-    // Pipe token to gh auth login (stdin, non-interactive)
-    execSync("gh auth login --with-token", {
-      input: token,
-      stdio: ["pipe", "ignore", "ignore"],
-    });
-
-    // Configure git to use gh for HTTPS auth
-    execSync("gh auth setup-git", { stdio: "ignore" });
-  } catch (err) {
-    console.error(
-      chalk.dim("  (could not configure gh CLI — you can run `gh auth login` manually)")
-    );
-  }
-}
-
-/**
- * Save the GitHub auth to gh CLI. The token is handed to `gh auth login`
- * so it's stored in the OS keychain, not on disk as a plain file.
- */
-export function saveGitHubAuth(auth: GitHubAuth): void {
-  configureGhAuth(auth.access_token);
-}
-
-/**
- * Load GitHub auth from `gh` CLI. Returns null if gh is not installed
- * or not authenticated. Fetches user profile from GitHub API via gh.
- */
-export function loadGitHubAuth(): GitHubAuth | null {
-  if (!isGhInstalled() || !isGhAuthenticated()) return null;
-
-  try {
-    // Get the token from gh
-    const token = execSync("gh auth token", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "ignore"],
-    }).trim();
-
-    if (!token) return null;
-
-    // Get user profile via gh api
-    const userJson = execSync('gh api user --jq \'{"login":.login,"id":.id,"name":.name,"email":.email}\'', {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "ignore"],
-    }).trim();
-
-    const user = JSON.parse(userJson) as GitHubUserResponse;
-
-    return {
-      access_token: token,
-      login: user.login,
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      issued_at: new Date().toISOString(),
-    };
+    if (!fs.existsSync(tokenPath)) return null;
+    const raw = fs.readFileSync(tokenPath, "utf-8");
+    const data = JSON.parse(raw);
+    // Minimal validation — must have at least a token and login
+    if (!data.access_token || !data.login) return null;
+    return data as GitHubAuth;
   } catch {
     return null;
   }
 }
 
-/** Remove stored credentials by logging out of gh. */
-export function clearGitHubAuth(): void {
-  if (!isGhInstalled()) return;
+/**
+ * Remove stored HQ App credentials.
+ *
+ * Deletes ~/.hq/app-token.json. Does NOT touch `gh` CLI auth.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
+ */
+export function clearGitHubAuth(tokenPath = HQ_APP_TOKEN_PATH): void {
   try {
-    execSync("gh auth logout --hostname github.com", {
-      input: "Y\n",
-      stdio: ["pipe", "ignore", "ignore"],
-    });
+    if (fs.existsSync(tokenPath)) {
+      fs.unlinkSync(tokenPath);
+    }
   } catch {
-    // ignore — may already be logged out
+    // ignore — may already be gone
   }
 }
 
 /**
  * Quick liveness probe — does the stored token still work?
- * Uses `gh auth status` which validates the token against GitHub.
+ * Validates the token by hitting GET /user on api.github.com.
  */
 export async function isGitHubAuthValid(auth: GitHubAuth): Promise<boolean> {
-  // If we have a token in memory, verify it directly
-  if (auth.access_token) {
-    try {
-      const res = await fetch(GITHUB_API_USER_URL, {
+  if (!auth.access_token) return false;
+  try {
+    const res = await fetch(GITHUB_API_USER_URL, {
+      headers: {
+        Authorization: `token ${auth.access_token}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "create-hq",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Result of the App scope probe. */
+export type AppScopeResult = "yes" | "no" | "unknown";
+
+/**
+ * Probe whether a token has GitHub App scopes by hitting /user/installations.
+ *
+ * Returns:
+ *   - `"yes"`     — 2xx, token has App scopes
+ *   - `"no"`      — 403, token is definitively the wrong type
+ *   - `"unknown"` — transient failure (network error, 5xx, timeout)
+ *
+ * Callers should only delete cached tokens on `"no"`, not on `"unknown"`.
+ * This is a lightweight check — we request per_page=1 to minimise payload.
+ */
+export async function isAppScopedToken(auth: GitHubAuth): Promise<AppScopeResult> {
+  if (!auth.access_token) return "no";
+  try {
+    const res = await fetch(
+      "https://api.github.com/user/installations?per_page=1",
+      {
         headers: {
           Authorization: `token ${auth.access_token}`,
           Accept: "application/vnd.github+json",
           "User-Agent": "create-hq",
         },
         signal: AbortSignal.timeout(10_000),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
+      }
+    );
+    if (res.ok) return "yes";
+    // 401/403 = definitive "wrong token type"
+    if (res.status === 401 || res.status === 403) return "no";
+    // Anything else (429, 5xx) = transient
+    return "unknown";
+  } catch {
+    // Network error, timeout, DNS failure = transient
+    return "unknown";
   }
-
-  // Fall back to gh auth status
-  return isGhAuthenticated();
 }
 
 // ─── Browser open (cross-platform) ──────────────────────────────────────────
@@ -252,7 +241,9 @@ function sleep(ms: number): Promise<void> {
  *
  * On success, the token is:
  *   1. Returned in-memory as part of GitHubAuth (for the current session)
- *   2. Configured in `gh` CLI for future sessions (via gh auth login --with-token)
+ *   2. Persisted to ~/.hq/app-token.json for future sessions
+ *
+ * The user's existing `gh` CLI auth is never modified.
  *
  * Throws on:
  *   - Network errors talking to github.com
@@ -376,7 +367,7 @@ export async function startGitHubDeviceFlow(): Promise<GitHubAuth> {
       issued_at: new Date().toISOString(),
     };
 
-    // Configure gh CLI with the token for future sessions
+    // Persist for future sessions (does not touch gh CLI)
     saveGitHubAuth(auth);
     return auth;
   }
@@ -412,6 +403,21 @@ export async function githubApi<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+
+    // Friendly error when a non-App token hits the App-only installations endpoint.
+    if (
+      res.status === 403 &&
+      pathname.startsWith("/user/installations") &&
+      body.includes("authorized to a GitHub App")
+    ) {
+      throw new Error(
+        "You're signed in with a regular GitHub token that can't list App installations.\n" +
+        "  HQ Teams requires authentication through the HQ GitHub App.\n\n" +
+        "  To fix this, re-run the installer — it will prompt you to authorize the HQ App:\n" +
+        "    npx create-hq"
+      );
+    }
+
     throw new Error(`GitHub API ${res.status} ${pathname}: ${body}`);
   }
 
