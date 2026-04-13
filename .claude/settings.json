@@ -12,5 +12,50 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Write(companies/**/.gitkeep)",
+      "Write(companies/*/settings/*)",
+      "Write(companies/*/data/*)",
+      "Write(companies/*/knowledge/**)",
+      "Write(companies/*/policies/*)",
+      "Edit(companies/*/knowledge/**)",
+      "Edit(companies/*/policies/*)",
+      "Edit(companies/manifest.yaml)",
+      "Write(repos/**/.gitkeep)",
+      "Write(repos/**/README.md)",
+      "Write(agents.md)",
+      "Write(agents-profile.md)",
+      "Write(agents-companies.md)",
+      "Edit(.gitignore)",
+      "Edit(INDEX.md)",
+      "Edit(workers/registry.yaml)",
+      "Edit(modules/modules.yaml)",
+      "Write(workspace/threads/**)",
+      "Edit(workspace/threads/**)",
+      "Write(workspace/insights/**)",
+      "Write(workspace/learnings/*)",
+      "Write(workspace/orchestrator/*)",
+      "Edit(workspace/orchestrator/*)",
+      "Write(workspace/checkpoints/*)",
+      "Write(workspace/reports/**)",
+      "Write(workspace/social-drafts/**)",
+      "Write(.claude/policies/*)",
+      "Edit(.claude/policies/*)",
+      "Bash(mkdir -p *)",
+      "Bash(ln -s *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(git init)",
+      "Bash(git status*)",
+      "Bash(git rev-parse *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git log *)",
+      "Bash(git diff*)",
+      "Bash(git branch*)",
+      "Bash(qmd *)"
+    ]
   }
 }
