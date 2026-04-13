@@ -71,7 +71,7 @@ For each issue, document:
 - **Impact**: How it affects users
 - **WCAG/Standard**: Which standard it violates (if applicable)
 - **Recommendation**: How to fix it
-- **Suggested command**: Which command to use (prefer: /normalize, /onboard, /polish, /animate, /clarify, /audit, /quieter, /typeset, /harden, /overdrive, /delight, /arrange, /critique, /colorize, /bolder, /optimize, /adapt, /distill, /extract — or other installed skills you're sure exist)
+- **Suggested skill**: Which worker + skill to use. Fix skills live on `frontend-designer` (typeset, colorize, arrange, adapt, animate, optimize, polish, bolder, quieter, distill, delight, clarify, onboard, overdrive, extract, consolidate, css-refactor, dark-mode). Review skills live on `ux-auditor` (audit, critique, harden, normalize, ux-audit, flow-review, copy-review, design-audit, design-system-check, visual-diff, competitive-scan).
 
 #### Critical Issues
 [Issues that block core functionality or violate WCAG A]
@@ -108,12 +108,14 @@ Create actionable plan:
 
 ### Suggested Commands for Fixes
 
-Map issues to available commands. Prefer these: /normalize, /onboard, /polish, /animate, /clarify, /audit, /quieter, /typeset, /harden, /overdrive, /delight, /arrange, /critique, /colorize, /bolder, /optimize, /adapt, /distill, /extract. You may also suggest other installed skills you're sure exist, but never invent commands.
+Map issues to worker skills. Route to the correct worker:
+- **frontend-designer**: typeset, colorize, arrange, adapt, animate, optimize, polish, bolder, quieter, distill, delight, clarify, onboard, overdrive, extract, consolidate, css-refactor, dark-mode
+- **ux-auditor**: audit, critique, harden, normalize, ux-audit, flow-review, copy-review, design-audit, design-system-check, visual-diff, competitive-scan
 
 Examples:
-- "Use `/normalize` to align with design system (addresses N theming issues)"
-- "Use `/optimize` to improve performance (addresses N performance issues)"
-- "Use `/harden` to improve resilience (addresses N edge cases)"
+- "Use `ux-auditor normalize` to check design system alignment (addresses N theming issues)"
+- "Use `frontend-designer optimize` to improve performance (addresses N performance issues)"
+- "Use `ux-auditor harden` to identify edge cases (addresses N resilience issues)"
 
 **IMPORTANT**: Be thorough but actionable. Too many low-priority issues creates noise. Focus on what actually matters.
 

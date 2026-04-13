@@ -148,7 +148,8 @@ fi
 
 # No placeholder strings in core operational files
 # Exempt paths match the existing vitest suite: knowledge, starter-projects,
-# .claude/policies, .claude/commands, modules/modules.yaml, README.md, workers
+# .claude/policies, .claude/commands, .claude/skills, .claude/CLAUDE.md,
+# modules/modules.yaml, README.md, USER-GUIDE.md, workers
 assert "no-placeholders-in-core-files" "
   ! find '${TEST_DIR}' -type f \
     -not -path '${TEST_DIR}/.git/*' \
@@ -157,9 +158,12 @@ assert "no-placeholders-in-core-files" "
     -not -path '${TEST_DIR}/starter-projects/*' \
     -not -path '${TEST_DIR}/.claude/policies/*' \
     -not -path '${TEST_DIR}/.claude/commands/*' \
+    -not -path '${TEST_DIR}/.claude/skills/*' \
+    -not -path '${TEST_DIR}/.claude/CLAUDE.md' \
     -not -path '${TEST_DIR}/workers/*' \
     -not -name 'modules.yaml' \
     -not -name 'README.md' \
+    -not -name 'USER-GUIDE.md' \
     -exec grep -l '{your-username}\|{your-name}' {} + 2>/dev/null | grep -q .
 "
 

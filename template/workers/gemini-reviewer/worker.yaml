@@ -99,7 +99,7 @@ instructions: |
   Do NOT use gemini-reviewer when:
   - You need code changes applied (use gemini-coder refactor)
   - Task is new code generation (use gemini-coder)
-  - Task is frontend-specific review (use gemini-frontend a11y-audit)
+  - Task is frontend-specific review (use ux-auditor audit)
 
   ## Skills
 

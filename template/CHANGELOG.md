@@ -1,5 +1,31 @@
 # Changelog
 
+## [10.8.0] — 2026-04-11
+
+### Headline
+Design worker consolidation: 6 design workers → 2. Style pack system via `.impeccable.md`. Configurable models (gemini default, opus for creative skills).
+
+### Breaking — Workers Removed (5)
+- `impeccable-designer` — skills split between frontend-designer (18) and ux-auditor (4)
+- `gemini-designer` — skills split between frontend-designer (1) and ux-auditor (3)
+- `gemini-stylist` — 4 skills absorbed into frontend-designer
+- `gemini-frontend` — 4 skills absorbed into frontend-designer
+- `gemini-ux-auditor` — 4 skills absorbed into ux-auditor
+
+### Added
+- **`ux-auditor`** — new worker (11 skills). Design review & quality gate. Read-only, never writes code. Consolidates audit/critique/harden/normalize from impeccable-designer + 4 gemini-ux-auditor skills + 3 gemini-designer skills.
+- **Style pack system** — `.impeccable.md` gains `style:` field. Workers auto-load design style specs + swipes. 9 styles: american-industrial, brutalist-raw, corporate-clean, dark-luxury, editorial-magazine, ethereal-abstract, liminal-portal, minimalist-swiss, retro-analog.
+- `teach-impeccable` now presents style catalog during setup (Step 3)
+
+### Changed
+- **`frontend-designer`** — expanded from 0 to 27 skills. Now the single build+refine worker. Model: gemini (opus for frontend-design/overdrive/bolder/delight). MCP server preserved.
+- `workers/registry.yaml` — version 10.8.0, Standalone Workers 11→9, Gemini Team 6→2
+- `.claude/CLAUDE.md` — workers section updated
+- `core.yaml` — version bump to 10.8.0
+
+### Migration
+See MIGRATION.md for step-by-step upgrade instructions.
+
 ## [10.7.1] — 2026-04-11
 
 ### Headline

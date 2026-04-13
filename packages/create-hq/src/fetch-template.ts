@@ -1,9 +1,18 @@
 import fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
-import { execSync } from "child_process";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 const REPO = "indigoai-us/hq";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 const GITHUB_API = "https://api.github.com";
 
 interface ReleaseInfo {
@@ -33,7 +42,12 @@ async function getTagRelease(tag: string): Promise<ReleaseInfo> {
   return data;
 }
 
-async function downloadAndExtractViaApi(tarballUrl: string, targetDir: string): Promise<void> {
+async function downloadAndExtractViaApi(
+  tarballUrl: string,
+  targetDir: string,
+  onProgress?: (phase: string) => void,
+): Promise<void> {
+  onProgress?.("Downloading HQ template...");
   const response = await fetch(tarballUrl, {
     headers: { Accept: "application/vnd.github+json" },
     redirect: "follow",
@@ -42,61 +56,95 @@ async function downloadAndExtractViaApi(tarballUrl: string, targetDir: string): 
     throw new Error(`Failed to download tarball: ${response.status} ${response.statusText}`);
   }
 
-  const buffer = await response.arrayBuffer();
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-"));
+  // Stream download with progress
+  const totalBytes = Number(response.headers.get("content-length")) || 0;
+  const chunks: Uint8Array[] = [];
+  let downloadedBytes = 0;
+
+  if (response.body) {
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      downloadedBytes += value.length;
+      if (totalBytes > 0) {
+        onProgress?.(`Downloading HQ template... ${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}`);
+      } else {
+        onProgress?.(`Downloading HQ template... ${formatBytes(downloadedBytes)}`);
+      }
+    }
+  } else {
+    // Fallback if body stream not available
+    const buf = await response.arrayBuffer();
+    chunks.push(new Uint8Array(buf));
+  }
+
+  const buffer = Buffer.concat(chunks);
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "create-hq-"));
   const tarPath = path.join(tmpDir, "hq.tar.gz");
 
   try {
-    fs.writeFileSync(tarPath, Buffer.from(buffer));
-    extractTemplateDirFromTar(tarPath, targetDir);
+    onProgress?.("Extracting template...");
+    await fs.writeFile(tarPath, buffer);
+    await extractTemplateDirFromTar(tarPath, targetDir, onProgress);
   } finally {
-    fs.removeSync(tmpDir);
+    await fs.remove(tmpDir);
   }
 }
 
-function extractTemplateDirFromTar(tarPath: string, targetDir: string): void {
+async function extractTemplateDirFromTar(
+  tarPath: string,
+  targetDir: string,
+  onProgress?: (phase: string) => void,
+): Promise<void> {
   // The tarball contains a top-level directory like `indigoai-us-hq-<sha>/`
   // We need to find the `template/` subdirectory within that and extract it.
-  const tmpExtract = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-extract-"));
+  const tmpExtract = await fs.mkdtemp(path.join(os.tmpdir(), "create-hq-extract-"));
 
   try {
     // Extract the full tarball to a temp location
-    execSync(`tar -xzf "${tarPath}" -C "${tmpExtract}"`, { stdio: "pipe" });
+    await execAsync(`tar -xzf "${tarPath}" -C "${tmpExtract}"`);
 
     // Find the top-level directory created by GitHub's tarball
-    const entries = fs.readdirSync(tmpExtract);
+    const entries = await fs.readdir(tmpExtract);
     if (entries.length === 0) {
       throw new Error("Tarball was empty");
     }
     const rootDir = path.join(tmpExtract, entries[0]);
     const templateSrc = path.join(rootDir, "template");
 
-    if (!fs.existsSync(templateSrc)) {
+    if (!await fs.pathExists(templateSrc)) {
       throw new Error("template/ directory not found in HQ tarball");
     }
 
     // Copy template contents to targetDir
-    fs.ensureDirSync(targetDir);
-    fs.copySync(templateSrc, targetDir, { overwrite: true });
+    onProgress?.("Copying template files...");
+    await fs.ensureDir(targetDir);
+    await fs.copy(templateSrc, targetDir, { overwrite: true });
   } finally {
-    fs.removeSync(tmpExtract);
+    await fs.remove(tmpExtract);
   }
 }
 
-function extractTemplateDirViaGhCli(tag: string, targetDir: string): void {
+async function extractTemplateDirViaGhCli(
+  tag: string,
+  targetDir: string,
+  onProgress?: (phase: string) => void,
+): Promise<void> {
   const ref = tag || "HEAD";
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-gh-"));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "create-hq-gh-"));
   const tarPath = path.join(tmpDir, "hq.tar.gz");
 
   try {
-    // Use sh -c so that output redirection works
-    execSync(`gh api repos/${REPO}/tarball/${ref} > "${tarPath}"`, {
-      stdio: "pipe",
+    onProgress?.("Downloading via gh CLI...");
+    await execAsync(`gh api repos/${REPO}/tarball/${ref} > "${tarPath}"`, {
       shell: "/bin/sh",
     });
-    extractTemplateDirFromTar(tarPath, targetDir);
+    onProgress?.("Extracting template...");
+    await extractTemplateDirFromTar(tarPath, targetDir, onProgress);
   } finally {
-    fs.removeSync(tmpDir);
+    await fs.remove(tmpDir);
   }
 }
 
@@ -112,7 +160,8 @@ function extractTemplateDirViaGhCli(tag: string, targetDir: string): void {
  */
 export async function fetchTemplate(
   targetDir: string,
-  tag?: string
+  tag?: string,
+  onProgress?: (phase: string) => void,
 ): Promise<{ version: string }> {
   let version = tag || "";
   let tarballUrl = "";
@@ -120,10 +169,11 @@ export async function fetchTemplate(
 
   // --- Attempt 1: GitHub API ---
   try {
+    onProgress?.("Resolving latest release...");
     const release = tag ? await getTagRelease(tag) : await getLatestRelease();
     version = release.tag_name;
     tarballUrl = release.tarball_url;
-    await downloadAndExtractViaApi(tarballUrl, targetDir);
+    await downloadAndExtractViaApi(tarballUrl, targetDir, onProgress);
     return { version };
   } catch (err) {
     apiError = err;
@@ -132,7 +182,7 @@ export async function fetchTemplate(
   // --- Attempt 2: gh CLI fallback ---
   try {
     const ref = tag || "HEAD";
-    extractTemplateDirViaGhCli(ref, targetDir);
+    await extractTemplateDirViaGhCli(ref, targetDir, onProgress);
     // If we got a version from the API response (even if download failed later), keep it.
     // Otherwise mark as unknown.
     if (!version) {

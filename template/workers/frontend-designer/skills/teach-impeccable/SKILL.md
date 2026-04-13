@@ -44,11 +44,39 @@ STOP and call the AskUserQuestion tool to clarify. Focus only on what you couldn
 
 Skip questions where the answer is already clear from the codebase exploration.
 
-## Step 3: Write Design Context
+## Step 3: Select a Design Style
+
+Present the style catalog from `knowledge/design-styles/styles/`:
+
+| Style | Vibe |
+|-------|------|
+| american-industrial | Raw materials, exposed structure, craft heritage |
+| brutalist-raw | Stark, unpolished, confrontational |
+| corporate-clean | Professional, trustworthy, systematic |
+| dark-luxury | Premium, moody, high-contrast elegance |
+| editorial-magazine | Print-inspired, typographic, narrative |
+| ethereal-abstract | Soft, dreamlike, organic gradients |
+| liminal-portal | Transitional, spatial, between-states |
+| minimalist-swiss | Grid-perfect, reductive, International Typographic |
+| retro-analog | Warm, textured, nostalgic analog feel |
+
+Ask the user to:
+1. **Pick one** as the primary style
+2. **Blend 2-3** for a hybrid direction
+3. **Go custom** if none fit (describe it and we'll codify it)
+
+Record their choice. This becomes the `style:` field in `.impeccable.md`.
+
+If unsure, recommend 2-3 styles based on the brand personality from Step 2.
+
+## Step 4: Write Design Context
 
 Synthesize your findings and the user's answers into a `## Design Context` section:
 
 ```markdown
+## Style
+style: {chosen-style-name}
+
 ## Design Context
 
 ### Users
@@ -63,6 +91,10 @@ Synthesize your findings and the user's answers into a `## Design Context` secti
 ### Design Principles
 [3-5 principles derived from the conversation that should guide all design decisions]
 ```
+
+The `style:` field enables automatic style pack loading. `frontend-designer` will load
+`knowledge/design-styles/styles/{style}.md` and `knowledge/design-styles/swipes/{style}/`
+on every invocation. `ux-auditor` will compare implementation against the style spec.
 
 Write this section to `.impeccable.md` in the project root. If the file already exists, update the Design Context section in place.
 

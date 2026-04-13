@@ -65,12 +65,12 @@ describe('e2e: consolidation — template structural integrity', () => {
     expect(entries.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('.claude/skills/ contains >= 20 skill entries', () => {
+  it('.claude/skills/ contains >= 15 skill entries', () => {
     const skillsDir = join(scaffold.dir, '.claude', 'skills');
     expect(existsSync(skillsDir)).toBe(true);
-    // Skills are organized as subdirectories (each containing SKILL.md)
+    // Core skills only — design skills moved to workers in v10.7.1+
     const entries = readdirSync(skillsDir);
-    expect(entries.length).toBeGreaterThanOrEqual(20);
+    expect(entries.length).toBeGreaterThanOrEqual(15);
   });
 
   it('.claude/policies/ contains >= 50 files', () => {

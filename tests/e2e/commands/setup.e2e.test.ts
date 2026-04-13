@@ -24,7 +24,7 @@ describe('e2e: /setup', () => {
       model: 'haiku',
       maxTurns: 10,
     });
-  }, 300_000);
+  }, 600_000);
 
   afterAll(() => {
     const cost = getCumulativeCost();

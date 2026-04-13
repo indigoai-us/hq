@@ -2,7 +2,7 @@
 
 Deep technical guides for building distinctive, production-quality frontend interfaces. Part of the [impeccable.style](https://impeccable.style) library.
 
-These docs are the reference layer behind the 20 impeccable skills installed at `.claude/skills/`. Workers load them via `context.base: [knowledge/public/impeccable/]`.
+These docs are the reference layer behind the impeccable skills on `frontend-designer` and `ux-auditor`. Workers load them via `context.base: [knowledge/public/impeccable/]`.
 
 ## Reference Docs
 
@@ -24,4 +24,4 @@ context:
     - knowledge/public/impeccable/
 ```
 
-Used by: `impeccable-designer`, `frontend-designer`
+Used by: `frontend-designer`, `ux-auditor`

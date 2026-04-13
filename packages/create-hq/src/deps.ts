@@ -21,6 +21,8 @@ export interface InstallCommands {
   dnf?: string;
   pacman?: string;
   npm?: string;
+  winget?: string;
+  choco?: string;
 }
 
 export interface Dep {
@@ -33,6 +35,7 @@ export interface Dep {
 }
 
 const deps: Dep[] = [
+  // ── Core (required — installer blocks if missing) ──────────────────────
   {
     name: "Node.js",
     command: "node --version",
@@ -40,6 +43,29 @@ const deps: Dep[] = [
     installHint: "https://nodejs.org",
     autoInstallable: false,
     installCommands: {},
+  },
+  {
+    name: "git",
+    command: "git --version",
+    required: true,
+    installHint: "https://git-scm.com/downloads",
+    autoInstallable: false,
+    installCommands: {},
+  },
+  {
+    name: "gh CLI",
+    command: "gh --version",
+    required: true,
+    installHint: "https://cli.github.com",
+    autoInstallable: true,
+    installCommands: {
+      brew: "brew install gh",
+      apt: "sudo apt install gh",
+      dnf: "sudo dnf install gh",
+      pacman: "sudo pacman -S github-cli",
+      winget: "winget install --id GitHub.cli -e",
+      choco: "choco install gh -y",
+    },
   },
   {
     name: "Claude Code CLI",
@@ -51,10 +77,12 @@ const deps: Dep[] = [
       npm: "npm install -g @anthropic-ai/claude-code",
     },
   },
+
+  // ── Optional (installer continues if missing) ──────────────────────────
   {
     name: "qmd (search)",
     command: "qmd --version",
-    required: true,
+    required: false,
     installHint: "npm install -g @tobilu/qmd",
     autoInstallable: true,
     installCommands: {
@@ -64,27 +92,16 @@ const deps: Dep[] = [
   {
     name: "yq",
     command: "yq --version",
-    required: true,
-    installHint: "brew install yq",
+    required: false,
+    installHint: "https://github.com/mikefarah/yq#install",
     autoInstallable: true,
     installCommands: {
       brew: "brew install yq",
       apt: "sudo snap install yq",
       dnf: "sudo dnf install yq",
       pacman: "sudo pacman -S yq",
-    },
-  },
-  {
-    name: "gh CLI",
-    command: "gh --version",
-    required: false,
-    installHint: "brew install gh",
-    autoInstallable: true,
-    installCommands: {
-      brew: "brew install gh",
-      apt: "sudo apt install gh",
-      dnf: "sudo dnf install gh",
-      pacman: "sudo pacman -S github-cli",
+      winget: "winget install --id MikeFarah.yq -e",
+      choco: "choco install yq -y",
     },
   },
   {
@@ -122,8 +139,8 @@ export function getInstallCommand(
 
   // Try system package manager first (yum falls back to dnf commands)
   const pm = platform.packageManager === "yum" ? "dnf" : platform.packageManager;
-  if (pm && cmds[pm]) {
-    return cmds[pm]!;
+  if (pm && cmds[pm as keyof InstallCommands]) {
+    return cmds[pm as keyof InstallCommands]!;
   }
 
   // Fall back to npm
@@ -189,7 +206,7 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
       const defaultYes = dep.required;
       const optionalTag = dep.required ? "" : " (optional)";
       const accepted = await confirm(
-        `Install ${dep.name}?${optionalTag} [${installCmd}]`,
+        `${dep.name} not found.${optionalTag} Install now? [${installCmd}]`,
         defaultYes,
       );
 
@@ -207,21 +224,22 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
           success(`${dep.name} ${recheck}`);
           results.push({ name: dep.name, required: dep.required, status: "just-installed", version: recheck, installHint: dep.installHint });
           continue;
-        } else {
-          warn(`${dep.name} install failed — could not verify after install`);
+        } else if (dep.required) {
+          warn(`${dep.name} install failed — this is required to continue`);
           results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
-          if (dep.required) {
-            allRequired = false;
-          }
+          allRequired = false;
+        } else {
+          info(`${dep.name} install didn't stick — you can install it later: ${dep.installHint}`);
+          results.push({ name: dep.name, required: dep.required, status: "skipped", installHint: dep.installHint });
         }
       } else {
         // User declined
         if (dep.required) {
-          warn(`${dep.name} not found (required)`);
+          warn(`${dep.name} is required — can't continue without it`);
           results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
           allRequired = false;
         } else {
-          info(`${dep.name} (optional) — skipped`);
+          info(`${dep.name} skipped — you can install it later: ${dep.installHint}`);
           results.push({ name: dep.name, required: dep.required, status: "skipped", installHint: dep.installHint });
         }
       }
@@ -233,7 +251,7 @@ export async function checkDeps(): Promise<{ allRequired: boolean }> {
         results.push({ name: dep.name, required: dep.required, status: "missing", installHint: dep.installHint });
         allRequired = false;
       } else {
-        info(`${dep.name} (optional) — ${dep.installHint}`);
+        info(`${dep.name} (optional) — install later: ${dep.installHint}`);
         results.push({ name: dep.name, required: dep.required, status: "skipped", installHint: dep.installHint });
       }
     }

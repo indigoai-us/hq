@@ -37,8 +37,16 @@ export default $config({
 
     const inviteSecret = new sst.Secret("InviteSecret");
 
+    // GitHub App secrets for credential brokering (US-009)
+    // Set via: npx sst secret set GitHubAppId <app-id>
+    // Set via: npx sst secret set GitHubAppPrivateKey -- "$(cat private-key.pem)"
+    const githubAppId = new sst.Secret("GitHubAppId");
+    const githubAppPrivateKey = new sst.Secret("GitHubAppPrivateKey");
+
     // IAM role for user-scoped S3 credentials (assumed via STS by auth Lambda)
-    const s3AccessRoleArn = "arn:aws:iam::804849608251:role/hq-cloud-s3-access";
+    // Set via: npx sst secret set S3AccessRoleArn "arn:aws:iam::<account-id>:role/hq-cloud-s3-access"
+    const s3AccessRoleArnSecret = new sst.Secret("S3AccessRoleArn");
+    const s3AccessRoleArn = s3AccessRoleArnSecret.value;
 
     // --- API ---
     const api = new sst.aws.ApiGatewayV2("HqApi");
@@ -113,6 +121,86 @@ export default $config({
     api.route("DELETE /api/teams/{id}/members/{userId}", {
       handler: "functions/teams.removeMember",
       link: [userPool],
+    });
+
+    // Team entitlements
+    api.route("POST /api/teams/{id}/entitlements", {
+      handler: "functions/entitlements.setEntitlements",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/entitlements", {
+      handler: "functions/entitlements.getEntitlementsManifest",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/entitlements/mine", {
+      handler: "functions/entitlements.getMyEntitlements",
+      link: [userPool, bucket],
+    });
+
+    // Repo provisioning and GitHub App credential brokering (US-009, US-002)
+    api.route("POST /api/teams/{id}/repo", {
+      handler: "functions/repo.provisionRepo",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("GET /api/teams/{id}/repo-config", {
+      handler: "functions/repo.getRepoCredential",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("POST /api/teams/{id}/repo-config", {
+      handler: "functions/repo.setRepoConfig",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("GET /api/teams/{id}/github-status", {
+      handler: "functions/repo.getGitHubStatus",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    // Team submissions (content contribution review)
+    api.route("POST /api/teams/{id}/submissions", {
+      handler: "functions/submissions.createSubmission",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/submissions", {
+      handler: "functions/submissions.listSubmissions",
+      link: [userPool, bucket],
+    });
+
+    api.route("PUT /api/teams/{id}/submissions/{subId}/approve", {
+      handler: "functions/submissions.approveSubmission",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
+    });
+
+    api.route("PUT /api/teams/{id}/submissions/{subId}/reject", {
+      handler: "functions/submissions.rejectSubmission",
+      link: [userPool, bucket],
+    });
+
+    // Peer sharing via shared branches (US-010)
+    api.route("POST /api/teams/{id}/shares", {
+      handler: "functions/shares.createShare",
+      link: [userPool, bucket],
+    });
+
+    api.route("GET /api/teams/{id}/shares", {
+      handler: "functions/shares.listShares",
+      link: [userPool, bucket],
+    });
+
+    api.route("PUT /api/teams/{id}/shares/{shareId}/status", {
+      handler: "functions/shares.updateShareStatus",
+      link: [userPool, bucket],
+    });
+
+    // GitHub diff proxy — fetches compare data using GitHub App token (US-008)
+    api.route("GET /api/teams/{id}/github-diff", {
+      handler: "functions/github-proxy.getGitHubDiff",
+      link: [userPool, bucket, githubAppId, githubAppPrivateKey],
     });
 
     // Team invite operations
