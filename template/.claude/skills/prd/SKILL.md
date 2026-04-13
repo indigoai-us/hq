@@ -1,7 +1,7 @@
 ---
 name: prd
-description: Plan a project and generate PRD for execution. Creates prd.json + README.md with full HQ context awareness. Adapts interview depth to brainstorm context if available.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*)
+description: Plan a project and generate PRD for execution. Creates prd.json + README.md with full HQ context awareness. Runtime-agnostic — executes identically in Claude Code and Codex. Adapts interview depth to brainstorm context if available.
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*), Bash(scripts/read-policy-frontmatter.sh:*), Bash(scripts/build-policy-digest.sh:*), Bash(npx:*)
 ---
 
 # PRD — Project Planning & PRD Generation
@@ -18,7 +18,7 @@ Check if the **first word** of the user's input matches a company slug in `compa
 
 1. **Set `{co}`** = matched slug for the entire flow. Strip the slug — the remaining text is the project description
 2. **Announce:** "Anchored on **{co}**"
-3. **Load policies** — Read all files in `companies/{co}/policies/` (skip `example-policy.md`). Apply these as constraints throughout the PRD
+3. **Load policies (frontmatter-only)** — For each file in `companies/{co}/policies/` (skip `example-policy.md`), run `bash scripts/read-policy-frontmatter.sh {file}`. Note `enforcement: hard` titles. For hard-enforcement policies only, additionally read the `## Rule` section with a targeted range. The SessionStart hook also injects the company policy digest at `companies/{co}/policies/_digest.md` — prefer that if present. Apply as constraints throughout the PRD
 4. **Scope qmd searches** — If company has `qmd_collections` in manifest, use `-c {collection}` for all `qmd` calls
 5. **Pre-load repos** — Extract `{co}.repos[]` from manifest. Present as repo options in Batch 3 Q10
 6. **Scope workers** — Filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
@@ -29,44 +29,54 @@ Check if the **first word** of the user's input matches a company slug in `compa
 ## Step 1: Get Project Description
 
 If user provided input, use as starting point.
-If empty, ask: "Describe what you want to build or accomplish." Wait for response.
+If empty, ask the user: "Describe what you want to build or accomplish." Wait for response.
 
 ## Step 2: Scan HQ Context
 
-Before asking questions, explore HQ. If company is anchored (Step 0), scope all searches to that company.
+Before asking questions, explore HQ. Resolve `mode` from Step 0 + input:
 
-**Companies & Context:**
-- Read `agents.md` (roles, priorities)
+- **company mode** — a company slug was anchored in Step 0
+- **repo mode** — no company anchor but a target repo is mentioned or resolvable from input
+- **personal/HQ mode** — neither of the above (personal projects, HQ infrastructure work)
+
+If `{co}` is anchored, scope all searches to that company.
+
+**Companies & Context (only if `mode in (company, repo)`):**
+- Read `agents.md` (roles, priorities) — needed to route cross-company PRDs
 - Read `companies/manifest.yaml` (companies already listed there — never Glob for company discovery)
+- **Skip both if already anchored in Step 0**: Step 0 already loaded manifest and matched the company. Re-reading is pure waste
+- **Skip entirely for personal/HQ mode**: no company routing needed, no repo to map
 
-**Workers:**
-- Read `workers/registry.yaml` (workers already indexed there — never Glob for worker discovery)
+**Workers (only if `mode in (company, repo)` AND the description plausibly needs a worker — otherwise skip):**
+- Read `workers/registry.yaml` (workers already indexed there — never Glob for worker discovery). Skip if the description is clearly code/infra work not matching a worker skill
 - If anchored: filter to company workers (`companies/{co}/workers/`) + public workers (`workers/public/`)
+- **Skip entirely for personal/HQ mode**
 
 **Existing Projects:**
 - If anchored: `qmd search "prd.json" --json -n 20 -c {co}` (scoped) or search `companies/{co}/projects/` directly
 - If not anchored: `qmd search "prd.json" --json -n 20` — existing projects across all companies and personal
 
-**Knowledge (use qmd, not Grep):**
-- If anchored + company has `qmd_collections`: `qmd vsearch "<description keywords>" -c {collection} --json -n 10`
-- If not anchored: `qmd vsearch "<description keywords>" --json -n 10` — semantic search for related knowledge, prior work, workers
+**Knowledge (use single qmd hybrid query, not Grep, not vsearch+search pair):**
+- If anchored + company has `qmd_collections`: `qmd query "<description keywords>" -c {collection} --json -n 10`
+- If not anchored: `qmd query "<description keywords>" --json -n 10` — hybrid BM25 + vector + re-ranking for related knowledge, prior work, workers
 
 **Company Policies (anchored only):**
-- Read all files in `companies/{co}/policies/` (skip `example-policy.md`). These constrain the PRD
+- Already loaded in Step 0 (frontmatter-only). Do NOT re-read here. Note constraints from that scan
 
 **Repo Policies (if repo resolved):**
-- If target repo identified, check `{repoPath}/.claude/policies/` for repo-scoped rules. These constrain the PRD (e.g., commit hooks, deploy procedures, code location rules)
+- If target repo identified, list files in `{repoPath}/.claude/policies/` (if dir exists), then for each run `bash scripts/read-policy-frontmatter.sh {file}`. Prefer the repo digest at `{repoPath}/.claude/policies/_digest.md` if present (SessionStart hook injects it). For hard-enforcement policies, additionally read the `## Rule` section
 
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
-- If target repo has a qmd collection (e.g. `{product}`): `qmd vsearch "<description keywords>" -c {collection} --json -n 10` — find related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `{product}`): `qmd query "<description keywords>" -c {collection} --json -n 10` — hybrid search for related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 Present:
 ```
 Scanned HQ:
-- Company: {co} (anchored) | TBD
-- Workers: {relevant list}
+- Mode: {company | repo | personal/HQ}
+- Company: {co} (anchored) | TBD | n/a
+- Workers: {relevant list or "skipped"}
 - Existing projects: {list or "none matching"}
 - Relevant knowledge: {if any}
 - Policies: {count loaded, or "none"}
@@ -87,11 +97,11 @@ Fix any gaps before proceeding.
 
 ## Step 3: Get + Validate Project Name
 
-Ask for project slug (or infer from description). Then:
+Ask the user for project slug (or infer from description). Then:
 1. If `{co}` already set by Step 0: use it directly (skip company detection)
-   If NOT set: determine company from context (infer from description, repo, or ask)
+   If NOT set: determine company from context (infer from description, repo, or ask the user)
 2. Check if `companies/{co}/projects/{name}/` exists (also check root `projects/{name}/` for personal/HQ)
-   - If exists: "Project exists. Continue editing or choose different name?"
+   - If exists: ask the user "Project exists. Continue editing or choose different name?"
 3. Validate slug format (lowercase, hyphens only)
 
 ## Step 3.5: Brainstorm Detection
@@ -104,7 +114,7 @@ companies/{co}/projects/{slug}/brainstorm.md
 
 **If found:**
 1. Read it. Extract YAML frontmatter (`status`, `source_idea_id`)
-2. If `status: "promoted"` — warn: "This brainstorm was already promoted to a PRD. Open existing prd.json instead?"
+2. If `status: "promoted"` — warn the user: "This brainstorm was already promoted to a PRD. Open existing prd.json instead?"
 3. **Pre-load brainstorm content** into interview context for Step 4:
    - **Batch 1** (Problem/Success): pre-fill from brainstorm's `## Context`, `## Recommendation`. Present as confirmations ("Based on brainstorm: {X}. Confirm or modify?") instead of open-ended questions
    - **Batch 2** (Users/Current State): pre-fill audience and current solution from brainstorm context if mentioned
@@ -273,7 +283,7 @@ If a policy or repo context **fully answers** a question, present it as a confir
 6c. Does this need a new worker or skill?
 6d. Repo path? (e.g. `repos/private/{name}`, or "none" if non-code)
 6e. Branch name? (default: `feature/{project-name}`)
-6f. Base branch? (default: `main`, or `staging` for {your-repo}, etc.)
+6f. Base branch? (default: `main`, or `staging` for {your-repo}, etc.) — Pure Ralph creates feature branch from this
 
 6g. Analytics / event tracking needed? *(conditional: deployable UI projects only)*
     A. No — not a user-facing feature
@@ -307,7 +317,7 @@ Create `companies/{co}/projects/{name}/` folder with two files. Use root `projec
 
 ### Primary: companies/{co}/projects/{name}/prd.json
 
-This is the **source of truth**. `$run-project` and `$execute-task` consume this file.
+This is the **source of truth**. `/run-project` and `/execute-task` consume this file.
 
 ```json
 {
@@ -424,7 +434,7 @@ This marks the brainstorm as consumed. The file is preserved for reference.
 
 ## Step 5.6: Sync to Company Board
 
-Read `companies/manifest.yaml` to find `metadata.company` — `board_path`.
+Read `companies/manifest.yaml` to find `metadata.company` → `board_path`.
 
 If `board_path` exists, read `companies/{co}/board.json` and upsert a project entry:
 - **Match**: find existing entry by `prd_path === "companies/{co}/projects/{name}/prd.json"` or title similarity
@@ -447,31 +457,89 @@ If `board_path` exists, read `companies/{co}/board.json` and upsert a project en
 - Write updated `board.json` back to `board_path`
 - If no `metadata.company` in prd.json or no board_path, skip silently
 
-**Verify:** After upserting the board entry, re-read board.json and confirm the new project ID exists. If the write failed silently (file parse error, missing board, manifest lookup miss), log the error and retry once. Silent failure leaves projects invisible in the HQ app.
+**Verify:** After upserting the board entry, re-read board.json and confirm the new project ID exists. If the write failed silently (file parse error, missing board, manifest lookup miss), log the error and retry once. Silent failure leaves projects invisible in the HQ app — the orphan scanner catches them with an "Unregistered" badge, but proper registration is required.
 
-## Step 6: Reindex & Wrap Up
+## Step 6: Register with Orchestrator
 
-Reindex search so fresh sessions can find the new project:
+Read `workspace/orchestrator/state.json`. Append to `projects` array:
 
-```bash
-qmd update 2>/dev/null || true
+```json
+{
+  "name": "{name}",
+  "state": "READY",
+  "prdPath": "companies/{co}/projects/{name}/prd.json",
+  "updatedAt": "{ISO8601}",
+  "storiesComplete": 0,
+  "storiesTotal": "{N}",
+  "checkedOutFiles": []
+}
 ```
 
-Note: Registration with orchestrator state.json happens when `$run-project` or `$execute-task` is invoked.
+If project already exists in state.json, update it instead of duplicating.
 
-## Step 7: Linear Sync (best-effort, {Product}/{Product} only)
+## Step 7: Sync to Beads
+
+```bash
+npx tsx scripts/prd-to-beads.ts --project={name}
+```
+
+Silent — just log success/failure.
+
+## Step 7.5: Capture Learning (Auto-Learn)
+
+Run the `learn` skill (or `/learn` in Claude Code) to register the new project in the learning system:
+
+```json
+{
+  "source": "build-activity",
+  "severity": "medium",
+  "scope": "global",
+  "rule": "Project {name} exists at companies/{co}/projects/{name}/ with {N} stories targeting {repoPath or 'no repo'}",
+  "context": "Created via prd skill"
+}
+```
+
+Also reindex: `qmd update 2>/dev/null || true`
+
+**Update INDEX.md:** Regenerate `companies/{co}/projects/INDEX.md` per `knowledge/public/hq-core/index-md-spec.md`.
+
+## Step 7.6: Doc Scout (read-only)
+
+Check if the new project's scope reveals missing or stale docs. Scout only — no modifications (project hasn't been built yet).
+
+1. **Repo README** (`{repoPath}/README.md` if `repoPath` set):
+   - Does it exist? Is it boilerplate (`create-next-app`, default template)?
+   - If repo is new or README is stale, note for post-implementation
+
+2. **HQ knowledge** (`companies/{co}/knowledge/`):
+   - `qmd search "{project topic}" -c {co} --json -n 3` — is this topic already covered?
+   - If no coverage and project is non-trivial, note the gap
+
+3. **External docs**: If company has a knowledge site (check INDEX.md references), note potential publishing need
+
+**Do NOT create or modify docs** — project hasn't been implemented. Instead:
+- Add a `postImplementation` array to prd.json `metadata` listing doc tasks:
+  ```json
+  "postImplementation": [
+    "Update repo README with API docs",
+    "Create {topic} architecture doc in companies/{co}/knowledge/"
+  ]
+  ```
+- Include these notes in the Step 8 confirmation output so user sees them
+
+## Step 8: Linear Sync (best-effort, {Product}/{Product} only)
 
 If `{co}` is `{company}`, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
 
 1. Read `companies/{company}/settings/linear/credentials.json` and `config.json`
-2. Validate `workspace` field in config matches expected company
+2. Validate `workspace: "voyage"` in config
 3. Create Linear project linked to best-fit initiative, with `leadId` (default: {your-name}) and `targetDate` (default: today+1d)
 4. Create issue per story with `assigneeId` (resolved by team routing) and `dueDate` (matches project targetDate)
 5. Store all IDs in prd.json: `metadata.linearProjectId`, `metadata.linearCredentials`, per-story `linearIssueId`, `linearAssigneeId`
 
 No orphan issues — every issue must have a `projectId`. If project creation fails, skip issue creation.
 
-## Step 8: Confirm & STOP
+## Step 9: Confirm & STOP
 
 Tell user:
 ```
@@ -481,23 +549,26 @@ Files:
   companies/{co}/projects/{name}/prd.json   (source of truth — tracks all work)
   companies/{co}/projects/{name}/README.md  (human-readable view)
 
+Post-implementation docs needed:
+  {list from postImplementation metadata, or "None detected"}
+
 To execute, start a new session and run:
-  $run-project {name}        (multi-story orchestrator)
-  $execute-task {name}/US-001 (single story)
+  /run-project {name}        (multi-story orchestrator)
+  /execute-task {name}/US-001 (single story)
 ```
 
-**Then STOP. Do NOT proceed to execution.**
+**Then run `/handoff` (or the `handoff` skill) and end the session.** Do NOT proceed to execution.
 
 ## Story Guidelines
 
 - Each story completable in one AI session
 - Acceptance criteria must be verifiable (not "works correctly")
-- Order: schema — backend — UI — integration
+- Order: schema → backend → UI → integration
 - Keep stories atomic (one deliverable each)
 - Every story starts with `passes: false`
 - `model_hint` (optional): override model for all workers in this story. Values: `"opus"`, `"sonnet"`, `"haiku"`. Leave empty to use worker defaults from worker.yaml
 - `files` (recommended): list of repo-relative file paths this story will likely create/modify. Used by file-locking system to prevent concurrent edit conflicts. Infer from story description + codebase search. Empty `[]` = no locks (backwards-compatible). Agents can expand the list dynamically during execution
-- `e2eTests` (recommended for deployable projects): list of executable test descriptions that verify each acceptance criterion. Leave `[]` for non-code projects. These drive acceptance test generation which creates real test files — cumulative back-pressure that protects completed stories from regression by later stories
+- `e2eTests` (recommended for deployable projects): list of executable test descriptions that verify each acceptance criterion. Leave `[]` for non-code projects. These drive the `acceptance-test-writer` phase in `/execute-task` which generates real test files (`__tests__/stories/{story-id}.test.ts`) — cumulative back-pressure that protects completed stories from regression by later stories
   - Format each entry as a Given/When/Then assertion: `"Given [context], when [action], then [expected]"`
   - At least 1 test per acceptance criterion for code stories
   - Tests should verify BEHAVIOR, not implementation details
@@ -516,7 +587,7 @@ At PRD generation, compute per-story. If score > 20:
 Splitting heuristics:
 - **Tab-heavy UI**: split by tab group (tabs 1-3 / tabs 4-5)
 - **Multi-entity**: split by entity (brand detail / brand SKU)
-- **API + UI**: always split (schema/API story — UI story depends on it)
+- **API + UI**: always split (schema/API story → UI story depends on it)
 - **12+ ACs**: almost always needs a split regardless of file count
 
 ## Rules
@@ -524,11 +595,13 @@ Splitting heuristics:
 - Scan HQ first, ask questions second
 - Batch questions (don't overwhelm)
 - **prd.json is the source of truth** — README.md is derived from it, never the reverse
-- **All stories start with `passes: false`** — `$run-project` marks them true
-- **HARD BLOCK: Do NOT implement** — ONLY create the PRD files (`companies/{co}/projects/{name}/prd.json` + `README.md`). NEVER edit target files (repos, decks, sites, etc.) during a PRD session. Plan mode approval = "approved to generate PRD files," NOT "approved to implement." Implementation happens via `$execute-task` or `$run-project` AFTER PRD creation. Violating this bypasses project tracking, worker assignment, handoffs, and quality gates
-- **STOP after PRD creation** — After Step 8 confirmation, STOP. NEVER start executing stories, running workers, or writing implementation code in the same session. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation. prd.json tracks all work for humans and future agent runs — this separation is mandatory
+- **All stories start with `passes: false`** — `/run-project` marks them true
+- **Planning, not execution** — this skill IS planning, do not enter a separate plan mode
+- **Track stories in prd.json** — that is the task list, no separate todo tracking needed
+- **HARD BLOCK: Do NOT implement** — ONLY create the PRD files (`companies/{co}/projects/{name}/prd.json` + `README.md`). NEVER edit target files (repos, decks, sites, etc.) during a PRD session. Plan approval = "approved to generate PRD files," NOT "approved to implement." Implementation happens via `/execute-task` or `/run-project` AFTER PRD creation. Violating this bypasses project tracking, worker assignment, handoffs, and quality gates
+- **STOP after PRD creation** — After Step 9 confirmation, run the `handoff` skill and end session. NEVER start executing stories, running workers, or writing implementation code in the same session as PRD creation. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation (Ralph pattern). prd.json tracks all work for humans and future agent runs — this separation is mandatory
 - **Infrastructure before planning** — never create a PRD that references infrastructure (company, repo, knowledge) that doesn't exist. Fix gaps first (Step 2.5)
-- **MANDATORY: Always create project files** — Every PRD invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for $run-project. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files
+- **MANDATORY: Always create project files** — Every PRD invocation MUST produce `companies/{co}/projects/{name}/prd.json` and `companies/{co}/projects/{name}/README.md`. No exceptions. These files are how HQ tracks work — they are NOT just inputs for `/run-project`. Never output a PRD to chat only, never skip file creation because the user "just wants a quick plan", never treat file generation as optional. If the user provides enough info to generate stories, write the files
 - **Every story MUST have testable acceptance criteria** — "works correctly" is not acceptable
 - **Include testing stories** — For deployable projects, at least one story should be dedicated to E2E test infrastructure
-- **Verify board.json write in Step 5.6** — After upserting the board entry, re-read board.json and confirm the new project ID exists. If the write failed silently, log the error and retry once
+- **ALWAYS: Verify board.json write in Step 5.6** — After upserting the board entry, re-read board.json and confirm the new project ID exists. If the write failed silently (file parse error, missing board, manifest lookup miss), log the error and retry once. Silent failure leaves projects invisible in the HQ app — the orphan scanner catches them with an "Unregistered" badge, but proper registration is required

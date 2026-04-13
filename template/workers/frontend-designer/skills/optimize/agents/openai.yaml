@@ -1,0 +1,3 @@
+interface:
+  display_name: "Optimize"
+  short_description: "Improve interface performance across loading speed, rendering, animations, images, and bundle size."

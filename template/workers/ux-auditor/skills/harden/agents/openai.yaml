@@ -1,0 +1,3 @@
+interface:
+  display_name: "Harden"
+  short_description: "Improve interface resilience through better error handling, i18n support, text overflow handling, and edge case manageme"

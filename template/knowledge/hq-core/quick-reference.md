@@ -58,7 +58,7 @@ HQ/
 
 ## Workers
 
-**Public (`workers/public/`):** frontend-designer, qa-tester, security-scanner, pretty-mermaid, site-builder, knowledge-tagger, exec-summary, accessibility-auditor, performance-benchmarker
+**Public (`workers/public/`):** frontend-designer (27 skills), ux-auditor (11 skills), qa-tester, security-scanner, pretty-mermaid, site-builder, knowledge-tagger, exec-summary, accessibility-auditor, performance-benchmarker
 
 **Dev Team (17):** `workers/public/dev-team/`
 project-manager, task-executor, architect, backend-dev, database-dev, frontend-dev, infra-dev, motion-designer, code-reviewer, knowledge-curator, product-planner, dev-qa-tester, codex-engine, codex-coder, codex-reviewer, codex-debugger, reality-checker
@@ -72,8 +72,8 @@ social-shared, social-strategist, social-reviewer, social-publisher, social-veri
 **Gardener Team (3):** `workers/public/gardener-team/`
 garden-scout, garden-auditor, garden-curator
 
-**Gemini Team (3):** `workers/public/gemini-*/`
-gemini-coder, gemini-reviewer, gemini-frontend
+**Gemini Team (2):** `workers/public/gemini-*/`
+gemini-coder, gemini-reviewer
 
 **Company Workers:** Located at `companies/{co}/workers/`. See manifest.yaml for full list per company.
 
@@ -89,6 +89,18 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/bootcamp-student`, `/personal-interview`
 **Linear:** `/check-linear-voyage`, `/{product}-prd`
 **Deploy:** `/pr`
+
+## Command ↔ Skill Shapes
+
+Every command exists as `.claude/commands/{name}.md` (the slash-command entry point) and most have a paired `.claude/skills/{name}/SKILL.md` (the Skill-tool canonical logic). Two valid shapes:
+
+**Consolidated (default for new commands)** — `.md` is a ~20-line delegator stub, `SKILL.md` holds the canonical logic. One source of truth, no drift. Converted pairs (Phase 3.1 audit): `search`, `audit-log`, `brainstorm`, `startwork`, `prd`, `handoff`, `learn`, `execute-task`.
+
+**Thin-router split (only one)** — `run-project`. The `.md` is the canonical docs/flags/examples source (622 lines). The `SKILL.md` is a ~66-line bash wrapper that execs `scripts/run-project.sh`. They stay forked because one is human-facing documentation and the other is a dispatch shim — different jobs, neither redundant.
+
+**Intentional exceptions (metadata stubs, no SKILL.md)** — `review`, `investigate`, `retro`, `document-release`, `review-plan`. These are frontmatter-only commands that dispatch prompts; no skill logic to split.
+
+**Rule for new commands:** start with the consolidated shape — write the canonical logic in `SKILL.md`, leave `.md` as a stub copying `.claude/commands/startwork.md`'s shape (frontmatter → H1 → intro → `## Steps` → `## After`). Only fork if you have a genuine thin-router reason like `run-project`.
 
 ## Knowledge Bases
 
