@@ -198,7 +198,18 @@ export async function runJoinByInvite(
   const companyDir = path.join(companiesDir, payload.slug);
 
   if (fs.existsSync(companyDir) && fs.readdirSync(companyDir).length > 0) {
-    info(`companies/${payload.slug}/ already exists — skipping clone.`);
+    // Company directory already exists — just ensure the git remote is set
+    // so the user can sync later from within Claude. Don't clone over their files.
+    const remoteLabel = `Configuring remote for existing companies/${payload.slug}`;
+    stepStatus(remoteLabel, "running");
+    try {
+      ensureGitRemote(companyDir, payload.cloneUrl);
+      stepStatus(remoteLabel, "done");
+      info(`companies/${payload.slug}/ already exists — configured git remote (sync later with /team-sync)`);
+    } catch {
+      stepStatus(remoteLabel, "done");
+      info(`companies/${payload.slug}/ already exists — remote already configured`);
+    }
   } else {
     const cloneLabel = `Cloning ${payload.teamName} into companies/${payload.slug}`;
     stepStatus(cloneLabel, "running");
@@ -234,6 +245,9 @@ export async function runJoinByInvite(
     }
   }
 
+  // Register the company in manifest.yaml so HQ routing (search, /startwork, workers) can find it
+  registerInManifest(hqRoot, payload);
+
   // Install bundled team commands (invite, sync, promote)
   const installed = installTeamCommands(hqRoot);
   if (installed.length > 0) {
@@ -257,4 +271,112 @@ export async function runJoinByInvite(
     companyDir,
     repoUrl,
   };
+}
+
+// ─── Manifest registration ─────────────────────────────────────────────────
+
+/**
+ * Register a joined team in companies/manifest.yaml so HQ's routing system
+ * (search scoping, /startwork, workers, /run-project) can discover it.
+ *
+ * Appends a minimal entry if the slug isn't already present. Uses string
+ * manipulation to avoid adding a YAML parser dependency to create-hq.
+ */
+function registerInManifest(hqRoot: string, payload: InvitePayload): void {
+  const manifestPath = path.join(hqRoot, "companies", "manifest.yaml");
+
+  // If manifest doesn't exist yet (fresh HQ), create a minimal one
+  if (!fs.existsSync(manifestPath)) {
+    const initial = [
+      "# Companies Manifest",
+      '# Maps each company to its repos, workers, knowledge, deploy targets, and infrastructure.',
+      "",
+      'version: "1.1"',
+      `updated: "${new Date().toISOString().slice(0, 10)}"`,
+      "",
+      "companies:",
+      ...formatManifestEntry(payload),
+      "",
+    ].join("\n");
+    fs.writeFileSync(manifestPath, initial, "utf-8");
+    return;
+  }
+
+  // Check if slug is already registered
+  const existing = fs.readFileSync(manifestPath, "utf-8");
+  const slugPattern = new RegExp(`^  ${escapeRegex(payload.slug)}:`, "m");
+  if (slugPattern.test(existing)) {
+    return; // Already in manifest
+  }
+
+  // Append the new entry at the end of the companies block
+  const entry = formatManifestEntry(payload).join("\n");
+  const updated = existing.trimEnd() + "\n\n" + entry + "\n";
+  fs.writeFileSync(updated.includes("updated:") ? manifestPath : manifestPath, updated, "utf-8");
+
+  // Update the "updated" date
+  const dateUpdated = updated.replace(
+    /^updated: ".*"$/m,
+    `updated: "${new Date().toISOString().slice(0, 10)}"`
+  );
+  fs.writeFileSync(manifestPath, dateUpdated, "utf-8");
+}
+
+function formatManifestEntry(payload: InvitePayload): string[] {
+  return [
+    `  ${payload.slug}:`,
+    `    github_org: ${payload.org}`,
+    `    repos: []`,
+    `    settings: []`,
+    `    workers: []`,
+    `    knowledge: companies/${payload.slug}/knowledge/`,
+    `    deploy: []`,
+    `    vercel_projects: []`,
+    `    qmd_collections:`,
+    `      - ${payload.slug}`,
+    `    services: []`,
+  ];
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// ─── Git remote helper ─────────────────────────────────────────────────────
+
+/**
+ * Ensure an existing directory has a git remote pointing to the team repo.
+ * If it's not a git repo, initializes one. If 'origin' exists with a different
+ * URL, adds 'team' as the remote name instead.
+ */
+function ensureGitRemote(dir: string, cloneUrl: string): void {
+  // Initialize git if not already a repo
+  const gitDir = path.join(dir, ".git");
+  if (!fs.existsSync(gitDir)) {
+    execSync("git init", { cwd: dir, stdio: "pipe" });
+  }
+
+  // Check existing remotes
+  let existingOrigin: string | null = null;
+  try {
+    existingOrigin = execSync("git remote get-url origin", { cwd: dir, stdio: "pipe" })
+      .toString()
+      .trim();
+  } catch {
+    // No origin remote
+  }
+
+  if (!existingOrigin) {
+    // No origin — add it
+    execSync(`git remote add origin "${cloneUrl}"`, { cwd: dir, stdio: "pipe" });
+  } else if (existingOrigin !== cloneUrl) {
+    // Origin exists but points elsewhere — add as 'team' remote
+    try {
+      execSync(`git remote add team "${cloneUrl}"`, { cwd: dir, stdio: "pipe" });
+    } catch {
+      // 'team' remote might already exist
+      execSync(`git remote set-url team "${cloneUrl}"`, { cwd: dir, stdio: "pipe" });
+    }
+  }
+  // If origin already matches cloneUrl, nothing to do
 }

@@ -21,7 +21,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import chalk from "chalk";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -373,6 +373,75 @@ export async function startGitHubDeviceFlow(): Promise<GitHubAuth> {
   }
 
   throw new Error("GitHub device flow timed out — please try again");
+}
+
+// ─── gh CLI token (opportunistic) ──────────────────────────────────────────
+
+/**
+ * Try to get the user's `gh` CLI OAuth token.
+ *
+ * Returns the token string if `gh` is installed, the user is logged in, and
+ * `gh auth token` succeeds. Returns null otherwise — this is purely
+ * opportunistic and never throws.
+ *
+ * The gh CLI token typically has `read:org` scope, which lets us enumerate
+ * ALL the user's org memberships — not just orgs where our GitHub App is
+ * installed. This gives us a better org picker during admin onboarding.
+ */
+export function getGhCliToken(): string | null {
+  try {
+    const token = execSync("gh auth token", {
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 5_000,
+    })
+      .toString()
+      .trim();
+    // Sanity check — gh tokens start with gho_ or ghp_ (OAuth / PAT)
+    if (token && token.length > 10) return token;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch orgs where the user is an admin, using a raw bearer token.
+ *
+ * Works with both gh CLI tokens (PAT/OAuth) and GitHub App user tokens.
+ * The difference: a gh CLI token with `read:org` scope sees ALL orgs,
+ * while an App token only sees orgs where the App is installed.
+ *
+ * Returns an empty array on any error (permissions, network, etc.).
+ */
+export async function fetchAdminOrgsWithToken(
+  token: string
+): Promise<{ login: string; id: number }[]> {
+  try {
+    const res = await fetch(
+      "https://api.github.com/user/memberships/orgs?state=active&per_page=100",
+      {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "create-hq",
+        },
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
+    if (!res.ok) return [];
+    const memberships = (await res.json()) as Array<{
+      role: string;
+      organization: { login: string; id: number };
+    }>;
+    return memberships
+      .filter((m) => m.role === "admin")
+      .map((m) => ({
+        login: m.organization.login,
+        id: m.organization.id,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 // ─── GitHub API helpers used by downstream flows ────────────────────────────
