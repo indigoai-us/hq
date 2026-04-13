@@ -1,6 +1,6 @@
 version: 1
 hqVersion: "10.5.0"
-updatedAt: "2026-04-13T14:30:53Z"
+updatedAt: "2026-04-13T15:44:02Z"
 rules:
   locked:
     - .claude/CLAUDE.md
@@ -22,10 +22,10 @@ rules:
   open:
     - "**"
 checksums:
-  .claude/CLAUDE.md: 23c7e1c93d775ff4647a024975555df2063af68287e0ab3f425dc3bfc34e886c
-  .claude/hooks: 4ca89ab083029489f7f95acfd24566badd4312153895da763904c1a49d02038e
+  .claude/CLAUDE.md: 2c5eb98d2ffd77c8f933ea3a1872e6bbfc84e0e6120e95b550012b113eaf4798
+  .claude/hooks: 689e20e4795072f323e6cea8a556f89698b6e299d20e9e00ca3ab19c7d5a40c9
   .claude/policies: 6f29062f7c0962a5b8934360aaea208a640f649357095101ea62777556c8e463
-  .claude/settings.json: 2d28b49e644f4dca28ae8dc8465f2fec160fbb8dc09cf5b8b2e81b49df9c2631
+  .claude/settings.json: f0a1ba000ffa47fbe83c0576fc9026f19dc49981abda9f80f18d1f8a337a90c5
   CHANGELOG.md: e320581ecb21a2427bae70737824b08f3fd61c05fa39e5b316f228ca2f3a6513
   MIGRATION.md: eacc1b42e8c952ea793404d51e12c9cc724b764bf04a0c8b0a464d0760cc8dca
   companies/_template: 989a2d928de46bd5933d2f9d803bb9b5d58cb33dfb65d88f8b2fbd7f1b553d6a
