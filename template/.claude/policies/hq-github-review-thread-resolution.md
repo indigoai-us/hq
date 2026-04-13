@@ -16,7 +16,3 @@ source: success-pattern
 - To get thread IDs: query `repository.pullRequest.reviewThreads` via GraphQL — each thread has a node `id` and `isResolved` boolean.
 - To resolve: `mutation { resolveReviewThread(input: {threadId: "{id}"}) { thread { isResolved } } }`
 - Batch resolution: loop over thread IDs with sequential GraphQL mutations via `gh api graphql`.
-
-## Rationale
-
-Discovered while landing PR #3040. The GitHub ruleset required all review threads to be resolved before merge. The REST API (`/pulls/{number}/comments`) only lists comments — it cannot resolve threads. The GraphQL API is the only way to programmatically resolve review threads.

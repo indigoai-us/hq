@@ -19,7 +19,7 @@ Optional:
 
 2. **Refactor via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat {files} | GEMINI_API_KEY=$KEY \
      gemini -p "CSS refactor. Goals: {goals:-reduce duplication, modernize patterns}.
 

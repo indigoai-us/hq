@@ -8,7 +8,6 @@ version: 1
 created: 2026-03-30
 updated: 2026-03-30
 source: back-pressure-failure
-learned_from: export-graphics session crash (2026-03-30)
 ---
 
 ## Rule

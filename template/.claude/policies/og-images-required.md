@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: user-directive
-learned_from: "wildcat-docs deployment — user requested OG images always be included"
 ---
 
 ## Rule

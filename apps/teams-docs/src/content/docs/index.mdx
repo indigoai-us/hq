@@ -1,0 +1,78 @@
+---
+title: HQ Teams — Shared Workspaces for AI Teams
+description: Create shared HQ workspaces where admins govern content and members collaborate via GitHub.
+template: splash
+hero:
+  tagline: Create shared HQ workspaces where admins govern content and members collaborate via GitHub.
+  actions:
+    - text: Admin Setup
+      link: /guide/1-overview/
+      icon: right-arrow
+      variant: primary
+    - text: Accept an Invite
+      link: /guide/3-member-onboarding/
+      icon: external
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Get started in 60 seconds
+
+**Admin** — create a team:
+
+```bash
+npx create-hq
+# Choose "Create an HQ Teams account"
+# Pick your GitHub org, name your team
+# Invite members when prompted
+```
+
+**Member** — accept an invite:
+
+```bash
+npx create-hq --invite hq_<your-token>
+# Sign in with GitHub
+# Team content cloned automatically
+```
+
+---
+
+<CardGrid stagger>
+  <Card title="Overview" icon="open-book">
+    What HQ Teams is, how it works, and who it's for.
+    [Read the overview →](/guide/1-overview/)
+  </Card>
+  <Card title="Admin Guide" icon="setting">
+    Create a team, invite members, and manage your shared workspace.
+    [Admin setup →](/guide/2-admin-setup/)
+  </Card>
+  <Card title="Member Guide" icon="laptop">
+    Accept an invite, set up your HQ, and sync team content.
+    [Member onboarding →](/guide/3-member-onboarding/)
+  </Card>
+  <Card title="Architecture" icon="rocket">
+    How GitHub Apps, token auth, and embedded git repos power HQ Teams.
+    [Architecture →](/architecture/1-how-it-works/)
+  </Card>
+</CardGrid>
+
+---
+
+## How it works
+
+| Step | Admin | Member |
+|------|-------|--------|
+| **1. Create** | Runs `npx create-hq`, picks GitHub org, names team | -- |
+| **2. Invite** | Generates invite token + sends GitHub org invite | Receives email + token |
+| **3. Join** | -- | Runs `npx create-hq --invite hq_<token>` |
+| **4. Collaborate** | Pushes content to shared repo | Pulls latest with sync |
+| **5. Grow** | Invites more members | Invites more members (if admin) |
+
+---
+
+## Requirements
+
+- **Node.js** 18+ (LTS recommended)
+- **Git** 2.25+ (for sparse checkout support)
+- **GitHub account** (free tier is fine)
+- **GitHub organization** (admin creates one — free for public repos, Teams plan for private)

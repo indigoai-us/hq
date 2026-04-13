@@ -19,7 +19,7 @@ Optional:
 
 2. **Review via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && find {scope:-src} -name "*.tsx" | head -40 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "Microcopy review. Focus: {focus}. Target tone: {tone:-professional}.
 

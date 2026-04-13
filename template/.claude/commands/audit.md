@@ -37,7 +37,7 @@ Based on flags parsed above, choose one of three modes:
 
 **If no `--since` and no `--company` flags**, call the script's built-in summary:
 ```bash
-cd ~/Documents/HQ && bash scripts/audit-log.sh summary 2>/dev/null
+cd ${HQ_ROOT:-$HOME/hq} && bash scripts/audit-log.sh summary 2>/dev/null
 ```
 Display the output directly — it already includes by-project and by-worker tables.
 
@@ -45,7 +45,7 @@ Display the output directly — it already includes by-project and by-worker tab
 
 Compute `SINCE_DATE`: if `--since` was provided use that value, otherwise use 7 days ago in `YYYY-MM-DD` format.
 ```bash
-cd ~/Documents/HQ && \
+cd ${HQ_ROOT:-$HOME/hq} && \
   SINCE="$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '7 days ago' +%Y-%m-%d)" && \
   bash scripts/audit-log.sh query --since "$SINCE" 2>/dev/null
 ```
@@ -114,7 +114,7 @@ Sort by tasks descending.
 
 Run:
 ```bash
-cd ~/Documents/HQ && \
+cd ${HQ_ROOT:-$HOME/hq} && \
   bash scripts/audit-log.sh query --event task_failed 2>/dev/null
 ```
 
@@ -147,7 +147,7 @@ If zero results: print `No task failures found.`
 
 Build query:
 ```bash
-cd ~/Documents/HQ && \
+cd ${HQ_ROOT:-$HOME/hq} && \
   bash scripts/audit-log.sh query --project <name> 2>/dev/null
 ```
 

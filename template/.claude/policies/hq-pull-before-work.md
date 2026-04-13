@@ -19,7 +19,3 @@ At session start, after identifying the target repo:
 2. `git fetch origin`
 3. Check `git rev-list --count HEAD..origin/main` — if > 0, pull before proceeding
 4. If pull fails due to local changes, stash first
-
-## Rationale
-
-In a session (2026-03-21), we built a multi-instance control plane on a local main that was 372 commits behind origin/main. The remote had undergone major restructuring (package renames, new packages, type rewrites). The resulting merge had 21 conflicted files and was effectively unresolvable. A `git pull` at session start would have cost 10 seconds and saved hours of wasted work.
