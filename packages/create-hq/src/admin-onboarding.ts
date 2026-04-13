@@ -2,14 +2,15 @@
  * Admin onboarding flow — for users creating a brand new HQ team.
  *
  * Steps:
- *   1. List user's GitHub orgs (only those where they can create repos)
- *   2. Let user pick an existing org or create a new one (browser hand-off)
- *   3. Verify the HQ App is installed on the chosen org (browser hand-off if not)
- *   4. Prompt for team name (default = org display name)
- *   5. Create the {org}/hq private repo
- *   6. Seed the repo locally with the company template + push
- *   7. Clone the repo into companies/{slug}/ as a nested git
- *   8. Return team metadata for the orientation summary
+ *   1. Ensure a `gh` CLI token for org discovery (prompt login if needed)
+ *   2. List ALL user's GitHub orgs via gh token (full visibility)
+ *   3. Let user pick an existing org or create a new one (browser hand-off)
+ *   4. Verify the HQ App is installed on the chosen org (browser hand-off if not)
+ *   5. Prompt for team name (default = org display name)
+ *   6. Create the {org}/hq private repo
+ *   7. Seed the repo locally with the company template + push
+ *   8. Clone the repo into companies/{slug}/ as a nested git
+ *   9. Return team metadata for the orientation summary
  */
 
 import * as fs from "fs";
@@ -24,6 +25,9 @@ import {
   HQ_GITHUB_APP_SLUG,
   githubApi,
   openBrowser,
+  getGhCliToken,
+  fetchAdminOrgsWithToken,
+  startGitHubDeviceFlow,
 } from "./auth.js";
 import { writeCompanyTemplate, type TeamMetadata } from "./company-template.js";
 import { stepStatus, success, warn, info } from "./ui.js";
@@ -39,16 +43,6 @@ import {
 } from "./invite.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-interface GitHubOrgMembership {
-  state: string;
-  role: string;
-  organization: {
-    login: string;
-    id: number;
-    avatar_url?: string;
-  };
-}
 
 interface GitHubOrg {
   login: string;
@@ -109,30 +103,60 @@ function pause(message: string): Promise<void> {
 // ─── GitHub helpers ─────────────────────────────────────────────────────────
 
 /**
- * Fetch the orgs the user is an active admin of. Uses
- * /user/memberships/orgs which (unlike /user/orgs) tells us our role.
+ * Ensure we have a `gh` CLI token for org discovery.
  *
- * Requires the App's "Organization > Members: Read" permission. If the App
- * isn't permitted, this returns an empty array (and we tell the user to
- * check their App permissions).
+ * The GitHub App user-to-server token can only see orgs where the App is
+ * already installed — a chicken-and-egg problem when the user wants to pick
+ * an org to install the App on. The `gh` CLI token (OAuth with `read:org`)
+ * sees ALL the user's orgs regardless of App installations.
+ *
+ * Flow:
+ *   1. Try `gh auth token` — if it works, we're done
+ *   2. If `gh` isn't installed or not logged in, prompt the user to log in
+ *   3. Retry after they confirm — if still no token, return null (caller
+ *      will guide user to create an org or abort)
  */
-async function fetchAdminOrgs(auth: GitHubAuth): Promise<GitHubOrg[]> {
-  try {
-    const memberships = await githubApi<GitHubOrgMembership[]>(
-      "/user/memberships/orgs?state=active&per_page=100",
-      auth
-    );
-    return memberships
-      .filter((m) => m.role === "admin")
-      .map((m) => ({
-        login: m.organization.login,
-        id: m.organization.id,
-      }));
-  } catch (err) {
-    // Permission errors come back as 403/404 — surface as empty list, the
-    // caller will guide the user to fix App permissions or create an org.
-    return [];
-  }
+async function ensureGhToken(): Promise<string | null> {
+  const existing = getGhCliToken();
+  if (existing) return existing;
+
+  // gh not available or not logged in — guide the user
+  console.log();
+  info("HQ needs access to your GitHub organizations to continue.");
+  info("The fastest way is to sign into the GitHub CLI:");
+  console.log();
+  console.log(chalk.cyan("    gh auth login"));
+  console.log();
+
+  await pause("Run that command in another terminal, then press Enter...");
+
+  // Retry after user says they logged in
+  const token = getGhCliToken();
+  if (token) return token;
+
+  // Still no luck — one more attempt with installation help
+  console.log();
+  info("Still can't detect a GitHub CLI session.");
+  info("If you don't have the GitHub CLI installed:");
+  console.log(chalk.cyan("    https://cli.github.com"));
+  console.log();
+
+  const retry = await prompt("Try again after installing/logging in? (Y/n)", "y");
+  if (!retry.toLowerCase().startsWith("y")) return null;
+
+  await pause("Press Enter when ready...");
+  return getGhCliToken();
+}
+
+/**
+ * Fetch the orgs the user is an active admin of, using their `gh` CLI token.
+ *
+ * Always uses a user-scoped token (from `gh auth token`) so we see ALL
+ * the user's orgs — not just orgs where the HQ App is installed.
+ * Returns an empty array if the token is unavailable or the user has no orgs.
+ */
+async function fetchAdminOrgs(ghToken: string): Promise<GitHubOrg[]> {
+  return fetchAdminOrgsWithToken(ghToken);
 }
 
 async function fetchInstallations(auth: GitHubAuth): Promise<GitHubInstallation[]> {
@@ -269,12 +293,13 @@ export function slugify(input: string): string {
 /**
  * Run the admin onboarding flow.
  *
- * @param auth          - Authenticated GitHub user
+ * @param preAuth       - Pre-existing App auth (from "existing" path), or null
+ *                        if coming from the "new" path (auth deferred until after org selection)
  * @param hqRoot        - Local HQ root directory (where companies/ lives)
  * @param hqVersion     - HQ template version (for team metadata)
  */
 export async function runAdminOnboarding(
-  auth: GitHubAuth,
+  preAuth: GitHubAuth | null,
   hqRoot: string,
   hqVersion: string
 ): Promise<AdminOnboardingResult | null> {
@@ -282,13 +307,22 @@ export async function runAdminOnboarding(
   console.log(chalk.bold("  Create a new HQ team"));
   console.log();
 
-  // 1. Fetch admin orgs
+  // 1. Get a gh CLI token for org discovery (sees ALL user's orgs)
+  const ghToken = await ensureGhToken();
+  if (!ghToken) {
+    warn("GitHub CLI is needed to list your organizations.");
+    info("Install it from " + chalk.cyan("https://cli.github.com") + " then run " + chalk.cyan("gh auth login"));
+    info("After that, run create-hq again.");
+    return null;
+  }
+
+  // 2. Fetch admin orgs using the gh token
   const orgsLabel = "Looking up your GitHub organizations";
   stepStatus(orgsLabel, "running");
-  let orgs = await fetchAdminOrgs(auth);
+  let orgs = await fetchAdminOrgs(ghToken);
   stepStatus(orgsLabel, "done");
 
-  // 2. Pick or create org
+  // 3. Pick or create org
   let chosenOrg: GitHubOrg | null = null;
   while (!chosenOrg) {
     if (orgs.length === 0) {
@@ -305,7 +339,7 @@ export async function runAdminOnboarding(
       await pause("Press Enter when you have finished creating the org...");
 
       stepStatus("Re-checking organizations", "running");
-      orgs = await fetchAdminOrgs(auth);
+      orgs = await fetchAdminOrgs(ghToken);
       stepStatus("Re-checking organizations", "done");
       continue;
     }
@@ -331,7 +365,7 @@ export async function runAdminOnboarding(
       openBrowser("https://github.com/organizations/new");
       await pause("Press Enter when you have finished creating the org...");
       stepStatus("Re-checking organizations", "running");
-      orgs = await fetchAdminOrgs(auth);
+      orgs = await fetchAdminOrgs(ghToken);
       stepStatus("Re-checking organizations", "done");
       continue;
     }
@@ -344,7 +378,24 @@ export async function runAdminOnboarding(
     chosenOrg = orgs[idx];
   }
 
-  // 3. Verify HQ App is installed on the org
+  // 4. Authenticate with the HQ App (deferred until after org selection)
+  //    The App token is needed for installation checks and repo management.
+  //    By deferring, we avoid the chicken-and-egg: user sees all orgs first
+  //    (via gh token), picks one, THEN authorizes the App for that org.
+  let auth = preAuth;
+  if (!auth) {
+    console.log();
+    info(`Now authorize the HQ App to manage repos in ${chalk.cyan(chosenOrg.login)}.`);
+    try {
+      auth = await startGitHubDeviceFlow();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warn(`GitHub App authorization failed: ${message}`);
+      return null;
+    }
+  }
+
+  // 5. Verify HQ App is installed on the chosen org
   let installation: GitHubInstallation | null = null;
   while (!installation) {
     const installLabel = `Checking HQ App on ${chosenOrg.login}`;
@@ -363,17 +414,22 @@ export async function runAdminOnboarding(
     info("Installing it gives HQ permission to manage the team workspace repo.");
     console.log();
 
-    const installUrl = `https://github.com/apps/${HQ_GITHUB_APP_SLUG}/installations/new/permissions?target_id=${chosenOrg.id}`;
-    const proceed = await prompt("Open the install page in your browser? (Y/n)", "y");
-    if (!proceed.toLowerCase().startsWith("y")) {
-      warn("HQ App is required to create a team. Aborting team creation.");
-      return null;
+    console.log();
+    info("We'll open the HQ App install page.");
+    info(chalk.bold(`Select "${chosenOrg.login}" from the list of organizations.`));
+    console.log();
+
+    const openIt = await prompt("Open the install page now? (Y/n)", "y");
+    if (openIt.toLowerCase().startsWith("y")) {
+      // /installations/select_target always shows the org picker, even when
+      // the App is already installed on a different org (unlike /installations/new
+      // which redirects to the existing installation's config page).
+      openBrowser(`https://github.com/apps/${HQ_GITHUB_APP_SLUG}/installations/select_target`);
     }
-    openBrowser(installUrl);
     await pause("Press Enter when the App has been installed...");
   }
 
-  // 4. Prompt for team name
+  // 6. Prompt for team name
   console.log();
   const defaultName = chosenOrg.login;
   const teamName = (await prompt("Team name", defaultName)) || defaultName;
@@ -391,7 +447,7 @@ export async function runAdminOnboarding(
     hq_version: hqVersion,
   };
 
-  // 5. Create the {org}/hq-{teamSlug} repo
+  // 7. Create the {org}/hq-{teamSlug} repo
   const repoName = `hq-${teamSlug}`;
   const repoLabel = `Creating ${chosenOrg.login}/${repoName} private repo`;
   stepStatus(repoLabel, "running");
@@ -430,7 +486,7 @@ export async function runAdminOnboarding(
     }
   }
 
-  // 6. Seed locally and push
+  // 8. Seed locally and push
   const seedLabel = "Seeding team workspace";
   stepStatus(seedLabel, "running");
 
@@ -473,7 +529,7 @@ export async function runAdminOnboarding(
     }
   }
 
-  // 7. Clone into companies/{slug}/
+  // 9. Clone into companies/{slug}/
   const companiesDir = path.join(hqRoot, "companies");
   if (!fs.existsSync(companiesDir)) {
     fs.mkdirSync(companiesDir, { recursive: true });
@@ -535,7 +591,7 @@ export async function runAdminOnboarding(
   console.log();
   success(`Team "${teamName}" created — ${repo.html_url}`);
 
-  // 8. Offer to generate member invites
+  // 10. Offer to generate member invites
   await inviteLoop(auth, meta, repo.clone_url);
 
   return {

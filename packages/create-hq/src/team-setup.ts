@@ -13,9 +13,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 import { createInterface } from "readline";
 import chalk from "chalk";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   type GitHubAuth,
   HQ_GITHUB_APP_SLUG,
