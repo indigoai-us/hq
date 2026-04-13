@@ -6,7 +6,7 @@ trigger: when renaming functions, types, variables, or changing signatures
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: brainstorm-session
+source: session-learning
 ---
 
 ## Rule

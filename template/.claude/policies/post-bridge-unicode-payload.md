@@ -25,7 +25,3 @@ curl -s -X POST "https://api.post-bridge.com/v1/posts" \
   -H "Content-Type: application/json" \
   -d @/tmp/pb-post-body.json
 ```
-
-## Rationale
-
-Session 2026-03-09: em dash (—) in HQ v7.0.0 post caption caused `character not in range` error when using shell heredoc/expansion for the JSON body. Python temp file approach worked on first try.

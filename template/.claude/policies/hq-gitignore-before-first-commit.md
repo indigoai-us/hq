@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-23
 updated: 2026-02-23
 source: back-pressure-failure
-learned_from: "{product}-competitive-intel site build — committed node_modules/.next, push failed due to 100MB+ SWC binary"
 ---
 
 ## Rule

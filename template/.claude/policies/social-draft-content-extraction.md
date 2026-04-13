@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: task-completion
-learned_from: "social advisory council session — Post-Bridge submission with metadata leaking into captions"
 ---
 
 ## Rule
