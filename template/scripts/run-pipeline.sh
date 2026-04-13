@@ -739,13 +739,6 @@ classify_risk() {
     esac
   fi
 
-  # {PRODUCT} repo bump
-  if echo "$repo_path" | grep -qi '{product}'; then
-    case "$risk" in
-      LOW)    risk="MEDIUM" ;;
-      MEDIUM) risk="HIGH" ;;
-    esac
-  fi
 
   echo "$risk"
 }
@@ -1300,9 +1293,8 @@ phase_build() {
 
 # phase_pr <project> <prd_path>
 #
-# Creates a PR for the project's branch. Handles {PRODUCT} repos specially (uses
-# /{product}-pr command). Detects existing PRs to avoid duplicates. Records PR
-# info in pipeline-state.json.
+# Creates a PR for the project's branch. Detects existing PRs to avoid
+# duplicates. Records PR info in pipeline-state.json.
 #
 # Returns: 0 = success (or skipped), 1 = failure
 phase_pr() {
@@ -1341,11 +1333,6 @@ phase_pr() {
     return 0
   fi
 
-  # --- Detect {PRODUCT} repo ---
-  local is_{product}=false
-  if [[ "$repo_path" == *"{product}"* ]]; then
-    is_{product}=true
-  fi
 
   # --- Generate PR body from prd.json stories ---
   local pr_body
@@ -1360,37 +1347,22 @@ phase_pr() {
   # --- Create PR ---
   local pr_url="" pr_number=""
 
-  if $is_{product}; then
-    # {PRODUCT} repos block direct gh pr create — use claude -p with /{product}-pr
-    log_info "{PRODUCT} repo detected — using /{product}-pr command"
-    local {product}_output
-    {product}_output=$(env -u CLAUDECODE claude -p "/{product}-pr" --model "${MODEL:-claude-sonnet-4-20250514}" 2>&1) || {
-      log_err "{PRODUCT} PR creation failed for ${project}"
-      update_project_phase "$project" "failed" "PR creation failed via /{product}-pr"
-      cd "$HQ_ROOT"
-      return 1
-    }
-    # Try to extract PR URL from output
-    pr_url=$(echo "${product}_output" | grep -oE 'https://github.com/[^ ]+/pull/[0-9]+' | head -1)
-    pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
-  else
-    # Standard PR creation
-    log_info "Creating PR for ${project} (${branch_name} → ${base_branch})"
-    local pr_output
-    pr_output=$(gh pr create \
-      --title "${project}: ${description}" \
-      --body "$pr_body" \
-      --base "$base_branch" \
-      --head "$branch_name" 2>&1) || {
-      log_err "PR creation failed for ${project}: ${pr_output}"
-      update_project_phase "$project" "failed" "PR creation failed: ${pr_output}"
-      cd "$HQ_ROOT"
-      return 1
-    }
-    # Extract PR URL and number
-    pr_url=$(echo "$pr_output" | grep -oE 'https://github.com/[^ ]+/pull/[0-9]+' | head -1)
-    pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
-  fi
+  # Standard PR creation
+  log_info "Creating PR for ${project} (${branch_name} → ${base_branch})"
+  local pr_output
+  pr_output=$(gh pr create \
+    --title "${project}: ${description}" \
+    --body "$pr_body" \
+    --base "$base_branch" \
+    --head "$branch_name" 2>&1) || {
+    log_err "PR creation failed for ${project}: ${pr_output}"
+    update_project_phase "$project" "failed" "PR creation failed: ${pr_output}"
+    cd "$HQ_ROOT"
+    return 1
+  }
+  # Extract PR URL and number
+  pr_url=$(echo "$pr_output" | grep -oE 'https://github.com/[^ ]+/pull/[0-9]+' | head -1)
+  pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
 
   # --- Record PR info in pipeline-state.json ---
   if [[ -n "$pr_number" ]]; then
