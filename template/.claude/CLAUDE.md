@@ -2,6 +2,10 @@
 
 Personal OS for orchestrating work across companies, workers, and AI.
 
+## Context Meter (mandatory)
+
+A Stop hook writes context window usage to `/tmp/.hq-context-meter`. **At the END of every response, output the contents of this file as the last line of your message.** Format: `CTX: {pct}% ({tokens}/{window})`. If it says HANDOFF SOON, warn the user. Do NOT use a tool to read it — just output the value from the system-reminder injected by the hook.
+
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
