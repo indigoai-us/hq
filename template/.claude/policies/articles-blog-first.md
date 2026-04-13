@@ -19,7 +19,3 @@ Any content with `type: article` in draft frontmatter or assessed as "Article" s
 The X deliverable for articles is a short teaser linking to the blog. Never post full 1500+ word article text directly to X or LinkedIn.
 
 The `/contentidea` "Article" form routes to this pipeline. The daily-social skill checks `blog-queue.json` for pending articles each run.
-
-## Rationale
-
-Blog posts compound (SEO, OG cards, permanent library). X posts disappear in hours. The "Docs-First Agents" blog share (Mar 11) outperformed raw long-form X posts. Every blog article is a deposit into the long-term credibility bank. Established 2026-03-12.

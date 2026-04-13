@@ -1,5 +1,111 @@
 # Changelog
 
+## [10.8.0] — 2026-04-11
+
+### Headline
+Design worker consolidation: 6 design workers → 2. Style pack system via `.impeccable.md`. Configurable models (gemini default, opus for creative skills).
+
+### Breaking — Workers Removed (5)
+- `impeccable-designer` — skills split between frontend-designer (18) and ux-auditor (4)
+- `gemini-designer` — skills split between frontend-designer (1) and ux-auditor (3)
+- `gemini-stylist` — 4 skills absorbed into frontend-designer
+- `gemini-frontend` — 4 skills absorbed into frontend-designer
+- `gemini-ux-auditor` — 4 skills absorbed into ux-auditor
+
+### Added
+- **`ux-auditor`** — new worker (11 skills). Design review & quality gate. Read-only, never writes code. Consolidates audit/critique/harden/normalize from impeccable-designer + 4 gemini-ux-auditor skills + 3 gemini-designer skills.
+- **Style pack system** — `.impeccable.md` gains `style:` field. Workers auto-load design style specs + swipes. 9 styles: american-industrial, brutalist-raw, corporate-clean, dark-luxury, editorial-magazine, ethereal-abstract, liminal-portal, minimalist-swiss, retro-analog.
+- `teach-impeccable` now presents style catalog during setup (Step 3)
+
+### Changed
+- **`frontend-designer`** — expanded from 0 to 27 skills. Now the single build+refine worker. Model: gemini (opus for frontend-design/overdrive/bolder/delight). MCP server preserved.
+- `workers/registry.yaml` — version 10.8.0, Standalone Workers 11→9, Gemini Team 6→2
+- `.claude/CLAUDE.md` — workers section updated
+- `core.yaml` — version bump to 10.8.0
+
+### Migration
+See MIGRATION.md for step-by-step upgrade instructions.
+
+## [10.7.1] — 2026-04-11
+
+### Headline
+Core cleanup: design skills moved to impeccable-designer worker, niche commands removed from core. Template ships a leaner, generic baseline.
+
+### Breaking — Commands Removed from Core
+- `/pr` — company-scoped (PR coordinator workflow)
+- `/hq-growth-dashboard` — personal/niche metrics
+
+### Breaking — Skills Moved to Workers
+- **22 design skills** moved from `.claude/skills/` to `workers/impeccable-designer/skills/`. Invoke via `/run impeccable-designer {skill}`.
+  - adapt, animate, arrange, audit, bolder, clarify, colorize, consolidate, critique, delight, distill, extract, frontend-design, harden, normalize, onboard, optimize, overdrive, polish, quieter, teach-impeccable, typeset
+- **social-graphic** moved from `.claude/skills/` to `workers/social-strategist/skills/`.
+
+### Changed
+- `workers/impeccable-designer/worker.yaml` — added full `skills:` block (22 entries)
+- `workers/social-strategist/worker.yaml` — added `social-graphic` skill entry
+- `.claude/CLAUDE.md` — command count updated (44→36), workers section updated
+- `workers/registry.yaml` — version bump to 10.7.1
+
+## [10.7.0] — 2026-04-09
+
+### Headline
+Performance Audit Complete — ~50% session-start context reduction via pre-built policy digests. 8 commands consolidated to Archetype A (stub + SKILL).
+
+### Added
+- `.claude/hooks/load-policies-for-session.sh` — SessionStart digest loader
+- `scripts/build-policy-digest.sh` — builds `_digest.md` from policy frontmatter
+- `scripts/read-policy-frontmatter.sh` — YAML frontmatter parser helper
+- `scripts/git-hooks/pre-commit` — auto-rebuilds digests on policy commits
+- `.claude/policies/_digest.md` — pre-built global digest (94 hard + 78 soft)
+- `.claude/policies/qmd-collection-masks.md` — qmd collection scoping policy
+- `.claude/commands/audit-log.md` — renamed from `audit.md`, expanded to 208 lines
+- `knowledge/hq-core/quick-reference.md` — new `## Command ↔ Skill Shapes` section (Archetype A/C docs)
+- `workspace/orchestrator/monitor-project.sh` — single-project TUI dashboard (state.json
+  + executions + progress.txt) now shipped with the template so `run-project.sh`'s
+  auto-spawned monitor window has something to run
+
+### Changed
+- **7 commands flipped to Archetype A** (~20-line delegator stubs):
+  `prd`, `handoff`, `learn`, `execute-task`, `search`, `startwork`, `brainstorm`
+  → Canonical implementations now live in `.claude/skills/{name}/SKILL.md`
+- `run-project.md` gained thin-router HTML comment (Archetype C marker)
+- `.claude/settings.json` — `SessionStart` hook entry wired for digest loader
+- `.claude/settings.json` — `cleanup-mcp-processes` Stop-hook timeout bumped 5 → 10s
+- `.claude/scripts/run-project.sh` — `spawn_cmux_monitor()` rewritten to use
+  Terminal.app via `osascript` instead of the cmux CLI. The cmux path failed
+  silently under Claude.app (socket-ancestry auth + macos-applescript gate);
+  Terminal.app is always scriptable so the monitor window actually opens.
+- `.claude/settings.json` — added 5 rc-file deny rules (`~/.zshrc`, `~/.zprofile`,
+  `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`)
+- 4 hooks refreshed — `auto-checkpoint-trigger`, `hook-gate`, `observe-patterns`,
+  `screenshot-resize-trigger`
+- 14 commands refreshed (non-Archetype-A bug fixes & polish)
+- 8 net-new policies synced (now 171 total, up from 163)
+
+### Performance
+- HQ root session start: **−53% context** (37.2 KB → 17.3 KB)
+- personal cwd: **−58% context** (45.5 KB → 19.1 KB)
+- liverecover-class cwd: **−61% context** (58.7 KB → 22.8 KB)
+- vyg-class cwd: **−62% context** (67.1 KB → 25.5 KB)
+
+### Removed
+- `.claude/commands/audit.md` — orphan (renamed to `audit-log.md`)
+
+### Breaking Changes
+- The 7 commands listed under "Changed" above now delegate to `SKILL.md`. Any local
+  edits to those `.md` files will be overwritten on upgrade — move edits into
+  `.claude/skills/{name}/SKILL.md` instead, or fork the stub.
+
+### Migration (v10.6.0 → v10.7.0)
+1. Pull latest kit
+2. `chmod +x scripts/git-hooks/pre-commit`
+3. `ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit`
+   (or merge into existing pre-commit wrapper)
+4. Verify SessionStart hook fires: start a new Claude Code session in the project
+   dir; look for `<policy-digest>` banner in the first turn
+5. If any of the 7 consolidated commands had local edits, port them to the
+   corresponding `.claude/skills/{name}/SKILL.md`
+
 ## [10.6.0] — 2026-04-07
 
 ### Added

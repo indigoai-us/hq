@@ -27,7 +27,7 @@ export async function initSync(hqRoot: string): Promise<void> {
     return;
   }
 
-  console.log("  Setting up {Product}AI cloud sync...");
+  console.log("  Setting up IndigoAI cloud sync...");
   const creds = await authenticate();
   console.log(`  ✓ Authenticated as ${creds.userId}`);
   console.log(`  ✓ Bucket: ${creds.bucket}`);

@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-HQ="~/HQ"
+HQ="${HQ_ROOT:-$HOME/hq}"
 RESIZE="$HQ/scripts/resize-screenshot.sh"
 COUNT_FILE="/tmp/hq-screenshot-count-${PPID}"
 WARN_THRESHOLD=30

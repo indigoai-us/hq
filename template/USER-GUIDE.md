@@ -39,18 +39,45 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Content & Social
 | Command | What it does |
 |---------|--------------|
+| `/contentidea` | Build content ideas |
+| `/suggestposts` | Research post ideas |
 | `/post` | Post or schedule content to X/LinkedIn via Post-Bridge |
+| `/post-results` | Check post delivery status |
+| `/preview-post` | Preview social post drafts, select images |
+| `/social-setup` | Configure voice, accounts, queue, worker |
+
+### Communication
+| Command | What it does |
+|---------|--------------|
+| `/email` | Manage email across Gmail accounts |
+| `/checkemail` | Quick inbox cleanup and triage |
+| `/imessage` | Send iMessage to saved contact |
+
+### Design & Assets
+| Command | What it does |
+|---------|--------------|
+| `/generateimage` | Generate images via Gemini |
 
 ### Deploy & Ops
 | Command | What it does |
 |---------|--------------|
-| `/pr` | PR operations |
+| `/pr` | {company} PR operations |
+| `/publish-kit` | Publish kit |
 
 ### Company & Infrastructure
 | Command | What it does |
 |---------|--------------|
 | `/newcompany` | Scaffold new company with full infrastructure |
+| `/launch-brand` | Launch new DTC brand end-to-end |
+| `/pb-connect` | Connect Post-Bridge social accounts |
+| `/bootcamp-student` | Onboard AGI bootcamp student |
 | `/personal-interview` | Deep interview to populate profile/voice |
+
+### Linear
+| Command | What it does |
+|---------|--------------|
+| `/check-linear-voyage` | Interactive triage for {Product} workspace |
+| `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
 
 ### System
 | Command | What it does |
@@ -67,15 +94,16 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ```
 /run                    # see all
-/run frontend-designer audit
-/run qa-tester smoke-test
+/run cfo-{company} mrr
+/run x-{your-name} contentidea "AI"
 ```
 
 **Public (`workers/public/`):**
 
 | Worker | Purpose |
 |--------|---------|
-| frontend-designer | UI generation |
+| frontend-designer | Full-spectrum design — 27 skills for building, refining, and shipping UI |
+| ux-auditor | Design review & quality gate — 11 skills for auditing and hardening UI |
 | qa-tester | Automated website testing (Playwright) |
 | security-scanner | Security scanning |
 | pretty-mermaid | Mermaid diagram generation |
@@ -97,8 +125,8 @@ social-shared (library), social-strategist, social-reviewer, social-publisher, s
 **Gardener Team (3):** `workers/public/gardener-team/`
 garden-scout, garden-auditor, garden-curator
 
-**Gemini Team (3):** `workers/public/gemini-*/`
-gemini-coder, gemini-reviewer, gemini-frontend
+**Gemini Team (2):** `workers/public/gemini-*/`
+gemini-coder, gemini-reviewer
 
 **Company Workers** (`companies/{co}/workers/`):
 

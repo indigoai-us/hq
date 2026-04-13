@@ -8,7 +8,6 @@ version: 1
 created: 2026-03-05
 updated: 2026-03-05
 source: session-learning
-learned_from: "Failed to load {Product} policies before Route 53 work — missed documented DNS workflow"
 ---
 
 ## Rule

@@ -4,6 +4,235 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v10.8.0 (from v10.7.1)
+
+### Headline
+
+Design worker consolidation: 6 design workers → 2 (`frontend-designer` + `ux-auditor`). Style pack system. Configurable models.
+
+### Step 1 — Create ux-auditor and move audit skills
+
+```bash
+mkdir -p workers/ux-auditor/skills
+# From impeccable-designer (directory-based)
+for skill in audit critique harden normalize; do
+  mv "workers/impeccable-designer/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+# From gemini-ux-auditor (flat files)
+for skill in ux-audit.md flow-review.md copy-review.md competitive-scan.md; do
+  mv "workers/gemini-ux-auditor/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+# From gemini-designer (flat files)
+for skill in design-audit.md design-system-check.md visual-diff.md; do
+  mv "workers/gemini-designer/skills/$skill" "workers/ux-auditor/skills/$skill"
+done
+```
+
+### Step 2 — Move build/refine skills to frontend-designer
+
+```bash
+mkdir -p workers/frontend-designer/skills
+# From impeccable-designer (18 directory-based skills)
+for skill in adapt animate arrange bolder clarify colorize consolidate delight distill extract frontend-design onboard optimize overdrive polish quieter teach-impeccable typeset; do
+  mv "workers/impeccable-designer/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-stylist (4 flat files)
+for skill in add-animation.md responsive-polish.md dark-mode.md css-refactor.md; do
+  mv "workers/gemini-stylist/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-frontend (4 flat files)
+for skill in build-component.md style-component.md responsive-check.md a11y-audit.md; do
+  mv "workers/gemini-frontend/skills/$skill" "workers/frontend-designer/skills/$skill"
+done
+# From gemini-designer (1 flat file)
+mv "workers/gemini-designer/skills/design-tokens.md" "workers/frontend-designer/skills/design-tokens.md"
+```
+
+### Step 3 — Copy new worker.yamls
+
+Copy `workers/frontend-designer/worker.yaml` and `workers/ux-auditor/worker.yaml` from the release. These contain the merged skill blocks, instructions, and model configuration.
+
+### Step 4 — Delete absorbed workers
+
+```bash
+rm -rf workers/impeccable-designer/
+rm -rf workers/gemini-designer/
+rm -rf workers/gemini-stylist/
+rm -rf workers/gemini-frontend/
+rm -rf workers/gemini-ux-auditor/
+```
+
+### Step 5 — Update registry.yaml
+
+- Remove entries for: impeccable-designer, gemini-designer, gemini-stylist, gemini-frontend, gemini-ux-auditor
+- Add entry for: ux-auditor
+- Update frontend-designer description
+- Update Standalone Workers count (11→9) and Gemini Team count (6→2)
+- Bump version to 10.8.0
+
+### Step 6 — Update invocations
+
+Old commands → new equivalents:
+
+| Old | New |
+|-----|-----|
+| `/run impeccable-designer audit` | `/run ux-auditor audit` |
+| `/run impeccable-designer critique` | `/run ux-auditor critique` |
+| `/run impeccable-designer harden` | `/run ux-auditor harden` |
+| `/run impeccable-designer normalize` | `/run ux-auditor normalize` |
+| `/run impeccable-designer {any other skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-stylist {skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-frontend {skill}` | `/run frontend-designer {skill}` |
+| `/run gemini-designer design-tokens` | `/run frontend-designer design-tokens` |
+| `/run gemini-designer {audit skills}` | `/run ux-auditor {skill}` |
+| `/run gemini-ux-auditor {skill}` | `/run ux-auditor {skill}` |
+
+### Step 7 — (Optional) Add style to .impeccable.md
+
+If your project has an `.impeccable.md`, add a `style:` field to enable automatic style pack loading:
+
+```markdown
+## Style
+style: american-industrial
+```
+
+Or re-run `teach-impeccable` to go through the style selection flow.
+
+### Step 8 — Verify
+
+```bash
+ls workers/frontend-designer/skills/ | wc -l  # 27
+ls workers/ux-auditor/skills/ | wc -l          # 11
+# Ensure no stale references
+grep -r "impeccable-designer\|gemini-designer\|gemini-stylist\|gemini-frontend\|gemini-ux-auditor" workers/ --include="*.yaml" | grep -v CHANGELOG
+```
+
+---
+
+## Migrating to v10.7.1 (from v10.7.0)
+
+### Headline
+
+Core cleanup — 22 design skills moved from `.claude/skills/` to `workers/impeccable-designer/skills/`, 2 niche commands removed, `social-graphic` moved to `social-strategist`.
+
+### Step 1 — Remove deleted commands
+
+```bash
+rm -f .claude/commands/pr.md .claude/commands/hq-growth-dashboard.md
+```
+
+### Step 2 — Move design skills to impeccable-designer
+
+```bash
+mkdir -p workers/impeccable-designer/skills
+for skill in adapt animate arrange audit bolder clarify colorize consolidate critique delight distill extract frontend-design harden normalize onboard optimize overdrive polish quieter teach-impeccable typeset; do
+  mv ".claude/skills/$skill" "workers/impeccable-designer/skills/$skill"
+done
+```
+
+### Step 3 — Move social-graphic to social-strategist
+
+```bash
+mkdir -p workers/social-strategist/skills
+mv .claude/skills/social-graphic workers/social-strategist/skills/social-graphic
+```
+
+### Step 4 — Update worker.yamls
+
+Copy the updated `workers/impeccable-designer/worker.yaml` and `workers/social-strategist/worker.yaml` from the release, or manually add the new `skills:` blocks.
+
+### Step 5 — Verify
+
+```bash
+ls .claude/commands/*.md | wc -l    # Should be 36
+ls .claude/skills/ | wc -l          # Should be ~18 (core skills only)
+ls workers/impeccable-designer/skills/ | wc -l  # Should be 22
+```
+
+---
+
+## Migrating to v10.7.0 (from v10.6.0)
+
+### Headline
+
+This release ships the **HQ Performance Audit** — a ~50% reduction in session-start
+context burn via pre-built policy digests, plus 8 commands consolidated to the new
+**Archetype A** shape (thin delegator stub + canonical `SKILL.md`).
+
+### Step 1 — Pull and verify scaffolding
+
+```bash
+git pull
+ls .claude/hooks/load-policies-for-session.sh
+ls .claude/policies/_digest.md
+ls scripts/build-policy-digest.sh scripts/git-hooks/pre-commit
+```
+
+If any of those four are missing, your pull is incomplete — re-run.
+
+### Step 2 — Wire the auto-rebuild pre-commit hook
+
+The new `scripts/git-hooks/pre-commit` rebuilds `_digest.md` whenever you commit
+policy changes. Install it:
+
+```bash
+chmod +x scripts/git-hooks/pre-commit
+ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+```
+
+If you already have a `.git/hooks/pre-commit` wrapper, append a call to
+`scripts/git-hooks/pre-commit` rather than overwriting.
+
+### Step 3 — Verify the SessionStart hook fires
+
+Start a fresh Claude Code session in the repo. Look for a `<policy-digest>` block
+in the first system reminder. If you don't see it:
+
+```bash
+grep -A1 SessionStart .claude/settings.json
+```
+
+You should see the `load-policies-for-session.sh` entry. If missing, your
+`settings.json` needs the SessionStart block — copy from `template/.claude/settings.json`.
+
+### Step 4 — Port any local edits to the 7 consolidated commands
+
+These commands now delegate to `SKILL.md`. If you had local customizations in any
+of them, your edits will be **overwritten** when you sync the template:
+
+| Command | Canonical home |
+|---|---|
+| `prd` | `.claude/skills/prd/SKILL.md` |
+| `handoff` | `.claude/skills/handoff/SKILL.md` |
+| `learn` | `.claude/skills/learn/SKILL.md` |
+| `execute-task` | `.claude/skills/execute-task/SKILL.md` |
+| `search` | `.claude/skills/search/SKILL.md` |
+| `startwork` | `.claude/skills/startwork/SKILL.md` |
+| `brainstorm` | `.claude/skills/brainstorm/SKILL.md` |
+
+For each, diff the old `.md` against the new SKILL.md, port your customizations
+into the SKILL, and let the stub remain as a thin delegator.
+
+### Step 5 — Optional: rebuild your digests
+
+If you've modified policies locally, regenerate `_digest.md`:
+
+```bash
+bash scripts/build-policy-digest.sh
+```
+
+The pre-commit hook from Step 2 will keep this in sync going forward.
+
+### What you get after migrating
+
+- **−50% session-start context** on most cwds (HQ root, personal, vyg-class)
+- **Faster orientation** — the policy digest lands in the first turn instead of
+  burning a tool round-trip
+- **Auto-maintained digests** — no manual rebuild required after the pre-commit
+  hook is installed
+
+---
+
 ## Migrating to v10.6.0 (from v10.5.0)
 
 ### Updated Commands (21)
@@ -153,9 +382,9 @@ If you use `/publish-kit`, update your `scrub-denylist.yaml` with the new `excep
 
 ```yaml
 exceptions:
-  "{company}ai-us": "indigoai-us"
-  "@{company}ai-us": "@indigoai-us"
-  "{company}ai-us/hq": "indigoai-us/hq"
+  "indigoai-us": "indigoai-us"
+  "@indigoai-us": "@indigoai-us"
+  "indigoai-us/hq": "indigoai-us/hq"
 ```
 
 ### Updated Policies
@@ -1310,7 +1539,7 @@ Copy these directories to your `knowledge/`:
 go install github.com/tobi/qmd@latest
 
 # Index your HQ
-cd ~/Documents/HQ
+cd ~/HQ
 qmd update && qmd embed
 ```
 

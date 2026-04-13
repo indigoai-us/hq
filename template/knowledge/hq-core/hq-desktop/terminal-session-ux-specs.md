@@ -96,7 +96,7 @@ async function executeInPTY(command: HQCommand, args?: string) {
     sessionStore.addSession({
       id: sessionId,
       type: 'claude',
-      cwd: '~/Documents/HQ',
+      cwd: '~/HQ',
       status: 'running',
       startedAt: new Date().toISOString(),
       title: `/${command.id}`,
