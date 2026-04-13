@@ -1,6 +1,10 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 
+// Strip ANSI escape codes so we can measure visible string width
+const ANSI_RE = /\x1B\[[0-9;]*m/g;
+const visibleLength = (s: string) => s.replace(ANSI_RE, "").length;
+
 // ─── ASCII Art Banner ────────────────────────────────────────────────────────
 
 export function banner(installerVersion?: string, hqVersion?: string): void {
@@ -130,7 +134,7 @@ export type TeamOrientationOptions =
 export function teamOrientation(opts: TeamOrientationOptions): void {
   const W = 48;
   const line = "─".repeat(W);
-  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - text.length));
+  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - visibleLength(text)));
   const row = (text: string) =>
     chalk.dim("  │") + pad(text, W) + chalk.dim("│");
 
@@ -180,7 +184,7 @@ export function teamOrientation(opts: TeamOrientationOptions): void {
 export function nextSteps(dir: string): void {
   const W = 48;
   const line = "─".repeat(W);
-  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - text.length));
+  const pad = (text: string, len: number) => text + " ".repeat(Math.max(0, len - visibleLength(text)));
   const row = (text: string) =>
     chalk.dim("  │") + pad(text, W) + chalk.dim("│");
 
