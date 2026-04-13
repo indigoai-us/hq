@@ -1,0 +1,5 @@
+:root {
+  --sl-font: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  --sl-font-system-mono: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace,
+    monospace;
+}
