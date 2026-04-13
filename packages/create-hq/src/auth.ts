@@ -412,6 +412,24 @@ export async function githubApi<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+
+    // Friendly error when a regular gh CLI token hits the App-only installations endpoint.
+    // This happens when the user ran `gh auth login` (default OAuth) instead of authenticating
+    // through the HQ GitHub App device flow.
+    if (
+      res.status === 403 &&
+      pathname.startsWith("/user/installations") &&
+      body.includes("authorized to a GitHub App")
+    ) {
+      throw new Error(
+        "You're signed in with a regular GitHub token that can't list App installations.\n" +
+        "  HQ Teams requires authentication through the HQ GitHub App.\n\n" +
+        "  To fix this, log out and re-run the installer:\n" +
+        "    gh auth logout\n" +
+        "    npx create-hq"
+      );
+    }
+
     throw new Error(`GitHub API ${res.status} ${pathname}: ${body}`);
   }
 
