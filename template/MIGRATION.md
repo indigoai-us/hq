@@ -1310,7 +1310,7 @@ Copy these directories to your `knowledge/`:
 go install github.com/tobi/qmd@latest
 
 # Index your HQ
-cd ~/Documents/HQ
+cd $HQ_ROOT
 qmd update && qmd embed
 ```
 

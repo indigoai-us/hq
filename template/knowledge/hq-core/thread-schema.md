@@ -30,7 +30,7 @@ Example: `T-20260123-143052-mrr-report`
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:35:00.000Z",
 
-  "workspace_root": "~/Documents/HQ",
+  "workspace_root": "$HQ_ROOT",
   "cwd": "repos/private/{company}",
 
   "git": {
@@ -80,7 +80,7 @@ Auto-checkpoints are created automatically by PostToolUse hooks after git commit
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:30:52.000Z",
 
-  "workspace_root": "~/Documents/HQ",
+  "workspace_root": "$HQ_ROOT",
   "cwd": "repos/private/{company}",
 
   "git": {

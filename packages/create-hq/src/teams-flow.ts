@@ -15,6 +15,7 @@ import {
   type GitHubAuth,
   loadGitHubAuth,
   isGitHubAuthValid,
+  isAppScopedToken,
   startGitHubDeviceFlow,
   clearGitHubAuth,
   openBrowser,
@@ -54,22 +55,44 @@ async function confirm(question: string, defaultYes: boolean): Promise<boolean> 
 }
 
 /**
- * Authenticate the user, reusing a stored token if it's still valid.
- * If the user doesn't have a GitHub account yet, walk them through creating one.
+ * Authenticate the user, reusing a stored HQ App token if it's still valid.
+ *
+ * Priority:
+ *   1. ~/.hq/app-token.json — cached HQ App token from a previous session
+ *   2. Device flow — browser-based OAuth through the hq-team-sync GitHub App
+ *
+ * The user's existing `gh` CLI auth is never read or modified.
  */
 export async function authenticate(): Promise<GitHubAuth | null> {
-  // Try existing token first
+  // 1. Try the cached HQ App token
   const existing = loadGitHubAuth();
   if (existing) {
     const valid = await isGitHubAuthValid(existing);
     if (valid) {
-      info(`Already signed in as ${chalk.cyan("@" + existing.login)}`);
-      return existing;
+      // Double-check it actually has App scopes (not a leftover from the old
+      // gh-based flow where a regular OAuth token could end up in the file)
+      const appScoped = await isAppScopedToken(existing);
+      if (appScoped === "yes") {
+        info(`Already signed in as ${chalk.cyan("@" + existing.login)}`);
+        return existing;
+      }
+      if (appScoped === "unknown") {
+        // Transient failure (network, 5xx) — keep the cached token and
+        // optimistically reuse it. If it truly lacks scopes, the downstream
+        // /user/installations call will fail with a clear error.
+        info(`Already signed in as ${chalk.cyan("@" + existing.login)} (scope check skipped — GitHub unreachable)`);
+        return existing;
+      }
+      // appScoped === "no" — definitively wrong token type (403)
+      info(`Signed in as ${chalk.cyan("@" + existing.login)} but token lacks HQ App permissions`);
+      clearGitHubAuth();
+    } else {
+      info("HQ App token expired — re-authenticating");
+      clearGitHubAuth();
     }
-    info("Stored credentials expired — re-authenticating");
-    clearGitHubAuth();
   }
 
+  // 2. No valid App token — run the device flow
   // Quick check: does the user have a GitHub account?
   console.log();
   const hasGithub = await confirm("Do you have a GitHub account?", true);

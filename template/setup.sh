@@ -94,6 +94,25 @@ find "$REPO_ROOT/tools" -name '*.sh' -exec chmod +x {} \;
 find "$REPO_ROOT/scripts" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 ok "scripts marked executable"
 
+# ── 3b. Snapshot user's PATH into settings.json ────────────────────────────
+# Claude Code's env block does literal assignment (no $PATH expansion).
+# Subagents (claude -p) run non-interactive bash that never sources .zshrc,
+# so they'd only see the system PATH. We snapshot the user's current PATH
+# (which includes nvm, bun, pnpm, pyenv, ~/.local/bin, etc.) at install time.
+
+echo ""
+echo "Configuring PATH for subagents…"
+
+SETTINGS_FILE="$REPO_ROOT/.claude/settings.json"
+if [[ -f "$SETTINGS_FILE" ]]; then
+  CURRENT_PATH="$PATH"
+  UPDATED="$(jq --arg p "$CURRENT_PATH" '.env.PATH = $p' "$SETTINGS_FILE")"
+  printf '%s\n' "$UPDATED" > "$SETTINGS_FILE"
+  ok "PATH snapshot written to settings.json"
+else
+  skip "settings.json not found — PATH not configured"
+fi
+
 # ── 4. Create company structure ──────────────────────────────────────────────
 
 echo ""

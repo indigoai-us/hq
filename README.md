@@ -28,6 +28,21 @@ claude
 | `.claude/skills/` | 44+ skills (design, animate, polish, review, audit, and more) |
 | `workspace/` | Threads, checkpoints, reports, social drafts |
 
+## HQ Teams
+
+Share a workspace with your team — an admin creates a team backed by a private GitHub repo, invites members, and everyone gets synchronized team content alongside their personal HQ.
+
+```bash
+# Admin: create a team
+npx create-hq
+# Choose "Create an HQ Teams account" → pick org → invite members
+
+# Member: accept an invite
+npx create-hq --invite hq_<token>
+```
+
+Team content lives at `companies/{slug}/` as an embedded git repo. [Read the Teams docs →](https://hq-teams-docs.vercel.app)
+
 ## Cloud Sync
 
 Sync your HQ to the cloud for mobile access:
@@ -60,6 +75,7 @@ indigoai-us/hq/
 │   └── hq-cloud/      # S3 sync engine
 ├── apps/
 │   ├── docs/          # Docs site (Astro + Starlight)
+│   ├── teams-docs/    # HQ Teams docs (Astro + Starlight)
 │   └── web/           # PWA dashboard (hq.indigoai.com)
 ├── infra/             # AWS infrastructure (SST)
 └── template/          # HQ template distributed to users

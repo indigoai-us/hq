@@ -27,6 +27,7 @@ import {
 } from "./auth.js";
 import { writeCompanyTemplate, type TeamMetadata } from "./company-template.js";
 import { stepStatus, success, warn, info } from "./ui.js";
+import { linkTeamCommands, installTeamCommands } from "./team-setup.js";
 import {
   encodeInviteToken,
   printInviteSummary,
@@ -518,6 +519,17 @@ export async function runAdminOnboarding(
         repoHtmlUrl: repo.html_url,
       };
     }
+  }
+
+  // Install bundled team commands (invite, sync, promote)
+  const installed = installTeamCommands(hqRoot);
+  if (installed.length > 0) {
+    info(`Installed ${installed.length} team command${installed.length === 1 ? "" : "s"}: ${installed.join(", ")}`);
+  }
+  // Link team-distributed commands as slash commands
+  const symlinks = linkTeamCommands(hqRoot, teamSlug);
+  if (symlinks.linked.length > 0) {
+    info(`Linked ${symlinks.linked.length} team command${symlinks.linked.length === 1 ? "" : "s"}`);
   }
 
   console.log();

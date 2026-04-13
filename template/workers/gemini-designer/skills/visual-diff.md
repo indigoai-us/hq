@@ -18,7 +18,7 @@ Optional:
 
 2. **Compare via Gemini**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && cat {file1} {file2} {design_tokens} | GEMINI_API_KEY=$KEY \
      gemini -p "Visual diff analysis. Compare these two components for inconsistencies:
 

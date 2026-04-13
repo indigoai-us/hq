@@ -1,5 +1,31 @@
 # Changelog
 
+## [10.9.0] — 2026-04-13
+
+### Added
+- **Context meter Stop hook** — writes context window usage to `/tmp/.hq-context-meter` at session end
+- **Animated spinners + streaming download** — improved create-hq UX with progress indicators
+- **Team commands** (`/invite`, `/promote`, `/sync`) — moved from core template to create-hq package
+- **Admin role check** in `/invite` + new `/promote` command for team management
+- **App token store** — HQ App token stored in `~/.hq/` instead of gh CLI
+- **ESLint + Husky pre-commit** — lint enforcement on commit with CI integration
+- **MCP process cleanup hook** — kills orphan MCP server processes on session Stop
+- **`cleanup-mcp-processes` policy** — documents MCP cleanup behavior
+
+### Fixed
+- **Hardcoded `~/Documents/HQ` paths** replaced with `$HQ_ROOT` for portable installs
+- **Hardcoded PATH in settings.json** that broke subagent tool detection
+- **Teams prompt** now skips in non-interactive environments
+- **Terminal box art alignment** — measures visible string width correctly
+- **Token handling** — don't clear cached token on transient scope-probe failures
+- **Auth error messages** — distinguish 401 (expired) from 403 (not admin)
+
+### Changed
+- **Team auth** refactored from `credentials.json` to gh CLI
+- **PATH snapshot** saved into `settings.json` at install time
+- **Template policies** — 154+ synced, scope-filtered
+- **CLAUDE.md** — refreshed with Teams, context meter, MCP cleanup sections
+
 ## [10.6.0] — 2026-04-07
 
 ### Added

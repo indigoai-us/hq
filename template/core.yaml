@@ -1,6 +1,6 @@
 version: 1
 hqVersion: "10.5.0"
-updatedAt: "2026-04-11T12:37:53Z"
+updatedAt: "2026-04-13T15:44:02Z"
 rules:
   locked:
     - .claude/CLAUDE.md
@@ -22,14 +22,14 @@ rules:
   open:
     - "**"
 checksums:
-  .claude/CLAUDE.md: 118475be637de85b710d6e9510c45d96d50657c6196f0bd64c806a70806de2c0
-  .claude/hooks: aadcbaa79a77cfb2e7f43fb0404c9eef70bbe323e649513adc67d8aa3b4b33e4
-  .claude/policies: 968a85874ba1861cb204c0e2a40c820d1f5e600a05f95f774e1c4f397b9a4cab
-  .claude/settings.json: 9dda864e4c462d6cfb88549ce6c75e2b014ce5391b9913408052cda3ab4578f8
-  CHANGELOG.md: 2869e0d837c2f3b3458568a7d9aa844415e510639eca75dfcf8d0824b88d0ef7
-  companies/_template: 82de3103e2fee44daccad652896946090106907a454b93346342238466ecae3c
-  companies/manifest.yaml: c9a664bb510b5c4b40e2d327f51b1d962b1bc52edfc6b3bab8bb2bf8b3b9092d
-  MIGRATION.md: 16d72e5c4bff347577b172772fb2caab0964d390a68028085555ffb02c6d5cbc
-  modules: 9614c88a604f7a2529682265c7abe6a402bc995544ec473af15c53b6b9bb04d2
-  scripts: 7a1e01f93bdc9de8f941c23804dda75593cb0c6fdc7bf98061645290aad9e3a8
-  workers/registry.yaml: 1ef3af2a22e40f932376f5f67b43bf20afebcdef643d71e3febbf24e6ed1b07a
+  .claude/CLAUDE.md: 2c5eb98d2ffd77c8f933ea3a1872e6bbfc84e0e6120e95b550012b113eaf4798
+  .claude/hooks: 689e20e4795072f323e6cea8a556f89698b6e299d20e9e00ca3ab19c7d5a40c9
+  .claude/policies: 6f29062f7c0962a5b8934360aaea208a640f649357095101ea62777556c8e463
+  .claude/settings.json: f0a1ba000ffa47fbe83c0576fc9026f19dc49981abda9f80f18d1f8a337a90c5
+  CHANGELOG.md: e320581ecb21a2427bae70737824b08f3fd61c05fa39e5b316f228ca2f3a6513
+  MIGRATION.md: eacc1b42e8c952ea793404d51e12c9cc724b764bf04a0c8b0a464d0760cc8dca
+  companies/_template: 989a2d928de46bd5933d2f9d803bb9b5d58cb33dfb65d88f8b2fbd7f1b553d6a
+  companies/manifest.yaml: 61b9cc98d7f3f80361f59affc3f50dab3d2dfe2da332ee5d6d44e948ae75802c
+  modules: 41b1ea0ea7bac0a5fcb227bc9e5041845f949d0bfdeb2b9267b831b7824698cc
+  scripts: cbc1d97735ac31e922fe267d332e46f4ece4775a47cf988379422928525f44e4
+  workers/registry.yaml: bdece889ccfb5772ecc25f968b79ee0372f6a665afae973f8070f42eaada0130

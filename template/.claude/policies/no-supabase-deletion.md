@@ -8,13 +8,8 @@ version: 1
 created: 2026-02-22
 updated: 2026-02-22
 source: migration
-learned_from: "CLAUDE.md learned rules migration 2026-02-22"
 ---
 
 ## Rule
 
-NEVER delete Supabase projects without confirming with user first. rose-flower was {Product}'s DB and was incorrectly deleted as "unused" on 2026-02-10. Always ask before deleting any Supabase/Vercel project.
-
-## Rationale
-
-Prevents irreversible data loss from mistakenly identifying active projects as unused.
+NEVER delete Supabase projects without confirming with user first. Projects that appear unused may still be active production databases. Always ask before deleting any Supabase/Vercel project.

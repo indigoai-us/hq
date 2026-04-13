@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-22
 updated: 2026-02-22
 source: migration
-learned_from: "CLAUDE.md learned rules migration 2026-02-22"
 ---
 
 ## Rule

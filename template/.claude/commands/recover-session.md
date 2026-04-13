@@ -269,7 +269,7 @@ Build thread in HQ format:
 
 Use the death timestamp (not current time) for the thread ID — represents when work happened.
 
-Relativize file paths: strip `~/Documents/HQ/` prefix.
+Relativize file paths: strip `$HQ_ROOT/` prefix.
 
 If `--dry-run`, display what would be written and stop here. Do NOT write any files.
 

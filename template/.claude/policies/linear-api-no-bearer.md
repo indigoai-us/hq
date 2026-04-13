@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: back-pressure-failure
-learned_from: "{company}-customer-growth design issue assignment session"
 ---
 
 ## Rule

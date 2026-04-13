@@ -7,11 +7,13 @@
  *   1. POST github.com/login/device/code with our App's client_id
  *   2. Display user_code, open verification_uri in browser
  *   3. Poll github.com/login/oauth/access_token at the GitHub-specified interval
- *   4. On success: GET api.github.com/user → store { access_token, login, id, name, email }
+ *   4. On success: GET api.github.com/user → save token to ~/.hq/app-token.json
  *
- * Token is stored at ~/.hq/credentials.json (mode 0600). Tokens are
- * GitHub App user-to-server tokens (ghu_…), so they ignore OAuth scopes —
- * permissions are configured on the App settings page.
+ * The HQ App token is stored in ~/.hq/app-token.json (mode 0600) and is
+ * completely independent of the user's `gh` CLI auth. This means:
+ *   - Running `gh auth login` / `gh auth logout` does not affect HQ auth
+ *   - HQ auth does not overwrite the user's existing `gh` token
+ *   - The App token is only used for HQ-specific API calls (installations, etc.)
  *
  * Token values are NEVER written to stdout or logs.
  */
@@ -33,13 +35,15 @@ const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_API_USER_URL = "https://api.github.com/user";
 
 const HQ_DIR = path.join(os.homedir(), ".hq");
-const CREDENTIALS_FILE = path.join(HQ_DIR, "credentials.json");
+
+/** Where the HQ App token is persisted. Exported for tests. */
+export const HQ_APP_TOKEN_PATH = path.join(HQ_DIR, "app-token.json");
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-/** Stored credentials for the authenticated GitHub user. */
+/** Authenticated GitHub user info. The access_token is held in-memory only. */
 export interface GitHubAuth {
-  /** ghu_ user-to-server token from GitHub App device flow. */
+  /** ghu_ user-to-server token from GitHub App device flow (in-memory only). */
   access_token: string;
   /** GitHub login (username). */
   login: string;
@@ -83,56 +87,72 @@ interface GitHubUserResponse {
   email: string | null;
 }
 
-// ─── Token store ────────────────────────────────────────────────────────────
+// ─── Token persistence (~/.hq/app-token.json) ────────────────────────────
 
-function ensureHqDir(): void {
-  if (!fs.existsSync(HQ_DIR)) {
-    fs.mkdirSync(HQ_DIR, { recursive: true, mode: 0o700 });
+/**
+ * Save the HQ App auth to ~/.hq/app-token.json.
+ *
+ * The file is written with mode 0600 (owner read+write only). The user's
+ * existing `gh` CLI auth is never touched.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
+ */
+export function saveGitHubAuth(auth: GitHubAuth, tokenPath = HQ_APP_TOKEN_PATH): void {
+  const dir = path.dirname(tokenPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-}
-
-/** Save credentials to ~/.hq/credentials.json with 0600 perms. */
-export function saveGitHubAuth(auth: GitHubAuth): void {
-  ensureHqDir();
-  fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(auth, null, 2), {
+  fs.writeFileSync(tokenPath, JSON.stringify(auth, null, 2), {
+    encoding: "utf-8",
     mode: 0o600,
   });
 }
 
-/** Load credentials, or null if missing/invalid. */
-export function loadGitHubAuth(): GitHubAuth | null {
+/**
+ * Load HQ App auth from ~/.hq/app-token.json.
+ *
+ * Returns null if the file doesn't exist, is corrupted, or is missing
+ * required fields. Does NOT fall back to `gh` CLI — the HQ App token
+ * is separate from the user's personal GitHub auth.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
+ */
+export function loadGitHubAuth(tokenPath = HQ_APP_TOKEN_PATH): GitHubAuth | null {
   try {
-    if (!fs.existsSync(CREDENTIALS_FILE)) return null;
-    const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_FILE, "utf-8"));
-    if (
-      typeof parsed.access_token !== "string" ||
-      typeof parsed.login !== "string" ||
-      typeof parsed.id !== "number"
-    ) {
-      return null;
-    }
-    return parsed as GitHubAuth;
+    if (!fs.existsSync(tokenPath)) return null;
+    const raw = fs.readFileSync(tokenPath, "utf-8");
+    const data = JSON.parse(raw);
+    // Minimal validation — must have at least a token and login
+    if (!data.access_token || !data.login) return null;
+    return data as GitHubAuth;
   } catch {
     return null;
   }
 }
 
-/** Remove stored credentials. */
-export function clearGitHubAuth(): void {
+/**
+ * Remove stored HQ App credentials.
+ *
+ * Deletes ~/.hq/app-token.json. Does NOT touch `gh` CLI auth.
+ *
+ * @param tokenPath — override for testing; defaults to HQ_APP_TOKEN_PATH
+ */
+export function clearGitHubAuth(tokenPath = HQ_APP_TOKEN_PATH): void {
   try {
-    if (fs.existsSync(CREDENTIALS_FILE)) {
-      fs.unlinkSync(CREDENTIALS_FILE);
+    if (fs.existsSync(tokenPath)) {
+      fs.unlinkSync(tokenPath);
     }
   } catch {
-    // ignore
+    // ignore — may already be gone
   }
 }
 
 /**
  * Quick liveness probe — does the stored token still work?
- * Calls api.github.com/user with the token; returns true on 200.
+ * Validates the token by hitting GET /user on api.github.com.
  */
 export async function isGitHubAuthValid(auth: GitHubAuth): Promise<boolean> {
+  if (!auth.access_token) return false;
   try {
     const res = await fetch(GITHUB_API_USER_URL, {
       headers: {
@@ -145,6 +165,45 @@ export async function isGitHubAuthValid(auth: GitHubAuth): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
+  }
+}
+
+/** Result of the App scope probe. */
+export type AppScopeResult = "yes" | "no" | "unknown";
+
+/**
+ * Probe whether a token has GitHub App scopes by hitting /user/installations.
+ *
+ * Returns:
+ *   - `"yes"`     — 2xx, token has App scopes
+ *   - `"no"`      — 403, token is definitively the wrong type
+ *   - `"unknown"` — transient failure (network error, 5xx, timeout)
+ *
+ * Callers should only delete cached tokens on `"no"`, not on `"unknown"`.
+ * This is a lightweight check — we request per_page=1 to minimise payload.
+ */
+export async function isAppScopedToken(auth: GitHubAuth): Promise<AppScopeResult> {
+  if (!auth.access_token) return "no";
+  try {
+    const res = await fetch(
+      "https://api.github.com/user/installations?per_page=1",
+      {
+        headers: {
+          Authorization: `token ${auth.access_token}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "create-hq",
+        },
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    if (res.ok) return "yes";
+    // 401/403 = definitive "wrong token type"
+    if (res.status === 401 || res.status === 403) return "no";
+    // Anything else (429, 5xx) = transient
+    return "unknown";
+  } catch {
+    // Network error, timeout, DNS failure = transient
+    return "unknown";
   }
 }
 
@@ -179,6 +238,12 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Run the GitHub App device authorization flow.
+ *
+ * On success, the token is:
+ *   1. Returned in-memory as part of GitHubAuth (for the current session)
+ *   2. Persisted to ~/.hq/app-token.json for future sessions
+ *
+ * The user's existing `gh` CLI auth is never modified.
  *
  * Throws on:
  *   - Network errors talking to github.com
@@ -302,6 +367,7 @@ export async function startGitHubDeviceFlow(): Promise<GitHubAuth> {
       issued_at: new Date().toISOString(),
     };
 
+    // Persist for future sessions (does not touch gh CLI)
     saveGitHubAuth(auth);
     return auth;
   }
@@ -337,6 +403,21 @@ export async function githubApi<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+
+    // Friendly error when a non-App token hits the App-only installations endpoint.
+    if (
+      res.status === 403 &&
+      pathname.startsWith("/user/installations") &&
+      body.includes("authorized to a GitHub App")
+    ) {
+      throw new Error(
+        "You're signed in with a regular GitHub token that can't list App installations.\n" +
+        "  HQ Teams requires authentication through the HQ GitHub App.\n\n" +
+        "  To fix this, re-run the installer — it will prompt you to authorize the HQ App:\n" +
+        "    npx create-hq"
+      );
+    }
+
     throw new Error(`GitHub API ${res.status} ${pathname}: ${body}`);
   }
 
