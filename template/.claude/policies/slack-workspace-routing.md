@@ -14,10 +14,10 @@ Before any Slack operation, determine the target workspace from context (company
 
 | Workspace | Company | Team ID |
 |-----------|---------|---------|
-| `{workspace-1}` | {company}, {workspace-1} | `{team-id-1}` |
-| `{workspace-2}` | {company}, {company}, personal | `{team-id-2}` |
+| `voyage` | {company}, voyage | `T7V83HY5B` |
+| `{company}` | {company}, {company}, personal | `T043AC36YE4` |
 
-Default is `{workspace-1}`. Always pass `workspace:` param when targeting non-default.
+Default is `voyage`. Always pass `workspace:` param when targeting non-default.
 
 ### Known channels → workspace
 
@@ -26,16 +26,16 @@ Default is `{workspace-1}`. Always pass `workspace:` param when targeting non-de
 | `#hq` | `{company}` | HQ project updates, private channel |
 | `#{company}-product` | `{company}` | Product updates |
 | `#releases` | `{company}` | Release announcements |
-| `#team-{company}-agents` | `{workspace-1}` | agent ops |
+| `#team-{company}-agents` | `voyage` | LR agent ops |
 
 ### Known people → workspace
 
 | Person | Workspace | Slack ID | Username |
 |--------|-----------|----------|----------|
-| {team-member} | {company} | `{slack-id-1}` | `{username-1}` |
-| {team-member} | {company} | `{slack-id-2}` | `{username-2}` |
-| {your-name} | both ({company} primary) | `{slack-id-3}` ({company}) | `{username-3}` |
-| Team members | {workspace-1} | — | — |
+| {team-member} Johnson | {company} | `U065YSKUCJK` | `therealstefan` |
+| {team-member} Kalim | {company} | `U0823D5QDJM` | `{team-member}` |
+| {your-name} Epstein | both ({company} primary) | `U042Z9XCRK3` ({company}) | `me1` |
+| Ryan, Josh, {Product} team | voyage | — | — |
 
 **`find_user` gotcha**: Search matches `name` (username), not `real_name`. Use username or Slack ID directly if name search fails.
 

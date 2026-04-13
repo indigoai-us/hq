@@ -13,28 +13,43 @@ Re-index and re-embed all qmd collections (HQ knowledge + indexed codebases).
 
 ## Collections
 
-Run `qmd status` for live counts. Default collections:
+Run `qmd status` for live counts. Current collections (17):
 
 | Collection | Path | Pattern |
 |---|---|---|
-| `hq` | `~/Documents/HQ` | `**/*.{md,json,yaml,yml}` |
-| `{product}` | `~/Documents/HQ/repos/private/{product}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` |
-| `personal` | `~/Documents/HQ/companies/personal/knowledge` | `**/*.md` |
-
-Each company added via `/newcompany` gets its own collection:
-
-| Collection | Path | Pattern |
-|---|---|---|
-| `{company-slug}` | `~/Documents/HQ/companies/{company-slug}/knowledge` | `**/*.md` |
+| `hq` | `~/HQ` | `**/*.{md,json,yaml,yml}` |
+| `{product}` | `~/HQ/repos/private/{product}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `personal` | `~/HQ/companies/personal` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.{md,mdx}` |
+| `{company}` | `~/HQ/companies/{company}` | `**/*.md` |
+| `{company}` | `~/HQ/repos/private/knowledge-{company}` | `**/*.md` |
+| `{company}` | `~/HQ/repos/private/knowledge-{company}` | `**/*.md` |
 
 ## Process
 
-### 1. Update index (re-scan all collections)
+### 1. Purge tombstones (prevents UNIQUE constraint crash)
+```bash
+qmd cleanup
+```
+
+`qmd update` uses INSERT (not UPSERT) and crashes with `UNIQUE constraint failed: documents.collection, documents.path` when a freshly-scanned path collides with an `active=0` tombstone left behind by `deactivateDocument` (qmd/src/qmd.ts:1458). `qmd cleanup` drops tombstones first via `deleteInactiveDocuments` (qmd/src/store.ts:959).
+
+### 2. Update index (re-scan all collections)
 ```bash
 qmd update
 ```
 
-### 2. Re-embed
+### 3. Re-embed
 
 If `--force` in $ARGUMENTS:
 ```bash
@@ -46,7 +61,7 @@ Otherwise (incremental — only new/changed files):
 qmd embed
 ```
 
-### 3. Show status
+### 4. Show status
 ```bash
 qmd status
 ```
@@ -82,27 +97,35 @@ To completely rebuild all collections:
 qmd cleanup
 
 # HQ collection
-qmd collection add ~/Documents/HQ --name hq --mask "**/*.{md,json,yaml,yml}"
+qmd collection add ~/HQ --name hq --mask "**/*.{md,json,yaml,yml}"
 qmd context add qmd://hq "HQ knowledge base: company knowledge, AI worker definitions, project PRDs, slash commands, reports, social drafts, and session threads."
 qmd context add qmd://hq/knowledge "HQ-level knowledge bases: Ralph coding methodology, worker framework patterns, dev-team practices, design styles, security framework, project templates."
 qmd context add qmd://hq/.claude/commands "Claude Code slash commands: 44 agent skills for session management, worker execution, project management, content creation, design, deployment."
-qmd context add qmd://hq/companies "Company-scoped directories each with knowledge bases, settings, and data."
+qmd context add qmd://hq/companies "17 company-scoped directories each with knowledge bases, settings, and data."
 qmd context add qmd://hq/workers "AI worker definitions with YAML configs and skill markdown files. Top-level ops workers, dev-team, content team, social team, pr-team, gardener-team, gemini-team."
 qmd context add qmd://hq/projects "Project PRDs and READMEs for active and planned projects across all companies."
 qmd context add qmd://hq/workspace "Runtime workspace: session threads, checkpoints, orchestrator state, reports, social drafts, content ideas, metrics."
 
 # {PRODUCT} collection
-qmd collection add ~/Documents/HQ/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
+qmd collection add ~/HQ/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
 qmd context add qmd://{product} "{PRODUCT} monorepo: Nx monorepo for {Product}/{Product}. Apps (web-admin, web-client, web-front, function, {company}, cdp) + libs (core, db, ui, web, util, schema). Next.js, React 19, TypeScript, SST, Prisma, PostgreSQL."
 qmd context add qmd://{product}/apps "Application code: Next.js web apps, AWS Lambda functions, {Product} SMS platform, CDP."
 qmd context add qmd://{product}/libs "Shared libraries: db/Prisma schemas, core feature modules (auth, billing, brand, conversation, ai, workflow), UI components, utilities."
 
-# Company collections (one per company knowledge base)
-# Add each company slug from companies/manifest.yaml:
-for co in personal {your-company-1} {your-company-2}; do
-  qmd collection add ~/Documents/HQ/companies/$co/knowledge --name $co --mask "**/*.md"
+# Company collections (one per company, at company root — matches live ~/.config/qmd/index.yml)
+for co in {company} {company} personal {company} {company} {company} {company} {company} {company} {company} {company} {company}; do
+  qmd collection add ~/HQ/companies/$co --name $co --mask "**/*.md"
   qmd context add qmd://$co "$co company knowledge base"
 done
+# {company} uses mdx too
+qmd collection add ~/HQ/companies/{company} --name {company} --mask "**/*.{md,mdx}"
+qmd context add qmd://{company} "{company} company knowledge base"
+
+# {company} and {company} live in standalone private knowledge repos
+qmd collection add ~/HQ/repos/private/knowledge-{company} --name {company} --mask "**/*.md"
+qmd context add qmd://{company} "{company} company knowledge base"
+qmd collection add ~/HQ/repos/private/knowledge-{company} --name {company} --mask "**/*.md"
+qmd context add qmd://{company} "{company} company knowledge base"
 
 qmd embed
 ```
