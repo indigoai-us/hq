@@ -24,7 +24,7 @@ set -euo pipefail
 #   --tmux              Launch in tmux session with Remote Control
 # =============================================================================
 
-HQ_ROOT="~/Documents/HQ"
+HQ_ROOT="${HQ_ROOT:-$HOME/hq}"
 export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
