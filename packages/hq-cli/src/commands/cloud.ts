@@ -9,7 +9,7 @@ import { findHqRoot } from "../utils/manifest.js";
 export function registerCloudCommands(program: Command): void {
   program
     .command("init")
-    .description("Authenticate with {Product}AI and set up cloud sync")
+    .description("Authenticate with IndigoAI and set up cloud sync")
     .action(async () => {
       try {
         const hqRoot = findHqRoot();

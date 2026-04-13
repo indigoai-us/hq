@@ -1,5 +1,5 @@
 /**
- * Authentication — OAuth flow with {Product}AI
+ * Authentication — OAuth flow with IndigoAI
  * Opens browser for sign-in, receives tokens via localhost callback
  */
 
