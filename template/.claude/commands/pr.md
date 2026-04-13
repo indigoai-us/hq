@@ -20,7 +20,7 @@ Dispatch PR tasks to {company}-agent for autonomous execution. Results appear at
 Run the agent locally with Bash:
 
 ```bash
-cd ~/Documents/HQ/repos/private/{company}-agent && node dist/entry.js agent --local -m "{message}"
+cd ${HQ_ROOT:-$HOME/hq}/repos/private/{company}-agent && node dist/entry.js agent --local -m "{message}"
 ```
 
 The `--local` flag runs the embedded agent (uses model provider API keys from shell). The `-m` flag passes the task message. The agent auto-loads the relevant skill based on the message content.

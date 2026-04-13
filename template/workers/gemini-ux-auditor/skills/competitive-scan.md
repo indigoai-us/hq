@@ -18,7 +18,7 @@ Optional:
 
 2. **Analyze via Gemini (with Google Search grounding)**
    ```bash
-   KEY=$(grep GEMINI_API_KEY ~/Documents/HQ/settings/gemini/credentials.env | cut -d= -f2)
+   KEY=$(grep GEMINI_API_KEY ${HQ_ROOT:-$HOME/hq}/settings/gemini/credentials.env | cut -d= -f2)
    cd {cwd} && find src/app src/components -name "*.tsx" 2>/dev/null | head -30 | xargs cat | GEMINI_API_KEY=$KEY \
      gemini -p "Competitive UX analysis for: {product}.
 
