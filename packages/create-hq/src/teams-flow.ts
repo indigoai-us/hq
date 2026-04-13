@@ -72,11 +72,18 @@ export async function authenticate(): Promise<GitHubAuth | null> {
       // Double-check it actually has App scopes (not a leftover from the old
       // gh-based flow where a regular OAuth token could end up in the file)
       const appScoped = await isAppScopedToken(existing);
-      if (appScoped) {
+      if (appScoped === "yes") {
         info(`Already signed in as ${chalk.cyan("@" + existing.login)}`);
         return existing;
       }
-      // Token works for /user but not for installations — stale or wrong type
+      if (appScoped === "unknown") {
+        // Transient failure (network, 5xx) — keep the cached token and
+        // optimistically reuse it. If it truly lacks scopes, the downstream
+        // /user/installations call will fail with a clear error.
+        info(`Already signed in as ${chalk.cyan("@" + existing.login)} (scope check skipped — GitHub unreachable)`);
+        return existing;
+      }
+      // appScoped === "no" — definitively wrong token type (403)
       info(`Signed in as ${chalk.cyan("@" + existing.login)} but token lacks HQ App permissions`);
       clearGitHubAuth();
     } else {

@@ -168,13 +168,22 @@ export async function isGitHubAuthValid(auth: GitHubAuth): Promise<boolean> {
   }
 }
 
+/** Result of the App scope probe. */
+export type AppScopeResult = "yes" | "no" | "unknown";
+
 /**
  * Probe whether a token has GitHub App scopes by hitting /user/installations.
- * Returns true if the endpoint responds 2xx, false on 403 or error.
+ *
+ * Returns:
+ *   - `"yes"`     — 2xx, token has App scopes
+ *   - `"no"`      — 403, token is definitively the wrong type
+ *   - `"unknown"` — transient failure (network error, 5xx, timeout)
+ *
+ * Callers should only delete cached tokens on `"no"`, not on `"unknown"`.
  * This is a lightweight check — we request per_page=1 to minimise payload.
  */
-export async function isAppScopedToken(auth: GitHubAuth): Promise<boolean> {
-  if (!auth.access_token) return false;
+export async function isAppScopedToken(auth: GitHubAuth): Promise<AppScopeResult> {
+  if (!auth.access_token) return "no";
   try {
     const res = await fetch(
       "https://api.github.com/user/installations?per_page=1",
@@ -187,9 +196,14 @@ export async function isAppScopedToken(auth: GitHubAuth): Promise<boolean> {
         signal: AbortSignal.timeout(10_000),
       }
     );
-    return res.ok;
+    if (res.ok) return "yes";
+    // 401/403 = definitive "wrong token type"
+    if (res.status === 401 || res.status === 403) return "no";
+    // Anything else (429, 5xx) = transient
+    return "unknown";
   } catch {
-    return false;
+    // Network error, timeout, DNS failure = transient
+    return "unknown";
   }
 }
 

@@ -239,23 +239,28 @@ describe("isGitHubAuthValid", () => {
 describe("isAppScopedToken", () => {
   beforeEach(() => mockFetch.mockReset());
 
-  it("returns true when /user/installations responds 200", async () => {
+  it('returns "yes" when /user/installations responds 200', async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
-    expect(await isAppScopedToken(fakeAuth)).toBe(true);
+    expect(await isAppScopedToken(fakeAuth)).toBe("yes");
   });
 
-  it("returns false on 403 (regular OAuth token)", async () => {
+  it('returns "no" on 403 (definitive — wrong token type)', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 403 });
-    expect(await isAppScopedToken(fakeAuth)).toBe(false);
+    expect(await isAppScopedToken(fakeAuth)).toBe("no");
   });
 
-  it("returns false on network error", async () => {
+  it('returns "unknown" on 5xx (transient server error)', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    expect(await isAppScopedToken(fakeAuth)).toBe("unknown");
+  });
+
+  it('returns "unknown" on network error', async () => {
     mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
-    expect(await isAppScopedToken(fakeAuth)).toBe(false);
+    expect(await isAppScopedToken(fakeAuth)).toBe("unknown");
   });
 
-  it("returns false when access_token is empty", async () => {
-    expect(await isAppScopedToken({ ...fakeAuth, access_token: "" })).toBe(false);
+  it('returns "no" when access_token is empty', async () => {
+    expect(await isAppScopedToken({ ...fakeAuth, access_token: "" })).toBe("no");
     // fetch should not have been called
     expect(mockFetch).not.toHaveBeenCalled();
   });
