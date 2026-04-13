@@ -5,7 +5,7 @@ scope: tool
 trigger: mcp__paper__write_html
 enforcement: soft
 created: 2026-03-19
-source: design session
+source: session-learning
 ---
 
 ## Rule

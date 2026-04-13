@@ -14,7 +14,3 @@ created: 2026-03-04
 3. **If auth fails, the ONLY options are:** (a) fix the auth, (b) draft the email text for the user to send manually, or (c) ask the user what to do. Never send from a different account.
 4. **Verify the account alias matches the intended sender before every send.** Double-check `account` parameter matches what the user requested.
 5. **Test subject line encoding.** Avoid special characters (×, —, etc.) in subject lines when using MCP tools. Use ASCII equivalents (x, -) to prevent UTF-8 encoding issues.
-
-## Rationale
-
-On 2026-03-04, a kickoff email to a client was sent from the wrong Gmail account (personal instead of the business account) with a garbled subject line. The business account auth was broken, and Claude fell back to personal without asking. This sent a broken, unprofessional email to the client the day before their kickoff meeting. This must never happen again.

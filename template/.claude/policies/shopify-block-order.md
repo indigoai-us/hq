@@ -26,7 +26,3 @@ Correct format:
   "order": ["my-section"]
 }
 ```
-
-## Rationale
-
-Discovered 2026-03-17. All 5 BB template files used `blocks_order` → blocks rendered as placeholders on all page templates. Section settings (eyebrow, headline, subcopy) loaded fine because `settings` is the correct key. Only blocks were affected.

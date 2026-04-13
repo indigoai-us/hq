@@ -19,9 +19,3 @@ ALWAYS include `"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"` in the
 ALWAYS use full paths for Homebrew-installed binaries in the Bash tool. Claude Code's shell environment does NOT include `/opt/homebrew/bin/` in PATH. Common binaries affected: `/opt/homebrew/bin/aws`, `/opt/homebrew/bin/brew`, `/opt/homebrew/bin/node`, `/opt/homebrew/bin/npx`. Bare `aws` or `brew` will exit 127 ("command not found").
 
 HTTP-type MCP servers are unaffected (they connect to already-running processes).
-
-## Rationale
-
-On 2026-04-01, all stdio MCP servers (slack, gmail, agent-browser, paper, {company}-workspace) were failing to start silently. The root cause was `"command": "npx"` resolving to nothing in the subprocess environment. Fixed by replacing with `/opt/homebrew/bin/npx` and `/opt/homebrew/bin/node`.
-
-On 2026-04-02, `aws` CLI reported "command not found" (exit 127) despite being installed at `/opt/homebrew/bin/aws`. Same root cause — Homebrew bin not on Claude Code's Bash PATH. Fixed by using full path.
