@@ -11,11 +11,15 @@ import {
   info,
   nextSteps,
   stepStatus,
+  updateSpinnerText,
   teamOrientation,
 } from "./ui.js";
 import { checkDeps } from "./deps.js";
-import { initGit, hasGit } from "./git.js";
-import { execSync } from "child_process";
+import { initGit, hasGit, hasGitUser, configureGitUser, gitCommit } from "./git.js";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
 import { runTeamsFlow, authenticate, type TeamsFlowResult } from "./teams-flow.js";
@@ -91,15 +95,9 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode — if --invite or --join is provided, force teams-existing.
-  //    If stdin is not a TTY (headless CI, piped /dev/null), skip prompts → personal.
+  // 1. Entry mode — if --invite or --join is provided, force teams-existing
   const inviteToken = options.invite || options.join;
-  const isInteractive = process.stdin.isTTY ?? false;
-  const mode = inviteToken
-    ? "teams-existing" as EntryMode
-    : isInteractive
-      ? await chooseEntryMode()
-      : "personal" as EntryMode;
+  const mode = inviteToken ? "teams-existing" as EntryMode : await chooseEntryMode();
   if (mode === "exit") {
     console.log();
     info("No problem — come back any time with: npx create-hq");
@@ -190,7 +188,9 @@ export async function scaffold(
     const fetchLabel = "Fetching HQ template from GitHub...";
     stepStatus(fetchLabel, "running");
     try {
-      const { version } = await fetchTemplate(targetDir, options.tag);
+      const { version } = await fetchTemplate(targetDir, options.tag, (phase) => {
+        updateSpinnerText(fetchLabel, phase);
+      });
       hqVersion = version;
 
       const commandCount = fs.existsSync(path.join(targetDir, ".claude", "commands"))
@@ -213,12 +213,39 @@ export async function scaffold(
   const gitLabel = "Initializing git repository";
   stepStatus(gitLabel, "running");
   if (hasGit()) {
-    try {
-      initGit(targetDir);
+    const gitResult = await initGit(targetDir);
+    if (gitResult.committed) {
       stepStatus(gitLabel, "done");
-    } catch (err: any) {
+    } else if (gitResult.initialized) {
+      stepStatus(gitLabel, "done");
+      const gitUser = hasGitUser();
+      if (!gitUser.name || !gitUser.email) {
+        info("Git needs your name and email for commits");
+        const userName = await prompt("Your name", gitUser.name || "");
+        const userEmail = await prompt("Your email", gitUser.email || "");
+        if (userName && userEmail) {
+          const configLabel = "Configuring git";
+          stepStatus(configLabel, "running");
+          await configureGitUser(userName, userEmail);
+          stepStatus(configLabel, "done");
+
+          const commitLabel = "Creating initial commit";
+          stepStatus(commitLabel, "running");
+          const committed = await gitCommit(targetDir, "Initial HQ setup via create-hq");
+          if (committed) {
+            stepStatus(commitLabel, "done");
+          } else {
+            stepStatus(commitLabel, "failed");
+            info("You can commit later: " + chalk.dim(`cd ${displayDir} && git add -A && git commit -m "Initial HQ setup"`));
+          }
+        }
+      } else {
+        warn("Git repo initialized but initial commit failed");
+        info("You can commit later: " + chalk.dim(`cd ${displayDir} && git add -A && git commit -m "Initial HQ setup"`));
+      }
+    } else {
       stepStatus(gitLabel, "failed");
-      warn(`git init failed (non-fatal): ${err.message}`);
+      warn("Git initialization failed — you can set it up later");
     }
   } else {
     stepStatus(gitLabel, "failed");
@@ -232,9 +259,9 @@ export async function scaffold(
     const computeChecksumsScript = path.join(targetDir, "scripts", "compute-checksums.sh");
     const coreIntegrityScript = path.join(targetDir, "scripts", "core-integrity.sh");
     if (fs.existsSync(computeChecksumsScript) && fs.existsSync(coreIntegrityScript)) {
-      execSync("bash scripts/compute-checksums.sh", { cwd: targetDir, stdio: "pipe" });
+      await execAsync("bash scripts/compute-checksums.sh", { cwd: targetDir });
       try {
-        execSync("bash scripts/core-integrity.sh", { cwd: targetDir, stdio: "pipe" });
+        await execAsync("bash scripts/core-integrity.sh", { cwd: targetDir });
         stepStatus(integrityLabel, "done");
       } catch {
         stepStatus(integrityLabel, "failed");
@@ -301,11 +328,13 @@ export async function scaffold(
   // }
 
   // 11. qmd index
+  const indexLabel = "Indexing HQ for search";
+  stepStatus(indexLabel, "running");
   try {
-    execSync("qmd index .", { cwd: targetDir, stdio: "pipe" });
-    success("Indexed HQ for search");
+    await execAsync("qmd index .", { cwd: targetDir });
+    stepStatus(indexLabel, "done");
   } catch {
-    // qmd not installed, skip silently — already warned in deps check
+    stepStatus(indexLabel, "failed");
   }
 
   // 12. Orientation
