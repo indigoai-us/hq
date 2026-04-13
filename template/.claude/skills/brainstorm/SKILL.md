@@ -20,7 +20,7 @@ Check if the **first word** of the user's input matches a company slug in `compa
 
 1. **Set `{co}`** = matched slug. Strip from input — remaining text is the description
 2. **Announce:** "Anchored on **{co}**"
-3. **Load policies** — Read all files in `companies/{co}/policies/` (skip `example-policy.md`)
+3. **Load policies (frontmatter-only)** — For each file in `companies/{co}/policies/` (skip `example-policy.md`), run `bash scripts/read-policy-frontmatter.sh {file}`. Note `enforcement: hard` titles. For hard-enforcement policies only, additionally Read the `## Rule` section with a targeted range. The SessionStart hook also injects the company policy digest at `companies/{co}/policies/_digest.md` — prefer that if present
 4. **Scope qmd searches** — If company has `qmd_collections` in manifest, use `-c {collection}`
 
 **If no match** -- full input is the description text. Company resolved later.
@@ -54,9 +54,9 @@ Mode affects Steps 2-4 (premise challenge depth, question framing, research scop
 
 Do not ask questions yet. Build context from HQ first.
 
-**Semantic search:**
-- If anchored + company has `qmd_collections`: `qmd vsearch "<description keywords>" -c {collection} --json -n 10`
-- If not anchored: `qmd vsearch "<description keywords>" --json -n 10`
+**Hybrid search (BM25 + vector + re-ranking):**
+- If anchored + company has `qmd_collections`: `qmd query "<description keywords>" -c {collection} --json -n 10`
+- If not anchored: `qmd query "<description keywords>" --json -n 10`
 
 **Existing projects:**
 - If anchored: search `companies/{co}/projects/` directly or `qmd search "prd.json" -c {co} --json -n 10`

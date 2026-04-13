@@ -54,7 +54,7 @@ An orchestrator needs to execute the `generate-report` skill on a Node.js projec
     "include_charts": true,
     "output_path": "workspace/reports/q1-performance.md"
   },
-  "cwd": "~/Documents/HQ",
+  "cwd": "~/HQ",
   "files_context": [
     "workspace/data/q1-metrics.json",
     "knowledge/public/analytics/reporting-style.md"

@@ -14,7 +14,7 @@ relates_to: []
 
 ### Current State
 
-Desktop and Claude Code share the same HQ filesystem (`~/Documents/HQ/`). Today there is **no file locking** on either side:
+Desktop and Claude Code share the same HQ filesystem (`~/HQ/`). Today there is **no file locking** on either side:
 
 - **Desktop reads**: All Rust commands (`list_prds`, `list_workers`, `list_threads`, `get_empire_data`, `read_file_content`, `read_json`, `read_yaml`) use `std::fs::read_to_string` with no locking, advisory or otherwise.
 - **Claude Code writes**: Claude Code (via its tools) writes files atomically using temp-file-then-rename, but does not acquire locks visible to other processes.
