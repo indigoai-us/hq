@@ -51,6 +51,9 @@ social-content/drafts/**/*.md
 # Checkpoints (session-specific)
 workspace/checkpoints/*.json
 
+# Context warnings (ephemeral per-session state)
+workspace/.context-warnings/
+
 # Journal entries (personal)
 data/journal/*.jsonl
 

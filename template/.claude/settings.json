@@ -15,7 +15,7 @@
   "env": {
     "MAX_THINKING_TOKENS": "31999",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
     "CLAUDE_CODE_NO_FLICKER": "1"
   },
@@ -135,7 +135,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/hook-gate.sh auto-handoff-trigger .claude/hooks/auto-handoff-trigger.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-checkpoint-precompact .claude/hooks/auto-checkpoint-precompact.sh",
             "timeout": 5
           }
         ]
@@ -157,8 +157,8 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/hook-gate.sh context-meter .claude/hooks/context-meter.sh",
-            "timeout": 3
+            "command": ".claude/hooks/hook-gate.sh context-warning-60 .claude/hooks/context-warning-60.sh",
+            "timeout": 10
           }
         ]
       }
