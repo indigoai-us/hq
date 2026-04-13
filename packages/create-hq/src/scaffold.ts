@@ -91,9 +91,15 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode — if --invite or --join is provided, force teams-existing
+  // 1. Entry mode — if --invite or --join is provided, force teams-existing.
+  //    If stdin is not a TTY (headless CI, piped /dev/null), skip prompts → personal.
   const inviteToken = options.invite || options.join;
-  const mode = inviteToken ? "teams-existing" as EntryMode : await chooseEntryMode();
+  const isInteractive = process.stdin.isTTY ?? false;
+  const mode = inviteToken
+    ? "teams-existing" as EntryMode
+    : isInteractive
+      ? await chooseEntryMode()
+      : "personal" as EntryMode;
   if (mode === "exit") {
     console.log();
     info("No problem — come back any time with: npx create-hq");
