@@ -432,3 +432,75 @@ export async function promoteCompany(opts: PromoteOptions): Promise<PromoteResul
     team,
   };
 }
+
+// ─── Post-promote wiring ────────────────────────────────────────────────────
+
+export interface PostPromoteOptions {
+  /** Absolute path to the HQ root directory. */
+  hqRoot: string;
+  /** The company slug (basename of the companies/{slug}/ directory). */
+  slug: string;
+  /** The promote result with repo URLs and team metadata. */
+  result: PromoteResult;
+}
+
+/**
+ * Wire up a promoted company folder with the rest of HQ:
+ *   1. Update companies/manifest.yaml to add the team repo reference
+ *   2. Run qmd update for reindexing
+ *
+ * Best-effort — failures are logged but do not throw.
+ */
+export function postPromoteWiring(opts: PostPromoteOptions): {
+  manifestUpdated: boolean;
+  qmdReindexed: boolean;
+} {
+  const { hqRoot, slug } = opts;
+  const status = { manifestUpdated: false, qmdReindexed: false };
+
+  // 1. Update manifest.yaml
+  try {
+    const manifestPath = path.join(hqRoot, "companies", "manifest.yaml");
+    if (fs.existsSync(manifestPath)) {
+      let content = fs.readFileSync(manifestPath, "utf-8");
+      const repoRef = `hq-${slug}`;
+
+      // Check if the company already has an entry
+      const slugPattern = new RegExp(`^(\\s*)${slug}:`, "m");
+      if (slugPattern.test(content)) {
+        // Company entry exists — add repo if not already listed
+        if (!content.includes(repoRef)) {
+          const reposPattern = new RegExp(
+            `(${slug}:[\\s\\S]*?repos:\\s*\\n)((?:\\s+-[^\\n]*\\n)*)`,
+            "m"
+          );
+          const reposMatch = content.match(reposPattern);
+          if (reposMatch) {
+            content = content.replace(
+              reposMatch[0],
+              reposMatch[0] + `      - ${repoRef}\n`
+            );
+          }
+        }
+      } else {
+        // No entry — append a minimal one
+        content += `\n  ${slug}:\n    repos:\n      - ${repoRef}\n`;
+      }
+
+      fs.writeFileSync(manifestPath, content, "utf-8");
+      status.manifestUpdated = true;
+    }
+  } catch {
+    // Best-effort
+  }
+
+  // 2. Run qmd update for reindexing
+  try {
+    execSync("qmd update 2>/dev/null", { stdio: "pipe", timeout: 30000 });
+    status.qmdReindexed = true;
+  } catch {
+    // qmd may not be installed
+  }
+
+  return status;
+}
