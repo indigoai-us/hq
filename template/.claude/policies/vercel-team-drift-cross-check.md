@@ -33,15 +33,6 @@ updated: 2026-04-10
 
 **Don't assume either is right.** The PRD is authored by hand and drifts; the manifest can be outdated from a team rename (e.g. `{company}-brands` renamed to a team ID like `{company}-f0dc7e1b`). Both have been wrong in real incidents.
 
-## Rationale
-
-Observed 2026-04-10 while planning the `{company}-{your-project}-land` landing PRD: `companies/manifest.yaml` declared `vercel_team: {company}-f0dc7e1b` for {company} (an Indigo-shaped team ID), while `companies/{company}/projects/{company}-{your-project}/prd.json` declared `vercelTeam: {company}-brands`. One is wrong. Landing a sprint under the wrong `--scope` would have:
-- opened the PR Vercel bot against the wrong team and broken the preview URL comment,
-- or deployed to the wrong project altogether on prod merge,
-- or silently rejected the `vercel deploy` with a team-mismatch error late in the pipeline.
-
-The landing PRD made this cross-check the first acceptance criterion of US-L01 (clean working tree + reconcile metadata) so it's resolved before any push happens. That pattern should apply to every landing/deploy PRD going forward.
-
 ## Related
 
 - `.claude/CLAUDE.md` — "Vercel Deployments" section (verify team before deploy)

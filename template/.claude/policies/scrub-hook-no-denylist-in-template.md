@@ -16,6 +16,3 @@ NEVER copy `.claude/scrub-denylist.yaml` to the template dir (`repos/public/hq/t
 
 The template's pre-commit hook must gracefully skip when no denylist is present (return empty pattern). Users create their own denylist with their real terms.
 
-## Rationale
-
-During v10.1.0 publish, the scrubbed denylist caused the pre-commit hook to flag every file containing `{company}` placeholders (which is nearly every file). Fixed by: (1) removing scrub-denylist.yaml from the sync target, (2) updating hook fallback to echo empty string and skip when no denylist found.

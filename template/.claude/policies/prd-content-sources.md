@@ -19,6 +19,3 @@ When creating PRD stories that involve content extraction or analysis of a perso
 
 List specific glob paths in the story's `acceptanceCriteria` so the execute-task sub-agent can find them without searching.
 
-## Rationale
-
-{product} US-002 initially only referenced bootcamp transcripts. User corrected to include blog + social drafts. The enriched extraction (121KB across 4 files from 100+ sources) was significantly more useful than transcripts alone would have been.

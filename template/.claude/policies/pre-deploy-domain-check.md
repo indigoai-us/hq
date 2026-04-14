@@ -22,6 +22,3 @@ Before ANY Vercel deploy:
 
 Protected domains (never reassign): `hq.get{company}.ai`, `{your-project}.get{company}.ai`, `get{company}.ai`, `{company}.com`, `{your-domain}.com`, `{your-domain}.com`, `{your-domain}.com`, `{your-domain}.band`, `{company}.com`, `{your-name}.com`, `{your-domain}.com`, `www.{company}.ai`
 
-## Rationale
-
-{your-project}.get{company}.ai was overwritten by another team member deploying to the wrong project (2026-03-12). hq.get{company}.ai was nearly replaced in a prior incident. The deploy registry (`settings/deploy-registry.yaml`) is the source of truth for repo → project → domain mapping.

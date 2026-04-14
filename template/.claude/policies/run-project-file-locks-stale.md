@@ -31,12 +31,6 @@ When `scripts/run-project.sh` finishes a project with all stories passing, the t
 
 **Fix at source:** `scripts/run-project.sh` final cleanup should `git checkout -- .file-locks.json` on completion if the file is tracked, or delete it if it isn't. Need to confirm which state the repo expects.
 
-## Rationale
-
-Observed 2026-04-10 in `repos/private/{company}-{your-project}` after the 14/14 completion of the polish sprint: `.file-locks.json` was showing as modified, `.claude/launch.json` and `.claude/policies/_digest.md` were untracked (session artifacts), and `progress.txt` had 6 commits tagged `[no-commit]` even though real commits existed in `git log`. The stale lock file is the most annoying of the three because it makes a freshly completed run look "dirty" to the next session, which is paranoia-inducing during handoff.
-
-The orchestrator is correct to release locks on story completion, but the resulting empty-but-modified state is a leak — the final release should either revert the file to HEAD or commit it as part of the final story's payload, not both.
-
 ## Related
 
 - `.claude/policies/run-project-progress-txt-no-commit-misleading.md` — sibling `progress.txt` artifact leak

@@ -13,6 +13,3 @@ After any sub-agent writes to prd.json (setting `passes`, adding `notes`, updati
 
 If validation fails, fix the JSON (typically a missing closing `}` on the last-modified story object) before continuing.
 
-## Rationale
-
-ROAD-008 in `{company}-platform` (2026-03-26): sub-agent wrote a `notes` field but omitted the closing `}` of the story object. The corrupted PRD caused `jq` parse errors that crashed the orchestrator mid-completion-flow (after ROAD-008 but before the ROAD-004 retry and completion summary). Required manual PRD fix and orchestrator resume.

@@ -19,6 +19,3 @@ After denylist token scrubbing (phase 1 replace + phase 2 restore), apply **stru
 
 Both layers are required. Token scrubbing alone leaves incident narratives intact — "a $10k/mo client ({company} Brands Group)" passes denylist verification but leaks business context.
 
-## Rationale
-
-Denylist-driven PII scrubbing operates at the lexical level and cannot detect narrative-level privacy leaks. Incident details (dates, dollar amounts, client relationships, session references) survive token replacement and expose private business context in the public template.

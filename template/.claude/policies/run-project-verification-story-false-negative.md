@@ -31,12 +31,6 @@ Add a 4th detection layer to `scripts/run-project.sh` passes-check:
 - Layer 3: explicit completion marker file
 - **Layer 4 (new):** configurable `completionArtifact: "workspace/reports/{project}-{story}-*.md"` in prd.json story metadata. If the artifact exists and was modified during the story window, count as passed.
 
-## Rationale
-
-Observed 2026-04-10 on {product}-free-gift US-007 ("E2E verification on dev Shopify store"). The lr-qa worker completed 3 verification passes correctly, wrote `workspace/reports/{product}-free-gift-e2e.md` (213 lines), unit tests 496/0, all code inspection checks PASS — but the orchestrator still recorded FAIL because no commit was produced and the passes-detection didn't know about the report file.
-
-Pure-verification stories are common in Ralph PRDs (they're the "prove it ships" step at the end of a feature). This false-negative pattern will recur on every PRD that uses them until the 4th detection layer lands.
-
 ## Related
 
 - `.claude/policies/run-project-progress-txt-no-commit-misleading.md` — sibling observation: `[no-commit]` tags in `progress.txt` are hints, not ground truth

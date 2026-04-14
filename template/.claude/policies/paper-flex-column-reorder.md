@@ -16,6 +16,3 @@ To interleave new sections between existing ones: delete the sections that need 
 
 **How to apply:** Before any multi-section Paper expansion, plan the full target section order. Identify which existing sections need repositioning. Capture their structure/styles, delete them, then rebuild everything in sequence.
 
-## Rationale
-
-Discovered during HPO Collection page expansion (Mar 2026). Five new sections needed to be interleaved between existing Product Grid, Subscribe Banner, Comparison Table, and Footer. Without delete-rebuild, all new sections would stack below the footer.

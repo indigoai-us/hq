@@ -30,6 +30,3 @@ When publishing a new blog article to {your-name}.com (writing MDX to `repos/pri
 - NEVER post full article text directly to X — always teaser + link
 - ALWAYS update blog-queue.json status after each pipeline step
 
-## Rationale
-
-User requested this as standard workflow on 2026-03-11. Upgraded to hard enforcement 2026-03-12 after establishing blog-first article pipeline. Blog articles should always be promoted on X with a teaser that drives traffic to the permanent blog post.

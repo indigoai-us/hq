@@ -45,12 +45,3 @@ git worktree remove /tmp/main-check
 3. If HEAD and origin match (commits safe), `git reset --hard HEAD` restores the working tree cleanly
 4. If local has unpushed commits past origin, use `git reset --hard HEAD` **only after** confirming those commits are still in `git reflog` — they should be, because `checkout -- .` doesn't touch commits, only the working tree
 
-## Rationale
-
-On 2026-04-11 during an {company} perf sprint handoff, the author ran `git checkout main -- .` on a feature branch (`perf/prod-audit-followup` with 13 unpushed... wait, 12 pushed) trying to "diff the two branches' lint output." It **reverted every sprint file** to main's state in the working tree while leaving HEAD at the feature branch tip. Every US-01 through US-09 file became "M" in `git status` — an accidental full-sprint undo at the working-tree level.
-
-Fortunately the commits were already pushed to origin, so `git reset --hard HEAD` recovered cleanly. Had the commits been local-only, a `git reflog` rescue would have been needed. Had the author panicked and re-staged + committed the "changes," the sprint would have been genuinely destroyed.
-
-The confusion: `git checkout {branch}` (switch branch) and `git checkout {branch} -- path` (restore specific paths from branch) are documented as the same command but do fundamentally different things. The path form is a write operation dressed up as a read.
-
-When you catch yourself typing `git checkout {something} -- .`, STOP. The `--` pathspec form with `.` means "overwrite everything in the working tree from that ref." It is never the right way to inspect.

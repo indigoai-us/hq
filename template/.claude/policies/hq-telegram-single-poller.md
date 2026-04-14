@@ -21,6 +21,3 @@ Before starting a new Telegram bot with an existing token:
 
 The Claude Code Telegram MCP plugin (`~/.claude/plugins/cache/claude-plugins-official/telegram/`) spawns a separate bun process per Claude Desktop session — ALL of them poll the same token. Disabling the `.env` file is not enough if sessions are already running; must kill existing plugin processes.
 
-## Rationale
-
-hq-cloud deployment (2026-03-25): ECS host crashed in a loop with grammy `GrammyError: 409 Conflict: terminated by other getUpdates request`. Root cause: 7 local Claude Desktop sessions each had the Telegram MCP plugin running and polling the same bot token. Renaming `.env` stopped new sessions but didn't kill existing ones. Required `pkill -f "telegram/0.0.1.*start"` to clear all pollers.

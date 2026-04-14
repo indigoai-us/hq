@@ -17,10 +17,6 @@ When using git worktrees for project execution:
 2. Revert `launch.json` `cwd` back to the main repo path after merging the worktree back.
 3. Worktrees do NOT inherit `.env.local` from the main repo. Copy `.env.local` from the main repo root into the worktree root before starting the dev server.
 
-## Rationale
-
-Git worktrees check out a branch into a separate directory. The `.claude/launch.json` file stores absolute paths — so any `cwd` pointing at the main repo silently launches the wrong code (or fails if the path is branch-specific). Similarly, `.env.local` is gitignored and not shared, so a fresh worktree directory has no local environment — the dev server starts with missing credentials and fails at runtime rather than at startup.
-
 ## Examples
 
 **Correct:**

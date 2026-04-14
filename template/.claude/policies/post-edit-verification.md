@@ -22,6 +22,3 @@ For other repos: detect from package.json scripts or config files.
 
 If no typecheck or lint is configured, state that explicitly rather than silently skipping.
 
-## Rationale
-
-File writes succeed even when the resulting code doesn't compile. Without post-edit verification, tasks are reported complete with broken type errors or lint violations that compound across subsequent edits. Catching errors immediately after the edit — not just at PR time — prevents wasted context on cascading fixes.

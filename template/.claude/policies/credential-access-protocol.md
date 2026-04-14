@@ -25,6 +25,3 @@ Violations:
 - Pasting secrets as inline env vars in bash commands
 - Skipping manifest lookup and guessing which company owns a service
 
-## Rationale
-
-Cross-company credential access leaks secrets into wrong contexts and risks deploying to wrong infrastructure. Inline secrets in bash commands persist in shell history and tool logs.

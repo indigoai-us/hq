@@ -12,6 +12,3 @@ NEVER push HQ data to any remote repository. HQ is local-only. The `origin` remo
 
 Only push repos inside `repos/` (e.g. `new-get{company}`, `{your-repo}`) — never the HQ root.
 
-## Rationale
-
-HQ contains private company data (credentials, projects, orchestrator state) that must never leave the local machine.

@@ -19,6 +19,3 @@ Before any `vercel deploy` or `vercel link`, check `settings/deploy-registry.yam
 3. NEVER run `vercel link` and reuse an existing project name without confirming it won't collide
 4. After creating a new Vercel project, update `deploy-registry.yaml` with the new project ID immediately
 
-## Rationale
-
-On 2026-03-12, `{your-project}` and `{company}-{your-project}` shared project ID `prj_c6KKnZq2o5sTe59RasfyzpArki4Y`. Daily GitHub Actions in both repos triggered competing Vercel builds on the same project, causing {team-member}'s wholesale dashboard to be silently overwritten by GTM HQ deploys. Fixed by creating a separate Vercel project for the wholesale dashboard.

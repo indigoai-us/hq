@@ -14,6 +14,3 @@ EAS remote builds do NOT read `.env.local` files. Any `EXPO_PUBLIC_*` env vars n
 
 `.env.local` only works for local dev server (`npx expo start`) and local builds (`eas build --local`).
 
-## Rationale
-
-Build 9 of {company} shipped without `EXPO_PUBLIC_ANTHROPIC_API_KEY` because it was only in `.env.local`. The client-side Claude API calls silently fell back to hardcoded insights with no visible error. Took a full debug cycle to discover.

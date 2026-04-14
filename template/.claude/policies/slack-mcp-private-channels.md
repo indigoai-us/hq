@@ -19,6 +19,3 @@ When `resolveChannel` fails for a private channel (user token lacks `groups:read
 | #team-liveops | `C06UP2V06CD` | Ops/incident room |
 | #team-dev | `C06BRHDR8A2` | {PRODUCT}/{Product} engineering — canonical PR-notification channel (see `companies/{company}/policies/slack-pr-notifications.md`) |
 
-## Rationale
-
-The custom slack-mcp user token (xoxp-) has `search:read` but not `groups:read`. `conversations.list` only returns public channels. Private channels are invisible to list/resolve unless discovered via search. This caused repeated failures posting to #team-liveops across multiple sessions.

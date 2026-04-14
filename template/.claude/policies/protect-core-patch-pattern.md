@@ -20,17 +20,6 @@ Instead, use the Python patch pattern:
 
 Never set `HQ_BYPASS_CORE_PROTECT=1` casually — that bypass should stay reserved for authorized updates the user has explicitly greenlit.
 
-## Rationale
-
-The protect-core hook is a safety net against accidental edits to load-bearing orchestration scripts, but legitimate authorized fixes still need a path. The Python patch pattern:
-
-- Keeps the edit reviewable (the patch script is itself a file that shows old→new diffs as literals).
-- Is idempotent, so re-running after partial success doesn't corrupt state.
-- Doesn't require disabling the hook globally — other sessions' protections stay intact.
-- Documents intent (commit message + patch script filename make the "why" auditable).
-
-Precedent: `workspace/orchestrator/apply-cmux-monitor-patch.py` (added in commit `04093116`) and `workspace/orchestrator/apply-cmux-monitor-fix.py` (2026-04-10 session). Both successfully modified `scripts/run-project.sh` without touching the hook.
-
 ## Anti-patterns
 
 - Running the Edit tool and hoping the hook is off → wastes a tool call on a guaranteed failure

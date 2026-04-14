@@ -19,6 +19,3 @@ Before adding new devDependencies, check if they depend on any package listed in
 
 Example: knip v5/v6 requires `zod/mini` (Zod v4.1+), but {PRODUCT} overrides zod to 3.25.76 (Zod v4 preview with different export paths). Result: `ERR_PACKAGE_PATH_NOT_EXPORTED`. Fix: use ts-unused-exports instead.
 
-## Rationale
-
-Discovered when adding knip to {PRODUCT}. The `zod: "3.25.76"` override in package.json caught knip's internal zod dependency, causing `zod/mini` to fail resolution. Wasted ~10 minutes debugging. This is a general monorepo footgun — any global override can silently break devtools.

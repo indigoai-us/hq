@@ -22,6 +22,3 @@ When querying the Indigo Signals MCP (`{company}-signals-{company}`, `{company}-
 
 6. **Projection still returns large payloads** — Even with projection, transcript fields are huge. Query metadata first (without transcript), then fetch transcripts individually or via aggregate.
 
-## Rationale
-
-Discovered during {product} bootcamp transcript extraction (Mar 2026). Multiple failed queries before finding working patterns. These gotchas cost ~10 minutes of debugging per issue.

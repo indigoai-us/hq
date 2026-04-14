@@ -15,6 +15,3 @@ created: 2026-03-04
 4. **Verify the account alias matches the intended sender before every send.** Double-check `account` parameter matches what the user requested.
 5. **Test subject line encoding.** Avoid special characters (×, —, etc.) in subject lines when using MCP tools. Use ASCII equivalents (x, -) to prevent UTF-8 encoding issues.
 
-## Rationale
-
-On 2026-03-04, a kickoff email to a $10k/mo client (Amass Brands Group) was sent from the wrong Gmail account (personal instead of {your-name}@get{company}.ai) with a garbled subject line. The Indigo account auth was broken, and Claude fell back to personal without asking. This sent a broken, unprofessional email to the client the day before their kickoff meeting. This must never happen again.

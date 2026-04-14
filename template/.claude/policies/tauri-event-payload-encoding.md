@@ -14,10 +14,6 @@ Always use `serde_json::from_str::<String>(payload)` to unwrap the outer encodin
 
 Additionally, when injecting JS that returns a value through the event bridge, use `eval(json_string)` rather than wrapping in `(function() { {js} })()`. The latter creates a new function scope where IIFE return values are silently discarded.
 
-## Rationale
-
-Three failed attempts during tauri-agent-browser development: first returned `null` (IIFE scope issue), then returned unparseable escaped JSON (simple slice). Only `serde_json::from_str::<String>()` handles all Tauri payload edge cases.
-
 ## How to apply
 
 Any code reading Tauri event payloads in Rust must deserialize the string wrapper first. Any code injecting JS for eval-and-return must use the eval pattern, not function wrapping.

@@ -18,6 +18,3 @@ Commands that depend on the Task tool (`run-project`, `execute-task`, `run`) req
 
 `/publish-kit` enforces dual-format coverage via **Step 4.5 (Codex Conversion)** — scans all synced skills for `agents/openai.yaml`, generates missing ones, and reports command-to-skill coverage gaps. This prevents drift where skills ship to the public template without Codex metadata.
 
-## Rationale
-
-Discovered during codex-command-discovery brainstorm/PRD session. The Codex skill bridge (`scripts/codex-skill-bridge.sh`) correctly symlinks `.claude/skills/` to `~/.codex/skills/hq`, making all 57 skills discoverable. But the 50 commands in `.claude/commands/` are invisible to Codex because they use Claude Code's flat-file format (frontmatter: `description`, `allowed-tools`, `argument-hint`) instead of the SKILL.md folder format (frontmatter: `name`, `description`) with optional `agents/openai.yaml` metadata.

@@ -19,6 +19,3 @@ The exceptions section in the denylist is the **single source of truth** for wha
 
 After scrubbing, verify: `grep -ri 'indigoai-us' template/` — must return 0 results.
 
-## Rationale
-
-The `indigoai-us` GitHub org and npm scope must remain literal in the public template. A naive `s/{company}/{company}/g` corrupts it to `indigoai-us`. The exceptions-based restore is data-driven — new collisions are fixed by adding a denylist entry, not editing code. Validated during v10.3.0 and v10.4.0 publishes.

@@ -16,6 +16,3 @@ NEVER create a git worktree or new branch in HQ when starting work on a project 
 
 When `/startwork` resolves to a repo context, `cd` into that repo and work there directly. Do not use `EnterWorktree` on the HQ repository.
 
-## Rationale
-
-Creating worktrees in HQ causes: (1) unnecessary HQ branches that diverge from main, (2) git status showing massive deletes of unrelated HQ files, (3) confusion about which directory is canonical, (4) wasted session time cleaning up. HQ is an orchestration layer — it doesn't need branches for repo work.

@@ -36,6 +36,3 @@ HQ's value comes from orchestration fidelity — policies, manifest routing, com
 
 Opus costs more than Sonnet. This is intentional. The failure modes of a cheaper model in HQ (skipped policy steps, wrong company credentials, missed orchestration rules) cost more in wasted time and broken state than the token savings. Pay for quality everywhere.
 
-## Rationale
-
-Session 2026-03-28: Initially proposed Sonnet for "scoped executors" (Explore agents, E2E tests, creative drafts, small sub-agents). User correction: HQ orchestration fidelity is the core value — every agent navigates the same policy/manifest system. Downgrading any agent risks skipped steps in complex protocols. The only non-Opus models are external (Codex, Gemini) which run in their own CLIs with their own runtimes.

@@ -27,12 +27,6 @@ Lines in `workspace/orchestrator/{slug}/progress.txt` tagged `[no-commit]` **do 
 - When writing landing PRDs, size `sourceCommitCount` from `git rev-list --count origin/main..HEAD`, not from progress.txt.
 - When writing release notes / handoffs, quote commit SHAs from `git log`, not story tags from progress.txt.
 
-## Rationale
-
-Observed 2026-04-10 on `{company}-{your-project}`: `progress.txt` showed all 14 stories completing, but the question "how many commits are unpushed?" couldn't be answered from progress.txt alone. `git log origin/main..HEAD` revealed **12 commits** across US-009..US-014 — matching the story count in spirit but not in raw numbers, because US-009 had 3 commits (initial + 2 review fixes) and US-014 had 2 commits. Without the git-log cross-check, a landing PRD would have under-counted the review surface and US-L02 would have missed commits.
-
-The tag is useful as a *hint* ("this story may not have produced a commit"), but not as a *truth*. Trust git, not the orchestrator's annotation.
-
 ## Related
 
 - `.claude/policies/run-project-file-locks-stale.md` — sibling orchestrator artifact leak

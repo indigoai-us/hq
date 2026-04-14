@@ -15,6 +15,3 @@ enforcement: soft
 - Draft releases need manual publish from GitHub UI
 - Builds are unsigned (macOS code signing secrets commented out in workflow)
 
-## Rationale
-
-Captured from v0.3.0 release session (Mar 2026). S3 upload job failed due to apt-get AWS CLI install issue.

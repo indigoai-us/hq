@@ -16,6 +16,3 @@ When fixing a bug or broken behavior, always add tests or E2E coverage that woul
 
 A bugfix without a regression test is incomplete.
 
-## Rationale
-
-The attribution health 0.02x ROAS bug (time-window mismatch + lead preference) existed for weeks without detection. Adding E2E tests after the fix ensures the same class of bug is caught automatically. Bugs that are fixed without tests tend to recur — the test is the proof that the fix works and the guardrail that keeps it working.

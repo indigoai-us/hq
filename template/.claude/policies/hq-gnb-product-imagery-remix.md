@@ -20,6 +20,3 @@ ALWAYS use this two-step workflow:
 
 Reference actual product photos from `companies/{co}/data/product-images/` or `companies/{co}/data/design-files/renders/` for accurate brand details in the remix prompt.
 
-## Rationale
-
-During HpO PDP design (Mar 2026), generated lifestyle photos showed models holding cans branded "SPARKLE", "VELOCITY", and "FUEL" instead of HpO. The GNB remix approach using the actual blood-orange-01.png product photo as reference produced correct coral-orange HpO cans with proper logo, citrus icon, and PROTEIN text. Scene composition, lighting, and model poses were preserved perfectly through remix.

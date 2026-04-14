@@ -38,8 +38,3 @@ Colliding names and their correct mapping:
 HQ's own `/review`, `/retro`, `/investigate`, and `/document-release` remain unaffected
 when invoked directly by the user or by HQ workers.
 
-## Rationale
-
-gstack was authored as a standalone skill set before the `g-` prefix was applied. Internal
-cross-references use unprefixed names. Without remapping, `/g-ship` would invoke HQ's
-`/review` instead of gstack's `/g-review` — wrong skill, different behavior.

@@ -16,6 +16,3 @@ When navigating Customer.io via agent-browser:
 4. **Slack template textarea** — uses class `ember-text-area`. Must use native setter + event dispatch for Ember to detect changes: `Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, newVal); ta.dispatchEvent(new Event('input', {bubbles:true}))`
 5. **Browser state expires** — CIO auth cookies expire. Always be prepared to re-auth via headed mode
 
-## Rationale
-
-CIO's Ember.js UI has quirks that waste time if you don't know the workarounds. Direct URL navigation and JS eval are much faster than clicking through the UI.

@@ -14,6 +14,3 @@ source: migration
 
 NEVER use special characters (em dash, curly quotes, Unicode punctuation) in email subject lines — they encode as garbled text. Plain ASCII only: hyphens not dashes, straight quotes.
 
-## Rationale
-
-Unicode characters in email subjects get garbled across email clients.

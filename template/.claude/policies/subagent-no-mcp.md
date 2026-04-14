@@ -14,6 +14,3 @@ source: migration
 
 Sub-agents spawned via Task() don't inherit MCP server connections. Workers needing external tools (Codex, etc.) must use CLI via Bash, not MCP tools declared in worker.yaml.
 
-## Rationale
-
-Task() sub-agents run in isolated contexts without MCP server inheritance.

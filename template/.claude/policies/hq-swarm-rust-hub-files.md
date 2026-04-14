@@ -22,6 +22,3 @@ Rust projects have "hub files" that nearly every feature story modifies: `Cargo.
 
 4. **Orchestrator improvement opportunity**: Detect module registration files (mod.rs, lib.rs, Cargo.toml) as shared resources and serialize stories that touch them, even if not declared in `files[]`.
 
-## Rationale
-
-During {company}-tauri-migration (Mar 2026), all 5 swarm batches hit merge conflicts on these 3 Rust files. Every batch required manual conflict resolution after the orchestrator's auto cherry-pick failed. The conflicts were always additive (both sides add different things to the same files). Total resolution time: ~30 minutes across 5 batches. Declaring these in `files[]` would have prevented concurrent access entirely.

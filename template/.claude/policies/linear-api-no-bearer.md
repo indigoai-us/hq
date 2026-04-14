@@ -14,6 +14,3 @@ source: back-pressure-failure
 
 ALWAYS use `Authorization: <api_key>` (plain key, no prefix) when authenticating with the Linear GraphQL API. NEVER use `Authorization: Bearer <api_key>` — Linear rejects Bearer-prefixed API keys with a 400 error.
 
-## Rationale
-
-Linear API keys are not OAuth tokens. The API returns a clear error: "It looks like you're trying to use an API key as a Bearer token. Remove the Bearer prefix." This applies to all Linear workspaces (Indigo, {Product}, Abacus).

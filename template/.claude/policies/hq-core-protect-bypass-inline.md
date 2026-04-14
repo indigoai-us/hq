@@ -14,6 +14,3 @@ source: session-learning
 
 The `HQ_BYPASS_CORE_PROTECT=1` env var must be passed **inline** with the command that modifies the file (e.g., `HQ_BYPASS_CORE_PROTECT=1 sed -i '' '...' .claude/CLAUDE.md`). Setting it via `export` in a prior Bash tool call has no effect — each hook runs in its own subprocess spawned by the harness, not from prior shell sessions. The Edit tool cannot carry env vars at all; use Bash with `sed` or similar when bypassing core protection.
 
-## Rationale
-
-Session 2026-04-12: attempted `export HQ_BYPASS_CORE_PROTECT=1` followed by Edit tool — blocked three times. Bash tool calls don't share shell state. Hooks inherit from the harness process environment, not from user shell sessions. Inline env var on a Bash command is the only reliable bypass path.

@@ -12,6 +12,3 @@ The checksum script for HQ Core Governance is at `template/scripts/compute-check
 
 The Core Governance CI check **always fails** when locked files are modified — even with valid checksums. This is by design: checksums prove acknowledgment, but maintainer approval is still required to merge.
 
-## Rationale
-
-The script location and yq dependency caused failed attempts during a checksum fix session. The two-layer governance model (checksums + forced failure) is non-obvious.

@@ -14,6 +14,3 @@ When writing HTML via Paper MCP (`write_html`), always set an explicit `width` p
 
 Also set `flexShrink: 0` on parent frames of text that must not compress (chips, buttons, labels).
 
-## Rationale
-
-Paper MCP does not auto-size text containers reliably. Every screen in the Dripkit design session required post-hoc width fixes on text nodes — buttons, tab labels, chip labels, profile card values, auth buttons all exhibited word-breaking. The fix pattern is always the same: explicit width + textAlign on the Text node. Catching this upfront saves multiple screenshot → fix → screenshot cycles per artboard.
