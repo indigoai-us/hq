@@ -2,17 +2,17 @@
 
 Pull latest team content and push local changes for all joined teams. Bidirectional git sync using `gh` CLI for authentication — no manual git operations needed.
 
-**Usage:** `/sync` or `/sync --team <slug>` or `/sync --dry-run`
+**Usage:** `/sync` or `/sync <company>` or `/sync --dry-run`
 
 **Requires:** `gh` CLI authenticated (`gh auth status`)
 
 ## Arguments
 
 Parse the user's input for:
-- `--team <slug>` — Sync only a specific team by slug (e.g., `--team indigo`)
+- `<company>` — Sync (or promote) a specific company by slug (e.g., `/sync indigo`). Also accepts `--team <slug>` for backwards compatibility.
 - `--dry-run` — Show what would be synced without making changes
 
-If no flags, sync all discovered teams.
+If no company specified, sync all discovered teams.
 
 ## Process
 
@@ -58,42 +58,27 @@ Find all team.json files:
 find companies/*/team.json -maxdepth 0 2>/dev/null
 ```
 
-If no files found, check for promotable companies (folders without team.json):
-
-```bash
-for dir in companies/*/; do
-  slug=$(basename "$dir")
-  [ "$slug" = "_template" ] && continue
-  [[ "$slug" == .* ]] && continue
-  [ ! -f "$dir/team.json" ] && echo "$slug"
-done
+If no files found:
 ```
-
-If promotable companies exist, offer to promote:
-```
-No teams synced yet, but you have {N} company folder(s) that could become shared teams:
-
-  [1] {slug_1}  ({summary: e.g. "5 workers, 12 policies"})
-  [2] {slug_2}  ({summary})
-
-Would you like to share one as a team repo? (Y/n)
-```
-
-If the user says yes, proceed to the **Promote Flow** (section 6 below) for the selected company, then return to step 3 to sync the newly promoted team.
-
-If no promotable companies exist either:
-```
-No teams found. Join or create a team first:
+No teams found. Join a team first:
   npx create-hq
+
+To promote an existing company folder to a team repo:
+  /sync <company-slug>
 ```
 Stop here.
 
-If `--team <slug>` was specified, filter to only `companies/{slug}/team.json`. If that file doesn't exist:
+If a company slug was specified (e.g., `/sync acme` or `/sync --team acme`):
+
+First check if `companies/{slug}/` exists as a directory. If not:
 ```
-Team "{slug}" not found. Available teams:
-  {list discovered team slugs}
+Company folder "companies/{slug}/" not found.
 ```
 Stop here.
+
+Then check if `companies/{slug}/team.json` exists:
+- **If yes:** filter to only this team and continue to step 3 (normal sync).
+- **If no:** this company isn't a team yet. Proceed to the **Promote Flow** (section 6 below).
 
 ### 3. Sync each team
 
@@ -439,55 +424,25 @@ Dry run complete — no changes were made.
     Would push: {N} local changes
 ```
 
-### 5b. Offer to promote remaining non-team companies
-
-After syncing existing teams (or if some teams were synced but other companies remain without team.json), check for promotable folders:
-
-```bash
-for dir in companies/*/; do
-  slug=$(basename "$dir")
-  [ "$slug" = "_template" ] && continue
-  [[ "$slug" == .* ]] && continue
-  [ ! -f "$dir/team.json" ] && echo "$slug"
-done
-```
-
-If any promotable companies are found AND this is NOT a `--dry-run`:
-
-```
-You also have {N} company folder(s) not yet shared as teams:
-
-  {slug_1}, {slug_2}, ...
-
-Want to promote one to a shared team repo? (y/N)
-```
-
-Default is No (non-intrusive — the user came to sync, not promote). If yes, proceed to section 6.
-
-If `--dry-run` or no promotable folders, skip this section silently.
-
 ## 6. Promote Flow (inline)
 
-When a user opts to promote a company folder (from step 2 or step 5b), run this flow inline. This creates a GitHub team repo from an existing local folder.
+When `/sync <slug>` targets a company folder that has no `team.json`, run this flow instead of the normal sync. This creates a GitHub team repo from the existing local folder.
 
-### 6a. Select company (if not already selected)
-
-If coming from step 5b with multiple promotable folders, present numbered list:
 ```
-Choose a company to promote:
-
-  [1] {slug_1}
-  [2] {slug_2}
+companies/{slug}/ isn't shared as a team yet.
+Promote it to a team repo so it can be synced and shared? (Y/n)
 ```
 
-### 6b. Authenticate
+If the user says no, stop here. If yes, continue.
+
+### 6a. Authenticate
 
 Verify `gh` is authenticated (already done in step 1). Get the authenticated user:
 ```bash
 gh api user --jq '.login' 2>/dev/null
 ```
 
-### 6c. Select GitHub organization
+### 6b. Select GitHub organization
 
 List orgs the user is admin of:
 ```bash
@@ -504,7 +459,7 @@ Stop the promote flow (sync results still reported normally).
 
 If one org, auto-select. If multiple, present numbered list.
 
-### 6d. Pre-push secrets scan
+### 6c. Pre-push secrets scan
 
 Before creating the repo, scan the folder for accidental secrets:
 
@@ -531,7 +486,7 @@ If option 2: continue.
 
 **If no matches:** continue silently.
 
-### 6e. Create team repo
+### 6d. Create team repo
 
 ```bash
 gh api orgs/{org}/repos -X POST -f name="hq-{slug}" -f private=true -f description="HQ Teams workspace for {slug}" --jq '.html_url' 2>&1
@@ -539,7 +494,7 @@ gh api orgs/{org}/repos -X POST -f name="hq-{slug}" -f private=true -f descripti
 
 If the repo already exists (422 error), ask to reuse or abort.
 
-### 6f. Initialize and push
+### 6e. Initialize and push
 
 ```bash
 cd companies/{slug}
@@ -560,7 +515,7 @@ git commit -m "Initial team content from HQ promote"
 git push -u origin main
 ```
 
-### 6g. Write team.json
+### 6f. Write team.json
 
 Create `companies/{slug}/team.json` with metadata:
 ```json
@@ -595,7 +550,7 @@ git -C companies/{slug} commit -m "chore: add team.json metadata"
 git -C companies/{slug} push origin main
 ```
 
-### 6h. Post-promote wiring
+### 6g. Post-promote wiring
 
 Update `companies/manifest.yaml` to include the team repo reference:
 - If company entry exists, add `hq-{slug}` to its `repos` array
@@ -606,7 +561,7 @@ Run search reindex:
 qmd update 2>/dev/null || true
 ```
 
-### 6i. Report promote results
+### 6h. Report promote results
 
 ```
 Promoted companies/{slug}/ → https://github.com/{org}/hq-{slug}
