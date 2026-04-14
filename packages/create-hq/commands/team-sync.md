@@ -58,9 +58,32 @@ Find all team.json files:
 find companies/*/team.json -maxdepth 0 2>/dev/null
 ```
 
-If no files found:
+If no files found, check for promotable companies (folders without team.json):
+
+```bash
+for dir in companies/*/; do
+  slug=$(basename "$dir")
+  [ "$slug" = "_template" ] && continue
+  [[ "$slug" == .* ]] && continue
+  [ ! -f "$dir/team.json" ] && echo "$slug"
+done
 ```
-No teams found. Join a team first:
+
+If promotable companies exist, offer to promote:
+```
+No teams synced yet, but you have {N} company folder(s) that could become shared teams:
+
+  [1] {slug_1}  ({summary: e.g. "5 workers, 12 policies"})
+  [2] {slug_2}  ({summary})
+
+Would you like to share one as a team repo? (Y/n)
+```
+
+If the user says yes, proceed to the **Promote Flow** (section 6 below) for the selected company, then return to step 3 to sync the newly promoted team.
+
+If no promotable companies exist either:
+```
+No teams found. Join or create a team first:
   npx create-hq
 ```
 Stop here.
@@ -415,6 +438,189 @@ Dry run complete — no changes were made.
     Would pull: {N} incoming commits
     Would push: {N} local changes
 ```
+
+### 5b. Offer to promote remaining non-team companies
+
+After syncing existing teams (or if some teams were synced but other companies remain without team.json), check for promotable folders:
+
+```bash
+for dir in companies/*/; do
+  slug=$(basename "$dir")
+  [ "$slug" = "_template" ] && continue
+  [[ "$slug" == .* ]] && continue
+  [ ! -f "$dir/team.json" ] && echo "$slug"
+done
+```
+
+If any promotable companies are found AND this is NOT a `--dry-run`:
+
+```
+You also have {N} company folder(s) not yet shared as teams:
+
+  {slug_1}, {slug_2}, ...
+
+Want to promote one to a shared team repo? (y/N)
+```
+
+Default is No (non-intrusive — the user came to sync, not promote). If yes, proceed to section 6.
+
+If `--dry-run` or no promotable folders, skip this section silently.
+
+## 6. Promote Flow (inline)
+
+When a user opts to promote a company folder (from step 2 or step 5b), run this flow inline. This creates a GitHub team repo from an existing local folder.
+
+### 6a. Select company (if not already selected)
+
+If coming from step 5b with multiple promotable folders, present numbered list:
+```
+Choose a company to promote:
+
+  [1] {slug_1}
+  [2] {slug_2}
+```
+
+### 6b. Authenticate
+
+Verify `gh` is authenticated (already done in step 1). Get the authenticated user:
+```bash
+gh api user --jq '.login' 2>/dev/null
+```
+
+### 6c. Select GitHub organization
+
+List orgs the user is admin of:
+```bash
+gh api user/orgs --jq '.[].login' 2>/dev/null
+```
+
+If no orgs found:
+```
+You need a GitHub organization to host the team repo.
+Create one at: https://github.com/organizations/new
+Then re-run /sync.
+```
+Stop the promote flow (sync results still reported normally).
+
+If one org, auto-select. If multiple, present numbered list.
+
+### 6d. Pre-push secrets scan
+
+Before creating the repo, scan the folder for accidental secrets:
+
+```bash
+# Scan settings/ directory (highest risk)
+grep -rnE '(api[_-]?key|password|secret|token)\s*[:=]\s*\S{10,}|-----BEGIN .* PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9_]{36,}|op://|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}' companies/{slug}/ --include='*.json' --include='*.yaml' --include='*.yml' --include='*.env' --include='*.md' --include='*.ts' --include='*.js' --include='*.sh' 2>/dev/null || true
+```
+
+**If matches found:**
+```
+Pre-push security scan found potential secrets in companies/{slug}/:
+
+  {file}:{line}: {match preview}
+
+These would be pushed to a shared GitHub repo (visible to all org members).
+
+Options:
+  1. Remove the sensitive data first (recommended)
+  2. Continue anyway (I've verified these are safe to share)
+```
+
+If option 1: abort promote flow, report which files to clean.
+If option 2: continue.
+
+**If no matches:** continue silently.
+
+### 6e. Create team repo
+
+```bash
+gh api orgs/{org}/repos -X POST -f name="hq-{slug}" -f private=true -f description="HQ Teams workspace for {slug}" --jq '.html_url' 2>&1
+```
+
+If the repo already exists (422 error), ask to reuse or abort.
+
+### 6f. Initialize and push
+
+```bash
+cd companies/{slug}
+
+# Init git if not already
+[ -d .git ] || git init -b main
+
+# Check for existing remote
+if git remote get-url origin 2>/dev/null; then
+  echo "This folder already has a git remote. Aborting to avoid conflict."
+  # Stop promote flow
+fi
+
+# Configure and push
+git remote add origin "https://github.com/{org}/hq-{slug}.git"
+git add -A
+git commit -m "Initial team content from HQ promote"
+git push -u origin main
+```
+
+### 6g. Write team.json
+
+Create `companies/{slug}/team.json` with metadata:
+```json
+{
+  "team_id": "{generated UUID}",
+  "team_name": "{slug}",
+  "team_slug": "{slug}",
+  "org_login": "{org}",
+  "org_id": {org_id},
+  "created_by": "{gh_username}",
+  "created_at": "{ISO8601}",
+  "hq_version": "promoted",
+  "repo_url": "https://github.com/{org}/hq-{slug}",
+  "clone_url": "https://github.com/{org}/hq-{slug}.git"
+}
+```
+
+Generate UUID:
+```bash
+uuidgen 2>/dev/null || python3 -c "import uuid; print(uuid.uuid4())"
+```
+
+Get org_id:
+```bash
+gh api orgs/{org} --jq '.id'
+```
+
+Commit and push team.json:
+```bash
+git -C companies/{slug} add team.json
+git -C companies/{slug} commit -m "chore: add team.json metadata"
+git -C companies/{slug} push origin main
+```
+
+### 6h. Post-promote wiring
+
+Update `companies/manifest.yaml` to include the team repo reference:
+- If company entry exists, add `hq-{slug}` to its `repos` array
+- If no entry exists, create a minimal entry with the repo
+
+Run search reindex:
+```bash
+qmd update 2>/dev/null || true
+```
+
+### 6i. Report promote results
+
+```
+Promoted companies/{slug}/ → https://github.com/{org}/hq-{slug}
+
+  Files pushed: {N}
+  team.json: companies/{slug}/team.json
+  Manifest: updated
+
+Next steps:
+  /sync — sync this team going forward
+  /invite — invite team members
+```
+
+After promoting, the newly created team is immediately eligible for normal sync in step 3.
 
 ## Security Notes
 
