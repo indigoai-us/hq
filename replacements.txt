@@ -1,0 +1,71 @@
+# Domains (literal replacements)
+literal:getindigo.ai==>{your-domain}
+literal:token.getindigo.ai==>{your-domain}
+literal:hollermgmt.com==>{your-domain}.com
+literal:havenslay.com==>{your-domain}.com
+literal:goldenthread.band==>{your-domain}.band
+literal:moonflowapp.com==>{your-domain}.com
+literal:weartonal.com==>{your-domain}.com
+literal:vyg.ai==>{your-domain}.ai
+literal:liverecover.io==>{your-domain}.io
+literal:lrc.sh==>{your-domain}.sh
+literal:tonal-8.myshopify.com==>{your-store}.myshopify.com
+
+# Person names (case variants per git-filter-repo-case-variants policy)
+literal:coreyepstein==>{your-name}
+literal:Coreyepstein==>{your-name}
+literal:COREYEPSTEIN==>{your-name}
+literal:corey-epstein==>{your-name}
+literal:Corey-Epstein==>{your-name}
+literal:Corey Epstein==>{your-name}
+literal:corey epstein==>{your-name}
+literal:Erin Green==>{team-member}
+literal:erin green==>{team-member}
+literal:ERIN GREEN==>{team-member}
+
+# Team members (lowercase only since they appear lowercased)
+literal:shahzaib==>{team-member}
+literal:Shahzaib==>{team-member}
+literal:yousuf==>{team-member}
+literal:Yousuf==>{team-member}
+literal:stefan==>{team-member}
+literal:Stefan==>{team-member}
+literal:keghan==>{team-member}
+literal:Keghan==>{team-member}
+literal:florian==>{team-member}
+literal:Florian==>{team-member}
+
+# Project/repo names
+literal:rose-flower==>{project-name}
+literal:Rose-Flower==>{project-name}
+literal:goclaw==>{your-project}
+literal:Goclaw==>{your-project}
+literal:abg-gtm-hq==>{your-project}
+literal:gtm-hq==>{your-project}
+literal:wholesale-pacing-dashboard==>{your-project}
+literal:wildcat-docs==>{your-project}
+literal:dripkit-mvp==>{your-project}
+literal:emq-score-improvement==>{your-project}
+literal:indigo-nx==>{your-repo}
+literal:indigo-hq-app==>{your-app}
+literal:indigo-advisory==>{your-repo}
+literal:golden-thread-portal==>{your-repo}
+literal:voyagemobile==>{your-org}
+literal:new-getindigo==>{your-repo}
+
+# Product names (case variants)
+literal:LiveRecover==>{Product}
+literal:liverecover==>{product}
+literal:LIVERECOVER==>{PRODUCT}
+literal:BrandStage==>{Product}
+literal:brandstage==>{product}
+
+# Company names that might appear raw in history
+literal:Amass==>{company}
+literal:amass==>{company}
+
+# Vercel project IDs (regex)
+regex:prj_[a-zA-Z0-9]{20,}==>{project-id}
+
+# learned_from lines in YAML frontmatter
+regex:^learned_from:.*$==>
