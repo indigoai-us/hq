@@ -95,18 +95,26 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode — if --invite or --join is provided, force teams-existing
+  // 1. Entry mode — if --invite or --join is provided, force teams-existing.
+  //    If stdin is not a TTY (headless CI, piped /dev/null), skip prompts → personal.
   const inviteToken = options.invite || options.join;
-  const mode = inviteToken ? "teams-existing" as EntryMode : await chooseEntryMode();
+  const isInteractive = process.stdin.isTTY ?? false;
+  const mode = inviteToken
+    ? "teams-existing" as EntryMode
+    : isInteractive
+      ? await chooseEntryMode()
+      : "personal" as EntryMode;
   if (mode === "exit") {
     console.log();
     info("No problem — come back any time with: npx create-hq");
     process.exit(0);
   }
 
-  // 2. Authenticate immediately if teams (pure HTTP — no local deps needed)
+  // 2. Authenticate immediately for "existing" teams path (need App token for discovery).
+  //    For "new" teams path, defer auth — admin onboarding uses `gh` CLI for org
+  //    discovery first, then triggers App auth after org selection.
   let teamsAuth: GitHubAuth | null = null;
-  if (mode === "teams-existing" || mode === "teams-new") {
+  if (mode === "teams-existing") {
     teamsAuth = await authenticate();
     if (!teamsAuth) {
       console.log();
@@ -280,14 +288,14 @@ export async function scaffold(
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 8. Teams flow (only if auth succeeded earlier)
+  // 8. Teams flow (existing: only if auth succeeded; new: auth happens inside)
   let teamsResult: TeamsFlowResult | null = null;
-  if (teamsAuth && (mode === "teams-existing" || mode === "teams-new")) {
+  if ((mode === "teams-existing" && teamsAuth) || mode === "teams-new") {
     teamsResult = await runTeamsFlow(
       mode === "teams-existing" ? "existing" : "new",
       targetDir,
       hqVersion,
-      teamsAuth,
+      teamsAuth ?? undefined,
       inviteToken
     );
     if (!teamsResult) {
