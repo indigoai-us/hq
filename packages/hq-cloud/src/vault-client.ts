@@ -107,6 +107,18 @@ export interface EntityInfo {
   status: string;
 }
 
+export interface CreateEntityInput {
+  type: "person" | "company";
+  slug: string;
+  name: string;
+  email?: string;
+  ownerUid?: string;
+}
+
+export interface CreateEntityResult {
+  entity: EntityInfo;
+}
+
 // -- STS child vending (VLT-8) --------------------------------------------
 
 export type TaskAction = "read" | "write";
@@ -233,7 +245,22 @@ export class VaultClient {
       );
       return data.entity;
     },
+
+    create: async (input: CreateEntityInput): Promise<EntityInfo> => {
+      const data = await this.post<CreateEntityResult>("/entity", input);
+      return data.entity;
+    },
   };
+
+  // -- Provisioning operations (VLT-2) -----------------------------------------
+
+  async provisionBucket(companyUid: string): Promise<{ bucketName: string; kmsKeyId: string }> {
+    const data = await this.post<{ bucketName: string; kmsKeyId: string }>(
+      "/provision/bucket",
+      { companyUid },
+    );
+    return data;
+  }
 
   // -- STS operations (VLT-8) -----------------------------------------------
 

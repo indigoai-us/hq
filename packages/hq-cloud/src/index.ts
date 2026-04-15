@@ -55,6 +55,8 @@ export type {
   AcceptInviteResult,
   UpdateRoleInput,
   EntityInfo,
+  CreateEntityInput,
+  CreateEntityResult,
 } from "./vault-client.js";
 
 // STS child vending (VLT-8)
