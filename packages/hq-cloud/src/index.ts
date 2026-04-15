@@ -37,6 +37,12 @@ export {
   isWithinSizeLimit,
 } from "./ignore.js";
 
+// CLI commands
+export { share, sync } from "./cli/index.js";
+export type { ShareOptions, ShareResult, SyncOptions, SyncResult } from "./cli/index.js";
+export { resolveConflict, showDiff } from "./cli/index.js";
+export type { ConflictStrategy, ConflictInfo, ConflictResolution } from "./cli/index.js";
+
 export type {
   EntityContext,
   VaultCredentials,
