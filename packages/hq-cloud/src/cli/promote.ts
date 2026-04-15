@@ -63,6 +63,7 @@ export async function promote(options: PromoteOptions): Promise<PromoteResult> {
       newRole,
       allowedPrefixes,
       updaterUid: callerUid,
+      companyUid,
     });
 
     return { membership };

@@ -97,6 +97,8 @@ export interface UpdateRoleInput {
   newRole: MembershipRole;
   allowedPrefixes?: string[];
   updaterUid: string;
+  /** Required so the server can authorize the caller as admin/owner of the company. */
+  companyUid: string;
 }
 
 export interface EntityInfo {
@@ -153,7 +155,8 @@ export interface StsChildCredentials {
 
 export interface VendChildResult {
   credentials: StsChildCredentials;
-  /** STS session name: `${parentPersonUid}::task::${taskId}` — used in CloudTrail. */
+  /** STS session name: `${parentPersonUid}--task--${taskId}` — used in CloudTrail.
+   *  (Dash-separated because AWS STS `roleSessionName` disallows colons.) */
   sessionName: string;
   /** ISO-8601 session expiration. */
   expiresAt: string;
@@ -205,8 +208,14 @@ export class VaultClient {
     return data;
   }
 
-  async revokeMembership(membershipKey: string): Promise<void> {
-    await this.post("/membership/revoke", { membershipKey });
+  /**
+   * Revoke a membership. The handler needs both the membershipKey AND the
+   * companyUid so it can authorize the caller as admin/owner of the company
+   * before performing the revoke. (We can't infer companyUid from the key
+   * alone without an extra DDB read, and the caller already knows it.)
+   */
+  async revokeMembership(membershipKey: string, companyUid: string): Promise<void> {
+    await this.post("/membership/revoke", { membershipKey, companyUid });
   }
 
   async listMembersOfCompany(companyUid: string): Promise<Membership[]> {
@@ -267,18 +276,19 @@ export class VaultClient {
   readonly sts = {
     /**
      * Vend task-scoped child credentials strictly narrower than the caller's
-     * own membership. Backed by the vault-service `/sts/vendChild` handler.
+     * own membership. Backed by the vault-service `POST /sts/vend-child`
+     * route (kebab-case to match the rest of the vault-service API).
      *
      * The child policy is intersected with the caller's membership on the
      * server — if `taskScope.allowedPrefixes` requests anything the parent
      * can't see, the server throws ScopeExceedsParentError before calling STS.
      *
-     * Session name format: `${parentPersonUid}::task::${taskId}` — this lands
+     * Session name format: `${parentPersonUid}--task--${taskId}` — this lands
      * in CloudTrail verbatim, so every child S3 action can be traced back to
      * the parent task for incident response.
      */
     vendChild: async (input: VendChildInput): Promise<VendChildResult> => {
-      const data = await this.post<VendChildResult>("/sts/vendChild", input);
+      const data = await this.post<VendChildResult>("/sts/vend-child", input);
       return data;
     },
   };

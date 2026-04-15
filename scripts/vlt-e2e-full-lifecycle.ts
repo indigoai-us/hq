@@ -150,10 +150,22 @@ async function main() {
     ok(`Company created: ${result.companySlug} (${result.companyUid})`);
 
     // ─── Step 2: Founder invites member ─────────────────────────────
+    // NOTE: email-based invites aren't yet supported server-side (would need
+    // a placeholder-person + email-GSI pattern; tracked for VLT-7 follow-up).
+    // The CLI's invite() detects emails vs UIDs from the target string, so
+    // we pre-create the person entity here and pass its UID as the target.
     step(2, "founder /invite member");
 
+    const memberPerson = await client.entity.create({
+      type: "person",
+      slug: `e2e-member-${Date.now()}`,
+      name: "E2E Member",
+      email: `member-${Date.now()}@e2e-test.invalid`,
+    });
+    state.memberUid = memberPerson.uid;
+
     const memberInvite = await invite({
-      target: `member-${Date.now()}@e2e-test.invalid`,
+      target: state.memberUid,
       role: "member",
       company: state.companyUid,
       vaultConfig,
@@ -166,8 +178,16 @@ async function main() {
     // ─── Step 3: Founder invites guest (docs/ only) ─────────────────
     step(3, "founder /invite guest (docs/ prefix scoped)");
 
+    const guestPerson = await client.entity.create({
+      type: "person",
+      slug: `e2e-guest-${Date.now()}`,
+      name: "E2E Guest",
+      email: `guest-${Date.now()}@e2e-test.invalid`,
+    });
+    state.guestUid = guestPerson.uid;
+
     const guestInvite = await invite({
-      target: `guest-${Date.now()}@e2e-test.invalid`,
+      target: state.guestUid,
       role: "guest",
       paths: "docs/",
       company: state.companyUid,
@@ -180,15 +200,6 @@ async function main() {
 
     // ─── Step 4: Member accepts + sync ──────────────────────────────
     step(4, "member /accept + hq sync");
-
-    // Create member person entity
-    const memberPerson = await client.entity.create({
-      type: "person",
-      slug: `e2e-member-${Date.now()}`,
-      name: "E2E Member",
-      email: `member-${Date.now()}@e2e-test.invalid`,
-    });
-    state.memberUid = memberPerson.uid;
 
     const memberAccept = await accept({
       tokenOrLink: state.memberToken!,
@@ -227,15 +238,8 @@ async function main() {
     }
 
     // ─── Step 5: Guest accepts + sync (prefix scoping) ──────────────
+    // Guest person entity was already created in Step 3 (state.guestUid).
     step(5, "guest /accept + hq sync (prefix scoped)");
-
-    const guestPerson = await client.entity.create({
-      type: "person",
-      slug: `e2e-guest-${Date.now()}`,
-      name: "E2E Guest",
-      email: `guest-${Date.now()}@e2e-test.invalid`,
-    });
-    state.guestUid = guestPerson.uid;
 
     const guestAccept = await accept({
       tokenOrLink: state.guestToken!,
@@ -282,7 +286,7 @@ async function main() {
     // ─── Step 7: Admin revokes guest ────────────────────────────────
     step(7, "admin /revoke guest");
 
-    await client.revokeMembership(state.guestMembershipKey!);
+    await client.revokeMembership(state.guestMembershipKey!, state.companyUid!);
     ok("Guest membership revoked");
 
     // Verify guest is revoked
@@ -343,9 +347,9 @@ async function teardown(client: VaultClient) {
   const errors: string[] = [];
 
   // Revoke remaining memberships
-  if (state.memberMembershipKey) {
+  if (state.memberMembershipKey && state.companyUid) {
     try {
-      await client.revokeMembership(state.memberMembershipKey);
+      await client.revokeMembership(state.memberMembershipKey, state.companyUid);
       ok("Revoked member membership");
     } catch (err) {
       // May already be revoked

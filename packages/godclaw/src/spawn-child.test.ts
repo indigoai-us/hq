@@ -6,7 +6,7 @@ const CREDS: GodclawChildCredentials = {
   accessKeyId: "AKIACHILD",
   secretAccessKey: "child-secret",
   sessionToken: "child-session",
-  sessionName: "prs_01HVP::task::01HVT",
+  sessionName: "prs_01HVP--task--01HVT",
   expiresAt: "2026-04-15T06:00:00Z",
   taskId: "01HVT",
   companyUid: "cmp_01HVC",
@@ -20,7 +20,7 @@ describe("buildChildEnv", () => {
     expect(env.AWS_SESSION_TOKEN).toBe("child-session");
     expect(env.HQ_TASK_ID).toBe("01HVT");
     expect(env.HQ_COMPANY_UID).toBe("cmp_01HVC");
-    expect(env.HQ_SESSION_NAME).toBe("prs_01HVP::task::01HVT");
+    expect(env.HQ_SESSION_NAME).toBe("prs_01HVP--task--01HVT");
   });
 
   it("inherits only allowlisted keys from parent env", () => {

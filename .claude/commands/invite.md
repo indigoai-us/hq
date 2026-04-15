@@ -51,6 +51,7 @@ const pending = await listInvites({
 ```typescript
 await revokeInvite({
   tokenOrKey: "<token-or-membership-key>",
+  company: "<slug>",
   vaultConfig: { apiUrl, authToken },
 });
 ```

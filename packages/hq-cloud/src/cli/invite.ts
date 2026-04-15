@@ -44,6 +44,8 @@ export interface InviteListOptions {
 
 export interface InviteRevokeOptions {
   tokenOrKey: string;
+  /** Company slug or UID — required so the server can authorize the caller */
+  company: string;
   vaultConfig: VaultServiceConfig;
 }
 
@@ -126,11 +128,12 @@ export async function listInvites(options: InviteListOptions): Promise<Membershi
  * Revoke a pending invite.
  */
 export async function revokeInvite(options: InviteRevokeOptions): Promise<void> {
-  const { tokenOrKey, vaultConfig } = options;
+  const { tokenOrKey, company, vaultConfig } = options;
   const client = new VaultClient(vaultConfig);
+  const companyUid = await resolveCompanyUid(client, company);
 
   try {
-    await client.revokeMembership(tokenOrKey);
+    await client.revokeMembership(tokenOrKey, companyUid);
   } catch (err) {
     if (err instanceof VaultAuthError) {
       throw new Error("Authentication failed — run `hq auth` to refresh your session");

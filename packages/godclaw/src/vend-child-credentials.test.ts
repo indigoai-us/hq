@@ -16,7 +16,7 @@ const OK_RESULT: VendChildResult = {
     secretAccessKey: "secret",
     sessionToken: "session",
   },
-  sessionName: "prs_01HV123::task::01HVTASK",
+  sessionName: "prs_01HV123--task--01HVTASK",
   expiresAt: "2026-04-15T06:00:00Z",
 };
 
@@ -41,7 +41,7 @@ describe("vendChildCredentials", () => {
       accessKeyId: "AKIATEST",
       secretAccessKey: "secret",
       sessionToken: "session",
-      sessionName: "prs_01HV123::task::01HVTASK",
+      sessionName: "prs_01HV123--task--01HVTASK",
       expiresAt: "2026-04-15T06:00:00Z",
       taskId: "01HVTASK",
       companyUid: "cmp_01HVX",

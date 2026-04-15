@@ -214,24 +214,32 @@ describe("listInvites", () => {
 
 describe("revokeInvite", () => {
   it("revokes a pending invite", async () => {
-    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    fetchSpy
+      .mockResolvedValueOnce(
+        jsonResponse(200, { entity: { uid: "cmp_abc", slug: "acme", type: "company", status: "active" } }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
     await expect(
       revokeInvite({
         tokenOrKey: "psn_1#cmp_abc",
+        company: "acme",
         vaultConfig: VAULT_CONFIG,
       }),
     ).resolves.toBeUndefined();
   });
 
   it("maps 404 to human-readable message", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      jsonResponse(404, { message: "Not found" }),
-    );
+    fetchSpy
+      .mockResolvedValueOnce(
+        jsonResponse(200, { entity: { uid: "cmp_abc", slug: "acme", type: "company", status: "active" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(404, { message: "Not found" }));
 
     await expect(
       revokeInvite({
         tokenOrKey: "psn_1#cmp_abc",
+        company: "acme",
         vaultConfig: VAULT_CONFIG,
       }),
     ).rejects.toThrow("Invite not found");

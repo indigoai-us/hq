@@ -176,6 +176,7 @@ describe("retry behavior", () => {
       membershipKey: "psn_1#cmp_abc",
       newRole: "admin",
       updaterUid: "psn_owner",
+      companyUid: "cmp_abc",
     });
     expect(result.role).toBe("admin");
     expect(fetchSpy).toHaveBeenCalledTimes(3);
@@ -282,10 +283,21 @@ describe("API surface", () => {
       newRole: "guest",
       allowedPrefixes: ["docs/"],
       updaterUid: "psn_admin",
+      companyUid: "cmp_abc",
     });
 
     expect(result.role).toBe("guest");
     expect(result.allowedPrefixes).toEqual(["docs/"]);
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://vault.test.example.com/membership/role");
+    expect(JSON.parse(init.body as string)).toEqual({
+      membershipKey: "psn_1#cmp_abc",
+      newRole: "guest",
+      allowedPrefixes: ["docs/"],
+      updaterUid: "psn_admin",
+      companyUid: "cmp_abc",
+    });
   });
 
   it("entity.get calls correct URL", async () => {
@@ -316,14 +328,18 @@ describe("API surface", () => {
     expect(url).toBe("https://vault.test.example.com/entity/by-slug/company/acme");
   });
 
-  it("revokeMembership calls POST /membership/revoke", async () => {
+  it("revokeMembership calls POST /membership/revoke with companyUid", async () => {
     fetchSpy.mockResolvedValueOnce(new Response(null, { status: 204 }));
 
-    await client.revokeMembership("psn_1#cmp_abc");
+    await client.revokeMembership("psn_1#cmp_abc", "cmp_abc");
 
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://vault.test.example.com/membership/revoke");
     expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      membershipKey: "psn_1#cmp_abc",
+      companyUid: "cmp_abc",
+    });
   });
 
   it("listPendingInvites calls correct URL", async () => {
