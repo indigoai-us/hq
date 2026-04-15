@@ -1,6 +1,7 @@
 ---
 description: Paranoid pre-landing code review — two-pass analysis (CRITICAL/INFORMATIONAL) with file:line references
 allowed-tools: Read, Grep, Glob, Bash(git:*), AskUserQuestion
+pack: dev
 ---
 
 # Pre-Landing Code Review

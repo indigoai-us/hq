@@ -4,9 +4,9 @@ title: Claude desktop bridge-state.json zombie session leak
 scope: global
 trigger: Claude desktop memory leak, high RSS, sparse main.log, OOM dialog, slow UI
 enforcement: hard
-version: 1
+version: 2
 created: 2026-04-10
-updated: 2026-04-10
+updated: 2026-04-15
 ---
 
 ## Rule
@@ -32,6 +32,31 @@ If Claude desktop shows signs of a memory leak — macOS "out of application mem
    - Alternative (more surgical): flip `"enabled": false` for the broken entry only, preserving other entries.
 4. Restart Claude desktop. Verify via `tail -f ~/Library/Application\ Support/Claude/main.log` that no `Transport permanently closed` loop appears.
 5. If the leak persists after a clean `bridge-state.json`, investigate the Claude Preview MCP orphan as a secondary cause.
+
+## Automated detection
+
+Hook: `.claude/hooks/check-claude-desktop-bridge-health.sh` (SessionStart, advisory).
+
+**Correlated-signal rule (v2, 2026-04-15):** warn only when BOTH fire:
+
+1. **File signature** — `bridge-state.json` has ≥1 entry with `enabled=true` + `processedMessageUuids=[]`.
+2. **Log evidence** — `~/Library/Logs/Claude/main.log` and/or `main1.log` contain ≥1 hit for `Transport permanently closed ... code=4090` OR `Cap-redispatch budget exhausted` in the last 5,000 lines.
+
+**Staleness escape valve:** if the file signature matches but logs are clean AND `bridge-state.json` mtime is ≥7 days old, skip the warning — it's a leftover consent from an idle bridge, not an active leak.
+
+**Why the rule tightened (v1 → v2):** v1 checked only signal 1, which is *also* the normal resting state of a healthy bridge (empty processed-uuid queue ≠ zombie). That produced a false positive on every SessionStart and risked numbing users to a real alert. v2 gates on the log discriminators from the rationale below, preserving the 260 GB canary while eliminating the noise.
+
+**Testing the detector:**
+
+```bash
+# Healthy state — should be silent
+bash .claude/hooks/check-claude-desktop-bridge-health.sh
+
+# Simulate zombie — should emit warning with log-match count ≥ 1
+cp "$HOME/Library/Logs/Claude/main.log" /tmp/fake-main.log
+printf '[sessions-bridge] Transport permanently closed for session cse_test code=4090\n' >> /tmp/fake-main.log
+LOG_FILE=/tmp/fake-main.log bash .claude/hooks/check-claude-desktop-bridge-health.sh
+```
 
 ## Related leak vectors
 

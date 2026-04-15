@@ -250,9 +250,9 @@ Flags:
                           (used when PRs will be opened manually post-run)
 
 Examples:
-  scripts/run-pipeline.sh {company} agents-perf unsubscribe-metric
-  scripts/run-pipeline.sh {company} agents-perf --dry-run
-  scripts/run-pipeline.sh --resume PL-20260404-120000-{company}
+  scripts/run-pipeline.sh {product} agents-perf unsubscribe-metric
+  scripts/run-pipeline.sh {product} agents-perf --dry-run
+  scripts/run-pipeline.sh --resume PL-20260404-120000-{product}
   scripts/run-pipeline.sh --status
 HELP
       exit 0
@@ -738,7 +738,6 @@ classify_risk() {
       # HIGH stays HIGH
     esac
   fi
-
 
   echo "$risk"
 }
@@ -1293,8 +1292,9 @@ phase_build() {
 
 # phase_pr <project> <prd_path>
 #
-# Creates a PR for the project's branch. Detects existing PRs to avoid
-# duplicates. Records PR info in pipeline-state.json.
+# Creates a PR for the project's branch. Handles {PRODUCT} repos specially (uses
+# /{product}-pr command). Detects existing PRs to avoid duplicates. Records PR
+# info in pipeline-state.json.
 #
 # Returns: 0 = success (or skipped), 1 = failure
 phase_pr() {
@@ -1332,7 +1332,6 @@ phase_pr() {
     cd "$HQ_ROOT"
     return 0
   fi
-
 
   # --- Generate PR body from prd.json stories ---
   local pr_body

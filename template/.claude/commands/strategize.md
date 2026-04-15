@@ -205,7 +205,7 @@ Then present same AskUserQuestion as quick mode.
 
 - **Read-only** — no board.json writes, no Linear API calls, no PRD modifications
 - **15 prd.json reads max** — prevent timeout on large boards
-- **No HTML** — that is `/dashboard`. This command is text/markdown only
+- **No HTML** — this command is text/markdown only
 - **No brainstorm.md** — that is `/brainstorm`. This command ROUTES to it
 - **1 AskUserQuestion max for clarification** (Step 1). 1 for action routing (Step 5/6). Never batched together
 - **Skip archived projects** — don't surface, don't count

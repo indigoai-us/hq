@@ -10,9 +10,10 @@ Deep conversational interview to build a rich profile and authentic voice guide.
 
 ## Context to Load
 
-1. Read `agents.md` if it exists
-2. Read `companies/*/knowledge/profile.md` if it exists
-3. Read `companies/*/knowledge/voice-style.md` if it exists
+1. Read `agents-profile.md` if it exists (owner profile + working preferences)
+2. Read `agents-companies.md` if it exists (company roster + roles)
+3. Read `companies/*/knowledge/profile.md` if it exists
+4. Read `companies/*/knowledge/voice-style.md` if it exists
 
 Use existing content as a starting point — don't re-ask what's already captured.
 
@@ -109,9 +110,9 @@ After the interview, update these files:
 {2-3 real examples from the interview, quoted}
 ```
 
-### `agents.md`
+### `agents-profile.md` + `agents-companies.md`
 
-Update or create with a concise version of the profile. This file is loaded into context for all writing/communication tasks.
+Update or create both files. `agents-profile.md` holds the owner profile + working preferences (loaded for writing/comms tasks). `agents-companies.md` holds the three-tier company roster (loaded for company routing). The first line of `agents-profile.md` MUST stay `# {Name} - Profile` — the SessionStart hook `inject-local-context.sh` parses the owner name from that exact pattern.
 
 ## Rules
 
