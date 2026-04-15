@@ -2,7 +2,7 @@
  * invite CLI command tests (VLT-7 US-002).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { invite, listInvites, revokeInvite } from "./invite.js";
 import type { VaultServiceConfig } from "../types.js";
 
@@ -22,7 +22,7 @@ const VAULT_CONFIG: VaultServiceConfig = {
   authToken: "test-token",
 };
 
-let fetchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: MockInstance<typeof fetch>;
 
 beforeEach(() => {
   fetchSpy = vi.spyOn(globalThis, "fetch");

@@ -57,6 +57,15 @@ export type {
   EntityInfo,
 } from "./vault-client.js";
 
+// STS child vending (VLT-8)
+export type {
+  TaskAction,
+  TaskScope,
+  VendChildInput,
+  VendChildResult,
+  StsChildCredentials,
+} from "./vault-client.js";
+
 // CLI commands
 export { share, sync } from "./cli/index.js";
 export type { ShareOptions, ShareResult, SyncOptions, SyncResult } from "./cli/index.js";

@@ -4,7 +4,7 @@
  * Uses mocked fetch to assert retry behavior, error mapping, and auth header injection.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import {
   VaultClient,
   VaultAuthError,
@@ -35,7 +35,7 @@ const TEST_CONFIG = {
 };
 
 let client: VaultClient;
-let fetchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: MockInstance<typeof fetch>;
 
 beforeEach(() => {
   client = new VaultClient(TEST_CONFIG);
