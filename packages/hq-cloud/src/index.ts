@@ -63,6 +63,14 @@ export type { ShareOptions, ShareResult, SyncOptions, SyncResult } from "./cli/i
 export { resolveConflict, showDiff } from "./cli/index.js";
 export type { ConflictStrategy, ConflictInfo, ConflictResolution } from "./cli/index.js";
 
+// Membership CLI commands (VLT-7)
+export { invite, listInvites, revokeInvite } from "./cli/index.js";
+export type { InviteOptions, InviteResult, InviteListOptions, InviteRevokeOptions } from "./cli/index.js";
+export { accept, parseToken } from "./cli/index.js";
+export type { AcceptOptions, AcceptResult } from "./cli/index.js";
+export { promote } from "./cli/index.js";
+export type { PromoteOptions, PromoteResult } from "./cli/index.js";
+
 export type {
   EntityContext,
   VaultCredentials,

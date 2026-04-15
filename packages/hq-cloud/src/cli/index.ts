@@ -17,3 +17,9 @@ export type { ConflictStrategy, ConflictInfo, ConflictResolution } from "./confl
 // Membership commands (VLT-7)
 export { invite, listInvites, revokeInvite } from "./invite.js";
 export type { InviteOptions, InviteResult, InviteListOptions, InviteRevokeOptions } from "./invite.js";
+
+export { accept, parseToken } from "./accept.js";
+export type { AcceptOptions, AcceptResult } from "./accept.js";
+
+export { promote } from "./promote.js";
+export type { PromoteOptions, PromoteResult } from "./promote.js";
