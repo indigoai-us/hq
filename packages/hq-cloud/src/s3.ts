@@ -1,5 +1,9 @@
 /**
- * S3 operations — upload, download, list, delete
+ * S3 operations — upload, download, list, delete.
+ *
+ * VLT-5: All operations now accept an EntityContext (entity-aware bucket +
+ * STS-scoped credentials) instead of reading static env config. The caller
+ * is responsible for resolving the context via resolveEntityContext().
  */
 
 import * as fs from "fs";
@@ -10,79 +14,56 @@ import {
   GetObjectCommand,
   ListObjectsV2Command,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
-import type { Credentials, SyncConfig } from "./types.js";
-import { readCredentials, refreshAwsCredentials } from "./auth.js";
+import type { EntityContext } from "./types.js";
 
-let s3Client: S3Client | null = null;
-
-function getConfig(creds: Credentials): SyncConfig {
-  const prefix = creds.teamId
-    ? `teams/${creds.teamId}/users/${creds.userId}/hq/`
-    : `users/${creds.userId}/hq/`;
-  return {
-    bucket: creds.bucket,
-    region: creds.region,
-    userId: creds.userId,
-    prefix,
-  };
-}
-
-async function getClient(): Promise<{ client: S3Client; config: SyncConfig }> {
-  let creds = readCredentials();
-  if (!creds) {
-    throw new Error("Not authenticated. Run 'hq sync init' first.");
-  }
-
-  // Refresh if expired or missing access key
-  if (!creds.accessKeyId || (creds.expiration && new Date(creds.expiration) < new Date())) {
-    creds = await refreshAwsCredentials(creds);
-  }
-
-  if (!s3Client) {
-    s3Client = new S3Client({
-      region: creds.region,
-      credentials: {
-        accessKeyId: creds.accessKeyId,
-        secretAccessKey: creds.secretAccessKey,
-        sessionToken: creds.sessionToken,
-      },
-    });
-  }
-
-  return { client: s3Client, config: getConfig(creds) };
+/**
+ * Build an S3Client from an EntityContext's STS-scoped credentials.
+ * A new client is created each time to ensure fresh credentials are used
+ * (the caller handles caching/refresh at the EntityContext level).
+ */
+function buildClient(ctx: EntityContext): S3Client {
+  return new S3Client({
+    region: ctx.region,
+    credentials: {
+      accessKeyId: ctx.credentials.accessKeyId,
+      secretAccessKey: ctx.credentials.secretAccessKey,
+      sessionToken: ctx.credentials.sessionToken,
+    },
+  });
 }
 
 export async function uploadFile(
+  ctx: EntityContext,
   localPath: string,
-  relativePath: string
+  key: string,
 ): Promise<void> {
-  const { client, config } = await getClient();
-  const key = `${config.prefix}${relativePath}`;
+  const client = buildClient(ctx);
   const body = fs.readFileSync(localPath);
 
   await client.send(
     new PutObjectCommand({
-      Bucket: config.bucket,
+      Bucket: ctx.bucketName,
       Key: key,
       Body: body,
-      ContentType: getMimeType(relativePath),
-    })
+      ContentType: getMimeType(key),
+    }),
   );
 }
 
 export async function downloadFile(
-  relativePath: string,
-  localPath: string
+  ctx: EntityContext,
+  key: string,
+  localPath: string,
 ): Promise<void> {
-  const { client, config } = await getClient();
-  const key = `${config.prefix}${relativePath}`;
+  const client = buildClient(ctx);
 
   const response = await client.send(
     new GetObjectCommand({
-      Bucket: config.bucket,
+      Bucket: ctx.bucketName,
       Key: key,
-    })
+    }),
   );
 
   if (!response.Body) {
@@ -104,34 +85,33 @@ export async function downloadFile(
 
 export interface RemoteFile {
   key: string;
-  relativePath: string;
   size: number;
   lastModified: Date;
   etag: string;
 }
 
-export async function listRemoteFiles(): Promise<RemoteFile[]> {
-  const { client, config } = await getClient();
+export async function listRemoteFiles(
+  ctx: EntityContext,
+  prefix?: string,
+): Promise<RemoteFile[]> {
+  const client = buildClient(ctx);
   const files: RemoteFile[] = [];
   let continuationToken: string | undefined;
 
   do {
     const response = await client.send(
       new ListObjectsV2Command({
-        Bucket: config.bucket,
-        Prefix: config.prefix,
+        Bucket: ctx.bucketName,
+        Prefix: prefix,
         ContinuationToken: continuationToken,
-      })
+      }),
     );
 
     for (const obj of response.Contents || []) {
       if (!obj.Key || !obj.Size) continue;
-      const relativePath = obj.Key.replace(config.prefix, "");
-      if (!relativePath) continue;
 
       files.push({
         key: obj.Key,
-        relativePath,
         size: obj.Size,
         lastModified: obj.LastModified || new Date(),
         etag: obj.ETag || "",
@@ -144,16 +124,46 @@ export async function listRemoteFiles(): Promise<RemoteFile[]> {
   return files;
 }
 
-export async function deleteRemoteFile(relativePath: string): Promise<void> {
-  const { client, config } = await getClient();
-  const key = `${config.prefix}${relativePath}`;
+export async function deleteRemoteFile(
+  ctx: EntityContext,
+  key: string,
+): Promise<void> {
+  const client = buildClient(ctx);
 
   await client.send(
     new DeleteObjectCommand({
-      Bucket: config.bucket,
+      Bucket: ctx.bucketName,
       Key: key,
-    })
+    }),
   );
+}
+
+/**
+ * Check if a remote key exists and return its metadata.
+ */
+export async function headRemoteFile(
+  ctx: EntityContext,
+  key: string,
+): Promise<{ lastModified: Date; etag: string; size: number } | null> {
+  const client = buildClient(ctx);
+  try {
+    const response = await client.send(
+      new HeadObjectCommand({
+        Bucket: ctx.bucketName,
+        Key: key,
+      }),
+    );
+    return {
+      lastModified: response.LastModified || new Date(),
+      etag: response.ETag || "",
+      size: response.ContentLength || 0,
+    };
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "name" in err && err.name === "NotFound") {
+      return null;
+    }
+    throw err;
+  }
 }
 
 function getMimeType(filePath: string): string {

@@ -1,6 +1,8 @@
 /**
  * Background sync daemon management
  * Manages a child process that runs the file watcher
+ *
+ * Day 1: not invoked by CLI surface; retained for future automatic-sync milestone.
  */
 
 import * as fs from "fs";
