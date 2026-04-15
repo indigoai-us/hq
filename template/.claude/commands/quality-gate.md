@@ -3,6 +3,7 @@ description: Universal pre-commit quality checks (typecheck, lint, test, coverag
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: [--fix] [--coverage-min=80] [--deadcode]
 visibility: public
+pack: dev
 ---
 
 # /quality-gate - Pre-Commit Quality Checks

@@ -1,5 +1,44 @@
 # Changelog
 
+## [11.0.0] — 2026-04-15
+
+### Headline
+**BREAKING:** Orchestrator externalized. `/run-project` is now a thin router around `scripts/run-project.sh`. Kits pulling this release must ensure the script exists and is executable — inline-run kits will stop working until the script is present. Also: cross-session repo-level active-run coordination, PII-free SessionStart context injection via `inject-local-context.sh`, two-stage context advisories (60% Stop + 75% PreCompact), hook profile system via `HQ_HOOK_PROFILE`, and a desktop bridge health check for the 260 GB leak class.
+
+### Breaking
+- **`/run-project` is a router.** The Ralph loop now lives in `scripts/run-project.sh` (worktree auto-create, per-story heartbeats, cmux monitor, stale PID detection). See `MIGRATION-v11.md` for the exact upgrade steps.
+- **Repo-level active-run coordination.** A second session attempting to Edit/Write/destructive-Bash against a repo that another session's `/run-project` currently owns will be blocked with exit code 2. Emergency bypass: `HQ_IGNORE_ACTIVE_RUNS=1` (audited to `workspace/learnings/active-run-bypasses.jsonl`). Read/Grep/Glob/`git status` always allowed. Composes above the existing story-level `.file-locks.json` without regression.
+
+### Added — Scripts
+- **`scripts/run-project.sh`** — externalized Ralph loop. Worktree auto-create, per-story heartbeats, cmux monitor, stale PID detection.
+- **`scripts/repo-run-registry.sh`** — cross-session repo lock registry at `workspace/orchestrator/active-runs.json`.
+- **`.claude/scripts/monitor-project.sh`** — 552-line TUI refresh with 24-bit color palette, Unicode glyphs, ANSI Shadow banner. Walk-up root resolution is portable across kits.
+
+### Added — Commands
+- **`/land`** — PR → CI → review → merge → prod-monitor pipeline. Promoted from skill-only in v10.10.0.
+
+### Added — Hooks
+- **`check-claude-desktop-bridge-health.sh`** (SessionStart) — dual-signal detector for the 260 GB desktop-bridge memory leak pattern (bridge-state.json zombie entry + main.log leak signature). Advisory-only, always exits 0.
+- **`rewrite-resume-sentinel.sh`** (UserPromptSubmit) — fixes the "No response requested" failure mode that can occur when resuming compacted sessions.
+- **Settings**: new `UserPromptSubmit` event block wired to `rewrite-resume-sentinel.sh`; `check-claude-desktop-bridge-health.sh` added to `SessionStart`.
+
+### Added — Policies
+- `credential-access-protocol.md` — frontmatter audit trail (`learned_from` + `source`).
+- `claude-desktop-bridge-state-zombie.md` — full policy for the 260 GB leak class. Pairs with the new `check-claude-desktop-bridge-health.sh` hook.
+
+### Changed
+- **`context-warning-60.sh`** moved from `SessionStart` → `Stop` in `settings.json`. The advisory fires after assistant turns when transcript crosses ~60% of the window — it's a Stop-event signal, not a session-start signal. Previously latent bug: it never fired on Stop.
+- **`load-policies-for-session.sh`** — `HQ_ROOT` fallback now uses `${CLAUDE_PROJECT_DIR:-$HOME/HQ}` instead of a hardcoded tilde path. Works correctly in any Claude Code kit, not just the author's machine.
+- **`inject-local-context.sh`** — 4-line filter that strips `{company}`/`{product}` placeholder noise from the worker count so a fresh kit with template-only companies displays a clean SessionStart banner.
+- **`hook-gate.sh`** — 2-line add: `rewrite-resume-sentinel` recognized in `standard` + `strict` profiles.
+- **`run-pipeline.sh`** — product-specific PR-creation branch stripped. All repos now use the standard `gh pr create` path.
+- **15 commands refreshed**: `brainstorm`, `document-release`, `execute-task`, `harness-audit`, `land`, `learn`, `personal-interview`, `prd`, `quality-gate`, `retro`, `review`, `setup`, `strategize`, `tdd`, `update-hq`.
+- **`prd/SKILL.md`** — new Step 8.5 "Resolve Open Questions (Decision Mode)" with hard block on incomplete PRDs, structured `AskUserQuestion` batching, and auto-generated investigation stories for deferred questions.
+- **`learn/SKILL.md`** — `/remember` → `/learn --hard` refresh, new `public:` policy frontmatter, workflow self-check step.
+
+### Migration
+See `MIGRATION-v11.md` at the template root for the step-by-step upgrade (pull scripts, `chmod +x`, install required hooks, verify `run-project.sh --help`).
+
 ## [10.10.0] — 2026-04-13
 
 ### Headline

@@ -3,6 +3,7 @@ description: Post-ship documentation sync — auto-update README, CLAUDE.md, arc
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*), Bash(qmd:*), AskUserQuestion
 argument-hint: [company] [project-slug]
 visibility: public
+pack: dev
 ---
 
 # /document-release - Post-Ship Doc Sync

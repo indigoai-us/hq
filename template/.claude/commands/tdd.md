@@ -3,6 +3,7 @@ description: Enforce test-driven development with RED→GREEN→REFACTOR cycle a
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: [task-description]
 visibility: public
+pack: dev
 ---
 
 # /tdd - Test-Driven Development Workflow

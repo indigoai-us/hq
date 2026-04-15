@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Capture and classify learnings, route to structured policy files (rules) or insight files (educational knowledge). Deduplicates via qmd (Grep fallback), rebuilds policy digest after policy changes. Callable manually or from /execute-task, /run-project, /handoff, /checkpoint, /remember.
+description: Capture and classify learnings, route to structured policy files (rules) or insight files (educational knowledge). Deduplicates via qmd (Grep fallback), rebuilds policy digest after policy changes. Callable manually or from /execute-task, /run-project, /handoff, /checkpoint. Use --hard flag for hard-enforcement rules.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash(qmd:*), Bash(grep:*), Bash(mkdir:*), Bash(date:*), Bash(ls:*), Bash(bash:*), Bash(git:*), Bash(rm:*), Bash(stat:*)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash(qmd:*), Bash(grep:*), Bash(mk
 
 Capture a learning, classify it, and inject the rule directly into the file it governs (or the insight into the insight tree).
 
-Called programmatically by `/execute-task` and `/run-project` after task completion or failure. Also callable manually. `/remember` delegates here. `/handoff` and `/checkpoint` call this for session insights.
+Called programmatically by `/execute-task` and `/run-project` after task completion or failure. Also callable manually with `--hard` flag for hard-enforcement rules (formerly `/learn --hard`). `/handoff` and `/checkpoint` call this for session insights.
 
 **Input:** the user's argument — structured JSON event data, free text description, or empty/"auto" for hook-triggered mode.
 
@@ -112,7 +112,7 @@ If input is a JSON object:
 
 Parse it and proceed to Step 1.5.
 
-### Mode 3: Free Text (manual invocation or /remember delegation)
+### Mode 3: Free Text (manual invocation or /learn --hard delegation)
 
 Parse for keywords to determine scope. Generate rule statement from the description. Proceed to Step 1.5.
 
@@ -124,7 +124,7 @@ Determine if input is an operational rule or an educational insight:
 |--------|------|----------|
 | NEVER/ALWAYS/condition→action | rule | Policy file (Steps 2–6) |
 | "why X works", "pattern behind", conceptual explanation | insight | `workspace/insights/` or `companies/{co}/knowledge/insights/` (Step 5b) |
-| User correction (`/remember`) | rule | Policy file (always) |
+| User correction (`/learn --hard`) | rule | Policy file (always) |
 | `back_pressure_failures` | rule | Policy file (always) |
 | `patterns_discovered` (educational) | insight | Insight file (Step 5b) |
 | `source: "session-insight"` | insight | Insight file (always — from `/handoff` or `/checkpoint` step 0c) |
@@ -159,7 +159,7 @@ For each extracted rule, determine scope (most specific wins):
 | Error in specific command | `command` | `.claude/policies/` (with `scope: command`) |
 | Failure in specific worker | `worker` | `workers/*/{id}/worker.yaml` instructions block (legacy, still supported) |
 | Universal pattern | `global` | `.claude/policies/` |
-| User correction via /remember | From context, default global | Detected scope directory |
+| User correction via /learn --hard | From context, default global | Detected scope directory |
 
 **Primary output = policy files.** The canonical format for persistent rules is structured policy files (per `knowledge/public/hq-core/policies-spec.md`). Worker.yaml injection is still supported for worker-specific learnings.
 
@@ -241,6 +241,7 @@ title: {Rule title}
 scope: {company|repo|command|global}
 trigger: {when this applies}
 enforcement: {hard|soft}
+public: {true|false}
 version: 1
 created: {YYYY-MM-DD}
 updated: {YYYY-MM-DD}
@@ -260,6 +261,24 @@ source: {back-pressure-failure|user-correction|success-pattern|task-completion|h
 - `source: user-correction` → `enforcement: hard`
 - `severity: critical` → `enforcement: hard`
 - Everything else → `enforcement: soft`
+
+**`public:` field mapping (controls publish-kit eligibility):**
+- Default: `public: false` for every new policy regardless of scope
+- `public: true` ONLY when ALL of the following hold:
+  - Scope is `global` or `command` (company/repo/worker scope is always private)
+  - Rule is universally applicable — no hardcoded tool names, workspace IDs, account IDs, vendor names, or user handles
+  - Rationale contains no incident-specific narrative (or would be equivalent after `## Rationale` is stripped — since publish-kit strips it unconditionally)
+  - User invoked `/learn --public` explicitly, OR rule was generated from a `user-correction` with clearly universal language
+- When uncertain → default to `public: false`. Private is the safe option; the owner can promote later via explicit `/learn --public` or a manual edit
+- `public: false` means the policy still loads normally in HQ (no runtime behavior change) — it just blocks publish-kit from syncing it to the template
+
+**Workflow-specificity self-check before setting `public: true`:** ask these questions. Any "yes" forces `public: false`.
+
+1. Does the rule name a specific Slack workspace, team ID, channel, or user?
+2. Does the rule name a specific Vercel project ID, GitHub repo, or company slug?
+3. Does the rule reference a specific MCP server instance (e.g. `slack MCP voyage workspace`)?
+4. Does the rule describe the owner's personal workflow sequence (e.g. "after I run /publish-kit, always X")?
+5. Would a stranger installing HQ for the first time find this rule confusing, irrelevant, or impossible to satisfy without their own equivalent setup?
 
 **Slug generation:** lowercase, hyphens, from rule keywords. Prefix: `{co}-` for company, `{repo}-` for repo, `hq-cmd-{name}-` for command, `hq-` for global.
 
@@ -334,7 +353,7 @@ relates_to: []
 
 If the rule was injected into a scoped file (worker/command/knowledge), also add to `.claude/CLAUDE.md` `## Learned Rules` if ANY:
 - `severity == critical`
-- `source == user-correction` (explicit /remember invocation)
+- `source == user-correction` (explicit /learn --hard invocation)
 - Rule triggered 3+ times (check event log)
 
 ### Cap Enforcement
@@ -431,6 +450,7 @@ If multiple rules/insights were extracted, report each.
 ## Rules
 
 - **Policy files first** — always create structured policy files for company/repo/global/command scoped rules. Worker.yaml injection only for worker-specific learnings
+- **`public: false` by default** — every new policy ships with `public: false` in frontmatter. Only flip to `public: true` when the rule passes the workflow-specificity self-check (5 questions in Step 5) AND the user invoked `/learn --public` OR the rule is a universal user-correction. When in doubt, stay private — publish-kit won't sync private policies to the template
 - **Scan before create** — always check existing policies for updates before creating new files (Step 4.5)
 - **Never inject empty/trivial rules** — "task completed successfully" is not a learning
 - **Dedup is mandatory** — always check before injecting (qmd first, Grep fallback)
@@ -439,5 +459,5 @@ If multiple rules/insights were extracted, report each.
 - **Rebuild digest after policy write** — `bash scripts/build-policy-digest.sh` is required after any policy file create/update (Step 8). SessionStart hooks depend on it
 - **Event log is always written** — `workspace/learnings/learn-{timestamp}.json` is non-optional
 - **Preserve existing rules** — append only, never overwrite existing rules
-- **User corrections always promote** — /remember delegations go to both target file AND CLAUDE.md
+- **User corrections always promote** — /learn --hard delegations go to both target file AND CLAUDE.md
 - **Match existing style** — use the same rule format as existing rules in the target file

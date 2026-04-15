@@ -42,7 +42,7 @@ Before asking questions, explore HQ. Resolve `mode` from Step 0 + input:
 If `{co}` is anchored, scope all searches to that company.
 
 **Companies & Context (only if `mode in (company, repo)`):**
-- Read `agents.md` (roles, priorities) — needed to route cross-company PRDs
+- Read `agents-companies.md` (roles, priorities, three-tier roster) — needed to route cross-company PRDs
 - Read `companies/manifest.yaml` (companies already listed there — never Glob for company discovery)
 - **Skip both if already anchored in Step 0**: Step 0 already loaded manifest and matched the company. Re-reading is pure waste
 - **Skip entirely for personal/HQ mode**: no company routing needed, no repo to map
@@ -361,10 +361,14 @@ This is the **source of truth**. `/run-project` and `/execute-task` consume this
     "securityNotes": "{from Batch 5b — PII/compliance notes or empty}",
     "rolloutStrategy": "{from Batch 5c — ship strategy or empty}",
     "analyticsEvents": ["{from Batch 6g — event names or empty}"],
-    "monitoringNotes": "{from Batch 6h — prod monitoring plan or empty}"
+    "monitoringNotes": "{from Batch 6h — prod monitoring plan or empty}",
+    "openQuestions": ["{remaining unresolved questions — Step 8.5 resolves these before Step 9}"],
+    "decisions": []
   }
 }
 ```
+
+**`decisions[]` schema:** Appended by Step 8.5 as `{question, answer, decidedAt, decidedBy}`. Optional — absent means empty. Additive and backwards-compatible; existing PRDs without the field are unaffected.
 
 **Populating `files`:** For each story, infer file paths from the description + acceptance criteria + target repo structure. If `repoPath` is set, search the repo (via qmd or Glob) to find existing files the story will modify, and predict new files it will create. Paths are repo-relative (e.g. `src/middleware/auth.ts`, not absolute). Best-effort — empty is fine for stories with unclear scope.
 
@@ -420,8 +424,15 @@ Generate FROM the prd.json data. Human-friendly view.
 - **Monitoring:** {metadata.monitoringNotes — or omit if empty}
 {Omit any sub-bullet where the field is empty. If ALL fields empty, write general constraints/dependencies instead}
 
+## Decisions
+{Render as table from metadata.decisions[]. Omit section entirely if empty. Columns: Question | Answer | Decided by. Populated by Step 8.5 decision-mode pass.}
+
+| Question | Answer | Decided by |
+|---|---|---|
+| {decisions[i].question} | {decisions[i].answer} | {decisions[i].decidedBy} |
+
 ## Open Questions
-{Remaining questions}
+{Remaining unresolved questions from metadata.openQuestions[]. If all were resolved in Step 8.5, write "None — all resolved in decision mode (see Decisions above)." If any were deferred, list each with its deferredReason and link to the generated pre-flight story.}
 ```
 
 ## Step 5.5: Update Brainstorm (if exists)
@@ -527,23 +538,56 @@ Check if the new project's scope reveals missing or stale docs. Scout only — n
   ```
 - Include these notes in the Step 8 confirmation output so user sees them
 
-## Step 8: Linear Sync (best-effort, {Product}/{Product} only)
+## Step 8: Linear Sync (best-effort, opt-in)
 
-If `{co}` is `{company}`, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
+If `companies/{co}/settings/linear/credentials.json` exists, attempt Linear sync. If credentials are unavailable or the API fails, skip silently — Linear sync never blocks PRD creation.
 
-1. Read `companies/{company}/settings/linear/credentials.json` and `config.json`
-2. Validate `workspace: "voyage"` in config
-3. Create Linear project linked to best-fit initiative, with `leadId` (default: {your-name}) and `targetDate` (default: today+1d)
+1. Read `companies/{co}/settings/linear/credentials.json` and `config.json`
+2. Validate `workspace` matches the active company per `companies/manifest.yaml`
+3. Create Linear project linked to best-fit initiative, with `leadId` (default: owner from `agents-profile.md`) and `targetDate` (default: today+1d)
 4. Create issue per story with `assigneeId` (resolved by team routing) and `dueDate` (matches project targetDate)
 5. Store all IDs in prd.json: `metadata.linearProjectId`, `metadata.linearCredentials`, per-story `linearIssueId`, `linearAssigneeId`
 
 No orphan issues — every issue must have a `projectId`. If project creation fails, skip issue creation.
+
+## Step 8.5: Resolve Open Questions (Decision Mode)
+
+**HARD BLOCK: PRD is NOT complete until this step finishes.**
+
+Read `metadata.openQuestions[]` from the prd.json just written. **If empty**, skip this step entirely and proceed to Step 9.
+
+**If non-empty:**
+
+1. **Enter plan mode for the resolution.** Announce to the user: `"Open questions remain — entering decision mode."` Use **AskUserQuestion** (NOT free-text questions) so answers are structured and auditable. ToolSearch `select:AskUserQuestion` if it isn't loaded yet.
+2. **Batch up to 4 questions per AskUserQuestion call.** For each question, infer **2–3 concrete candidate options** from:
+   - The PRD's own metadata (`integrations`, `architectureNotes`, `authModel`, `dataModel`, `rolloutStrategy`, etc.)
+   - Prior `metadata.decisions[]` already captured (if re-running)
+   - Anchored company policies (e.g. `{co}-aws-credentials-safety` → the company's aws_profile + region from `companies/manifest.yaml`)
+   - Common-sense defaults ("existing cert" when signing, "existing pool" when auth)
+3. **Always append a `"Defer — track as pre-flight story"` option LAST** to every question. Users must be able to opt out of answering any single question without abandoning decision mode entirely.
+4. **Write results back to prd.json:**
+   - **Answered:** append to `metadata.decisions[]` as `{question, answer, decidedAt: <today ISO date>, decidedBy: <owner name from agents-profile.md>}`. Remove from `metadata.openQuestions[]`.
+   - **Deferred:** keep in `metadata.openQuestions[]` but annotate `{deferredAt, deferredReason}`. Generate a new user story `US-000` (or `US-00N` if taken) with:
+     - `priority: 1`
+     - `labels: ["investigation", "pre-flight"]`
+     - `acceptanceCriteria`: `"Investigate <question>, write findings to companies/{co}/projects/{name}/references.md, unblock <dependent story ids>"`
+     - `dependsOn`: minimal prerequisites (usually just US-001 or US-002)
+     - `notes`: `"Blocks <dependent stories>. Created via /prd Step 8.5 decision-mode deferral."`
+   - **Insert the new story at the top of `userStories[]`** and **prepend its id to the `dependsOn[]` of every dependent story** (inferred from the question text — e.g. "Affects US-009 scope" → add to US-009's deps).
+5. **Re-derive README.md** from the updated prd.json so the human-readable view reflects the Decisions section + new investigation stories + updated dependencies.
+6. **Re-sync orchestrator state** — update `workspace/orchestrator/state.json` for this project: `storiesTotal += <number of new investigation stories>`, bump `updatedAt`.
+7. **Re-sync board.json** — bump `companies/{co}/board.json` entry's `updated_at` timestamp (no field changes needed; investigation stories ride under the same project).
+8. Only after Step 8.5 completes may Step 9 run.
+
+**Rationale:** Open questions historically drifted into `metadata.openQuestions[]` and were forgotten. Forcing resolution at PRD creation (in plan mode, via AskUserQuestion) catches cost/timeline implications while context is rich, not in the executing agent's downstream session where context is thinner. The "Defer — track as pre-flight story" escape hatch preserves the option to punt without losing traceability.
 
 ## Step 9: Confirm & STOP
 
 Tell user:
 ```
 Project **{name}** created with {N} user stories.
+Decisions resolved: {metadata.decisions.length} (Step 8.5)
+Open questions remaining: {metadata.openQuestions.length}
 
 Files:
   companies/{co}/projects/{name}/prd.json   (source of truth — tracks all work)
@@ -596,7 +640,7 @@ Splitting heuristics:
 - Batch questions (don't overwhelm)
 - **prd.json is the source of truth** — README.md is derived from it, never the reverse
 - **All stories start with `passes: false`** — `/run-project` marks them true
-- **Planning, not execution** — this skill IS planning, do not enter a separate plan mode
+- **Planning, not execution** — this skill IS planning for everything except Step 8.5, which uses plan mode + AskUserQuestion to force resolution of open questions before PRD completion
 - **Track stories in prd.json** — that is the task list, no separate todo tracking needed
 - **HARD BLOCK: Do NOT implement** — ONLY create the PRD files (`companies/{co}/projects/{name}/prd.json` + `README.md`). NEVER edit target files (repos, decks, sites, etc.) during a PRD session. Plan approval = "approved to generate PRD files," NOT "approved to implement." Implementation happens via `/execute-task` or `/run-project` AFTER PRD creation. Violating this bypasses project tracking, worker assignment, handoffs, and quality gates
 - **STOP after PRD creation** — After Step 9 confirmation, run the `handoff` skill and end session. NEVER start executing stories, running workers, or writing implementation code in the same session as PRD creation. No exceptions, regardless of project size or user request. If user asks to start immediately, explain that execution requires a fresh session for context isolation (Ralph pattern). prd.json tracks all work for humans and future agent runs — this separation is mandatory
