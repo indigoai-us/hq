@@ -45,3 +45,8 @@ export type {
   DesktopInstallerContract,
   HqConfig,
 } from "./types.js";
+
+// CLI
+export { runOnboardCli } from "./cli/onboard.js";
+export type { OnboardCliOptions, OnboardCliResult } from "./cli/onboard.js";
+export { formatProgress, formatSummary, formatError, validateSlug, validateEmail } from "./cli/prompts.js";
