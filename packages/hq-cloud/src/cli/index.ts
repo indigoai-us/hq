@@ -1,7 +1,7 @@
 /**
- * hq-cloud CLI entry points (VLT-5 US-002).
+ * hq-cloud CLI entry points.
  *
- * Registers `hq share` and `hq sync` commands.
+ * Registers `hq share`, `hq sync`, and membership commands.
  * These are consumed by @indigoai-us/hq-cli or invoked directly.
  */
 
@@ -13,3 +13,7 @@ export type { SyncOptions, SyncResult } from "./sync.js";
 
 export { resolveConflict, showDiff } from "./conflict.js";
 export type { ConflictStrategy, ConflictInfo, ConflictResolution } from "./conflict.js";
+
+// Membership commands (VLT-7)
+export { invite, listInvites, revokeInvite } from "./invite.js";
+export type { InviteOptions, InviteResult, InviteListOptions, InviteRevokeOptions } from "./invite.js";
