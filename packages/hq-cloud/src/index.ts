@@ -37,6 +37,26 @@ export {
   isWithinSizeLimit,
 } from "./ignore.js";
 
+// VaultClient SDK (VLT-7)
+export { VaultClient } from "./vault-client.js";
+export {
+  VaultClientError,
+  VaultAuthError,
+  VaultPermissionDeniedError,
+  VaultNotFoundError,
+  VaultConflictError,
+} from "./vault-client.js";
+export type {
+  MembershipRole,
+  MembershipStatus,
+  Membership,
+  CreateInviteInput,
+  CreateInviteResult,
+  AcceptInviteResult,
+  UpdateRoleInput,
+  EntityInfo,
+} from "./vault-client.js";
+
 // CLI commands
 export { share, sync } from "./cli/index.js";
 export type { ShareOptions, ShareResult, SyncOptions, SyncResult } from "./cli/index.js";
