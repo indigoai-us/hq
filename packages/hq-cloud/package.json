@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run src/",
+    "test:e2e": "vitest run test/",
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
