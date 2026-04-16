@@ -30,6 +30,7 @@ import {
   startGitHubDeviceFlow,
 } from "./auth.js";
 import { writeCompanyTemplate, type TeamMetadata } from "./company-template.js";
+import { promoteCompany, scanForSecrets } from "./promote.js";
 import { stepStatus, success, warn, info } from "./ui.js";
 import { linkTeamCommands, installTeamCommands } from "./team-setup.js";
 import {
@@ -98,6 +99,26 @@ function pause(message: string): Promise<void> {
       resolve();
     });
   });
+}
+
+// ─── Folder discovery ───────────────────────────────────────────────────────
+
+/**
+ * Discover companies/ subfolders that are eligible for promotion — i.e.
+ * they don't already have a team.json. Excludes _template and hidden dirs.
+ */
+function discoverEligibleFolders(companiesDir: string): string[] {
+  if (!fs.existsSync(companiesDir)) return [];
+
+  return fs
+    .readdirSync(companiesDir, { withFileTypes: true })
+    .filter((entry) => {
+      if (!entry.isDirectory()) return false;
+      if (entry.name === "_template" || entry.name.startsWith(".")) return false;
+      const teamJsonPath = path.join(companiesDir, entry.name, "team.json");
+      return !fs.existsSync(teamJsonPath);
+    })
+    .map((entry) => entry.name);
 }
 
 // ─── GitHub helpers ─────────────────────────────────────────────────────────
@@ -447,8 +468,114 @@ export async function runAdminOnboarding(
     hq_version: hqVersion,
   };
 
-  // 7. Create the {org}/hq-{teamSlug} repo
+  // 7a. Offer seed-from-existing-folder option (before repo creation)
+  const companiesDir = path.join(hqRoot, "companies");
+  const eligibleFolders = discoverEligibleFolders(companiesDir);
   const repoName = `hq-${teamSlug}`;
+
+  let seedFromExisting: string | null = null;
+
+  if (eligibleFolders.length > 0) {
+    console.log();
+    console.log(chalk.bold("  Seed team repo from:"));
+    console.log(chalk.cyan("  [1] ") + chalk.white("Fresh template") + chalk.dim(" — clean starting point"));
+    console.log(chalk.cyan("  [2] ") + chalk.white("Existing companies/ folder") + chalk.dim(` — ${eligibleFolders.length} available`));
+    console.log();
+
+    const seedChoice = await prompt("Select (1-2)", "1");
+    if (seedChoice === "2") {
+      if (eligibleFolders.length === 1) {
+        const slug = eligibleFolders[0];
+        info(`Using companies/${slug}/`);
+        seedFromExisting = slug;
+      } else {
+        console.log();
+        console.log(chalk.bold("  Choose a folder:"));
+        for (let i = 0; i < eligibleFolders.length; i++) {
+          console.log(chalk.cyan(`  [${i + 1}] `) + chalk.white(`companies/${eligibleFolders[i]}/`));
+        }
+        console.log();
+        const folderChoice = await prompt(`Select (1-${eligibleFolders.length})`, "1");
+        const idx = parseInt(folderChoice, 10) - 1;
+        if (idx >= 0 && idx < eligibleFolders.length) {
+          seedFromExisting = eligibleFolders[idx];
+        } else {
+          warn("Invalid selection — using fresh template.");
+        }
+      }
+
+      // Run pre-push secrets scan on the selected folder
+      if (seedFromExisting) {
+        const folderPath = path.join(companiesDir, seedFromExisting);
+        const scanResult = scanForSecrets(folderPath);
+        if (!scanResult.clean) {
+          console.log();
+          warn("Potential secrets detected in the folder:");
+          for (const finding of scanResult.findings.slice(0, 10)) {
+            console.log(chalk.yellow(`    ${finding.file}:${finding.line}`) + chalk.dim(` — ${finding.pattern}`));
+          }
+          if (scanResult.findings.length > 10) {
+            info(`  ...and ${scanResult.findings.length - 10} more`);
+          }
+          console.log();
+          const proceed = await prompt("Proceed anyway? (y/N)", "n");
+          if (!proceed.toLowerCase().startsWith("y")) {
+            info("Remove the flagged content and retry. Falling back to fresh template.");
+            seedFromExisting = null;
+          }
+        }
+      }
+    }
+  }
+
+  // 5b. Promote existing folder (skips repo creation — promoteCompany handles it)
+  if (seedFromExisting) {
+    const promoteLabel = `Promoting companies/${seedFromExisting} → ${chosenOrg.login}/${repoName}`;
+    stepStatus(promoteLabel, "running");
+
+    try {
+      const folderPath = path.join(companiesDir, seedFromExisting);
+      const promoteResult = await promoteCompany({
+        companyDir: folderPath,
+        orgLogin: chosenOrg.login,
+        orgId: chosenOrg.id,
+        auth,
+        repoName,
+        hqVersion,
+      });
+
+      stepStatus(promoteLabel, "done");
+
+      // Install bundled team commands
+      const installed = installTeamCommands(hqRoot);
+      if (installed.length > 0) {
+        info(`Installed ${installed.length} team command${installed.length === 1 ? "" : "s"}: ${installed.join(", ")}`);
+      }
+      const symlinks = linkTeamCommands(hqRoot, teamSlug);
+      if (symlinks.linked.length > 0) {
+        info(`Linked ${symlinks.linked.length} team command${symlinks.linked.length === 1 ? "" : "s"}`);
+      }
+
+      console.log();
+      success(`Team "${teamName}" created from companies/${seedFromExisting}/ — ${promoteResult.repoHtmlUrl}`);
+
+      await inviteLoop(auth, meta, promoteResult.cloneUrl);
+
+      return {
+        team: promoteResult.team,
+        companyDir: folderPath,
+        repoHtmlUrl: promoteResult.repoHtmlUrl,
+      };
+    } catch (err) {
+      stepStatus(promoteLabel, "failed");
+      const message = err instanceof Error ? err.message : String(err);
+      warn(`Promote failed: ${message}`);
+      info("Falling back to fresh template...");
+      // Fall through to the normal create-repo + seed flow below
+    }
+  }
+
+  // 5c. Create the {org}/hq-{teamSlug} repo (fresh template path)
   const repoLabel = `Creating ${chosenOrg.login}/${repoName} private repo`;
   stepStatus(repoLabel, "running");
 
@@ -464,7 +591,6 @@ export async function runAdminOnboarding(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("422") && /already exists/i.test(message)) {
-      // Repo already exists — could be from a prior run. Confirm before reusing.
       stepStatus(repoLabel, "done");
       console.log();
       info(`${chosenOrg.login}/${repoName} already exists.`);
@@ -530,7 +656,6 @@ export async function runAdminOnboarding(
   }
 
   // 9. Clone into companies/{slug}/
-  const companiesDir = path.join(hqRoot, "companies");
   if (!fs.existsSync(companiesDir)) {
     fs.mkdirSync(companiesDir, { recursive: true });
   }
