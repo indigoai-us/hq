@@ -163,7 +163,7 @@ Assess: top-heavy (many ideas, few executing), balanced, or bottom-heavy.
 **Write report to:** `workspace/reports/{co}-strategy-review.md`
 
 ```markdown
-# {Company} Strategic Review
+# {company} Strategic Review
 _Generated {date}_
 
 ## Summary

@@ -1,0 +1,93 @@
+# Design Styles Pack Registry
+# Source of truth for all available style packs and brand packs.
+#
+# Status field convention:
+#   active — full pack directory with pack.yaml, implementation, tokens, and templates
+#   stub   — flat style-guide .md only; not yet restructured into a full pack
+#
+# Type field convention:
+#   style  — shared aesthetic system, not tied to any company
+#   brand  — company-specific adaptation that extends a style pack (has `extends` field)
+#
+# Scope field (brand packs only):
+#   company — pack belongs to a specific company's knowledge directory
+
+schema_version: "1.0"
+
+packs:
+
+  # ── Style Packs: Active ──────────────────────────────────────────────────────
+
+  - id: american-industrial
+    name: American Industrial
+    version: "1.0.0"
+    type: style
+    status: active
+    path: packs/american-industrial/
+    aesthetic: "Structural-honesty industrial design: condensed heavy display type, shared-border grids, flat accent rules, no decoration — built for authority."
+
+  # ── Style Packs: Stubs (flat style-guide .md only) ───────────────────────────
+  # These styles are registered but not yet restructured into full packs.
+  # Workers can load the style-guide at `path` for reference; no tokens/implementation available.
+
+  - id: brutalist-raw
+    name: Brutalist Raw
+    type: style
+    status: stub
+    path: styles/brutalist-raw.md
+
+  - id: corporate-clean
+    name: Corporate Clean
+    type: style
+    status: stub
+    path: styles/corporate-clean.md
+
+  - id: dark-luxury
+    name: Dark Luxury
+    type: style
+    status: stub
+    path: styles/dark-luxury.md
+
+  - id: editorial-magazine
+    name: Editorial Magazine
+    type: style
+    status: stub
+    path: styles/editorial-magazine.md
+
+  - id: ethereal-abstract
+    name: Ethereal Abstract
+    type: style
+    status: stub
+    path: styles/ethereal-abstract.md
+
+  - id: liminal-portal
+    name: Liminal Portal
+    type: style
+    status: stub
+    path: styles/liminal-portal.md
+
+  - id: minimalist-swiss
+    name: Minimalist Swiss
+    type: style
+    status: stub
+    path: styles/minimalist-swiss.md
+
+  - id: retro-analog
+    name: Retro Analog
+    type: style
+    status: stub
+    path: styles/retro-analog.md
+
+  # ── Brand Packs ──────────────────────────────────────────────────────────────
+  # Company-specific packs that extend a style pack with brand overrides.
+
+  - id: {company}-brand
+    name: {company} Brand
+    version: "1.0.0"
+    type: brand
+    status: active
+    scope: company
+    company: {company}
+    extends: editorial-magazine
+    path: companies/{company}/knowledge/brand/
+    aesthetic: "Quiet editorial confidence — six-pastel palette, serif display, flat design. Kinfolk-adjacent. Never supplement-bro."

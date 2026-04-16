@@ -34,7 +34,7 @@ Root files that always stay at root:
 ```
 ├── company-info.md       # Corporate details, address, legal (agent context)
 ├── competitive-landscape.md  # Market position, competitors (cross-domain)
-├── AGENT-GUIDE.md        # How AI agents should navigate ({company} only)
+├── AGENT-GUIDE.md        # How AI agents should navigate (liverecover only)
 ├── profile.md            # Personal profile (personal company only)
 ```
 
@@ -66,7 +66,6 @@ Small companies (≤5 docs total) may omit most subdirs and organize minimally. 
 ### Escape Hatch
 Domain-specific content that doesn't fit the 8-subdir model may use a named subdir as an "escape hatch":
 - `wildcat/` in {company} — client deliverable archive, specific to the Wildcat brand engagement
-- `{company}/` maintains its own `coverage/`, `media-lists/`, `pitch-library/`, `playbooks/`, `templates/` structure — PR agency workflow requires domain-specific organization
 
 Escape hatch subdirs must be documented in the company's README.md.
 
@@ -105,9 +104,9 @@ Files that **move to subdirs**:
 
 | Company | Subdirs Used |
 |---------|-------------|
-| {company} | `engineering/`, `product/`, `data/` |
+| liverecover | `engineering/`, `product/`, `data/` |
 | {company} | `brand/`, `engineering/`, `product/`, `growth/`, `market/`, `operations/`, `assets/` |
-| {company} | `engineering/`, `product/`, `growth/`, `market/`, `operations/`, `data/` |
+| brandstage | `engineering/`, `product/`, `growth/`, `market/`, `operations/`, `data/` |
 | {company} | `engineering/`, `operations/`, `wildcat/` (escape hatch) |
 | {company} | `brand/`, `product/`, `growth/`, `operations/`, `assets/` |
 | {company} | `brand/`, `engineering/`, `market/`, `operations/` |
@@ -115,7 +114,6 @@ Files that **move to subdirs**:
 | personal | `brand/`, `growth/`, `operations/`, `data/` |
 | {company} | `brand/`, `growth/`, `operations/` |
 | {company} | `engineering/`, `product/` |
-| {company} | _(escape hatch — full domain-specific structure preserved)_ |
 
 ---
 

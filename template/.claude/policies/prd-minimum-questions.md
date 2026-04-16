@@ -21,8 +21,3 @@ If the minimum is not met before the user triggers the escape hatch ("Generate P
 
 Tier coverage requirement: at least 1 question from 2 different tiers must be asked. A PRD generated entirely from Strategic questions without any Architecture or Quality coverage is incomplete.
 
-## Rationale
-
-Shallow PRDs cause mid-execution story rewrites — the most expensive failure mode in the Ralph loop. A worker discovers missing requirements at story 4 of 7, forcing PRD revision and re-execution of completed stories. The deep interview is the cheapest quality gate: 10-15 minutes of questioning prevents hours of rework.
-
-The minimum of 10 was calibrated against existing PRD sessions: projects with fewer than 10 interview data points consistently produced stories with ambiguous ACs, missing error handling, and scope creep during execution.

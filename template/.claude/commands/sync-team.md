@@ -9,7 +9,7 @@ Pull latest team content and push local changes for all joined teams. Bidirectio
 ## Arguments
 
 Parse the user's input for:
-- `<company>` — Sync (or promote) a specific company by slug (e.g., `/sync indigo`). Also accepts `--team <slug>` for backwards compatibility.
+- `<company>` — Sync (or promote) a specific company by slug (e.g., `/sync {company}`). Also accepts `--team <slug>` for backwards compatibility.
 - `--dry-run` — Show what would be synced without making changes
 
 If no company specified, sync all discovered teams.

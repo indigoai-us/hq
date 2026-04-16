@@ -88,7 +88,7 @@ https://{store}.myshopify.com/cart/{variant_id}:{quantity},{variant_id}:{quantit
 
 Example:
 ```
-https://{your-store}.myshopify.com/cart/49012345678:1,49012345679:2
+https://{company}-8.myshopify.com/cart/49012345678:1,49012345679:2
 ```
 
 #### Why Cart Permalink Over Draft Order API

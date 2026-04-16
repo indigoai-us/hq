@@ -59,7 +59,7 @@ fi
 
 RESPONSE=$(curl -s \
   -H "Authorization: Bearer ${TOKEN}" \
-  "https://hq.indigoai.com/api/teams/${TEAM_ID}/shares${DIRECTION_PARAM}")
+  "https://hq.{company}ai.com/api/teams/${TEAM_ID}/shares${DIRECTION_PARAM}")
 ```
 
 If the request fails or returns non-2xx: print the error and stop.

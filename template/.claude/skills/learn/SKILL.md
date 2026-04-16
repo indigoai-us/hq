@@ -116,6 +116,27 @@ Parse it and proceed to Step 1.5.
 
 Parse for keywords to determine scope. Generate rule statement from the description. Proceed to Step 1.5.
 
+### Mode 4: Batch Input (from /handoff or any caller passing an array)
+
+If the input starts with `[` (JSON array), enter batch mode:
+
+**Batch input format:**
+```json
+[
+  {"type": "rule|insight", "content": "...", "scope": "global|company:{co}|...", "source": "..."},
+  ...
+]
+```
+
+**Batch processing rules:**
+
+1. **Detect batch input:** if the input is a JSON array (starts with `[`), enter batch mode
+2. **Run qmd vsearch dedup ONCE for all items:** concatenate all item `content` fields as a single query string for a single `qmd vsearch` call, then match results against each item individually
+3. **Process each item through Steps 2–6 normally:** extract rules, classify scope, create/update policy files — one item at a time using the shared dedup results
+4. **Run `bash scripts/build-policy-digest.sh` ONCE at the end** (not per-item) — only if any item produced a policy file write
+5. **Write a single event log entry** covering all items processed in the batch
+6. **Backward compatibility:** all existing modes (1, 2, 3) work exactly as before — batch is a new detection branch only
+
 ## Step 1.5: Classify Content Type
 
 Determine if input is an operational rule or an educational insight:
@@ -421,6 +442,8 @@ git update-index --refresh >/dev/null 2>&1 || true
 ```
 
 Insight-only runs (content_type: insight) skip the digest rebuild — insights don't affect the policy digest.
+
+**Batch mode note:** In batch mode (Mode 4), the digest rebuild runs ONCE after all items are processed — not per-item. The single rebuild covers all policy files written during the batch.
 
 ## Step 9: Report
 

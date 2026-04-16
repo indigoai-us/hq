@@ -30,8 +30,8 @@ Example: `T-20260123-143052-mrr-report`
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:35:00.000Z",
 
-  "workspace_root": "~/HQ",
-  "cwd": "repos/private/{company}",
+  "workspace_root": "/Users/{your-name}epstein/Documents/HQ",
+  "cwd": "repos/private/liverecover",
 
   "git": {
     "branch": "main",
@@ -48,7 +48,7 @@ Example: `T-20260123-143052-mrr-report`
   },
 
   "worker": {
-    "id": "cfo-{company}",
+    "id": "cfo-liverecover",
     "skill": "mrr",
     "state": "completed",
     "started_at": "2026-01-23T14:30:52.000Z",
@@ -63,7 +63,7 @@ Example: `T-20260123-143052-mrr-report`
 
   "metadata": {
     "title": "MRR Report Jan 2026",
-    "tags": ["finance", "{company}", "mrr"]
+    "tags": ["finance", "liverecover", "mrr"]
   }
 }
 ```
@@ -80,8 +80,8 @@ Auto-checkpoints are created automatically by PostToolUse hooks after git commit
   "created_at": "2026-01-23T14:30:52.000Z",
   "updated_at": "2026-01-23T14:30:52.000Z",
 
-  "workspace_root": "~/HQ",
-  "cwd": "repos/private/{company}",
+  "workspace_root": "/Users/{your-name}epstein/Documents/HQ",
+  "cwd": "repos/private/liverecover",
 
   "git": {
     "branch": "main",

@@ -61,7 +61,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Deploy & Ops
 | Command | What it does |
 |---------|--------------|
-| `/pr` | {company} PR operations |
+| `/pr` | {company} operations |
 | `/publish-kit` | Publish kit |
 
 ### Company & Infrastructure
@@ -102,8 +102,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 | Worker | Purpose |
 |--------|---------|
-| frontend-designer | Full-spectrum design — 27 skills for building, refining, and shipping UI |
-| ux-auditor | Design review & quality gate — 11 skills for auditing and hardening UI |
+| frontend-designer | UI generation |
 | qa-tester | Automated website testing (Playwright) |
 | security-scanner | Security scanning |
 | pretty-mermaid | Mermaid diagram generation |
@@ -125,29 +124,46 @@ social-shared (library), social-strategist, social-reviewer, social-publisher, s
 **Gardener Team (3):** `workers/public/gardener-team/`
 garden-scout, garden-auditor, garden-curator
 
-**Gemini Team (2):** `workers/public/gemini-*/`
-gemini-coder, gemini-reviewer
+**Gemini Team (3):** `workers/public/gemini-*/`
+gemini-coder, gemini-reviewer, gemini-frontend
 
 **Company Workers** (`companies/{co}/workers/`):
 
-Create company-scoped workers with `/newworker`. Examples:
-
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting |
+| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
 | {company}-analyst | {company} | Data analysis |
-| cmo-{company} | {company} | Social/content |
-| x-{your-name} | personal | X/Twitter posting |
+| infobip-admin | {company} | Infobip channel management |
+| {company}-gtm | {company} | GTM operations |
+| lr-qa | {company} | QA testing |
+| {product}-deploy | {company} | Deployment automation |
+| cmo-{company} | {company} | Social/content (X, LinkedIn) |
+| x-{your-name} | Personal | X/Twitter posting |
+| invoices | Personal | Invoice generation |
+| social-council | Personal | Social strategy council |
+| {company}-site-builder | {company} | Site generation |
+| {company}-research-agent | {company} | Research automation |
 
-## Companies
+## Companies (14)
 
-Each company owns its settings, data, and knowledge. Add companies with `/newcompany`.
+Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {your-company}/  # Your first company
-├── personal/        # Personal tools + social
-└── _template/       # Template for new companies
+├── {company}/    # SMS/e-commerce + AI platform
+├── {company}/         # AI venture
+├── personal/       # Personal tools + social
+├── {company}/  # Band/music
+├── {company}/     # Artist site + admin
+├── {company}/    # Artist management
+├── {company}/      # PR agency
+├── {company}/     # {company} AI
+├── {company}/ # Estate platform
+├── {company}/       # Agency + tools
+├── {company}/          # Shopify store
+├── {company}/       # Wellness mobile app
+├── {company}/       # Domain management
+└── {company}/            # GTM/growth
 ```
 
 ## Projects
@@ -170,7 +186,7 @@ HQ/
 │   └── skills/        # Skill definitions (3)
 ├── agents-profile.md  # {your-name}'s profile
 ├── agents-companies.md # Company contexts
-├── companies/         # Company-scoped resources
+├── companies/         # Company-scoped resources (14)
 │   └── {co}/
 │       ├── knowledge/ # Embedded git repo
 │       ├── policies/  # Company rules
@@ -223,4 +239,4 @@ HQ/
 - `linear/` - Linear integration knowledge
 
 **Company-level** (in `companies/{co}/knowledge/`):
-- Each company has its own embedded git repo
+- All 14 companies have embedded git repos

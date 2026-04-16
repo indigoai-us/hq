@@ -47,7 +47,7 @@ Fetch the submission details to show before acting:
 ```bash
 TEAM_ID=$(cat ~/hq/companies/{slug}/team.json | python3 -c "import sys,json; print(json.load(sys.stdin)['team_id'])")
 
-SUBMISSIONS=$(curl -s -X GET "https://hq.indigoai.com/api/teams/${TEAM_ID}/submissions" \
+SUBMISSIONS=$(curl -s -X GET "https://hq.{company}ai.com/api/teams/${TEAM_ID}/submissions" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Accept: application/json")
 ```
@@ -97,7 +97,7 @@ Wait for user confirmation before proceeding.
 
 ```bash
 RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT \
-  "https://hq.indigoai.com/api/teams/${TEAM_ID}/submissions/{submissionId}/approve" \
+  "https://hq.{company}ai.com/api/teams/${TEAM_ID}/submissions/{submissionId}/approve" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{}")
@@ -110,7 +110,7 @@ BODY=$(echo "$RESPONSE" | head -n -1)
 
 ```bash
 RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT \
-  "https://hq.indigoai.com/api/teams/${TEAM_ID}/submissions/{submissionId}/reject" \
+  "https://hq.{company}ai.com/api/teams/${TEAM_ID}/submissions/{submissionId}/reject" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{\"reason\": \"{rejection-reason}\"}")

@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-HQ="${HQ_ROOT:-$HOME/hq}"
+HQ="/Users/{your-name}/Documents/HQ"
 INPUT=$(cat)
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')

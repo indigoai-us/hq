@@ -52,15 +52,11 @@ Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/p
 
 ## Structure
 
-Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
+Top-level: `.claude/commands/`, `agents-profile.md`, `agents-companies.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
 ## Companies
 
 Listed in `companies/manifest.yaml` (source of truth). Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
-
-## People
-
-Per-company contact records at `companies/{co}/people/{slug}/meta.yaml` (template: `companies/_template/people/_example/meta.yaml`). Whenever a person is mentioned (by name, email, or handle), check the active company's `people/` folder first — match against `name`, `email`, and any entry under `handles`. If no match, create a new `companies/{co}/people/{slug}/meta.yaml` from the template — minimally `name` + `type` (`internal` for HQ team members, `external` for clients/vendors/partners; external entries also set `relationship` and `organization`). Append new observations to `notes[]` rather than overwriting existing fields.
 
 ## Company Isolation
 
@@ -111,8 +107,10 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, impeccable-designer (22 design skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer, impeccable-designer (**deprecated 2026-04-15** — use dev-team/frontend-dev + design-styles knowledge), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (frontend-dev: +4 design quality skills audit/polish/typeset/harden, full design-styles context; motion-designer: style-coherent animation via design-styles) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): per-company workers listed in `workers/registry.yaml`.
+
+**Per-repo design context:** `design.md` at repo root (renamed from `.impeccable.md`). Declares `style-pack: <id>` in the Design Direction section. Workers resolve the pack via `knowledge/public/design-styles/registry.yaml` → pack directory → `context_paths.required`. Pack schema: `knowledge/public/design-styles/PACK-SCHEMA.md`. Design quality references (typography, color, spatial, etc.) live in `knowledge/public/design-quality/`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
 
@@ -149,7 +147,13 @@ Public: listed in `modules/modules.yaml` (filter `access: public`). Company-leve
 
 ## Knowledge Repos
 
-Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/` (embedded git). Shared: `knowledge/public/` (symlinks to `repos/public/knowledge-{name}/`). Register new repos in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
+Knowledge folders use three patterns — all valid, none being migrated:
+
+1. **Embedded standalone `.git` dir** (most company knowledge): e.g. `companies/dripkit/knowledge/`, `companies/liverecover/knowledge/`, `companies/personal/knowledge/`. HQ tracks these as orphan `160000` gitlinks — the inner repo is opaque to HQ, commits happen inside. To capture advancement: commit inside the inner repo, then `git add companies/{co}/knowledge && git commit` in HQ to bump the pointer. (HQ has no `.gitmodules` file — this is intentional, not a bug.)
+2. **Symlink to `repos/private/knowledge-{co}/`** (e.g. `companies/{company}/knowledge`, `companies/{company}/knowledge`): tracked as `120000` symlink; edits land in the target repo.
+3. **Inline files tracked by HQ git** (e.g. `knowledge/public/gemini-cli/`, `knowledge/public/getting-started/`, `companies/amass/knowledge/`): simplest; no inner repo, just regular files.
+
+When adding new knowledge: pick pattern 1 for company knowledge that will grow, pattern 2 if you want a shared clone, pattern 3 for small/shared content. Register in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
 
 ## Skills
 
@@ -200,6 +204,12 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - Always verify the correct Vercel org/team before deploying (check with `vercel whoami` and `vercel teams ls`).
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
+
+## Learned Rules
+
+- **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
+- **NEVER**: Extract shared skills that require editing 5+ existing files to wire up. When extending behavior across multiple commands/skills, prefer layered independent additions (policy + command + skill edit) over shared extraction. Accept duplicated pattern tables as simpler than shared dependencies. <!-- user-correction | 2026-04-15 -->
+- **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`/Users/{your-name}epstein/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
 
 ## Auto-Checkpoint (PostToolUse Hook)
 

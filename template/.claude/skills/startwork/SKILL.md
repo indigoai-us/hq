@@ -23,6 +23,7 @@ Determine mode from the user's argument (first match wins):
 - **Arg matches a directory** in `projects/` (not `_archive/`) or `companies/*/projects/` — Project mode
 - **Arg matches a directory** in `repos/private/` or `repos/public/` — Repo mode
 - **Partial match** — arg is a substring of any company slug, project dir, or repo name. 1 match: use that mode. 2-5 matches: present numbered list, wait for user to pick. >5: ask user to be more specific
+- **Free-text task** — arg is ≥3 words and doesn't match any company/project/repo/partial → Task mode
 - **No match** — ask user to clarify
 
 ### 2. Gather Context
@@ -53,6 +54,21 @@ Determine mode from the user's argument (first match wins):
 1. Read `projects/{name}/prd.json` — extract: `name`, `description`, `branchName`, incomplete stories (where `passes !== true`) with id + title + priority
 2. Extract `metadata.repoPath` — identify company by matching against manifest repos
 3. If repoPath exists: `git -C {repoPath} branch --show-current` and `git -C {repoPath} status --short`
+
+#### Task Mode (arg = free-text task description)
+
+1. Resolve company/repo from cwd or recent handoff context (read `workspace/threads/handoff.json` if exists)
+2. Classify task using inline pattern table:
+   - DB/migration/schema/prisma → `schema_change`
+   - API/endpoint/route/webhook → `api_development`
+   - Component/page/UI/form/React → `ui_component`
+   - Backend + frontend indicators combined → `full_stack`
+   - Content/copy/docs/marketing → `content`
+   - Design/visual/brand → `design`
+   - Deploy/CI/infra → `ops`
+   - Otherwise → `enhancement`
+3. Map to worker pipeline (same sequences as `/plan` command Step 5)
+4. If company resolved, check company-specific workers in manifest — prefer over generic
 
 #### Repo Mode (arg = repo directory name)
 
@@ -85,6 +101,31 @@ Rules:
 - If no company resolved (resume mode with no company context), skip company policies
 - Precedence: company > repo > global
 
+### 2.7 Spawn Knowledge Pulse (Background)
+
+Once `{co}` is resolved (from any mode except resume-with-no-company):
+
+1. Read `companies/manifest.yaml` to resolve `knowledge` path and `qmd_collections` for `{co}`
+2. If company has a knowledge directory (not `null` in manifest), spawn a background knowledge pulse:
+
+```
+spawn_task(
+  reason: "Pulse-garden {co} knowledge",
+  prompt: "Run the knowledge-pulse skill at .claude/skills/knowledge-pulse/SKILL.md.
+    company_slug: {co}
+    knowledge_path: companies/{co}/knowledge/
+    policies_path: companies/{co}/policies/
+    caller: startwork
+    qmd_collection: {qmd_collections[0] from manifest, or omit if none}
+    No search_results_summary or discovered_facts (startwork is read-only).
+    Read the skill file for full instructions."
+)
+```
+
+3. Do NOT wait for the pulse to complete — continue immediately to Step 3
+
+**Skip if:** no company resolved (resume mode with no company context), or company has no knowledge directory.
+
 ### 3. Present Options
 
 Display a concise orientation block:
@@ -98,8 +139,10 @@ Session Start
 {If company: "Repos: {list}" + "Workers: {list}"}
 {If project: "Goal: {description}" + "Branch: {branchName}"}
 {If repo: "Repo: {repoPath}" + "Company: {slug}" + "Branch: {branch}"}
+{If task: "Task: {description}" + "Intent: {classified_intent}" + "Pipeline: {worker count} workers"}
 
 Git: {branch} @ {short-hash} {" (dirty)" if dirty}
+Knowledge pulse: {summary line from workspace/reports/knowledge-pulse/{co}-{today}.md if exists, e.g. "3 docs tagged, 2 flagged stale" — or omit line if no recent pulse}
 
 Active work:
   - {project} -- {done}/{total} stories ({remaining} left)
@@ -112,6 +155,7 @@ Then present numbered options built from context:
 - **Company mode**: active projects for that company (up to 3) + "Run a worker" + "Something else"
 - **Project mode**: top 3 incomplete stories by priority + "Something else"
 - **Repo mode**: related projects with incomplete work (up to 3) + "Open repo (no project)" + "Something else"
+- **Task mode**: proposed pipeline phases (up to 5) + "Run this pipeline" + "Modify pipeline" + "Skip workers — do it directly" + "Run /plan for full options" + "Something else"
 
 Output the numbered list and wait for user input. After user picks, proceed directly into the work.
 

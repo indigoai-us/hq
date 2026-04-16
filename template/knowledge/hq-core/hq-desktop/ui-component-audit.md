@@ -308,8 +308,7 @@ Company-specific colors appear in two places with different values:
 
 | Company | `terminal-header.tsx` | `right-sidebar.tsx` / `files-sidebar.tsx` (folder colors) |
 |---------|----------------------|----------------------------------------------------------|
-| {company} | `#74c0fc` | N/A |
-| {company} | `#51cf66` | N/A |
+| liverecover | `#74c0fc` | N/A |
 | {company} | `#da77f2` | N/A |
 | personal | `#ffd43b` | N/A |
 | {company} | `#ff922b` | N/A |

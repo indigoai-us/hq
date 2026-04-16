@@ -1,6 +1,6 @@
 version: 1
-hqVersion: "10.10.0"
-updatedAt: "2026-04-16T02:10:46Z"
+hqVersion: "11.1.0"
+updatedAt: "2026-04-16T12:00:00Z"
 rules:
   locked:
     - .claude/CLAUDE.md
