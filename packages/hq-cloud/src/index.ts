@@ -37,6 +37,19 @@ export {
   isWithinSizeLimit,
 } from "./ignore.js";
 
+// Cognito browser-OAuth (VLT-9)
+export {
+  browserLogin,
+  refreshTokens,
+  loadCachedTokens,
+  saveCachedTokens,
+  clearCachedTokens,
+  isExpiring,
+  getValidAccessToken,
+  CognitoAuthError,
+} from "./cognito-auth.js";
+export type { CognitoAuthConfig, CognitoTokens } from "./cognito-auth.js";
+
 // VaultClient SDK (VLT-7)
 export { VaultClient } from "./vault-client.js";
 export {
