@@ -1117,7 +1117,7 @@ After task completion (or failure), write a thread checkpoint file:
   "type": "auto-checkpoint",
   "created_at": "{ISO8601}",
   "updated_at": "{ISO8601}",
-  "workspace_root": "~/HQ",
+  "workspace_root": "/Users/{your-name}/Documents/HQ",
   "cwd": "{current working directory}",
   "git": {
     "branch": "{current branch from git branch --show-current}",

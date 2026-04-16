@@ -196,7 +196,7 @@ If zero results: print `No events found for project "{name}".`
 /audit-log --project hq-observability   # All events for that project
 /audit-log --company {company}             # Summary filtered to {company}
 /audit-log --failures                   # All failures across all projects
-/audit-log --failures --project {product}     # Failures for a specific project
+/audit-log --failures --project {company}     # Failures for a specific project
 /audit-log --project assistant-standalone --since 2026-03-05
 ```
 

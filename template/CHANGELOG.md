@@ -1,5 +1,50 @@
 # Changelog
 
+## [11.1.0] — 2026-04-16
+
+### Headline
+qmd sub-collection refactor — the monolithic `hq` collection is split into 4 focused collections (`hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`), cutting indexed files from ~16K to ~1K per collection. Also: `design.md` replaces `.impeccable.md` as the per-repo design context file, 54 policies refreshed, 23 commands updated, `knowledge-pulse` skill added, and design-styles/design-quality knowledge bases synced.
+
+### Added — Knowledge
+- **`knowledge/design-styles/`** — full style pack system with 9 packs, foundations references, `_template/` scaffold, and `registry.yaml`. 52 new files including `PACK-SCHEMA.md`.
+- **`knowledge/design-quality/`** — design quality references (typography, color, spatial, etc.)
+- **`knowledge/hq-core/design-md-spec.md`** — spec for the new `design.md` repo context file
+- **`knowledge/hq-core/insights-spec.md`** — spec for the `workspace/insights/` educational insights system
+- **`knowledge/Ralph/11-team-training-guide.md`** — training guide for the Ralph orchestration pattern
+
+### Added — Skills
+- **`knowledge-pulse`** — lightweight background gardening pass for a company's knowledge base and policies
+
+### Added — Policies (3 new)
+- `run-project-swarm-branch-validation.md` — branch validation for swarm mode
+- `run-project-swarm-merge-conflict-tombstone.md` — merge conflict tombstone handling
+- `vercel-domain-transfer-reissues-verification.md` — domain transfer verification checks
+
+### Removed — Policies (7)
+- `hq-paper-mcp-sequential-agents.md` — company-specific (Paper MCP)
+- `hq-slack-channel-indigo-workspace.md` — company-specific (Indigo workspace)
+- `indigo-hq-app-release.md` — company-specific (Indigo releases)
+- `indigo-signals-mcp-queries.md` — company-specific (Indigo Signals)
+- `paper-flex-column-reorder.md` — product-specific (Paper)
+- `paper-text-width.md` — product-specific (Paper)
+- `paper-text-wrapping.md` — product-specific (Paper)
+
+### Changed
+- **qmd collections** — `setup.sh` now creates 4 sub-collections (`hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`) instead of one monolithic `hq` collection. Dramatically reduces noise in semantic search.
+- **`design.md` replaces `.impeccable.md`** — per-repo design context file renamed. Workers resolve style packs via `knowledge/design-styles/registry.yaml`.
+- **54 policies refreshed** — context-stripped, narrative-cleaned, and re-digested
+- **23 commands updated** — synced from upstream with latest improvements
+- **9 skills updated** — brainstorm, execute-task, handoff, investigate, land, learn, prd, run, startwork
+- **8 hooks refreshed** — all `.sh` files synced from upstream
+- **CLAUDE.md** — updated with qmd sub-collection docs, `design.md` references, new workers section, insights system
+- **USER-GUIDE.md** — refreshed with current command catalog and workflow examples
+- **`modules/modules.yaml`** — updated collection references
+- **`workers/registry.yaml`** — refreshed worker descriptions
+- **Policy digest** — regenerated with current 187 policies
+
+### Migration
+See migration steps below in `MIGRATION.md` — non-breaking, but `setup.sh` should be re-run to create the new qmd sub-collections.
+
 ## [11.0.0] — 2026-04-15
 
 ### Headline

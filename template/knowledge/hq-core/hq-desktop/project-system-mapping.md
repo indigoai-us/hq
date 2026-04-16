@@ -331,8 +331,6 @@ Quality gates are back-pressure checks that run after each worker phase. They ar
 | Lint | `bun lint`, `eslint`, etc. | After code changes |
 | Typecheck | `bun check`, `tsc --noEmit`, etc. | After code changes |
 | Build | `bun run build`, `npm run build` | After significant changes |
-| E2E manifest | `npm run generate-manifest && git diff --quiet tests/e2e/manifest.json` | {company}-site only |
-| Coverage | `npm run check-coverage` | {company}-site only |
 
 ### 5.2 Gate Results in Execution State
 

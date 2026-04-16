@@ -14,7 +14,7 @@ source: task-completion
 
 When calling `POST https://api.post-bridge.com/v1/posts` directly (not via SDK), use these exact field names:
 - `caption` — the post text (NOT `content`)
-- `social_accounts` — array of numeric account IDs, e.g. `[34528]` (NOT `account_id`)
+- `social_accounts` — array of numeric account IDs, e.g. `[{your-account-id}]` (NOT `account_id`)
 - `scheduled_at` — ISO8601 datetime string
 
 Also: always check for existing scheduled posts before submitting (`GET /v1/posts?status=scheduled`) — duplicate posts from previous sessions may already exist at the same time slots.

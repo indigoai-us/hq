@@ -12,7 +12,7 @@ source: success-pattern
 
 ## Rule
 
-NEVER generate branded product imagery (cans, bottles, packaging) from text descriptions alone. AI image generators consistently produce wrong brand text, colors, and label layouts (e.g. "SPARKLE" instead of "HpO").
+NEVER generate branded product imagery (cans, bottles, packaging) from text descriptions alone. AI image generators consistently produce wrong brand text, colors, and label layouts (e.g. "SPARKLE" instead of the actual brand name).
 
 ALWAYS use this two-step workflow:
 1. Generate the lifestyle scene first (person, setting, lighting) — the product will have wrong branding, that's expected

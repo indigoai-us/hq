@@ -12,7 +12,7 @@ workers:
     visibility: private
     company: {company}
     status: active
-    description: "{Product}/{PRODUCT} data analysis - reports, anomaly detection"
+    description: "{company}/{company} data analysis - reports, anomaly detection"
 
   - id: cfo-{company}
     path: companies/{company}/workers/cfo/
@@ -30,7 +30,7 @@ workers:
     status: active
     description: "Infobip API admin - brands, numbers, RCS senders, account (read-only)"
 
-  - id: {product}-health-dashboard
+  - id: {company}-health-dashboard
     path: companies/{company}/workers/health-dashboard/
     type: OpsWorker
     visibility: private
@@ -52,7 +52,7 @@ workers:
     visibility: private
     company: {company}
     status: active
-    description: "CMO worker - Indigo social/content (X, LinkedIn)"
+    description: "CMO worker - {company} social/content (X, LinkedIn)"
 
   - id: x-{your-name}
     path: companies/personal/workers/x-{your-name}/
@@ -76,15 +76,15 @@ workers:
     visibility: private
     company: {company}
     status: active
-    description: "{Product} QA - smoke tests, store audits, funnel exploration, Playwright suites"
+    description: "{company} QA - smoke tests, store audits, funnel exploration, Playwright suites"
 
-  - id: {product}-deploy
+  - id: {company}-deploy
     path: companies/{company}/workers/deploy/
     type: OpsWorker
     visibility: private
     status: active
     company: {company}
-    description: "{PRODUCT} deployment - GitHub Actions, SST, ECS, Pulumi"
+    description: "{company} deployment - GitHub Actions, SST, ECS, Pulumi"
 
   - id: {company}-site-builder
     path: companies/{company}/workers/site-builder/
@@ -108,7 +108,7 @@ workers:
     visibility: private
     company: personal
     status: active
-    description: "Strategic gate for personal social accounts — evaluates posts against {PRODUCT} board, Indigo investor, and story arc before any post can be approved"
+    description: "Strategic gate for personal social accounts — evaluates posts against {company} board, {company} investor, and story arc before any post can be approved"
 
 
   - id: hq-growth
@@ -141,7 +141,7 @@ workers:
     visibility: private
     company: {company}
     status: active
-    description: "{Product} platform analytics — usage, retention, funnel metrics"
+    description: "{company} platform analytics — usage, retention, funnel metrics"
 
   - id: {company}-designer
     path: companies/{company}/workers/{company}-designer/
@@ -149,7 +149,7 @@ workers:
     visibility: private
     company: {company}
     status: active
-    description: "HPO rebrand-aware design worker — audits, applies, and reviews visual work against the pastel/serif rebrand system (Libre Caslon Display + Barlow Condensed + Inter, six-pastel palette, 135° gradient)"
+    description: "{company} rebrand-aware design worker — audits, applies, and reviews visual work against the pastel/serif rebrand system (Libre Caslon Display + Barlow Condensed + Inter, six-pastel palette, 135° gradient)"
 
   # Public Workers (generic, shareable)
   - id: paper-designer

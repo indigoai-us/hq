@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/indigoai-us/hq.git
+    repo: https://github.com/indigoai-us"/hq.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
@@ -40,13 +40,13 @@ modules:
     paths:
       .: knowledge/public/ai-security-framework
 
-  - name: knowledge-impeccable
+  - name: knowledge-design-quality
     repo: local
     branch: main
     strategy: link
     access: public
     paths:
-      .: knowledge/public/impeccable
+      .: knowledge/public/design-quality
 
   - name: knowledge-design-styles
     repo: https://github.com/{your-name}/knowledge-design-styles.git

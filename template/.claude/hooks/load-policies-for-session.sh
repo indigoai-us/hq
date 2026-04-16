@@ -45,8 +45,8 @@ while [ "$search" != "/" ]; do
   search="$(dirname "$search")"
 done
 
-# Fall back to Claude Code's project dir env var, then to $HOME/HQ
-[ -z "$HQ_ROOT" ] && HQ_ROOT="${CLAUDE_PROJECT_DIR:-$HOME/HQ}"
+# Fall back to canonical path if not found via walk-up
+[ -z "$HQ_ROOT" ] && HQ_ROOT="/Users/{your-name}/Documents/HQ"
 
 GLOBAL_DIGEST="$HQ_ROOT/.claude/policies/_digest.md"
 

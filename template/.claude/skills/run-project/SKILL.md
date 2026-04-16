@@ -36,7 +36,7 @@ If no arguments: error — project name required.
 ## Step 3 — Launch Background
 
 ```bash
-cd ~/HQ && \
+cd /Users/{your-name}/Documents/HQ && \
   nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
   > workspace/orchestrator/{project}/run.log 2>&1 &
 echo "PID:$!"

@@ -11,7 +11,7 @@
 
 set -uo pipefail
 
-HQ="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+HQ="/Users/{your-name}/Documents/HQ"
 STATE_DIR="$HQ/workspace/.context-warnings"
 
 # Always succeed — wrap everything so a malformed input never blocks Stop.

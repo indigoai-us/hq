@@ -126,7 +126,7 @@ Present in {your-name}'s production HQ but NOT in the starter-kit. These represe
 | **Workers** | 1 (sample-worker) | 40+ (10 private, 30 public across dev-team, content-team, pr-team) | Full worker ecosystem |
 | **Worker Layout** | Flat `workers/` | Split `workers/public/` + `workers/private/` | Visibility separation |
 | **Knowledge** | Flat `knowledge/` (8 dirs) | Split `knowledge/public/` + `knowledge/private/`, symlinked to git repos | Repo-backed, visibility-split |
-| **Companies** | Not present (optional) | 5 companies ({company}, {company}, {company}, personal, {company}) + manifest.yaml | Multi-company isolation |
+| **Companies** | Not present (optional) | 4 companies (liverecover, {company}, personal, {company}) + manifest.yaml | Multi-company isolation |
 | **Projects** | .gitkeep placeholder | 60+ projects with prd.json, README, orchestrator state | Full project lifecycle |
 | **Orchestrator** | .gitkeep | state.json + per-project dirs + checkouts.json | Active execution state |
 | **Threads** | .gitkeep | 170+ thread JSONs + handoff.json + INDEX.md + recent.md | Rich session history |
@@ -394,27 +394,27 @@ interface HQDetectionResult {
 
 ## 5. Desktop Hardcoded Path Assumptions (Current State)
 
-The current HQ Desktop Rust backend (`files.rs`, `orchestrator.rs`) hardcodes the path `~/HQ` in every Tauri command:
+The current HQ Desktop Rust backend (`files.rs`, `orchestrator.rs`) hardcodes the path `~/Documents/HQ` in every Tauri command:
 
 | Tauri Command | Hardcoded Path |
 |--------------|---------------|
-| `list_prds()` | `~/HQ/projects` + `~/HQ/apps` + `~/HQ/repos/private` |
+| `list_prds()` | `~/Documents/HQ/projects` + `~/Documents/HQ/apps` + `~/Documents/HQ/repos/private` |
 | `start_prd_watcher()` | Same 3 paths |
-| `read_dir_tree()` | Falls back to `~/HQ` |
-| `list_workers()` | `~/HQ/workers/registry.yaml` |
-| `list_threads()` | `~/HQ/workspace/threads` |
-| `list_checkpoints()` | `~/HQ/workspace/checkpoints` |
-| `list_companies()` | `~/HQ/companies` |
-| `list_projects()` | `~/HQ/projects` |
-| `list_claude_sessions()` | `~/.claude/projects/-Users-{your-name}-Documents-HQ` (user-specific!) |
-| `get_hq_stats()` | `~/HQ` (multiple sub-paths) |
-| `get_worker_detail()` | `~/HQ/workers/{id}` (flat, not public/private split) |
-| `get_company_detail()` | `~/HQ/companies/{id}` |
-| `get_project_detail()` | `~/HQ/projects/{name}` |
-| `spawn_worker_skill()` | `~/HQ` |
-| `open_terminal_in_hq()` | `~/HQ` |
-| `get_orchestrator_state()` | `~/HQ/workspace/orchestrator/state.json` |
-| `get_checkouts_state()` | `~/HQ/workspace/orchestrator/checkouts.json` |
+| `read_dir_tree()` | Falls back to `~/Documents/HQ` |
+| `list_workers()` | `~/Documents/HQ/workers/registry.yaml` |
+| `list_threads()` | `~/Documents/HQ/workspace/threads` |
+| `list_checkpoints()` | `~/Documents/HQ/workspace/checkpoints` |
+| `list_companies()` | `~/Documents/HQ/companies` |
+| `list_projects()` | `~/Documents/HQ/projects` |
+| `list_claude_sessions()` | `~/.claude/projects/-Users-{your-name}epstein-Documents-HQ` (user-specific!) |
+| `get_hq_stats()` | `~/Documents/HQ` (multiple sub-paths) |
+| `get_worker_detail()` | `~/Documents/HQ/workers/{id}` (flat, not public/private split) |
+| `get_company_detail()` | `~/Documents/HQ/companies/{id}` |
+| `get_project_detail()` | `~/Documents/HQ/projects/{name}` |
+| `spawn_worker_skill()` | `~/Documents/HQ` |
+| `open_terminal_in_hq()` | `~/Documents/HQ` |
+| `get_orchestrator_state()` | `~/Documents/HQ/workspace/orchestrator/state.json` |
+| `get_checkouts_state()` | `~/Documents/HQ/workspace/orchestrator/checkouts.json` |
 
 ### Type Mismatches (Preview for US-003)
 

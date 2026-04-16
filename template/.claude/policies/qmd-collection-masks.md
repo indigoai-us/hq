@@ -19,10 +19,6 @@ When creating or updating qmd collections, include all file types that should be
 
 Do NOT create a monolithic `hq` collection at HQ root — it double-indexes company/repo content and misses `.claude/` (qmd skips dotdirs during traversal). If a `qmd search` returns no results for content you know exists, check the collection mask with `qmd collection list`.
 
-## Rationale
-
-The monolithic `hq` collection indexed 16,000+ files including repos and workspace ephemera, while missing `.claude/` entirely (265 files: commands, skills, policies). The 4 sub-collections reduce indexed files to ~1,000 while actually increasing coverage.
-
 ## Rule: qmd cleanup before qmd update
 
 Run `qmd cleanup` before `qmd update` whenever tombstones accumulate. Quick check:

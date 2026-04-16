@@ -21,7 +21,7 @@ Run `qmd status` for live counts. Default collections:
 | `hq-workers` | `$HQ_ROOT/workers` | `**/*.{md,yaml,yml,json}` | Worker defs + skill files |
 | `hq-knowledge` | `$HQ_ROOT/knowledge` | `**/*.{md,yaml,yml}` | Shared knowledge bases |
 | `hq-projects` | `$HQ_ROOT/projects` | `**/*.{md,json}` | PRDs + READMEs |
-| `{product}` | `$HQ_ROOT/repos/private/{product}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | Product codebase |
+| `{company}` | `$HQ_ROOT/repos/private/{company}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | Product codebase |
 
 Each company added via `/newcompany` gets its own collection:
 
@@ -98,9 +98,9 @@ qmd context add qmd://hq-knowledge "Shared knowledge bases: methodology, design,
 qmd collection add $HQ_ROOT/projects --name hq-projects --mask "**/*.{md,json}"
 qmd context add qmd://hq-projects "Project PRDs and documentation."
 
-# {PRODUCT} collection (if you have a main product repo)
-qmd collection add $HQ_ROOT/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
-qmd context add qmd://{product} "{PRODUCT} monorepo description."
+# {company} collection (if you have a main product repo)
+qmd collection add $HQ_ROOT/repos/private/{company} --name {company} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
+qmd context add qmd://{company} "{company} monorepo description."
 
 # Company collections (one per company)
 # Add each company slug from companies/manifest.yaml:

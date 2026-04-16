@@ -68,7 +68,7 @@ If `{co}` is anchored, scope all searches to that company.
 
 **Target Repo (if repo specified or discovered):**
 - If anchored: company repos already pre-loaded from manifest. Present as options
-- If target repo has a qmd collection: `qmd query "<description keywords>" -c {collection} --json -n 10` — hybrid search for related code, patterns, existing implementations
+- If target repo has a qmd collection (e.g. `{product}`): `qmd query "<description keywords>" -c {collection} --json -n 10` — hybrid search for related code, patterns, existing implementations
 - Present: "Found related code: {list of relevant files}"
 
 Present:
@@ -779,13 +779,13 @@ Do NOT wait for the pulse to complete — continue immediately to Step 8.
 
 **Skip if:** company has no knowledge directory.
 
-## Step 8: Linear Sync (best-effort, if credentials exist)
+## Step 8: Linear Sync (best-effort, {company}/{Product} only)
 
-If the company has Linear credentials at `companies/{co}/settings/linear/`, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
+If `{co}` is `{company}`, attempt Linear sync. If credentials are unavailable or API fails, skip silently — Linear sync never blocks PRD creation.
 
-1. Read `companies/{co}/settings/linear/credentials.json` and `config.json`
+1. Read `companies/{company}/settings/linear/credentials.json` and `config.json`
 2. Validate `workspace: "voyage"` in config
-3. Create Linear project linked to best-fit initiative, with `leadId` (default: corey) and `targetDate` (default: today+1d)
+3. Create Linear project linked to best-fit initiative, with `leadId` (default: {your-name}) and `targetDate` (default: today+1d)
 4. Create issue per story with `assigneeId` (resolved by team routing) and `dueDate` (matches project targetDate)
 5. Store all IDs in prd.json: `metadata.linearProjectId`, `metadata.linearCredentials`, per-story `linearIssueId`, `linearAssigneeId`
 
@@ -803,7 +803,7 @@ Read `metadata.openQuestions[]` from the prd.json just written. **If empty**, sk
 2. **Batch up to 4 questions per AskUserQuestion call.** For each question, infer **2–3 concrete candidate options** from:
    - The PRD's own metadata (`integrations`, `architectureNotes`, `authModel`, `dataModel`, `rolloutStrategy`, etc.)
    - Prior `metadata.decisions[]` already captured (if re-running)
-   - Anchored company policies (e.g. credential safety rules → specific infrastructure identifiers)
+   - Anchored company policies (e.g. `{company}-aws-credentials-safety` → "{company} aws_profile (804849608251, us-east-1)")
    - Common-sense defaults ("existing cert" when signing, "existing pool" when auth)
 3. **Always append a `"Defer — track as pre-flight story"` option LAST** to every question. Users must be able to opt out of answering any single question without abandoning decision mode entirely.
 4. **Write results back to prd.json:**

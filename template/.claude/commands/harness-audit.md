@@ -111,14 +111,14 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
 
 **What we check:**
 - `qmd` is installed
-- Number of qmd collections (target: 5+)
+- Number of qmd collections (target: 8+)
 - Index freshness (last update <7 days ago)
-- Collections: hq + one per active company (derived from `companies/manifest.yaml`)
+- Collections: hq-infra, hq-workers, hq-knowledge, hq-projects, {company}, {company}, {company}, personal minimum
 
 **Scoring:**
-- qmd installed + 5+ collections + index <7 days old = 10 points
-- qmd installed + 3-4 collections + index <14 days old = 8 points
-- qmd installed + 2 collections + index <30 days old = 5 points
+- qmd installed + 8+ collections + index <7 days old = 10 points
+- qmd installed + 5-7 collections + index <14 days old = 8 points
+- qmd installed + 3-4 collections + index <30 days old = 5 points
 - qmd not installed or 0-1 collections = 0 points
 
 **Implementation:** `which qmd`, `qmd collection list --json`, parse updated timestamps.
@@ -193,8 +193,8 @@ CATEGORY SCORES:
 TOTAL: 63/70 (A grade)
 
 TOP 3 IMPROVEMENTS:
-1. Add missing hook: ~/Documents/HQ/.claude/hooks/observe-patterns.sh (S)
-2. Write security policy: ~/Documents/HQ/.claude/policies/company-isolation-validation.md (M)
+1. Add missing hook: /Users/{your-name}/Documents/HQ/.claude/hooks/observe-patterns.sh (S)
+2. Write security policy: /Users/{your-name}/Documents/HQ/.claude/policies/company-isolation-validation.md (M)
 3. Add /tdd command to .claude/commands/ (S)
 
 NOTES:

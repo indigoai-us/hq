@@ -8,7 +8,7 @@ Comprehensive audit of the HQ Desktop terminal subsystem: PTY implementation, co
 
 | Command | Signature | Behavior |
 |---------|-----------|----------|
-| `spawn_pty` | `(cmd, cwd, cols, rows) -> session_id` | Spawns PTY via `portable_pty`. Defaults to `$SHELL -l` (login shell), cwd defaults to `~/HQ`. Inherits full env, sets `TERM=xterm-256color`. Spawns reader thread that emits `pty-output` events. On exit, emits `pty-exit` with exit code and auto-cleans session. |
+| `spawn_pty` | `(cmd, cwd, cols, rows) -> session_id` | Spawns PTY via `portable_pty`. Defaults to `$SHELL -l` (login shell), cwd defaults to `~/Documents/HQ`. Inherits full env, sets `TERM=xterm-256color`. Spawns reader thread that emits `pty-output` events. On exit, emits `pty-exit` with exit code and auto-cleans session. |
 | `write_pty` | `(session_id, data: Vec<u8>)` | Writes raw bytes to PTY master. Flushes after write. |
 | `resize_pty` | `(session_id, cols, rows)` | Resizes PTY via master handle. |
 | `kill_pty` | `(session_id)` | Removes session from HashMap, kills child process. |
@@ -34,7 +34,7 @@ Comprehensive audit of the HQ Desktop terminal subsystem: PTY implementation, co
 |---------|---------|-----------|
 | `spawn_worker_skill` | Opens macOS Terminal.app via AppleScript, runs `claude '/run {worker}:{skill}'` | EXTERNAL terminal, not integrated PTY |
 | `open_terminal_in_hq` | Opens macOS Terminal.app via AppleScript, `cd` to HQ | EXTERNAL terminal, not integrated PTY |
-| `list_claude_sessions` | Reads `.claude/projects/-Users-{your-name}-Documents-HQ/*.jsonl` | Read-only, returns last 20 sessions |
+| `list_claude_sessions` | Reads `.claude/projects/-Users-{your-name}epstein-Documents-HQ/*.jsonl` | Read-only, returns last 20 sessions |
 
 ## 2. Frontend Session Layer
 
@@ -97,7 +97,7 @@ interface TerminalSession {
 
 - `TerminalTab`: Status dot (green pulse=running, gray=exited), company color bar, title, close button
 - `TerminalContextBar`: Shows workerId:skillId, company, projectName, or cwd fallback
-- Company colors: {company}=#74c0fc, {company}=#51cf66, {company}=#da77f2, personal=#ffd43b, {company}=#ff922b
+- Company colors: liverecover=#74c0fc, {company}=#da77f2, personal=#ffd43b, {company}=#ff922b
 
 ### session-launcher.tsx
 

@@ -2,20 +2,20 @@
 id: blog-post-x-draft
 title: Publish blog before sharing on X or LinkedIn
 scope: command
-trigger: /post, /contentidea, daily-social, blog publishing, personal-website deploy, article sharing
+trigger: /post, /contentidea, daily-social, blog publishing, site deploy, article sharing
 enforcement: hard
 ---
 
 ## Rule
 
-When publishing a new blog article to {your-name}.com (writing MDX to `repos/private/personal-website/src/content/blog/`), always draft an X post to share the article before deploying.
+When publishing a new blog article to {your-name}.com (writing MDX to `repos/private/{your-project}/src/content/blog/`), always draft an X post to share the article before deploying.
 
 **Workflow:**
 1. Write the blog article MDX
 2. Draft an X teaser post for @{your-name} that hooks the reader and links to the article
 3. Show the draft to the user for approval before posting
 4. Deploy the site so the OG image is live before the post goes out
-5. Post via Post-Bridge API (account ID 34528)
+5. Post via Post-Bridge API (account ID {your-account-id})
 6. Update `workspace/social-drafts/blog-queue.json` — set item status to `published` after deploy, `done` after share
 
 **X post format:**

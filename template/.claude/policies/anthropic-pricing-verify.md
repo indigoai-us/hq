@@ -8,5 +8,5 @@ enforcement: soft
 
 ## Rule
 
-Always web-search current Anthropic pricing before hardcoding cost constants. Pricing changes frequently — GoClaw had stale rates (haiku $0.80 vs actual $0.25, opus $15 vs actual $5) that inflated cost estimates by 3x. Check platform.claude.com/docs/en/about-claude/pricing.
+Always web-search current Anthropic pricing before hardcoding cost constants. Pricing changes frequently — {your-app} had stale rates (haiku $0.80 vs actual $0.25, opus $15 vs actual $5) that inflated cost estimates by 3x. Check platform.claude.com/docs/en/about-claude/pricing.
 
