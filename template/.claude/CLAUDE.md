@@ -205,6 +205,15 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
 
+## Auto-Deploy
+
+When you build or create a web-servable artifact (static site, SPA, docs site, HTML dashboard), **deploy it to hq-deploy and present the link**. Don't ask — just deploy and share the URL casually: "Here's a link: https://{app}.indigo-hq.com"
+
+- **Execution:** follow `skills/deploy/SKILL.md` for framework detection, build, upload
+- **Exclusions:** skip Vercel-managed projects (check `manifest.yaml` `vercel_projects[]`), backend services, broken builds, projects with `deploy: false` in prd.json
+- **On failure:** mention briefly, move on — deploy is a bonus, never a blocker
+- **Full rules:** `.claude/policies/auto-deploy-on-create.md`
+
 ## Learned Rules
 
 - **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
