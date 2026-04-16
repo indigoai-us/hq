@@ -162,7 +162,7 @@ ls {repoPath}/.claude/policies/ 2>/dev/null
 From `worker.yaml` `knowledge:` section, load relevant knowledge files referenced. Prioritize files related to the requested skill. Use:
 
 ```bash
-which qmd 2>/dev/null && qmd search "{worker_id} {skill}" --json -n 5 -c hq
+which qmd 2>/dev/null && qmd search "{worker_id} {skill}" --json -n 5
 ```
 
 Or read knowledge files directly via Read tool if paths are specified in worker.yaml.
