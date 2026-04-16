@@ -1,0 +1,79 @@
+/**
+ * Shared Cognito session helpers for hq-cli commands.
+ *
+ * Exists because both `hq onboard` and `hq sync push|pull` need:
+ *   1. A non-expired Cognito access token (cached, refreshed, or browser-login)
+ *   2. A VaultServiceConfig built from that token
+ *
+ * The defaults here mirror scripts/e2e-create-company-smoke.ts so the CLI
+ * and the in-tree demo script stay drift-free. Override any of them via env:
+ *
+ *   AWS_REGION                 — e.g. us-east-1
+ *   HQ_COGNITO_DOMAIN          — Cognito User Pool domain prefix
+ *   HQ_COGNITO_CLIENT_ID       — App Client ID
+ *   HQ_COGNITO_CALLBACK_PORT   — Loopback OAuth callback port
+ *   HQ_VAULT_API_URL           — vault-service API Gateway URL
+ */
+
+import * as os from "os";
+import * as path from "path";
+import chalk from "chalk";
+import {
+  loadCachedTokens,
+  isExpiring,
+  refreshTokens,
+  browserLogin,
+  type CognitoAuthConfig,
+  type VaultServiceConfig,
+} from "@indigoai-us/hq-cloud";
+
+export const DEFAULT_COGNITO: CognitoAuthConfig = {
+  region: process.env.AWS_REGION ?? "us-east-1",
+  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "hq-vault-dev",
+  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "4mmujmjq3srakdueg656b9m0mp",
+  port: process.env.HQ_COGNITO_CALLBACK_PORT
+    ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
+    : 8765,
+};
+
+export const DEFAULT_VAULT_API_URL =
+  process.env.HQ_VAULT_API_URL ??
+  "https://tqdwdqxv75.execute-api.us-east-1.amazonaws.com";
+
+export const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
+
+/**
+ * Return a non-expired Cognito access token, refreshing or browser-logging-in
+ * as needed. Cache lives at ~/.hq/cognito-tokens.json.
+ */
+export async function ensureCognitoToken(): Promise<string> {
+  const cached = loadCachedTokens();
+  if (cached && !isExpiring(cached, 120)) {
+    return cached.accessToken;
+  }
+  if (cached) {
+    try {
+      console.log(chalk.dim("  Refreshing expiring HQ session..."));
+      const refreshed = await refreshTokens(DEFAULT_COGNITO, cached.refreshToken);
+      return refreshed.accessToken;
+    } catch (err) {
+      console.log(
+        chalk.dim(
+          `  Refresh failed (${err instanceof Error ? err.message : err}), falling back to browser login`,
+        ),
+      );
+    }
+  }
+  console.log(chalk.cyan("  No cached HQ session — launching browser sign-in..."));
+  const tokens = await browserLogin(DEFAULT_COGNITO);
+  return tokens.accessToken;
+}
+
+/** Build a VaultServiceConfig with the given access token. */
+export function buildVaultConfig(authToken: string): VaultServiceConfig {
+  return {
+    apiUrl: DEFAULT_VAULT_API_URL,
+    authToken,
+    region: DEFAULT_COGNITO.region,
+  };
+}
