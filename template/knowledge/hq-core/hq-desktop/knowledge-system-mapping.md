@@ -345,17 +345,14 @@ Knowledge Browser
 
 ### Collection Contexts
 
-qmd supports adding "context" descriptions to collections and paths within them. These provide semantic anchoring for search results. The `hq` collection has 7 contexts:
+qmd supports adding "context" descriptions to collections and paths within them. These provide semantic anchoring for search results. HQ uses 4 focused sub-collections (not a monolithic `hq` collection), each with its own context:
 
-| Path | Context Description |
+| Collection | Context Description |
 |------|-------------------|
-| `/` | "HQ knowledge base: company knowledge, AI worker definitions..." |
-| `/knowledge` | "HQ-level knowledge bases: Ralph coding methodology..." |
-| `/.claude/commands` | "Claude Code slash commands: 30 agent skills..." |
-| `/companies` | "Five company-scoped directories..." |
-| `/workers` | "AI worker definitions with YAML configs..." |
-| `/projects` | "Project PRDs and READMEs..." |
-| `/workspace` | "Runtime workspace: session threads, checkpoints..." |
+| `hq-infra` | "HQ infrastructure: commands, skills, policies, hooks, scripts." |
+| `hq-workers` | "AI worker definitions and skill files." |
+| `hq-knowledge` | "Shared knowledge bases: methodology, design, testing, security." |
+| `hq-projects` | "Project PRDs and documentation." |
 
 ### qmd CLI Commands to Expose in Desktop
 

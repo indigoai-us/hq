@@ -33,7 +33,8 @@
 - **`hook-gate.sh`** — 2-line add: `rewrite-resume-sentinel` recognized in `standard` + `strict` profiles.
 - **`run-pipeline.sh`** — product-specific PR-creation branch stripped. All repos now use the standard `gh pr create` path.
 - **15 commands refreshed**: `brainstorm`, `document-release`, `execute-task`, `harness-audit`, `land`, `learn`, `personal-interview`, `prd`, `quality-gate`, `retro`, `review`, `setup`, `strategize`, `tdd`, `update-hq`.
-- **`prd/SKILL.md`** — new Step 8.5 "Resolve Open Questions (Decision Mode)" with hard block on incomplete PRDs, structured `AskUserQuestion` batching, and auto-generated investigation stories for deferred questions.
+- **`prd/SKILL.md`** — **PRD v2 deep interview.** Three-phase upgrade: Phase 1 adds research subagents (codebase scan, HQ context scan, repo deep-read → `research/` directory). Phase 2 replaces 7-batch shorthand with one-at-a-time sequential questioning via `AskUserQuestion` (15-question bank across Strategic/Architecture/Quality tiers, pushback on vague answers, anti-sycophancy, smart-skip from research). Phase 3 adds adversarial spec review subagent (5 dimensions, max 3 fix-review iterations). Also includes Step 8.5 "Resolve Open Questions (Decision Mode)."
+- **`prd-minimum-questions.md`** (new policy) — hard enforcement: minimum 10 questions spanning ≥2 tiers before PRD generation.
 - **`learn/SKILL.md`** — `/remember` → `/learn --hard` refresh, new `public:` policy frontmatter, workflow self-check step.
 
 ### Migration

@@ -159,7 +159,7 @@ Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/`
 
 HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v1.0.0).
 
-**Collections:** `hq` + one per company (derived from `companies/manifest.yaml`). Use `-c {collection}` to scope.
+**Collections:** `hq-infra` (commands/skills/policies), `hq-workers` (worker defs), `hq-knowledge` (shared knowledge), `hq-projects` (PRDs) + one per company (derived from `companies/manifest.yaml`). Use `-c {collection}` to scope. Omit `-c` to search all collections.
 
 **Commands:**
 - `qmd search "<query>" --json -n 10` — BM25 keyword (fast, default)

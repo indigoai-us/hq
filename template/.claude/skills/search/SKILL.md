@@ -16,7 +16,7 @@ Extract from the user's input:
 - `query` — search text (everything except flags)
 - `--mode` — `search` (BM25), `vsearch` (semantic), `query` (hybrid). Default: `search`
 - `-n` — result count (default: 10)
-- `-c` — collection name (e.g. `hq`, `{product}`). Default: auto-detect or all collections
+- `-c` — collection name (e.g. `hq-infra`, `hq-workers`, `{product}`). Default: auto-detect or all collections
 - `--full` — show full content of top result
 
 ## Company Auto-Detection
@@ -28,7 +28,7 @@ If `-c` was NOT explicitly provided, infer the active company from context:
 3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
 4. **Fallback**: No collection flag (search all)
 
-Available collections: `hq` (all HQ), `{product}` ({PRODUCT} codebase), `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`
+Available collections: `hq-infra` (commands/skills/policies), `hq-workers` (worker defs), `hq-knowledge` (shared knowledge), `hq-projects` (PRDs), `{product}` ({PRODUCT} codebase), + one per company. Omit `-c` to search all.
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -128,7 +128,7 @@ search "case study"                             # Auto-detects → -c {company}
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, + 7 more (run `qmd status` for full list)
+- Use `-c` to scope to a collection: `hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`, `{product}`, + company collections (run `qmd status` for full list)
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0–1.0; above 0.5 is a good match
 - Run `/search-reindex` after adding new content

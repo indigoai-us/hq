@@ -170,7 +170,7 @@ The search UI should:
 1. Auto-select the active company's collections when a company filter is set
 2. Allow manual collection override (user might want to search across companies)
 3. Show a "Searching: {collection}" indicator so the user knows the scope
-4. When no company is active, default to the `hq` collection (searches everything)
+4. When no company is active, omit the collection flag (searches all `hq-*` and company collections)
 
 ### Knowledge Tree Navigation
 
