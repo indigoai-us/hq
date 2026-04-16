@@ -473,7 +473,7 @@ Migration log saved to: workspace/migrate-v{TARGET}.md
 
 Next steps:
 1. Review skipped files and manually merge upstream changes
-2. Run /search-reindex to update search index
+2. Run `qmd update 2>/dev/null || true` to update search index
 3. Test your workflows to verify nothing broke
 ```
 

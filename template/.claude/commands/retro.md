@@ -3,6 +3,7 @@ description: Project or session retrospective — review what happened, surface 
 allowed-tools: Read, Write, Glob, Grep, Bash(git:*), Bash(qmd:*), AskUserQuestion
 argument-hint: [company] [project-slug | --session]
 visibility: public
+pack: dev
 ---
 
 # /retro - Retrospective

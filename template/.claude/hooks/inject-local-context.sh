@@ -40,7 +40,10 @@ fi
 WORKER_COUNTS=""
 if [ -f "$REGISTRY" ]; then
   # Count workers grouped by company field (only private/company-scoped workers)
-  WORKER_COUNTS=$(grep -E '^\s+company:' "$REGISTRY" | sed 's/.*company: *//' | sort | uniq -c | sort -rn | awk '{printf "%s (%d), ", $2, $1}' | sed 's/, $//')
+  # Filter out template-placeholder company values ({product}, {company}) that
+  # leak in from workers/public/ entries imported from the starter kit without
+  # per-company substitution. Don't surface noise in the local-context banner.
+  WORKER_COUNTS=$(grep -E '^\s+company:' "$REGISTRY" | sed 's/.*company: *//' | grep -v '{' | sort | uniq -c | sort -rn | awk '{printf "%s (%d), ", $2, $1}' | sed 's/, $//')
 fi
 
 # --- QMD collections ---

@@ -3,6 +3,7 @@ description: Score HQ setup quality across 7 categories (hooks, context, gates, 
 allowed-tools: Read, Bash, Grep
 argument-hint: [--verbose] [--json]
 visibility: public
+pack: maintenance
 ---
 
 # /harness-audit - HQ Infrastructure Quality Score
@@ -40,7 +41,7 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
   4. `warn-cross-company-settings.sh`
   5. `detect-secrets.sh`
   6. `auto-checkpoint-trigger.sh`
-  7. `auto-handoff-trigger.sh`
+  7. `auto-checkpoint-precompact.sh`
   8. `observe-patterns.sh`
 
 **Scoring:**
@@ -112,7 +113,7 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
 - `qmd` is installed
 - Number of qmd collections (target: 5+)
 - Index freshness (last update <7 days ago)
-- Collections: hq, {product}, {company}, {company}, personal minimum
+- Collections: hq + one per active company (derived from `companies/manifest.yaml`)
 
 **Scoring:**
 - qmd installed + 5+ collections + index <7 days old = 10 points
@@ -149,8 +150,7 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
 - MAX_THINKING_TOKENS is set to "10000" (not higher)
 - CLAUDE_CODE_SUBAGENT_MODEL is set to "haiku"
 - CLAUDE_AUTOCOMPACT_PCT_OVERRIDE is set to "50"
-- `/model-route` command exists
-- Model routing policy exists
+- Model routing policy or documentation exists
 
 **Scoring:**
 - All 5 checks pass = 10 points
@@ -193,8 +193,8 @@ CATEGORY SCORES:
 TOTAL: 63/70 (A grade)
 
 TOP 3 IMPROVEMENTS:
-1. Add missing hook: ~/HQ/.claude/hooks/observe-patterns.sh (S)
-2. Write security policy: ~/HQ/.claude/policies/company-isolation-validation.md (M)
+1. Add missing hook: ~/Documents/HQ/.claude/hooks/observe-patterns.sh (S)
+2. Write security policy: ~/Documents/HQ/.claude/policies/company-isolation-validation.md (M)
 3. Add /tdd command to .claude/commands/ (S)
 
 NOTES:
