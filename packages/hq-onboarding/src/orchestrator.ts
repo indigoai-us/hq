@@ -76,99 +76,102 @@ export async function createCompanyFlow(
   const checkpoint = await readCheckpoint(config.hqRoot) ?? makeCheckpoint("create-company");
 
   // Step 1: Create person
+  //
+  // Three-layer idempotency:
+  //   a. Resume from checkpoint UID if present (handles mid-flight retries)
+  //   b. Look up by slug on the server (handles fresh runs against an existing
+  //      account — defends against the server not enforcing slug uniqueness)
+  //   c. Create, with a VaultConflictError fallback for the create-time race
   if (!isStepComplete(checkpoint, "create-person")) {
     emit(onProgress, "create-person", "running");
     try {
-      const existing = checkpoint.personUid
-        ? await safeGetEntity(client, checkpoint.personUid)
-        : null;
-      if (!existing) {
-        const person = await client.entity.create({
-          type: "person",
-          slug: slugFromEmail(input.personEmail),
-          name: input.personName,
-          email: input.personEmail,
-        });
-        checkpoint.personUid = person.uid;
+      const personSlug = slugFromEmail(input.personEmail);
+      let person =
+        (checkpoint.personUid
+          ? await safeGetEntity(client, checkpoint.personUid)
+          : null) ?? (await safeFindBySlug(client, "person", personSlug));
+      let detail: string;
+      if (person) {
+        detail = `Person already registered (${person.uid})`;
+      } else {
+        try {
+          person = await client.entity.create({
+            type: "person",
+            slug: personSlug,
+            name: input.personName,
+            email: input.personEmail,
+          });
+        } catch (err) {
+          if (err instanceof VaultConflictError) {
+            // Lost the create-time race — another caller created between our
+            // findBySlug and create. Re-fetch.
+            person = await client.entity.findBySlug("person", personSlug);
+          } else {
+            throw err;
+          }
+        }
+        detail = `personUid: ${person.uid}`;
       }
+      checkpoint.personUid = person.uid;
       checkpoint.completedSteps.push("create-person");
       await writeCheckpoint(config.hqRoot, checkpoint);
-      emit(onProgress, "create-person", "done", `personUid: ${checkpoint.personUid}`);
+      emit(onProgress, "create-person", "done", detail);
     } catch (err) {
-      if (err instanceof VaultConflictError) {
-        // Person already exists — try to look up by email slug
-        try {
-          const person = await client.entity.findBySlug("person", slugFromEmail(input.personEmail));
-          checkpoint.personUid = person.uid;
-          checkpoint.completedSteps.push("create-person");
-          await writeCheckpoint(config.hqRoot, checkpoint);
-          emit(onProgress, "create-person", "skipped", "Person already registered");
-        } catch {
-          throw new PersonCreationError(
-            `Person with email ${input.personEmail} conflicts but cannot be resolved`,
-            err instanceof Error ? err : undefined,
-          );
-        }
-      } else {
-        checkpoint.failedStep = "create-person";
-        checkpoint.error = String(err);
-        await writeCheckpoint(config.hqRoot, checkpoint);
-        emit(onProgress, "create-person", "failed");
-        throw new PersonCreationError(
-          `Failed to create person entity: ${err}`,
-          err instanceof Error ? err : undefined,
-        );
-      }
+      checkpoint.failedStep = "create-person";
+      checkpoint.error = String(err);
+      await writeCheckpoint(config.hqRoot, checkpoint);
+      emit(onProgress, "create-person", "failed");
+      throw new PersonCreationError(
+        `Failed to create person entity: ${err}`,
+        err instanceof Error ? err : undefined,
+      );
     }
   } else {
     emit(onProgress, "create-person", "skipped", "Already complete");
   }
 
-  // Step 2: Create company
+  // Step 2: Create company (same three-layer idempotency as step 1)
   if (!isStepComplete(checkpoint, "create-company")) {
     emit(onProgress, "create-company", "running");
     try {
-      const existing = checkpoint.companyUid
-        ? await safeGetEntity(client, checkpoint.companyUid)
-        : null;
-      if (!existing) {
-        const company = await client.entity.create({
-          type: "company",
-          slug: input.companySlug,
-          name: input.companyName,
-          ownerUid: checkpoint.personUid,
-        });
-        checkpoint.companyUid = company.uid;
-        checkpoint.companySlug = company.slug;
+      let company =
+        (checkpoint.companyUid
+          ? await safeGetEntity(client, checkpoint.companyUid)
+          : null) ?? (await safeFindBySlug(client, "company", input.companySlug));
+      let detail: string;
+      if (company) {
+        detail = `Company already exists (${company.uid})`;
+      } else {
+        try {
+          company = await client.entity.create({
+            type: "company",
+            slug: input.companySlug,
+            name: input.companyName,
+            ownerUid: checkpoint.personUid,
+          });
+        } catch (err) {
+          if (err instanceof VaultConflictError) {
+            company = await client.entity.findBySlug("company", input.companySlug);
+          } else {
+            throw err;
+          }
+        }
+        detail = `companyUid: ${company.uid}`;
       }
+      checkpoint.companyUid = company.uid;
+      checkpoint.companySlug = company.slug;
       checkpoint.completedSteps.push("create-company");
       await writeCheckpoint(config.hqRoot, checkpoint);
-      emit(onProgress, "create-company", "done", `companyUid: ${checkpoint.companyUid}`);
+      emit(onProgress, "create-company", "done", detail);
     } catch (err) {
-      if (err instanceof VaultConflictError) {
-        try {
-          const company = await client.entity.findBySlug("company", input.companySlug);
-          checkpoint.companyUid = company.uid;
-          checkpoint.companySlug = company.slug;
-          checkpoint.completedSteps.push("create-company");
-          await writeCheckpoint(config.hqRoot, checkpoint);
-          emit(onProgress, "create-company", "skipped", "Company already exists");
-        } catch {
-          throw new CompanyCreationError(
-            `Company slug "${input.companySlug}" conflicts but cannot be resolved`,
-            err instanceof Error ? err : undefined,
-          );
-        }
-      } else {
-        checkpoint.failedStep = "create-company";
-        checkpoint.error = String(err);
-        await writeCheckpoint(config.hqRoot, checkpoint);
-        emit(onProgress, "create-company", "failed");
-        throw new CompanyCreationError(
-          `Failed to create company entity: ${err}`,
-          err instanceof Error ? err : undefined,
-        );
-      }
+      checkpoint.failedStep = "create-company";
+      checkpoint.error = String(err);
+      await writeCheckpoint(config.hqRoot, checkpoint);
+      emit(onProgress, "create-company", "failed");
+      throw new CompanyCreationError(
+        `Failed to create company entity: ${err}`,
+        err instanceof Error ? err : undefined,
+      );
     }
   } else {
     emit(onProgress, "create-company", "skipped", "Already complete");
@@ -334,44 +337,48 @@ export async function joinCompanyFlow(
   await writeCheckpoint(config.hqRoot, checkpoint);
   emit(onProgress, "parse-token", "done");
 
-  // Step 2: Create person (idempotent — skip if exists)
+  // Step 2: Create person (three-layer idempotency — same pattern as createCompanyFlow)
   if (!isStepComplete(checkpoint, "create-person")) {
     emit(onProgress, "create-person", "running");
     try {
-      const person = await client.entity.create({
-        type: "person",
-        slug: slugFromEmail(input.personEmail),
-        name: input.personName,
-        email: input.personEmail,
-      });
+      const personSlug = slugFromEmail(input.personEmail);
+      let person =
+        (checkpoint.personUid
+          ? await safeGetEntity(client, checkpoint.personUid)
+          : null) ?? (await safeFindBySlug(client, "person", personSlug));
+      let detail: string;
+      if (person) {
+        detail = `Person already registered (${person.uid})`;
+      } else {
+        try {
+          person = await client.entity.create({
+            type: "person",
+            slug: personSlug,
+            name: input.personName,
+            email: input.personEmail,
+          });
+        } catch (err) {
+          if (err instanceof VaultConflictError) {
+            person = await client.entity.findBySlug("person", personSlug);
+          } else {
+            throw err;
+          }
+        }
+        detail = `personUid: ${person.uid}`;
+      }
       checkpoint.personUid = person.uid;
       checkpoint.completedSteps.push("create-person");
       await writeCheckpoint(config.hqRoot, checkpoint);
-      emit(onProgress, "create-person", "done", `personUid: ${checkpoint.personUid}`);
+      emit(onProgress, "create-person", "done", detail);
     } catch (err) {
-      if (err instanceof VaultConflictError) {
-        try {
-          const person = await client.entity.findBySlug("person", slugFromEmail(input.personEmail));
-          checkpoint.personUid = person.uid;
-          checkpoint.completedSteps.push("create-person");
-          await writeCheckpoint(config.hqRoot, checkpoint);
-          emit(onProgress, "create-person", "skipped", "Person already registered");
-        } catch {
-          throw new PersonCreationError(
-            `Person with email ${input.personEmail} conflicts but cannot be resolved`,
-            err instanceof Error ? err : undefined,
-          );
-        }
-      } else {
-        checkpoint.failedStep = "create-person";
-        checkpoint.error = String(err);
-        await writeCheckpoint(config.hqRoot, checkpoint);
-        emit(onProgress, "create-person", "failed");
-        throw new PersonCreationError(
-          `Failed to create person entity: ${err}`,
-          err instanceof Error ? err : undefined,
-        );
-      }
+      checkpoint.failedStep = "create-person";
+      checkpoint.error = String(err);
+      await writeCheckpoint(config.hqRoot, checkpoint);
+      emit(onProgress, "create-person", "failed");
+      throw new PersonCreationError(
+        `Failed to create person entity: ${err}`,
+        err instanceof Error ? err : undefined,
+      );
     }
   } else {
     emit(onProgress, "create-person", "skipped", "Already complete");
@@ -583,6 +590,28 @@ async function safeGetEntity(client: VaultClient, uid: string) {
     return await client.entity.get(uid);
   } catch (err) {
     if (err instanceof VaultNotFoundError) return null;
+    throw err;
+  }
+}
+
+/**
+ * Look up an entity by slug, returning null on 404 instead of throwing.
+ *
+ * Used by createCompanyFlow / joinCompanyFlow to detect existing person and
+ * company entities BEFORE calling entity.create. This is defense-in-depth
+ * against the vault-service not enforcing slug uniqueness server-side — even
+ * if the server lets a duplicate create succeed, this guard ensures we never
+ * issue the create call in the first place when an entity with the same slug
+ * already exists.
+ */
+async function safeFindBySlug(client: VaultClient, type: string, slug: string) {
+  try {
+    return await client.entity.findBySlug(type, slug);
+  } catch (err) {
+    if (err instanceof VaultNotFoundError) return null;
+    // Defense against the mocked-error case where the SDK wrapper isn't an
+    // instanceof match (mocks across module boundaries can break instanceof).
+    if (err instanceof Error && err.name === "VaultNotFoundError") return null;
     throw err;
   }
 }

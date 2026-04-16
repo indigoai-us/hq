@@ -64,6 +64,8 @@ vi.mock("@indigoai-us/hq-cloud", () => ({
 
 // Import after mocks are set up
 const { createCompanyFlow, joinCompanyFlow, resumeOnboarding } = await import("./orchestrator.js");
+const { VaultNotFoundError: MockVaultNotFoundError, VaultConflictError: MockVaultConflictError } =
+  await import("@indigoai-us/hq-cloud");
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -74,6 +76,13 @@ let tmpDir: string;
 beforeEach(async () => {
   tmpDir = await mkdtemp(join(tmpdir(), "hq-onboard-test-"));
   vi.clearAllMocks();
+
+  // Default: server has no existing entity at this slug.
+  // Reflects real runtime behavior (vault-service returns 404 → SDK throws
+  // VaultNotFoundError). Tests that exercise the reuse path override this.
+  mockEntityFindBySlug.mockRejectedValue(
+    new (MockVaultNotFoundError as unknown as new (msg?: string) => Error)("not found"),
+  );
 
   // Default happy-path responses
   mockEntityCreate.mockImplementation(async (input: { type: string; slug: string }) => ({
@@ -263,6 +272,81 @@ describe("createCompanyFlow", () => {
       e => e.step === "bootstrap-membership" && e.status === "skipped",
     );
     expect(bootstrapEvent).toBeDefined();
+  });
+
+  it("reuses existing person and company when findBySlug returns them (idempotency)", async () => {
+    // Simulate a re-run against an account where person + company already exist.
+    // findBySlug should return the existing entities, and entity.create should
+    // NOT be called for either step.
+    mockEntityFindBySlug.mockImplementation(async (type: string, slug: string) => ({
+      uid: type === "person" ? "psn_existing" : "cmp_existing",
+      slug,
+      type,
+      status: "active",
+    }));
+    mockListMembers.mockResolvedValueOnce([
+      { personUid: "psn_existing", role: "owner", membershipKey: "mbr_existing" },
+    ]);
+
+    const events: OnboardingProgress[] = [];
+    const result = await createCompanyFlow(makeCreateInput(), makeConfig(), (e) =>
+      events.push(e),
+    );
+
+    expect(result.personUid).toBe("psn_existing");
+    expect(result.companyUid).toBe("cmp_existing");
+
+    // Critical: no new entities created — confirms the bucket-leak fix
+    expect(mockEntityCreate).not.toHaveBeenCalled();
+
+    // Both steps should still report "done" (with reuse detail messages)
+    const personDone = events.find(
+      e => e.step === "create-person" && e.status === "done",
+    );
+    const companyDone = events.find(
+      e => e.step === "create-company" && e.status === "done",
+    );
+    expect(personDone?.detail).toMatch(/already registered/);
+    expect(companyDone?.detail).toMatch(/already exists/);
+  });
+
+  it("falls back to findBySlug if create races with another caller (VaultConflictError)", async () => {
+    // Simulate the race window: findBySlug initially says "not found", then
+    // create races with a parallel caller and loses with VaultConflictError.
+    // The orchestrator should re-call findBySlug to recover the winner's entity.
+    let findCallCount = 0;
+    mockEntityFindBySlug.mockImplementation(async (type: string, slug: string) => {
+      findCallCount++;
+      // First call (pre-create lookup): not found
+      // Second call (post-conflict recovery): found
+      if (findCallCount <= 2) {
+        // Each step does one initial lookup
+        throw new (MockVaultNotFoundError as unknown as new () => Error)();
+      }
+      return {
+        uid: type === "person" ? "psn_winner" : "cmp_winner",
+        slug,
+        type,
+        status: "active",
+      };
+    });
+
+    // First create call (person) succeeds, second (company) throws conflict
+    mockEntityCreate
+      .mockResolvedValueOnce({ uid: "psn_001", slug: "test", type: "person", status: "active" })
+      .mockRejectedValueOnce(
+        new (MockVaultConflictError as unknown as new (msg?: string) => Error)("conflict"),
+      );
+
+    mockListMembers.mockResolvedValueOnce([
+      { personUid: "psn_001", role: "owner", membershipKey: "mbr_001" },
+    ]);
+
+    const result = await createCompanyFlow(makeCreateInput(), makeConfig());
+
+    // Person was created normally; company recovered via post-conflict findBySlug
+    expect(result.personUid).toBe("psn_001");
+    expect(result.companyUid).toBe("cmp_winner");
   });
 });
 
