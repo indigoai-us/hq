@@ -81,6 +81,30 @@ ensure_worktree() {
   local branch_slug="${branch_name//\//-}"
   local wt_path="${repo_path}-wt-${branch_slug}"
 
+  # Heal orphan worktree directories left from prior failed runs.
+  # git worktree add refuses to reuse a pre-existing path, even an empty one.
+  # Prune stale metadata, then remove the dir only if it's a safe orphan
+  # (no .git entry AND contents limited to regenerable artifacts). Anything
+  # else → bail so we never destroy real work.
+  if [[ -e "$wt_path" ]]; then
+    git -C "$repo_path" worktree prune 2>/dev/null || true
+    if [[ -e "$wt_path/.git" ]]; then
+      log_err "Worktree path $wt_path still registered after prune — manual cleanup required"
+      log_err "  git -C $repo_path worktree remove --force $wt_path"
+      return 1
+    fi
+    local _orphan_contents
+    _orphan_contents=$(cd "$wt_path" && ls -A 2>/dev/null | grep -v -E '^(node_modules|\.expo|\.next|\.turbo|dist|build|\.DS_Store)$' || true)
+    if [[ -n "$_orphan_contents" ]]; then
+      log_err "Worktree path $wt_path exists with unexpected contents — refusing to overwrite"
+      log_err "  Contents: $(echo "$_orphan_contents" | tr '\n' ' ')"
+      log_err "  Manual cleanup: rm -rf $wt_path  (verify first!)"
+      return 1
+    fi
+    log_warn "Removing orphan worktree directory (regenerable artifacts only): $wt_path"
+    rm -rf "$wt_path"
+  fi
+
   # Create the worktree
   log_info "Creating worktree: $wt_path (branch: $branch_name)"
   if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$branch_name" 2>/dev/null; then
@@ -1623,6 +1647,21 @@ validate_git_state() {
   if [[ -n "$dirty" ]]; then
     log_warn "Sub-agent left uncommitted changes. Auto-committing..."
     git -C "$REPO_PATH" add -A
+    # Guard (policy: run-project-conflict-marker-guard): refuse to commit if any
+    # staged file contains unresolved merge-conflict markers. Pre-existing
+    # garbage in the worktree must never be swept into the branch — doing so
+    # broke the moonflow-redesign run on 2026-04-16 (94 tsc TS1185 errors).
+    local _marker_files
+    _marker_files=$(git -C "$REPO_PATH" diff --cached --name-only 2>/dev/null | while IFS= read -r _f; do
+      [[ -f "$REPO_PATH/$_f" ]] && grep -lE '^(<{7}|={7}|>{7})([^<=>]|$)' "$REPO_PATH/$_f" 2>/dev/null
+    done)
+    if [[ -n "$_marker_files" ]]; then
+      log_err "REFUSING auto-commit for ${story_id}: conflict markers detected in:"
+      while IFS= read -r _f; do [[ -n "$_f" ]] && log_err "  $_f"; done <<< "$_marker_files"
+      log_err "  Resetting index — manual cleanup required before run can continue."
+      git -C "$REPO_PATH" reset -q 2>/dev/null || true
+      return 1
+    fi
     git -C "$REPO_PATH" commit -m "[orchestrator] ${story_id}: auto-commit uncommitted work" --no-verify 2>/dev/null || true
   fi
 }
@@ -3357,29 +3396,28 @@ spawn_cmux_monitor() {
     return 0
   fi
 
-  # Launch the monitor dashboard in a new Terminal.app window via AppleScript.
-  # Terminal.app is always scriptable on macOS (no TCC gate, no config flag),
-  # so this works regardless of whether /run-project was invoked from a cmux
-  # shell or from Claude Code running inside Claude.app desktop. We previously
-  # tried the cmux CLI (blocked by socket-ancestry auth) and cmux AppleScript
-  # dictionary (gated by the `macos-applescript` ghostty setting, off by
-  # default) — both failed silently in the Claude.app case.
-  local monitor_cmd="cd '$HQ_ROOT' && clear && bash workspace/orchestrator/monitor-project.sh '$PROJECT' --watch"
+  # Launch the monitor dashboard in a new Terminal.app window.
+  # We write a .command file and `open` it with Terminal — this avoids the
+  # AppleScript `do script` keystroke-injection race where a frontmost
+  # Terminal window's input buffer can corrupt the first characters of the
+  # injected command (observed: "cd ..." → "kcd ..." → command not found).
+  # A .command file is invoked via exec rather than keystrokes, so the first
+  # line of the script always runs verbatim.
+  local monitor_launcher="$HQ_ROOT/workspace/orchestrator/${PROJECT}/.monitor-launcher.command"
+  mkdir -p "$(dirname "$monitor_launcher")"
+  cat > "$monitor_launcher" <<LAUNCHER
+#!/usr/bin/env bash
+cd '$HQ_ROOT' || exit 1
+clear
+exec bash workspace/orchestrator/monitor-project.sh '$PROJECT' --watch
+LAUNCHER
+  chmod +x "$monitor_launcher"
 
-  local osa_out osa_status
-  osa_out=$(osascript 2>&1 <<APPLESCRIPT
-tell application "Terminal"
-  activate
-  do script "${monitor_cmd}"
-end tell
-APPLESCRIPT
-)
-  osa_status=$?
-  if [[ $osa_status -ne 0 ]]; then
-    echo -e "${DIM}(monitor spawn failed: ${osa_out})${NC}"
-    return 0
+  if open -a Terminal "$monitor_launcher" 2>/dev/null; then
+    echo -e "${DIM}Spawned monitor window for ${PROJECT} (Terminal.app)${NC}"
+  else
+    echo -e "${DIM}(monitor spawn failed — run manually: bash workspace/orchestrator/monitor-project.sh $PROJECT --watch)${NC}"
   fi
-  echo -e "${DIM}Spawned monitor window for ${PROJECT} (Terminal.app)${NC}"
 }
 
 spawn_cmux_monitor
