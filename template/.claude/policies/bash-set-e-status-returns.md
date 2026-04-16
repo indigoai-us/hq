@@ -24,6 +24,3 @@ result=0
 handle_failure "$STORY_ID" "$attempt" || result=$?
 ```
 
-## Rationale
-
-`set -e` terminates the script on any non-zero return, including intentional status codes. This caused `run-project.sh` to silently exit instead of retrying failed stories — `handle_failure` returned 2 (skip), `set -e` intercepted it, and the script died before `result=$?` could capture the value. The `|| result=$?` pattern is the standard bash idiom for this.

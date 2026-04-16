@@ -107,7 +107,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer (27 skills), ux-auditor (11 skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (2) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer, impeccable-designer (22 design skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): per-company workers listed in `workers/registry.yaml`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
@@ -137,7 +137,7 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-36 commands in `.claude/commands/` (core only). Company/niche commands live on their owning workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+30 commands in `.claude/commands/` (core only). Company/niche commands live on their owning workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
@@ -178,7 +178,7 @@ HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + 
 
 ## Learning System
 
-Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). `/remember` delegates to `/learn` with `enforcement: hard`. Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
+Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). Use `/learn --hard` for hard-enforcement rules (formerly `/remember`). Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
 
 ## Insights
 
@@ -235,6 +235,7 @@ Context-usage advisories run in two stages. Both present the same three options 
 6. **Completeness is near-zero cost** - AI makes the marginal cost of doing the complete thing close to zero. Always do the complete thing when achievable (a "lake"), not the shortcut. Reserve shortcuts for genuinely unbounded scope (an "ocean")
 7. **Never skip failing tests** - Always fix tests properly. Never use test.skip, never create false positives, never loosen assertions as a workaround. Investigate root cause and fix it — unit, integration, and E2E equally <!-- user-correction | 2026-04-04 -->
 8. **Bugfixes require tests** - Every bug fix must include test or E2E coverage that catches the regression. Ask user if unsure about test type/scope. A fix without a regression test is incomplete <!-- user-correction | 2026-04-05 -->
+9. **Vague → Verifiable** - When a request lacks clear success criteria ("fix the bug", "make it faster", "clean this up"), define what "done" looks like before starting. A test that passes, a metric that improves, a behavior that changes — something observable
 
 ## E2E Testing Standards
 

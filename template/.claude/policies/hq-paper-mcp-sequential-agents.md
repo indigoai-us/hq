@@ -18,6 +18,3 @@ Parallelism comes in the code build phase (independent file trees), not the desi
 
 Effective pattern: Design System agent first (establishes tokens) → Desktop pages agent → Mobile pages agent → QA agent. Each completes and calls `finish_working_on_nodes` before the next starts.
 
-## Rationale
-
-Discovered during Magical Moments website redesign. Paper MCP's `write_html` and `create_artboard` tools operate on the same document state. Concurrent writes from parallel agents would produce non-deterministic artboard placement and potential node ID conflicts.

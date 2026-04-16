@@ -13,10 +13,6 @@ updated: 2026-03-12
 
 When a Next.js 16 app with Turbopack dev mode shows RSC pages stuck on their Suspense fallback ("Loading...") despite the server returning 200, do not debug the issue in dev mode. Run `npm run build` instead and verify the correct page count in build output — a successful production build with the expected page count is the authoritative verification signal.
 
-## Rationale
-
-Turbopack's dev-mode streaming implementation can leave RSC Suspense boundaries stuck on their fallback state even when the server responds correctly. This is a known dev-mode artifact, not a production bug. Spending time debugging Suspense rendering in dev mode wastes effort — the production build is the ground truth. If the build passes and produces the expected number of pages, the feature is working correctly.
-
 ## Examples
 
 **Correct:**

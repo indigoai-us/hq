@@ -35,3 +35,4 @@ HQ's value comes from orchestration fidelity — policies, manifest routing, com
 ### What About Cost?
 
 Opus costs more than Sonnet. This is intentional. The failure modes of a cheaper model in HQ (skipped policy steps, wrong company credentials, missed orchestration rules) cost more in wasted time and broken state than the token savings. Pay for quality everywhere.
+

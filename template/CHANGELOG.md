@@ -1,5 +1,45 @@
 # Changelog
 
+## [10.10.0] — 2026-04-13
+
+### Headline
+Command/skill cleanup: 38 → 30 commands, 18 → 16 skills. Pack frontmatter tags for organizational grouping. `/remember` merged into `/learn --hard`. `/land` promoted to core command.
+
+### Removed — Commands (7)
+- `dashboard` — Goals command is sufficient
+- `model-route` — Moot with Opus 4.6 universal default
+- `recover-session` — Handoff is reliable enough
+- `remember` — Merged into `/learn --hard`
+- `search` — Agents call qmd directly
+- `search-reindex` — Triggered by hooks/scripts, not user-facing
+- `understand-project` — Redundant with brainstorm
+
+### Removed — Skills (2)
+- `search` — Agents use qmd directly
+- `agent-browser` — Relocated to qa-tester worker
+
+### Added
+- **`/land` command** — promoted from skill-only; lands PRs through CI → review → merge → production pipeline
+- **Pack frontmatter tags** — `pack: dev` on quality-gate, review, retro, document-release, tdd; `pack: maintenance` on harness-audit
+- **`ascii-artist` worker** — dedicated worker for ASCII block-art banner generation
+- **14 new policies** synced from upstream
+
+### Changed
+- **`/learn`** absorbs `/remember` — use `--hard` or `--enforce` flag for hard-enforcement rules
+- **10 skills updated** — ascii-graphic, brainstorm, execute-task, handoff, land, learn, prd, run, run-project, startwork
+- **183 policies synced** (up from 162) — scope-filtered, context-stripped
+- **CLAUDE.md** — updated command count (30), removed stale `/remember` references
+- **Registry** — added ascii-artist worker entry
+
+### Migration
+- Replace `/remember` with `/learn --hard` in any custom scripts or workflows
+- Removed commands will show "command not found" — no action needed unless referenced in custom automation
+
+## [10.9.0] — 2026-04-13
+
+### Changed
+- Version bump (infrastructure release)
+
 ## [10.8.0] — 2026-04-11
 
 ### Headline
@@ -85,7 +125,7 @@ Performance Audit Complete — ~50% session-start context reduction via pre-buil
 ### Performance
 - HQ root session start: **−53% context** (37.2 KB → 17.3 KB)
 - personal cwd: **−58% context** (45.5 KB → 19.1 KB)
-- liverecover-class cwd: **−61% context** (58.7 KB → 22.8 KB)
+- {company}-class cwd: **−61% context** (58.7 KB → 22.8 KB)
 - vyg-class cwd: **−62% context** (67.1 KB → 25.5 KB)
 
 ### Removed

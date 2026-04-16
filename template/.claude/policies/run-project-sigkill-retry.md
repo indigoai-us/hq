@@ -19,3 +19,4 @@ Only intervene if:
 - The story consistently takes >15 minutes (may need `model_hint` adjustment)
 
 When monitoring: expect ~10-15 min per story. Output files (`US-XXX.output.json`) remain 0 bytes until the subprocess completes — this is normal, not an error signal.
+

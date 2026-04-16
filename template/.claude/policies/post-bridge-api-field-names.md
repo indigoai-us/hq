@@ -19,6 +19,3 @@ When calling `POST https://api.post-bridge.com/v1/posts` directly (not via SDK),
 
 Also: always check for existing scheduled posts before submitting (`GET /v1/posts?status=scheduled`) — duplicate posts from previous sessions may already exist at the same time slots.
 
-## Rationale
-
-The API returns HTTP 400 with `"caption is required"` and `"at least one social_account is required"` if wrong field names are used. Confirmed against live API. Duplicate posts were found in the queue from a previous session when checking — always verify before submitting.

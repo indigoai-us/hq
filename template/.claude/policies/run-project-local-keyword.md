@@ -16,3 +16,4 @@ Affected regions:
 - Safe: function `process_swarm_completion()` (~line 2246) — `local` is valid here
 
 Use plain variable assignment (`var=""`) instead of `local var` in loop bodies.
+

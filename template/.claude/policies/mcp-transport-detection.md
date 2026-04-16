@@ -22,6 +22,3 @@ Before adding a new MCP server to `.mcp.json`, test the transport protocol. Not 
 **Known servers requiring `mcp-remote`:** Paper Desktop (`127.0.0.1:29979/mcp`)
 **Known servers fine with `"type": "http"`:** Figma (`localhost:3845/mcp`), {Product} (`mcp.{product}.app/mcp`)
 
-## Rationale
-
-Paper MCP was misconfigured as `"type": "http"` for multiple sessions. Server returned 406 but the error was invisible — Claude Code just silently failed to load Paper tools. Cost multiple session restarts to diagnose. Testing the transport protocol upfront prevents this.

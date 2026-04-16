@@ -18,3 +18,4 @@ If Vercel project has `framework: null`, production builds deploy but serve 404 
 2. **Alternative — API patch**: `PATCH /v9/projects/{id}` with `{"framework":"nextjs","installCommand":"pnpm install"}` then redeploy.
 
 Always verify framework is set after project creation. Diagnostic clue: build logs missing "Traced Next.js server files" line despite successful page compilation.
+

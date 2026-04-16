@@ -17,3 +17,4 @@ Regression gates in `run-project.sh` MUST compare error counts against a baseBra
 The per-story back-pressure (inside `/execute-task`) already handles this correctly by noting "pre-existing errors only, none from this story." The regression gate must match this behavior.
 
 When diagnosing regression gate failures: always verify whether the failing errors also exist on the base branch before treating them as regressions.
+

@@ -17,6 +17,3 @@ When `git commit` fails because a global ggshield pre-commit hook exists (`~/Lib
 
 The `SKIP=ggshield` env var does NOT work for this global hook. Do not delete the hook permanently — it may be needed when ggshield is reinstalled.
 
-## Rationale
-
-Discovered during v10.3.0 publish. The global hook blocks ALL git commits across all repos when the binary is absent. The mv-commit-mv pattern is the minimal-impact workaround.

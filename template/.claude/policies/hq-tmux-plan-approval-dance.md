@@ -22,6 +22,3 @@ Each approval requires `tmux send-keys -t {session} Enter`. Wait ~30-90 seconds 
 
 After all 3 approvals, the background `run-project.sh` process starts and the tmux Claude enters a polling loop monitoring state.json. No further approvals needed until the next resume.
 
-## Rationale
-
-During {company}-tauri-migration (Mar 2026), each resume of the orchestrator required this 3-step approval dance. The tmux session runs with `--no-permissions` but plan mode approval and newline-containing bash commands still require interactive confirmation. Knowing the exact sequence prevents wasted time waiting for the wrong prompt.

@@ -18,3 +18,4 @@ If score exceeds **20**, the `/prd` command must:
 3. If the user declines, add `"model_hint": "opus"` to the story
 
 Stories with **12+ acceptance criteria** should almost always be split regardless of file count.
+

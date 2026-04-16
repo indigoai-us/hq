@@ -23,3 +23,4 @@ source: session-learning
    - DNS changes (propagation makes rollback slow)
 4. **If the user pre-authorized the action** (e.g., "deploy to prod" as an explicit instruction), still confirm the specific target: "Deploying to [project] on [team/scope] at [domain]. Confirming." One sentence, no blocking question needed — but the target must be stated.
 5. **NEVER fall back to a different target if the intended one fails.** If the authorized account/project/environment is unavailable, stop and report — do not silently use an alternative.
+

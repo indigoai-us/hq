@@ -6,7 +6,7 @@ trigger: before multi-file structural refactors
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: session-learning
+source: brainstorm-session
 ---
 
 ## Rule
@@ -23,6 +23,3 @@ Commit this cleanup separately before starting the real refactor. This preserves
 
 After any refactor touching >5 files, run the project's dead code scanner (e.g. `bun run deadcode` in {PRODUCT}) on affected files to catch newly orphaned exports.
 
-## Rationale
-
-Each file read consumes tokens. Dead imports, unused exports, and orphaned props contribute nothing to the task but everything to triggering compaction. Cleaning first means more context budget for the actual work. Committing cleanup separately keeps the refactor diff clean and reviewable.

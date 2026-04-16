@@ -20,3 +20,4 @@ Before starting a new Telegram bot with an existing token:
 3. Then start the new bot
 
 The Claude Code Telegram MCP plugin (`~/.claude/plugins/cache/claude-plugins-official/telegram/`) spawns a separate bun process per Claude Desktop session — ALL of them poll the same token. Disabling the `.env` file is not enough if sessions are already running; must kill existing plugin processes.
+

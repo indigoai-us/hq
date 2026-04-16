@@ -18,3 +18,4 @@ When configuring launch.json entries:
 1. Use `/opt/homebrew/bin/node` as `runtimeExecutable` (absolute path)
 2. Use `node_modules/.bin/{tool}` (e.g. `node_modules/.bin/next`) in `runtimeArgs` instead of `npm run dev`
 3. Next.js 16 uses Turbopack by default with no `--no-turbopack` opt-out. If Turbopack panics in dev, there is no webpack fallback — production Vercel builds use a different pipeline and are unaffected.
+

@@ -15,6 +15,3 @@ Before scheduling a batch of posts via Post-Bridge:
 3. Schedule new posts only in free slots — avoid same-account same-hour collisions
 4. {product} posts go to BOTH accounts (34528 + 34531) every 3 days — account for this when scheduling X-only or LinkedIn-only posts
 
-## Rationale
-
-111 {product} posts were already scheduled through Feb 2027. Without checking, new {product} posts would have collided.

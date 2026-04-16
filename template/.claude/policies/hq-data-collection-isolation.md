@@ -19,3 +19,4 @@ Instead:
 2. **Ad-hoc "run it now"** → spawn `Agent(run_in_background=true)` to collect data and format the dashboard. Parent receives only the compact summary.
 
 The parent session should only see the final formatted output, never raw query results.
+

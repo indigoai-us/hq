@@ -16,3 +16,4 @@ source: success-pattern
 - To get thread IDs: query `repository.pullRequest.reviewThreads` via GraphQL — each thread has a node `id` and `isResolved` boolean.
 - To resolve: `mutation { resolveReviewThread(input: {threadId: "{id}"}) { thread { isResolved } } }`
 - Batch resolution: loop over thread IDs with sequential GraphQL mutations via `gh api graphql`.
+

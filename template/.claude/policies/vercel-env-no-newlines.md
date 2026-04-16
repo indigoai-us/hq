@@ -14,6 +14,3 @@ source: migration
 
 When piping values to `vercel env add`, ALWAYS use `printf` (no trailing newline) — NOT `echo`. `echo` appends `\n` to the value, causing API calls with those credentials to fail with 400 Bad Request. Diagnose with `vercel env pull` and inspect for `\n` in values.
 
-## Rationale
-
-Trailing newlines in env var values cause silent API auth failures.

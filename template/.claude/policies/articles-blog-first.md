@@ -19,3 +19,4 @@ Any content with `type: article` in draft frontmatter or assessed as "Article" s
 The X deliverable for articles is a short teaser linking to the blog. Never post full 1500+ word article text directly to X or LinkedIn.
 
 The `/contentidea` "Article" form routes to this pipeline. The daily-social skill checks `blog-queue.json` for pending articles each run.
+

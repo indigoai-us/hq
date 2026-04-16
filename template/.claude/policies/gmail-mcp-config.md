@@ -14,3 +14,4 @@ created: 2026-03-04
 3. **Tool prefix for the correct MCP is `mcp__gmail__`** (not `mcp__gmail-local__`).
 4. **If gmail tools aren't loading,** check `.mcp.json` points to `repos/public/advanced-gmail-mcp/src/server.ts` and suggest a session restart. Do not fall back to any other email tool.
 5. **Auth command:** `cd repos/public/advanced-gmail-mcp && npm run auth -- <alias>` (e.g., `{company}`, `personal`).
+

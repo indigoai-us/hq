@@ -13,6 +13,3 @@ NEVER run `vercel git disconnect` or `vercel link` from HQ root or any directory
 
 Always: `cd {repo-path} && vercel git disconnect ...`
 
-## Rationale
-
-Running `vercel git disconnect` from HQ root accidentally disconnected the HQ Vercel project instead of the target repo's project. Required manual cleanup of `.vercel/` dir and `.env.local` from HQ root.

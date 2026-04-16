@@ -14,6 +14,3 @@ source: back-pressure-failure
 
 ALWAYS use `printf '%s' "$VALUE" | vercel env add NAME production` instead of `echo "$VALUE" | vercel env add`. `echo` appends a trailing newline which Vercel stores as part of the value, causing "leading or trailing whitespace" build errors for HTTP header values like CRON_SECRET.
 
-## Rationale
-
-Deploy failed with "CRON_SECRET environment variable contains leading or trailing whitespace" because `echo` piped a newline-terminated string.

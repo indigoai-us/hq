@@ -73,33 +73,6 @@ the registry has not yet auto-pruned. Bypass events must be appended to
 and other non-mutating operations are never blocked by this system,
 regardless of ownership.
 
-## Rationale
-
-**Incident: 2026-03-23 {company}-blog-cms** (see
-`.claude/policies/orchestrator-competing-processes.md`). Two `/run-project`
-processes on the same project/repo corrupted shared `state.json` and
-`progress.txt` files, requiring manual PID cleanup and recovery from the
-PRD `passes` field as ground truth.
-
-Root cause: HQ had story-scoped file locks (`{repo}/.file-locks.json`) but
-no repo-scoped signal that an orchestrator was sweeping the tree. Sibling
-sessions (`/run-project` on a different project in the same repo,
-`/execute-task`, `/brainstorm`, `/prd`) could land edits mid-orchestration
-and cause:
-
-- `state.json` / `progress.txt` truncation from competing writes.
-- Merge races on worktree story branches created by `ensure_worktree()`.
-- Edits to files about to be checked out by the orchestrator's next batch.
-
-The existing `orchestrator-competing-processes.md` policy was soft/manual
-("run `ps aux` before `--resume`"). This policy promotes it to hard,
-automatic enforcement via the hooks above.
-
-**Two-layer model:** `active-runs.json` (repo-scoped, this policy) composes
-*above* the existing `.file-locks.json` (story-scoped, unchanged). A foreign
-session that passes the repo-level check — e.g. working in a different
-worktree — still hits the story-level checks. Nothing regresses.
-
 ## Related
 
 - Registry CLI: `scripts/repo-run-registry.sh`

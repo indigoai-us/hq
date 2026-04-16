@@ -17,6 +17,3 @@ cd repos/public/advanced-gmail-mcp && npm run auth -- {account}
 
 Then open the auth URL in browser (`open "URL"`) so the user doesn't have to find it manually.
 
-## Rationale
-
-Gmail OAuth tokens expire. When they do, `send_email` fails and the user has to re-auth mid-task. A preflight check catches this before composing 5 emails that all fail. Opening the URL automatically saves ~5 minutes of friction.

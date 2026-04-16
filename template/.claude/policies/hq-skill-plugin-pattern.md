@@ -28,9 +28,3 @@ NEVER copy or fork skill files — symlink for zero-copy upstream updates.
 ALWAYS use a short prefix (e.g. `g-`) to avoid collisions with HQ skills.
 ALWAYS skip infrastructure dirs (bin/, scripts/, test/) via a skip list.
 
-## Rationale
-
-First implemented for gstack (Garry Tan's sprint system, 26 skills). The pattern avoids
-name collisions (4 skills overlap with HQ), preserves upstream updateability via
-`git pull` + re-link, and uses filesystem-based discovery matching Claude Code's native
-`.claude/skills/*/SKILL.md` scan.

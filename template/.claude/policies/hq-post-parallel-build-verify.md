@@ -18,10 +18,6 @@ source: session-learning
 4. **Check for cross-agent file conflicts.** If multiple agents edited the same file, read the final state and verify: no duplicate entries, no merge artifacts, consistent formatting, no lost edits.
 5. **If build or typecheck fails, fix all errors before proceeding.** Do not leave broken builds for the user to discover. The orchestrator owns the integration — individual agents own their scope.
 
-## Rationale
-
-Sub-agents miss files outside their assigned scope (schema files, component props, infrastructure configs). They get relative import paths wrong. Multiple agents editing the same file without coordination causes formatting breaks and duplicate entries. Integration deprecation removed a constant but `@deprecated` JSDoc still included it in the union type, causing cascading TS errors. A build verification pass after parallel execution catches all of these before they compound.
-
 ## Related
 
 - `hq-verify-shared-files-after-parallel-agents` — complementary file-level conflict check (this policy adds the build/typecheck requirement)

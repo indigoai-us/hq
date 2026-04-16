@@ -24,3 +24,4 @@ Shopify no longer issues permanent `shpat_*` Admin API access tokens. Custom app
 The `shpss_*` value is the **Client Secret** — it's used to *request* tokens, not as a token itself.
 
 Theme Access tokens (`shptka_*`) remain unchanged and are still used for `shopify theme push/pull`.
+
