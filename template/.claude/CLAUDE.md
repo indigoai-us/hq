@@ -58,6 +58,10 @@ Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,pr
 
 Listed in `companies/manifest.yaml` (source of truth). Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
+## People
+
+Per-company contact records at `companies/{co}/people/{slug}/meta.yaml` (template: `companies/_template/people/_example/meta.yaml`). Whenever a person is mentioned (by name, email, or handle), check the active company's `people/` folder first — match against `name`, `email`, and any entry under `handles`. If no match, create a new `companies/{co}/people/{slug}/meta.yaml` from the template — minimally `name` + `type` (`internal` for HQ team members, `external` for clients/vendors/partners; external entries also set `relationship` and `organization`). Append new observations to `notes[]` rather than overwriting existing fields.
+
 ## Company Isolation
 
 Manifest: `companies/manifest.yaml` — maps companies to repos, workers, knowledge, deploy targets. Fields: `services`, `vercel_team`, `aws_profile`, `dns_zones`.
