@@ -145,7 +145,7 @@ function resolveActiveCompany(hqRoot: string): string | undefined {
   if (fs.existsSync(configPath)) {
     try {
       const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      return config.activeCompany;
+      return config.activeCompany ?? config.companySlug;
     } catch {
       // Ignore parse errors
     }
