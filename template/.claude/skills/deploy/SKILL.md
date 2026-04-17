@@ -207,11 +207,11 @@ The hq-deploy API is locked down (US-003): anonymous `/api/*` requests return 40
 
 ### 4a. Locate the session file
 
-The hq-pro vault auth writes the Cognito tokens on sign-in. The canonical path is `~/.hq/auth/session.json`; older installs may still use `~/.hq/cognito-tokens.json` — check both.
+The `hq-cli` (and hq-cloud onboarding helper) write Cognito tokens on sign-in. The canonical path is `~/.hq/cognito-tokens.json` — that's what `saveCachedTokens()` in `@indigoai-us/hq-cloud` produces and what `hq auth refresh` / `hq-auth-refresh` reads. Some forks or pre-release installs may use `~/.hq/auth/session.json`; check both, prefer the canonical path.
 
 ```bash
 SESSION_FILE=""
-for candidate in "$HOME/.hq/auth/session.json" "$HOME/.hq/cognito-tokens.json"; do
+for candidate in "$HOME/.hq/cognito-tokens.json" "$HOME/.hq/auth/session.json"; do
   if [ -f "$candidate" ]; then SESSION_FILE="$candidate"; break; fi
 done
 ```
@@ -251,7 +251,7 @@ fi
 
 ### 4c. Attempt refresh on expiry
 
-If the access token is expired but a `refreshToken` is present, attempt the refresh against the shared Cognito pool, then rewrite the session file. The refresh flow is owned by the onboarding/hq-pro apps — the deploy skill does NOT implement its own Cognito client. Shell out if a helper is available; otherwise treat as absent.
+If the access token is expired but a `refreshToken` is present, shell out to `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.1). It calls the shared Cognito pool's `/oauth2/token` endpoint with grant_type=refresh_token and rewrites `~/.hq/cognito-tokens.json`. Never implement the Cognito client inline.
 
 ```bash
 if [ -z "$JWT" ] && [ -f "$SESSION_FILE" ]; then
@@ -262,7 +262,7 @@ if [ -z "$JWT" ] && [ -f "$SESSION_FILE" ]; then
 fi
 ```
 
-If no refresh helper and no valid JWT: skip the refresh branch. Do not prompt the user for credentials — that's the onboarding app's job.
+If `hq-auth-refresh` is not on PATH (older CLI or fresh install), the skill silently falls through to the upsell. Do not prompt the user for credentials — sign-in is owned by `onboarding.indigo-hq.com`.
 
 ### 4d. Branch on identity
 

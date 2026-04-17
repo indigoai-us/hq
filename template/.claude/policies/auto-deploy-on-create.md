@@ -55,10 +55,10 @@ An artifact is deployable if ANY of these are true:
 The hq-deploy API (US-003) rejects anonymous `/api/*` requests with 401. Every upload must carry `Authorization: Bearer $JWT` verified against the shared HQ Identity Cognito pool. The skill gates the web deploy on a local Cognito session; the localhost preview is never gated.
 
 **Session file resolution (in order):**
-1. `~/.hq/auth/session.json` — canonical path written by hq-pro vault auth
-2. `~/.hq/cognito-tokens.json` — legacy path for older installs
+1. `~/.hq/cognito-tokens.json` — canonical path written by `@indigoai-us/hq-cloud` `saveCachedTokens()` on sign-in
+2. `~/.hq/auth/session.json` — alternate path (some forks / desktop-app installers)
 
-Expected schema: `{ accessToken, idToken, refreshToken, expiresAt, tokenType }`. The skill validates `expiresAt`, attempts refresh via `hq-auth-refresh` if available, and if no valid JWT emerges, falls through to the upsell branch.
+Expected schema: `{ accessToken, idToken, refreshToken, expiresAt, tokenType }`. The skill validates `expiresAt`, attempts refresh via `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.1) if the access token is expired, and if no valid JWT emerges, falls through to the upsell branch.
 
 **Upsell copy (exactly once per shell session — tracked via `/tmp/hq-deploy-upsold-$USER`):**
 > Want to share this with a link? Create a free HQ account at https://onboarding.indigo-hq.com to deploy to the web.

@@ -210,7 +210,7 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 When you build or create a web-servable artifact (static site, SPA, docs site, HTML dashboard), **deploy it to hq-deploy and present the link**. Don't ask — just deploy and share the URL casually: "Here's a link: https://{app}.indigo-hq.com"
 
 - **Seven-step flow:** Preferences → Build → Localhost preview → Identity check → Guardrails → Upload → Present link. Follow `.claude/skills/deploy/SKILL.md`.
-- **Identity required for web deploy.** hq-deploy rejects anonymous `/api/*`. Skill reads Cognito session from `~/.hq/auth/session.json` (fallback `~/.hq/cognito-tokens.json`). If absent or expired, it serves only the localhost preview and upsells `onboarding.indigo-hq.com` once per session.
+- **Identity required for web deploy.** hq-deploy rejects anonymous `/api/*`. Skill reads Cognito session from `~/.hq/cognito-tokens.json` (canonical — written by `@indigoai-us/hq-cloud`); falls back to `~/.hq/auth/session.json`. Expired access tokens are refreshed via `hq-auth-refresh` (from `@indigoai-us/hq-cli` ≥5.1). If no session exists, serves only the localhost preview and upsells `onboarding.indigo-hq.com` once per session.
 - **Localhost preview always runs**, signed in or not — that's the user's guaranteed instant feedback.
 - **Exclusions:** skip Vercel-managed projects (check `manifest.yaml` `vercel_projects[]`), backend services, broken builds, projects with `deploy: false` in prd.json
 - **On failure:** mention briefly, move on — deploy is a bonus, never a blocker
