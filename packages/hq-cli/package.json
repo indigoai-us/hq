@@ -4,7 +4,8 @@
   "description": "HQ by Indigo management CLI — modules and cloud sync",
   "main": "dist/index.js",
   "bin": {
-    "hq": "dist/index.js"
+    "hq": "dist/index.js",
+    "hq-auth-refresh": "dist/bin/hq-auth-refresh.js"
   },
   "scripts": {
     "build": "tsc",

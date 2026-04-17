@@ -18,6 +18,20 @@ import type { SyncStatus, PushResult, PullResult } from "./types.js";
 
 export type { SyncStatus, PushResult, PullResult } from "./types.js";
 
+// Cognito identity helpers — used by `hq auth refresh` and any consumer
+// that needs a valid HQ access token (deploy skill, onboarding, etc.).
+export {
+  browserLogin,
+  refreshTokens,
+  getValidAccessToken,
+  loadCachedTokens,
+  saveCachedTokens,
+  clearCachedTokens,
+  isExpiring,
+  CognitoAuthError,
+} from "./cognito-auth.js";
+export type { CognitoAuthConfig, CognitoTokens } from "./cognito-auth.js";
+
 /**
  * Initialize cloud sync — authenticate and provision bucket
  */

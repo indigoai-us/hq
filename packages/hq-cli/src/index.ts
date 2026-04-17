@@ -18,6 +18,7 @@ import { registerPackageRemoveCommand } from "./commands/pkg-remove.js";
 import { registerPackageUpdateCommand } from "./commands/pkg-update.js";
 import { registerPackageListCommand } from "./commands/pkg-list.js";
 import { registerTeamSyncCommand } from "./commands/team-sync.js";
+import { registerAuthCommands } from "./commands/auth.js";
 
 const program = new Command();
 
@@ -66,5 +67,6 @@ registerTeamSyncCommand(program);
 registerLoginCommand(program);
 registerLogoutCommand(program);
 registerWhoamiCommand(program);
+registerAuthCommands(program);
 
 program.parse();
