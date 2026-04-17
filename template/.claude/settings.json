@@ -1,6 +1,7 @@
 {
   "outputStyle": "Explanatory",
   "autoMemoryEnabled": false,
+  "model": "claude-opus-4-7",
   "env": {
     "MAX_THINKING_TOKENS": "31999",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
