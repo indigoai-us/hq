@@ -1,5 +1,38 @@
 # Changelog
 
+## [11.1.1] — 2026-04-16
+
+### Headline
+Orchestrator + core-command patch. `/run-project` inline mode hardened around context preservation — each story now executes in a single per-story `Task` sub-agent with a strict JSON return contract, keeping raw worker output out of the parent session (gains ~300-500 tokens/story vs. several thousand under the old per-worker-inline model). `run-project.sh` hardened with worktree auto-create, builder phase-state heartbeats, cross-PRD deps, monitor-window keystroke-race fix, and a `validate_git_state()` conflict-marker guard that refuses to auto-commit unresolved merge artifacts. `/prd` renamed to `/plan` (compat alias keeps `/prd` working as a deprecation stub). Default model pinned to `claude-opus-4-7` (Opus 4.7 standard 200K — not the 1M variant).
+
+### Changed
+- `/run-project` (`.claude/commands/run-project.md`) — inline mode switched to a **per-story Task sub-agent** isolation model. Added `Task` to `allowed-tools`. The parent session performs only lightweight orchestration (announce, branch setup, Linear sync) and delegates the full worker pipeline to a fresh `general-purpose` Task sub-agent per story; the sub-agent runs `/execute-task` internally (which spawns the usual nested per-worker sub-agents) and returns a compact JSON summary. Regression gates now run in a one-shot Task sub-agent so raw test output never enters the parent context. Documentation references updated from `/prd` to `/plan`.
+- Default model pinned to `claude-opus-4-7` in `.claude/settings.json` (top-level `"model"` key). `CLAUDE_CODE_SUBAGENT_MODEL=opus` alias unchanged.
+
+### Fixed — Orchestrator (`scripts/run-project.sh` + `.claude/scripts/run-project.sh`)
+- Auto-create worktree directory and `cd` into it before invoking the builder (previously failed when target dir didn't exist or session started outside it).
+- Codex builder phase-state heartbeats — surface progress to the monitor instead of silent multi-minute gaps.
+- Cross-PRD dependency resolution + worktree anchoring — sibling PRDs in the same repo now share a single worktree instead of fighting for the lockfile.
+- Audit vocabulary normalized across log lines.
+- **Conflict-marker guard in `validate_git_state()`** — refuses auto-commit when staged files contain unresolved merge markers (`^(<{7}|={7}|>{7})([^<=>]|$)`), resets the index, and pauses the run for manual cleanup. Prevents the failure mode where a sub-agent's surgical edit triggers a `git add -A` sweep that ingests pre-existing conflict garbage into the branch.
+
+### Added
+- **`/plan`** (`.claude/commands/plan.md`) — renamed from `/prd`. Both invocations work in 11.1.1; `/prd` is now a thin redirect stub.
+- **3 orchestrator policies** (all `scope: command`, `enforcement: hard`):
+  - `run-project-conflict-marker-guard.md` — codifies the guard above
+  - `run-project-monitor-spawn-keystroke-race.md` — monitor window must spawn via `.command` file (not AppleScript `do script`) to dodge keystroke races
+  - `run-project-worktree-heal-orphan.md` — `ensure_worktree` must heal orphan target directories (regenerable artifacts only) before `git worktree add`
+- **3 cross-cutting policies** (`scope: global`/`command`, `public: true`):
+  - `hq-cmd-handoff-must-complete.md` — `/handoff` must complete its full sequence (commit → write thread → update INDEX) before returning
+  - `git-add-explicit-paths-no-drift.md` — never `git add -A`/`.` for orchestrated work; stage explicit paths
+  - `reskin-separate-orchestration-from-visual.md` — reskin work must split orchestration changes from pure visual changes
+- **Auto-deploy skill + directive** (merged from `main` via PR #76) — `skills/deploy/`, `policies/auto-deploy-on-create.md`, and `CLAUDE.md` Auto-Deploy section. When a web-servable artifact is created, it is deployed to `hq-deploy` and the link is presented — non-blocking, skipped for Vercel-managed projects, backend services, broken builds, or projects with `deploy: false` in prd.json.
+
+### Migrating to v11.1.1
+The `/prd → /plan` rename is **backward-compatible**. The shipped `/prd` is now a redirect stub that prints a deprecation notice and points consumers at `/plan`. Update any scripts, docs, or muscle memory that invoke `/prd` to use `/plan` instead. The stub will be removed in a future minor release.
+
+The default model bump pins both Claude Code's main loop and `CLAUDE_CODE_SUBAGENT_MODEL` alias resolution to `claude-opus-4-7` (the standard 200K-context Opus 4.7 — explicitly NOT the 1M-context variant). If your project requires the 1M-context model, override at the project level via `.claude/settings.json`.
+
 ## [11.1.0] — 2026-04-16
 
 ### Headline
