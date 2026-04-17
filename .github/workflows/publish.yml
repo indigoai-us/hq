@@ -24,10 +24,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # Publish hq-cli
-      - run: npm publish --workspace packages/hq-cli --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Publish hq-cli via npm trusted publishing (OIDC). No NODE_AUTH_TOKEN —
+      # auth is short-lived, minted from GitHub OIDC token, and scoped to this
+      # workflow file by npm's trusted-publisher config for @indigoai-us/hq-cli.
+      - run: npm publish --workspace packages/hq-cli --access public --provenance
 
       # Publish create-hq
       - run: npm publish --workspace packages/create-hq --access public
