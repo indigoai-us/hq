@@ -89,7 +89,7 @@ Policy: `.claude/policies/repo-run-coordination.md`. Registry:
 
 ```bash
 # Bash tool with run_in_background: true
-cd /Users/{your-name}/Documents/HQ && \
+cd ~/HQ && \
   nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
   > workspace/orchestrator/{project}/run.log 2>&1 &
 echo "PID:$!"
