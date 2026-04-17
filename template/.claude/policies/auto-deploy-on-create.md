@@ -48,7 +48,7 @@ An artifact is deployable if ANY of these are true:
 - **Non-web artifacts** — JSON, CSV, YAML exports are not deployable
 - **User preference set to non-`hq-deploy`** — see User Preferences below
 - **Artifacts that fail size/complexity guardrails** — see Guardrails below
-- **No identity session** — if the user isn't signed into HQ, serve only the localhost preview and upsell once. See Identity Gate below.
+- **No identity session** — if the user isn't signed in, the skill first tries to trigger an agent-spawned browser login (`npx hq auth login`); only if that fails does it fall back to serving only the localhost preview and upselling. See Identity Gate below.
 
 ### Identity Gate
 
@@ -58,12 +58,28 @@ The hq-deploy API (US-003) rejects anonymous `/api/*` requests with 401. Every u
 1. `~/.hq/cognito-tokens.json` — canonical path written by `@indigoai-us/hq-cloud` `saveCachedTokens()` on sign-in
 2. `~/.hq/auth/session.json` — alternate path (some forks / desktop-app installers)
 
-Expected schema: `{ accessToken, idToken, refreshToken, expiresAt, tokenType }`. The skill validates `expiresAt`, attempts refresh via `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.1) if the access token is expired, and if no valid JWT emerges, falls through to the upsell branch.
+Expected schema: `{ accessToken, idToken, refreshToken, expiresAt, tokenType }`. The skill validates `expiresAt`, attempts refresh via `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.1) if the access token is expired, and if no valid JWT emerges, attempts an **agent-spawned browser login** before falling through to the upsell.
 
-**Upsell copy (exactly once per shell session — tracked via `/tmp/hq-deploy-upsold-$USER`):**
-> Want to share this with a link? Create a free HQ account at https://onboarding.indigo-hq.com to deploy to the web.
+**Agent-spawned login (preferred recovery path):**
 
-The upsell is friendly, not blocking, and NEVER repeats within a session. The skill does NOT trigger a login flow — that's owned by the onboarding app.
+When there is no usable session, the skill runs — exactly once per session, tracked via `/tmp/hq-deploy-login-attempted-$USER`:
+
+```bash
+npx -y --package=@indigoai-us/hq-cli hq auth login &
+LOGIN_PID=$!
+( sleep 180 && kill "$LOGIN_PID" 2>/dev/null ) &
+wait "$LOGIN_PID" 2>/dev/null || true
+```
+
+(Portable kill-after-180s pattern — `timeout` isn't on macOS by default.) `hq auth login` (shipped in `@indigoai-us/hq-cli` ≥5.5) opens Cognito's Hosted UI in the user's default browser, waits for the OAuth callback on a localhost loopback server, and writes tokens to `~/.hq/cognito-tokens.json`. After the spawn returns, the skill re-reads the session file. If tokens appear, the deploy proceeds on the same turn — the user signed in via a browser popup and never saw a terminal.
+
+Before spawning, the skill must announce what's happening so the browser popup isn't unexpected:
+> Opening HQ sign-in in your browser — one moment...
+
+**Upsell copy (exactly once per session — tracked via `/tmp/hq-deploy-upsold-$USER`, only emitted if login was attempted and failed, or npx is unavailable):**
+> Looks like you don't have an HQ account yet. Create one free at https://onboarding.indigo-hq.com and I'll deploy this to the web next time.
+
+The upsell is friendly, not blocking, and NEVER repeats within a session. Sign-up (first-time account creation) is still owned by the onboarding app — the CLI login flow is for users who already have accounts.
 
 ### Guardrails (hq-deploy is for static artifacts only)
 

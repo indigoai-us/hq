@@ -15,7 +15,7 @@ Internal skill for deploying web artifacts to hq-deploy infrastructure. This is 
 1. **Preferences** — honor `~/.hq/config.json`, project opt-outs, and exclusions
 2. **Build** — framework detection + install + build
 3. **Localhost preview** — always serves, signed in or not
-4. **Identity check** — read Cognito session; gate web deploy on it, upsell if absent
+4. **Identity check** — read Cognito session; if absent, spawn `hq auth login` via npx (browser popup); if that fails, upsell
 5. **Guardrails** — size / file-count / complexity caps
 6. **Upload** — presigned URL (static) or ECR push (SSR), with `Authorization: Bearer $JWT`
 7. **Present the link** — one casual line, weave it into your response
@@ -201,7 +201,7 @@ Keep it in a visible line of your response. This is the user's instant feedback 
 
 ## Step 4 — Identity Check
 
-The hq-deploy API is locked down (US-003): anonymous `/api/*` requests return 401. Before attempting any upload, read the local Cognito session. If it's valid, use the JWT. If it's missing or expired, serve only the localhost preview and upsell the free HQ account.
+The hq-deploy API is locked down (US-003): anonymous `/api/*` requests return 401. Before attempting any upload, read the local Cognito session. If it's valid, use the JWT. If it's expired, refresh it. If it's missing entirely, trigger an agent-spawned browser login via `npx hq auth login` (Step 4d) — the user never opens a terminal, just signs in to the browser popup and the deploy continues. Only if that fails do we serve the localhost preview and upsell the free HQ account.
 
 **Localhost preview (Step 3) is NOT gated by identity — it always runs.** The identity gate only applies to the web deploy (Steps 5–7).
 
@@ -251,25 +251,92 @@ fi
 
 ### 4c. Attempt refresh on expiry
 
-If the access token is expired but a `refreshToken` is present, shell out to `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.1). It calls the shared Cognito pool's `/oauth2/token` endpoint with grant_type=refresh_token and rewrites `~/.hq/cognito-tokens.json`. Never implement the Cognito client inline.
+If the access token is expired but a `refreshToken` is present, shell out to `hq-auth-refresh` (provided by `@indigoai-us/hq-cli` ≥5.4). It calls the shared Cognito pool's `/oauth2/token` endpoint with grant_type=refresh_token and rewrites `~/.hq/cognito-tokens.json`. Never implement the Cognito client inline.
+
+**Agents must not require the CLI to be pre-installed.** Prefer a local bin if present; otherwise fall back to `npx` so any Node-enabled environment can invoke the refresh on demand without the user having run `npm install -g` beforehand.
 
 ```bash
 if [ -z "$JWT" ] && [ -f "$SESSION_FILE" ]; then
   REFRESH=$(jq -r '.refreshToken // empty' "$SESSION_FILE" 2>/dev/null)
-  if [ -n "$REFRESH" ] && command -v hq-auth-refresh >/dev/null 2>&1; then
-    hq-auth-refresh >/dev/null 2>&1 && JWT=$(jq -r '.accessToken // empty' "$SESSION_FILE" 2>/dev/null)
+  if [ -n "$REFRESH" ]; then
+    REFRESH_CMD=""
+    if command -v hq-auth-refresh >/dev/null 2>&1; then
+      REFRESH_CMD="hq-auth-refresh"
+    elif command -v npx >/dev/null 2>&1; then
+      # First-run downloads the package into npm cache (~10s);
+      # subsequent runs hit the cache.
+      REFRESH_CMD="npx -y --package=@indigoai-us/hq-cli hq-auth-refresh"
+    fi
+    if [ -n "$REFRESH_CMD" ]; then
+      $REFRESH_CMD >/dev/null 2>&1 && JWT=$(jq -r '.accessToken // empty' "$SESSION_FILE" 2>/dev/null)
+    fi
   fi
 fi
 ```
 
-If `hq-auth-refresh` is not on PATH (older CLI or fresh install), the skill silently falls through to the upsell. Do not prompt the user for credentials — sign-in is owned by `onboarding.indigo-hq.com`.
+If neither a local bin nor `npx` is available, silently fall through to the upsell. Do not prompt the user for credentials — sign-in is owned by `onboarding.indigo-hq.com`.
 
-### 4d. Branch on identity
+### 4d. Attempt interactive login (agent-triggered, once per session)
+
+If refresh failed or no session exists at all, **try interactive login before falling back to the upsell**. Spawning `hq auth login` via `npx` opens Cognito's Hosted UI in the user's default browser — they sign in once, the token gets cached to `~/.hq/cognito-tokens.json`, and deploy continues on the same turn.
+
+This is the "user never touched a terminal" path:
+
+```
+User:  "Deploy my dashboard to indigo-hq.com"
+Agent: [runs deploy skill → hits Step 4d with no session]
+       → tells the user "Opening HQ sign-in in your browser…"
+       → spawns: npx -y --package=@indigoai-us/hq-cli hq auth login
+       → browser pops open (Cognito Hosted UI)
+       → user signs in (one-time, cached 30 days)
+       → token file written → re-read → deploy continues
+```
+
+**Gate rules:**
+
+- Only trigger once per session — record in `/tmp/hq-deploy-login-attempted-$USER`
+- Only trigger if `npx` is available (almost always on a dev box; silently skip to upsell if not)
+- Announce to the user BEFORE spawning: `"Opening HQ sign-in in your browser — one moment..."`
+- Cap the wait at ~180s (background PID + killer) so a user who closes the browser doesn't hang the tool call. `hq auth login` has its own 15-min hard limit, but we don't want the deploy flow to wait that long.
+- After the spawn returns, re-read `$HOME/.hq/cognito-tokens.json` and re-populate `$JWT`.
+
+> ⚠️ Do NOT use `timeout 180 ...` — the `timeout` command is not available on macOS by default (it's GNU coreutils). Use the background-and-killer pattern below, which is portable across macOS and Linux.
+
+```bash
+LOGIN_ATTEMPTED_FILE="/tmp/hq-deploy-login-attempted-$USER"
+
+if [ -z "$JWT" ] && [ ! -f "$LOGIN_ATTEMPTED_FILE" ] && command -v npx >/dev/null 2>&1; then
+  touch "$LOGIN_ATTEMPTED_FILE"
+
+  # Tell the user what's about to happen so the browser popup isn't unexpected.
+  echo "Opening HQ sign-in in your browser — one moment..."
+
+  # Spawn hq auth login as a background job; kill it after 180s if it hasn't exited.
+  npx -y --package=@indigoai-us/hq-cli hq auth login &
+  LOGIN_PID=$!
+
+  ( sleep 180 && kill "$LOGIN_PID" 2>/dev/null ) &
+  KILLER_PID=$!
+
+  wait "$LOGIN_PID" 2>/dev/null || true
+  kill "$KILLER_PID" 2>/dev/null; wait "$KILLER_PID" 2>/dev/null || true
+
+  # Re-read session after login attempt — browserLogin() writes this file on success.
+  if [ -f "$HOME/.hq/cognito-tokens.json" ]; then
+    SESSION_FILE="$HOME/.hq/cognito-tokens.json"
+    JWT=$(jq -r '.accessToken // empty' "$SESSION_FILE" 2>/dev/null)
+  fi
+fi
+```
+
+**Why `npx -y --package=...`:** the agent does NOT require the user to have previously run `npm install -g @indigoai-us/hq-cli`. `npx` downloads on first use (~10s) and caches, subsequent invocations are instant. The `--package=` flag is needed because the binary name (`hq`) differs from the package name (`@indigoai-us/hq-cli`).
+
+### 4e. Branch on identity
 
 | State | Action |
 |-------|--------|
 | Valid `$JWT` in scope | Continue to Step 5 (Guardrails). Carry `Authorization: Bearer $JWT` through all `/api/*` calls. |
-| No `$JWT`, user hasn't been upsold this session | Skip Steps 5–6. Emit the upsell message once. Present preview URL only. |
+| No `$JWT` after login attempt, user hasn't been upsold this session | Skip Steps 5–6. Emit the upsell message once. Present preview URL only. |
 | No `$JWT`, already upsold this session | Skip Steps 5–6 silently. Present preview URL only. |
 
 Track "already upsold" in a tmp file so it survives tool-call boundaries:
@@ -278,11 +345,11 @@ Track "already upsold" in a tmp file so it survives tool-call boundaries:
 UPSOLD_FILE="/tmp/hq-deploy-upsold-$USER"
 ```
 
-### 4e. Upsell copy (once per session)
+### 4f. Upsell copy (once per session, only if login didn't succeed)
 
-When `$JWT` is absent and `$UPSOLD_FILE` does not exist, emit exactly once — friendly, not blocking, not a nag:
+When `$JWT` is still absent after 4d and `$UPSOLD_FILE` does not exist, emit exactly once — friendly, not blocking, not a nag. Phrase it as "create an account" (not "sign in") because reaching this branch means login failed — most likely the user doesn't have an account yet:
 
-> Want to share this with a link? Create a free HQ account at https://onboarding.indigo-hq.com to deploy to the web.
+> Looks like you don't have an HQ account yet. Create one free at https://onboarding.indigo-hq.com and I'll deploy this to the web next time.
 
 Then touch the upsold file so subsequent runs in the same session stay quiet:
 
@@ -415,7 +482,7 @@ curl -s -X POST \
 
 ### 6d. 401 handling
 
-If any `/api/*` call returns 401, the session is stale (expired between Step 4 check and now). Fall back to the "no JWT" branch of Step 4d — present the preview, upsell if not already shown, and stop. Do not retry indefinitely.
+If any `/api/*` call returns 401, the session is stale (expired between Step 4 check and now). Fall back to the "no JWT" branch of Step 4e — present the preview, upsell if not already shown, and stop. Do not re-trigger `hq auth login` mid-deploy (we already attempted it in 4d) and do not retry uploads indefinitely.
 
 ---
 
@@ -433,7 +500,7 @@ Do NOT print a deploy report, duration, file count, version, or status block. Ju
 **On upload failure** (after auth worked) — one line, no drama:
 - "Deploy to hq-deploy didn't go through, but everything else is done."
 
-**On no-identity path** — you already emitted the preview URL in Step 3c and the upsell line in Step 4e. Nothing to add here.
+**On no-identity path** — you already emitted the preview URL in Step 3c and either triggered login (4d) or upsold (4f). Nothing to add here.
 
 Then move on. Deploy is never the main event.
 
