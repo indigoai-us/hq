@@ -89,7 +89,7 @@ Policy: `.claude/policies/repo-run-coordination.md`. Registry:
 
 ```bash
 # Bash tool with run_in_background: true
-cd ~/HQ && \
+cd /Users/{your-name}/Documents/HQ && \
   nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
   > workspace/orchestrator/{project}/run.log 2>&1 &
 echo "PID:$!"
@@ -492,7 +492,7 @@ This example shows `/run-project campaign-migration` executing through multiple 
   "name": "campaign-migration",
   "metadata": {
     "company": "{company}",
-    "repoPath": "repos/private/{PRODUCT}",
+    "repoPath": "repos/private/{company}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [

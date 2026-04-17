@@ -26,6 +26,7 @@ Orchestrator + core-command patch. `/run-project` inline mode hardened around co
   - `hq-cmd-handoff-must-complete.md` — `/handoff` must complete its full sequence (commit → write thread → update INDEX) before returning
   - `git-add-explicit-paths-no-drift.md` — never `git add -A`/`.` for orchestrated work; stage explicit paths
   - `reskin-separate-orchestration-from-visual.md` — reskin work must split orchestration changes from pure visual changes
+- **Auto-deploy skill + directive** (merged from `main` via PR #76) — `skills/deploy/`, `policies/auto-deploy-on-create.md`, and `CLAUDE.md` Auto-Deploy section. When a web-servable artifact is created, it is deployed to `hq-deploy` and the link is presented — non-blocking, skipped for Vercel-managed projects, backend services, broken builds, or projects with `deploy: false` in prd.json.
 
 ### Migrating to v11.1.1
 The `/prd → /plan` rename is **backward-compatible**. The shipped `/prd` is now a redirect stub that prints a deprecation notice and points consumers at `/plan`. Update any scripts, docs, or muscle memory that invoke `/prd` to use `/plan` instead. The stub will be removed in a future minor release.

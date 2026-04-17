@@ -17,19 +17,47 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - run: npm ci
+
+      # Build in dependency order: hq-cloud first (hq-cli imports its types).
+      # npm workspaces does not topo-sort `--workspaces`, so we stage the build.
+      - run: npm run build --workspace packages/hq-cloud --if-present
       - run: npm run build --workspaces --if-present
 
-      # Publish hq-cloud first (dependency of hq-cli)
-      - run: npm publish --workspace packages/hq-cloud --access public
+      # Publish only if the workspace version hasn't been published yet.
+      # Prevents the job from failing when a tag bumps one package but
+      # leaves another at its current version.
+      - name: Publish hq-cloud (dependency of hq-cli)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NAME=$(jq -r .name packages/hq-cloud/package.json)
+          VER=$(jq -r .version packages/hq-cloud/package.json)
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "$NAME@$VER already on npm — skipping"
+          else
+            npm publish --workspace packages/hq-cloud --access public
+          fi
 
-      # Publish hq-cli
-      - run: npm publish --workspace packages/hq-cli --access public
+      - name: Publish hq-cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NAME=$(jq -r .name packages/hq-cli/package.json)
+          VER=$(jq -r .version packages/hq-cli/package.json)
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "$NAME@$VER already on npm — skipping"
+          else
+            npm publish --workspace packages/hq-cli --access public
+          fi
 
-      # Publish create-hq
-      - run: npm publish --workspace packages/create-hq --access public
+      - name: Publish create-hq
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NAME=$(jq -r .name packages/create-hq/package.json)
+          VER=$(jq -r .version packages/create-hq/package.json)
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "$NAME@$VER already on npm — skipping"
+          else
+            npm publish --workspace packages/create-hq --access public
+          fi
