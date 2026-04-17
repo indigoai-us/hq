@@ -10,6 +10,10 @@ enforcement: soft
 
 When HQ creates or builds a web-servable artifact, automatically deploy it to hq-deploy and present the live URL. No user prompt needed — deploy is a default behavior, not a decision.
 
+### Flow summary
+
+The deploy skill runs a seven-step flow: **Preferences → Build → Localhost preview → Identity check → Guardrails → Upload → Present link**. Steps 1–3 always run for everyone (signed in or not). Steps 5–7 are gated by identity.
+
 ### When to deploy
 
 1. **After a successful build** that produces web output (static HTML, SPA, or SSR bundle)
@@ -42,6 +46,61 @@ An artifact is deployable if ANY of these are true:
 - **Broken builds** — failing tests or typecheck means the artifact isn't ready
 - **Projects with `deploy: false`** in prd.json metadata — explicit opt-out
 - **Non-web artifacts** — JSON, CSV, YAML exports are not deployable
+- **User preference set to non-`hq-deploy`** — see User Preferences below
+- **Artifacts that fail size/complexity guardrails** — see Guardrails below
+- **No identity session** — if the user isn't signed into HQ, serve only the localhost preview and upsell once. See Identity Gate below.
+
+### Identity Gate
+
+The hq-deploy API (US-003) rejects anonymous `/api/*` requests with 401. Every upload must carry `Authorization: Bearer $JWT` verified against the shared HQ Identity Cognito pool. The skill gates the web deploy on a local Cognito session; the localhost preview is never gated.
+
+**Session file resolution (in order):**
+1. `~/.hq/auth/session.json` — canonical path written by hq-pro vault auth
+2. `~/.hq/cognito-tokens.json` — legacy path for older installs
+
+Expected schema: `{ accessToken, idToken, refreshToken, expiresAt, tokenType }`. The skill validates `expiresAt`, attempts refresh via `hq-auth-refresh` if available, and if no valid JWT emerges, falls through to the upsell branch.
+
+**Upsell copy (exactly once per shell session — tracked via `/tmp/hq-deploy-upsold-$USER`):**
+> Want to share this with a link? Create a free HQ account at https://onboarding.indigo-hq.com to deploy to the web.
+
+The upsell is friendly, not blocking, and NEVER repeats within a session. The skill does NOT trigger a login flow — that's owned by the onboarding app.
+
+### Guardrails (hq-deploy is for static artifacts only)
+
+Auto-deploy is explicitly limited to small static artifacts. If ANY of these apply, the deploy skill silently skips:
+
+| Check | Limit | Reason |
+|-------|-------|--------|
+| Tarball size (gzipped) | 10 MB max | hq-deploy CDN is for pages, not apps |
+| File count | 100 files max | More than that is a full application |
+| SSR framework | Disallowed | Next.js SSR, Remix SSR, Astro server → needs compute |
+| Backend at root | Disallowed | `Dockerfile`, `serverless.*`, `sst.config.*`, `docker-compose.*` → skip |
+| Database tooling | Disallowed | `prisma/`, `drizzle.config.*`, `knexfile.*`, `migrations/` → skip |
+
+Guardrails are enforced **client-side in the deploy skill**, not server-side in the API. The skill checks and silently abstains. Users with legitimate large deploys can still use the hq-deploy CLI directly — the skill is just the auto-path.
+
+### User Preferences
+
+Users can set a global deploy preference at `~/.hq/config.json`:
+
+```json
+{ "deploy": { "preference": "hq-deploy" } }
+```
+
+Valid values:
+
+| Value | Behavior |
+|-------|----------|
+| `hq-deploy` (default) | Full auto-deploy flow — preview + upload + link |
+| `vercel` | Silently skip — user deploys via Vercel |
+| `netlify` | Silently skip — user deploys via Netlify |
+| `custom` | Silently skip — user has their own pipeline |
+| `none` | Silently skip — no deploy flow at all, including localhost preview |
+
+Per-project override: set `metadata.deploy: false` in `prd.json` to force-skip deploy for that project.
+
+When the user casually states a preference in conversation ("I use Vercel", "don't deploy my stuff"), the deploy skill writes the preference to `~/.hq/config.json` and acknowledges once:
+> Got it — I won't offer auto-deploy. You can change this in `~/.hq/config.json`.
 
 ## Rationale
 

@@ -10,60 +10,92 @@ Internal skill for deploying web artifacts to hq-deploy infrastructure. This is 
 
 **Guiding principle:** The user never asked you to deploy. You noticed something deployable and are giving them a link as a bonus. Keep it quick, quiet, and casual.
 
+**Seven-step flow:**
+
+1. **Preferences** — honor `~/.hq/config.json`, project opt-outs, and exclusions
+2. **Build** — framework detection + install + build
+3. **Localhost preview** — always serves, signed in or not
+4. **Identity check** — read Cognito session; gate web deploy on it, upsell if absent
+5. **Guardrails** — size / file-count / complexity caps
+6. **Upload** — presigned URL (static) or ECR push (SSR), with `Authorization: Bearer $JWT`
+7. **Present the link** — one casual line, weave it into your response
+
 ---
 
-## Step 1 — Resolve Context
+## Step 1 — Preferences and Exclusions
 
-### 1a. Identify Company
+Before doing any work, respect the user's stated preference and rule out projects that shouldn't deploy. Auto-deploy is opt-out.
 
-Determine active company from current working directory:
-1. Check if cwd is inside `repos/public/` or `repos/private/` — map to company via `companies/manifest.yaml`
-2. Check if cwd is inside `companies/{co}/repos/` — extract company slug
-3. Fall back to git remote URL → manifest lookup
-4. Default: `indigo`
+### 1a. Read user preference
 
-### 1b. Check Exclusions
+```bash
+PREF_FILE="$HOME/.hq/config.json"
+if [ -f "$PREF_FILE" ]; then
+  DEPLOY_PREF=$(jq -r '.deploy.preference // "hq-deploy"' "$PREF_FILE" 2>/dev/null)
+else
+  DEPLOY_PREF="hq-deploy"   # default for greenfield HQ
+fi
+```
+
+**Valid values:** `hq-deploy` (default), `vercel`, `netlify`, `custom`, `none`.
+
+### 1b. Read per-project override
+
+If the active project has a `prd.json` with `metadata.deploy: false`, treat it as `none`:
+
+```bash
+if [ -f "prd.json" ]; then
+  PRD_DEPLOY=$(jq -r '.metadata.deploy // "unset"' prd.json 2>/dev/null)
+  if [ "$PRD_DEPLOY" = "false" ]; then DEPLOY_PREF="none"; fi
+fi
+```
+
+### 1c. Honor the preference
+
+- `hq-deploy` → continue through the full flow
+- `vercel`, `netlify`, `custom` → **silently stop** — the user has their own pipeline
+- `none` → **silently stop** — skip the entire deploy flow including localhost preview
+
+Do not mention that you considered deploying. Deploy is a bonus; silently abstaining is correct.
+
+### 1d. Check Exclusions
 
 Before proceeding, verify this artifact should be deployed:
 - **Not a Vercel project**: check `manifest.yaml` `vercel_projects[]` — if the current project is listed, skip deploy (Vercel handles it)
 - **Not a backend service**: no Dockerfile at root, no serverless.yml, no sst.config.*
 - **Build is clean**: if tests or typecheck just ran and failed, skip
-- **Not opted out**: check prd.json `metadata.deploy` — if `false`, skip
 
 If any exclusion matches: silently skip. Do not tell the user you considered deploying.
 
-### 1c. Resolve API Endpoint and Auth
+### 1e. Resolve Context
 
-**API endpoint resolution order:**
-1. Company manifest `services.hq-deploy.endpoint`
-2. Environment variable `HQ_DEPLOY_API`
-3. Default: `https://api.indigo-hq.com`
+| Thing | How |
+|-------|-----|
+| Company | cwd → `companies/manifest.yaml` lookup → default `indigo` |
+| API endpoint | manifest `services.hq-deploy.endpoint` → `$HQ_DEPLOY_API` → `https://api.indigo-hq.com` |
+| App name | `package.json` `name` → current directory name, slug-cased |
 
-**No auth required.** The API is open — just hit the endpoint. No tokens, no credentials.
+### 1f. Writing a preference on request
 
-### 1d. Resolve App Name
-
-1. Read `package.json` → `name` field
-2. Fall back to current directory name
-3. Slug-case it (lowercase, hyphens, no special chars)
-
-### 1e. Ensure App Exists
+When the user says "I use Vercel", "I deploy with Netlify", "don't deploy my stuff", or similar, write the preference and acknowledge once:
 
 ```bash
-curl -s "$API/api/apps" | jq -r '.[] | select(.name == "'"$APP_NAME"'") | .id'
+mkdir -p "$HOME/.hq"
+if [ -f "$PREF_FILE" ]; then
+  jq '.deploy.preference = "vercel"' "$PREF_FILE" > "$PREF_FILE.tmp" && mv "$PREF_FILE.tmp" "$PREF_FILE"
+else
+  echo '{"deploy":{"preference":"vercel"}}' > "$PREF_FILE"
+fi
 ```
 
-If app not found, create it:
-```bash
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"name": "'"$APP_NAME"'"}' "$API/api/apps"
-```
+Then say once (never twice):
+> Got it — I won't offer auto-deploy. You can change this in `~/.hq/config.json`.
 
 ---
 
-## Step 2 — Framework Detection
+## Step 2 — Build
 
-Detect the project framework by checking config files in the project directory.
+### 2a. Framework detection
 
 | Priority | Framework | Config Files | Default Type |
 |----------|-----------|-------------|--------------|
@@ -74,32 +106,22 @@ Detect the project framework by checking config files in the project directory.
 | 5 | Static HTML | `index.html` in output dir | Static |
 | 6 | Fallback | — | Static |
 
----
+### 2b. Install + Build
 
-## Step 3 — Build
-
-If the project was just built by the calling workflow (e.g., `/execute-task` already ran `npm run build`), skip this step — use existing output.
-
-Otherwise:
-
-### 3a. Detect Package Manager
+If the project was just built by the calling workflow (e.g., `/execute-task` already ran `npm run build`), skip — use existing output.
 
 ```bash
-if [ -f "bun.lockb" ] || [ -f "bun.lock" ]; then PM="bun"
+if   [ -f "bun.lockb" ] || [ -f "bun.lock" ]; then PM="bun"
 elif [ -f "pnpm-lock.yaml" ]; then PM="pnpm"
 elif [ -f "yarn.lock" ]; then PM="yarn"
 else PM="npm"; fi
-```
 
-### 3b. Install + Build
-
-```bash
 $PM install && $PM run build
 ```
 
 If build fails: skip deploy silently. The calling workflow already handles build failures.
 
-### 3c. Output Directory
+### 2c. Output Directory
 
 | Framework | Static Output | SSR Output |
 |-----------|--------------|------------|
@@ -111,70 +133,293 @@ If build fails: skip deploy silently. The calling workflow already handles build
 
 ---
 
-## Step 4 — Upload (Static)
+## Step 3 — Localhost Preview (always runs)
 
-### 4a. Tarball
+After build, spin up a local HTTP server serving the static output directory. This runs **before the identity check and before guardrails** — everyone gets a preview URL, signed-in or not.
+
+### 3a. Pick a port
+
+Default 4321. If occupied, scan upward (4321 → 4322 → 4323 ...) to the next available port.
 
 ```bash
-tar -czf /tmp/hq-deploy-upload.tar.gz -C $OUTPUT_DIR .
-TARBALL_SIZE=$(stat -f%z /tmp/hq-deploy-upload.tar.gz 2>/dev/null || stat -c%s /tmp/hq-deploy-upload.tar.gz)
-TARBALL_SHA256=$(shasum -a 256 /tmp/hq-deploy-upload.tar.gz | cut -d' ' -f1)
+PORT=4321
+while lsof -iTCP:"$PORT" -sTCP:LISTEN -Pn >/dev/null 2>&1; do
+  PORT=$((PORT + 1))
+  [ "$PORT" -gt 4400 ] && break   # sane upper bound
+done
 ```
 
-### 4b. Request Presigned URL
+### 3b. Start the server (backgrounded, tracked)
+
+Use Node's built-in `http` module — no extra install needed. Serve the framework-detected output directory (`$OUTPUT_DIR` from Step 2c).
 
 ```bash
+PIDFILE="/tmp/hq-deploy-preview-$$.pid"
+URLFILE="/tmp/hq-deploy-preview-$$.url"
+
+node -e "
+  const http = require('http');
+  const fs = require('fs');
+  const path = require('path');
+  const root = process.argv[1];
+  const port = Number(process.argv[2]);
+  const mime = { '.html':'text/html','.js':'application/javascript','.css':'text/css',
+                 '.json':'application/json','.svg':'image/svg+xml','.png':'image/png',
+                 '.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif',
+                 '.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2' };
+  http.createServer((req, res) => {
+    let p = path.join(root, decodeURIComponent(req.url.split('?')[0]));
+    try { if (fs.statSync(p).isDirectory()) p = path.join(p, 'index.html'); } catch {}
+    fs.readFile(p, (err, data) => {
+      if (err) { res.writeHead(404); return res.end('Not found'); }
+      res.writeHead(200, { 'Content-Type': mime[path.extname(p)] || 'application/octet-stream' });
+      res.end(data);
+    });
+  }).listen(port, () => console.log('ready'));
+" "$OUTPUT_DIR" "$PORT" > /dev/null 2>&1 &
+
+echo $! > "$PIDFILE"
+echo "http://localhost:$PORT" > "$URLFILE"
+disown   # detach from shell so it survives tool call boundaries
+```
+
+### 3c. Announce the preview URL
+
+Always print this — it's the guaranteed-working user feedback:
+
+> Preview: http://localhost:{port}
+
+Keep it in a visible line of your response. This is the user's instant feedback regardless of what happens next.
+
+### 3d. Persistence + cleanup
+
+- Server **stays open** until the session ends or the user explicitly stops it. Do NOT kill it after deploy.
+- PID is tracked in `/tmp/hq-deploy-preview-$$.pid` so cleanup on session exit can find it (`kill $(cat /tmp/hq-deploy-preview-*.pid) 2>/dev/null`).
+- If the user runs deploy again in the same session with a new build: re-use the port by killing the old PID, then restart on the same port. Do not accumulate orphan servers.
+
+---
+
+## Step 4 — Identity Check
+
+The hq-deploy API is locked down (US-003): anonymous `/api/*` requests return 401. Before attempting any upload, read the local Cognito session. If it's valid, use the JWT. If it's missing or expired, serve only the localhost preview and upsell the free HQ account.
+
+**Localhost preview (Step 3) is NOT gated by identity — it always runs.** The identity gate only applies to the web deploy (Steps 5–7).
+
+### 4a. Locate the session file
+
+The hq-pro vault auth writes the Cognito tokens on sign-in. The canonical path is `~/.hq/auth/session.json`; older installs may still use `~/.hq/cognito-tokens.json` — check both.
+
+```bash
+SESSION_FILE=""
+for candidate in "$HOME/.hq/auth/session.json" "$HOME/.hq/cognito-tokens.json"; do
+  if [ -f "$candidate" ]; then SESSION_FILE="$candidate"; break; fi
+done
+```
+
+Expected schema (either path):
+```json
+{
+  "accessToken": "eyJraWQi...",
+  "idToken":     "eyJraWQi...",
+  "refreshToken": "eyJjdHki...",
+  "expiresAt":   "2026-04-17T01:29:05.472Z",
+  "tokenType":   "Bearer"
+}
+```
+
+`accessToken` is what hq-deploy verifies (it runs `tokenUse: "access"` in `aws-jwt-verify`).
+
+### 4b. Validate the session
+
+```bash
+if [ -z "$SESSION_FILE" ]; then
+  JWT=""
+else
+  JWT=$(jq -r '.accessToken // empty' "$SESSION_FILE" 2>/dev/null)
+  EXPIRES_AT=$(jq -r '.expiresAt // empty' "$SESSION_FILE" 2>/dev/null)
+
+  if [ -n "$EXPIRES_AT" ]; then
+    EXP_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${EXPIRES_AT%.*}" +%s 2>/dev/null \
+                || date -d "$EXPIRES_AT" +%s 2>/dev/null)
+    NOW=$(date +%s)
+    if [ -n "$EXP_EPOCH" ] && [ "$EXP_EPOCH" -le "$NOW" ]; then
+      JWT=""   # expired — attempt refresh below
+    fi
+  fi
+fi
+```
+
+### 4c. Attempt refresh on expiry
+
+If the access token is expired but a `refreshToken` is present, attempt the refresh against the shared Cognito pool, then rewrite the session file. The refresh flow is owned by the onboarding/hq-pro apps — the deploy skill does NOT implement its own Cognito client. Shell out if a helper is available; otherwise treat as absent.
+
+```bash
+if [ -z "$JWT" ] && [ -f "$SESSION_FILE" ]; then
+  REFRESH=$(jq -r '.refreshToken // empty' "$SESSION_FILE" 2>/dev/null)
+  if [ -n "$REFRESH" ] && command -v hq-auth-refresh >/dev/null 2>&1; then
+    hq-auth-refresh >/dev/null 2>&1 && JWT=$(jq -r '.accessToken // empty' "$SESSION_FILE" 2>/dev/null)
+  fi
+fi
+```
+
+If no refresh helper and no valid JWT: skip the refresh branch. Do not prompt the user for credentials — that's the onboarding app's job.
+
+### 4d. Branch on identity
+
+| State | Action |
+|-------|--------|
+| Valid `$JWT` in scope | Continue to Step 5 (Guardrails). Carry `Authorization: Bearer $JWT` through all `/api/*` calls. |
+| No `$JWT`, user hasn't been upsold this session | Skip Steps 5–6. Emit the upsell message once. Present preview URL only. |
+| No `$JWT`, already upsold this session | Skip Steps 5–6 silently. Present preview URL only. |
+
+Track "already upsold" in a tmp file so it survives tool-call boundaries:
+
+```bash
+UPSOLD_FILE="/tmp/hq-deploy-upsold-$USER"
+```
+
+### 4e. Upsell copy (once per session)
+
+When `$JWT` is absent and `$UPSOLD_FILE` does not exist, emit exactly once — friendly, not blocking, not a nag:
+
+> Want to share this with a link? Create a free HQ account at https://onboarding.indigo-hq.com to deploy to the web.
+
+Then touch the upsold file so subsequent runs in the same session stay quiet:
+
+```bash
+touch "$UPSOLD_FILE"
+```
+
+Move on. The user got their preview URL; deploy is a bonus, not a blocker.
+
+---
+
+## Step 5 — Guardrails
+
+Run these checks **before tarball creation** to fail fast on unsuitable artifacts. All rejections are silent — no error message, just skip. Deploy is a bonus.
+
+### 5a. Detect full-app disqualifiers
+
+These should already be caught in Step 1d exclusions, but re-verify at project root:
+
+- **SSR framework:** if framework detection in Step 2a returned an SSR type (Next.js SSR, Remix SSR, Astro `output: 'server'`) → skip
+- **Backend service files at project root:** `Dockerfile`, `serverless.yml`, `serverless.ts`, `sst.config.ts`, `sst.config.js`, `docker-compose.yml`, `docker-compose.yaml` → skip
+- **Database tooling:** `prisma/` directory, `drizzle.config.ts`, `drizzle.config.js`, `knexfile.ts`, `knexfile.js`, `migrations/` directory → skip
+
+```bash
+for f in Dockerfile serverless.yml serverless.ts sst.config.ts sst.config.js \
+         docker-compose.yml docker-compose.yaml \
+         drizzle.config.ts drizzle.config.js knexfile.ts knexfile.js; do
+  [ -f "$f" ] && exit 0    # silent skip
+done
+for d in prisma migrations; do
+  [ -d "$d" ] && exit 0    # silent skip
+done
+```
+
+### 5b. File count limit (post-build, pre-tarball)
+
+```bash
+FILE_COUNT=$(find "$OUTPUT_DIR" -type f | wc -l | tr -d ' ')
+if [ "$FILE_COUNT" -gt 100 ]; then exit 0; fi   # silent skip
+```
+
+**Limit: 100 files max** (excluding directories). If exceeded, the artifact is a full app, not a static page — skip.
+
+### 5c. Size limit (tarball-gzip)
+
+```bash
+tar -czf /tmp/hq-deploy-upload.tar.gz -C "$OUTPUT_DIR" .
+TARBALL_SIZE=$(stat -f%z /tmp/hq-deploy-upload.tar.gz 2>/dev/null \
+               || stat -c%s /tmp/hq-deploy-upload.tar.gz)
+if [ "$TARBALL_SIZE" -gt 10485760 ]; then
+  rm -f /tmp/hq-deploy-upload.tar.gz
+  exit 0    # silent skip — over 10MB gzipped
+fi
+```
+
+**Limit: 10MB max (gzip compressed).**
+
+### 5d. Existing exclusions preserved
+
+The Step 1d exclusions still apply:
+- Vercel-managed projects (`manifest.yaml` `vercel_projects[]`)
+- Projects with `metadata.deploy: false` in prd.json
+
+---
+
+## Step 6 — Upload
+
+Every request carries `Authorization: Bearer $JWT` — verified against the shared HQ Identity Cognito pool by hq-deploy's `resolveAuth` resolver.
+
+### 6a. Ensure App Exists
+
+```bash
+APP_ID=$(curl -s -H "Authorization: Bearer $JWT" \
+  "$API/api/apps" | jq -r '.[] | select(.name == "'"$APP_NAME"'") | .id')
+
+if [ -z "$APP_ID" ]; then
+  APP_ID=$(curl -s -X POST \
+    -H "Authorization: Bearer $JWT" \
+    -H "Content-Type: application/json" \
+    -d '{"name": "'"$APP_NAME"'"}' \
+    "$API/api/apps" | jq -r '.id')
+fi
+```
+
+### 6b. Upload — Static (presigned URL)
+
+```bash
+TARBALL_SHA256=$(shasum -a 256 /tmp/hq-deploy-upload.tar.gz | cut -d' ' -f1)
+
 DEPLOY_RESPONSE=$(curl -s -X POST \
+  -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d "{\"appSlug\": \"$APP_SUBDOMAIN\", \"org\": \"indigo\", \"manifest\": {\"files\": [], \"size\": $TARBALL_SIZE, \"sha256\": \"$TARBALL_SHA256\"}}" \
   "$API/api/deploys")
 
 DEPLOY_ID=$(echo "$DEPLOY_RESPONSE" | jq -r '.deployId')
 PRESIGNED_URL=$(echo "$DEPLOY_RESPONSE" | jq -r '.presignedUrl')
-```
 
-### 4c. Upload to S3
-
-```bash
+# Upload is directly to S3 — no Authorization header on this PUT (presigned URL carries its own signature)
 curl -s -X PUT \
   -H "Content-Type: application/gzip" \
   --data-binary @/tmp/hq-deploy-upload.tar.gz \
   "$PRESIGNED_URL"
-```
 
-### 4d. Signal Completion
-
-```bash
 COMPLETE_RESPONSE=$(curl -s -X POST \
+  -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d "{\"appSlug\": \"$APP_SUBDOMAIN\"}" \
   "$API/api/deploys/$DEPLOY_ID/complete")
 
 LIVE_URL=$(echo "$COMPLETE_RESPONSE" | jq -r '.url')
-```
-
-Clean up:
-```bash
 rm -f /tmp/hq-deploy-upload.tar.gz
 ```
 
-## Step 5 — Upload (SSR)
+### 6c. Upload — SSR (ECR image)
 
 ```bash
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_URI
-docker build -t $APP_NAME:$VERSION .
-docker tag $APP_NAME:$VERSION $ECR_URI/$APP_NAME:$VERSION
-docker push $ECR_URI/$APP_NAME:$VERSION
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin "$ECR_URI"
+docker build -t "$APP_NAME:$VERSION" .
+docker tag "$APP_NAME:$VERSION" "$ECR_URI/$APP_NAME:$VERSION"
+docker push "$ECR_URI/$APP_NAME:$VERSION"
 
 curl -s -X POST \
+  -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{"image_tag": "'"$VERSION"'", "deploy_type": "ssr"}' \
   "$API/api/apps/$APP_ID/deploy"
 ```
 
+### 6d. 401 handling
+
+If any `/api/*` call returns 401, the session is stale (expired between Step 4 check and now). Fall back to the "no JWT" branch of Step 4d — present the preview, upsell if not already shown, and stop. Do not retry indefinitely.
+
 ---
 
-## Step 6 — Present the Link
+## Step 7 — Present the Link
 
 This is the only user-visible output from the entire deploy. Keep it casual and brief.
 
@@ -185,8 +430,10 @@ This is the only user-visible output from the entire deploy. Keep it casual and 
 
 Do NOT print a deploy report, duration, file count, version, or status block. Just the link.
 
-**On failure** — one line, no drama:
+**On upload failure** (after auth worked) — one line, no drama:
 - "Deploy to hq-deploy didn't go through, but everything else is done."
+
+**On no-identity path** — you already emitted the preview URL in Step 3c and the upsell line in Step 4e. Nothing to add here.
 
 Then move on. Deploy is never the main event.
 
@@ -195,6 +442,7 @@ Then move on. Deploy is never the main event.
 ## Notes
 
 - Auth tokens are never displayed in output — pipe to files or use env vars
-- The CLI at `repos/public/hq-deploy/cli/` remains for CI/CD pipelines
+- The CLI at `repos/public/hq-deploy/cli/` remains for CI/CD pipelines (uses its own auth flow)
 - For Vercel-managed projects, skip entirely (Vercel handles those)
 - Respects company isolation — credentials resolved from active company context
+- Shared HQ Identity pool (US-002) means one onboarding.indigo-hq.com sign-in works across hq-deploy, hq-pro, hq-onboarding
