@@ -1,5 +1,32 @@
 # Changelog
 
+## [11.2.0] — 2026-04-18
+
+### Headline
+publish-kit scope discipline — the release walker is now a **strict allowlist** that never traverses owner-private directories, and the publish target `template/` is **rebuilt from scratch** on every full release. Root-cause fix for the class of leaks that put owner content (company folders, project PRDs, workspace threads, `.obsidian/` vault state, owner-local settings) into prior publishes. PII-at-source scanning for publish-kit becomes structurally unnecessary: paths outside the allowlist cannot be reached by the walker, and anything no longer emitted is deleted naturally by the Stage R rebuild.
+
+### Added — Policy
+- **`.claude/policies/publish-kit-source-is-strict-allowlist.md`** (`scope: command`, `enforcement: hard`, `public: true`) — enumerates the in-scope roots the walker MAY read, named single-file remaps, intentional starter-scaffold carve-outs (`starter-projects/`, `companies/_template/`, `contacts/_example.yaml`, kit-level `tools/*`, starter `settings/*`, empty-dir `.gitkeep` scaffolds), and a hard **never-traverse** denylist covering `companies/*/` (except `_template`), `projects/*/` (except ones routed through `starter-projects/`), `workspace/*/` (except the single `workspace/orchestrator/monitor-project.sh` remap), `social-content/drafts/**`, `repos/{private,public}/**` (scaffolds only), owner-scoped files (`agents-profile.md`, `agents-companies.md`, `INDEX.md`), `.obsidian/**`, `.claude/settings.local.json`, and OS cruft.
+
+### Changed — Commands
+- **`.claude/commands/publish-kit.md`** — three structural edits:
+  - **Step 0.5 Source Allowlist Assertion** added: declares `ALLOW_ROOTS`, `REMAPS`, `STARTER_SCAFFOLDS`, and `NEVER_TRAVERSE` bash arrays; aborts if any planned-emit path resolves outside the allowlist or inside a never-traverse prefix.
+  - **Step 4 renamed** to "Rebuild Target + Copy Files" and split into **Stage R (rebuild)** — asserts `$TEMPLATE_DIR` is inside a git worktree, then `rm -rf "$TEMPLATE_DIR" && mkdir -p "$TEMPLATE_DIR"` — followed by **Stage E (emit)**. Full releases only; patch mode (`--item ...`) inherits the allowlist but skips Stage R.
+  - **"What to Sync" table** expanded with a Starter-scaffolds sub-table (7 rows) and a Never-sync sub-table (9 hard-forbidden path patterns). Consumer-specific overrides on the target are no longer preserved across releases — document them in a separate `consumer-overlays/` path (owner concern, outside publish-kit).
+
+### Removed — Template baseline
+Hard-leak files deleted from `template/` on the release branch (pre-existing drift from before the allowlist was enforced):
+- `.obsidian/` — 10 files of owner vault state
+- `template/projects/{purist-ralph-loop,pure-ralph-branch-isolation,incorporate-workers-into-pure-ralph,ralph-test}/` — 7 files of owner-private PRDs (scaffold `template/projects/.gitkeep` preserved)
+- `template/workspace/ralph-test/` — 2 files of runtime test state
+- `template/workspace/content-ideas/inbox.jsonl` — owner inbox
+- `template/.claude/settings.local.json` — owner-local permission overrides
+
+Going forward these paths are structurally unreachable by the walker. Downstream consumers that pulled these files in v11.1.x or earlier will see them disappear from `template/` — they were never intended for publish.
+
+### Migrating to v11.2.0
+Non-breaking for installed HQ instances. Downstream publish-kit authors (anyone invoking `/publish-kit` to ship their own kit) should re-read the new policy before the next release — the walker now refuses to emit outside the allowlist, which may surface previously-silent bad paths. See `MIGRATION.md` for details.
+
 ## [11.1.1] — 2026-04-16
 
 ### Headline

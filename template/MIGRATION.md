@@ -4,6 +4,33 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v11.2.0 (from v11.1.x)
+
+### Headline
+
+publish-kit now refuses to traverse owner-private directories, and rebuilds `template/` from scratch on each full release. Non-breaking for HQ consumers who only use the template as a downstream. Downstream authors who run their own `/publish-kit` from a fork need to re-read the new scope policy.
+
+### Step 1 — Review the new allowlist policy
+
+Read `.claude/policies/publish-kit-source-is-strict-allowlist.md`. The walker now only reads from an explicit allowlist of top-level paths. If your fork added custom sync paths outside the allowlist, they will silently fail to ship on the next release — surface them by inspecting the publish log or add them explicitly to the allowlist in your local policy copy.
+
+### Step 2 — Expect deletions on next pull
+
+Files that should never have been published are being removed from `template/` in v11.2.0:
+
+- `.obsidian/` (owner vault state)
+- `template/projects/{purist-ralph-loop,pure-ralph-branch-isolation,incorporate-workers-into-pure-ralph,ralph-test}/` (owner PRDs)
+- `template/workspace/ralph-test/`, `template/workspace/content-ideas/inbox.jsonl`
+- `template/.claude/settings.local.json`
+
+If you had modified any of these locally, back them up before pulling. The scaffold `template/projects/.gitkeep` and empty `template/workspace/{checkpoints,drafts,learnings,orchestrator,reports,scratch,threads}/` dirs remain.
+
+### Step 3 — Target rebuild semantics
+
+`/publish-kit` now `rm -rf`s `template/` before emitting files. Any consumer-specific overrides previously preserved across releases must move to a separate path (suggested: `consumer-overlays/` outside `template/`) and be reapplied post-release. Patch mode (`--item ...`) is unaffected — it still overlays individual files without the rebuild.
+
+---
+
 ## Migrating to v11.1.0 (from v11.0.0)
 
 ### Headline
