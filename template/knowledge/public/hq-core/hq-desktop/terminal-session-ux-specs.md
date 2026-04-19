@@ -20,7 +20,7 @@ All 27 HQ slash commands registered with proper categories, descriptions, argume
 | `worker` | Workers | `/run`, `/newworker` |
 | `session` | Session | `/checkpoint`, `/handoff`, `/reanchor` |
 | `project` | Projects | `/nexttask`, `/execute-task`, `/run-project`, `/plan`, `/pr` |
-| `system` | System | `/cleanup`, `/metrics`, `/search`, `/search-reindex`, `/learn`, `/remember`, `/decide`, `/publish-kit` |
+| `system` | System | `/cleanup`, `/metrics`, `/search`, `/search-reindex`, `/learn`, `/remember`, `/decide` |
 | `content` | Content | `/contentidea`, `/generateimage` |
 | `social` | Social | `/post-now`, `/preview-post`, `/scheduleposts`, `/suggestposts`, `/social-setup` |
 | `email` | Email | `/checkemail`, `/email` |

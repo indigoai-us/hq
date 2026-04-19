@@ -210,7 +210,6 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
 - **NEVER**: Extract shared skills that require editing 5+ existing files to wire up. When extending behavior across multiple commands/skills, prefer layered independent additions (policy + command + skill edit) over shared extraction. Accept duplicated pattern tables as simpler than shared dependencies. <!-- user-correction | 2026-04-15 -->
 - **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`$HOME/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
-- **ALWAYS**: HQ publish target is `repos/public/hq/template/` (GitHub `indigoai-us/hq`, monorepo) via `/publish-kit` / `/stage-kit`. `repos/public/hq-starter-kit/` (`{your-github}/hq-starter-kit`) is a frozen legacy repo — never sync HQ content there. Full policy: `.claude/policies/hq-publish-target-is-hq-template.md`. <!-- user-correction | 2026-04-17 -->
 
 ## Auto-Checkpoint (PostToolUse Hook)
 

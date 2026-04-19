@@ -73,7 +73,6 @@ Optional. Concrete examples of correct and incorrect behavior under this policy.
 |-------|------|-------------|
 | `source` | string | Origin of the policy: `manual`, `migration`, `task-completion`, `back-pressure-failure`, `user-correction`, `pattern-repetition` |
 | `learned_from` | string | Task ID or session reference (for auto-generated policies) |
-| `public` | boolean | Opt-in flag for publish-kit eligibility. Defaults to `false`. Set `true` ONLY when the rule is universally useful, contains no workflow/company-specific assumptions, and the title/id/rule body name no people, repos, Slack/Vercel IDs, or internal projects. `scope: command` policies bypass this gate; `scope: global` policies without `public: true` are dropped at publish time. |
 | `command` | string | Command name (for `scope: command` policies only, e.g. `prd`, `email`) |
 | `applies_to` | array | Workspace stack tags — policy loads only when at least one tag matches the active workspace's services. Omit for cross-cutting policies (load everywhere). See **Applicability Tagging** below. |
 
@@ -108,16 +107,6 @@ applies_to: [vercel, clerk]   # OR semantics — loads if ANY tag matches active
 2. [`.claude/hooks/load-policies-for-session.sh`](../../../.claude/hooks/load-policies-for-session.sh) resolves the active service set per session from `companies/{ACTIVE_CO}/manifest.yaml` (primary) or `.claude/stack.yaml` (fallback for starter-kit users with no company context).
 3. The hook filters digest lines whose `applies_to:` comment is disjoint from the active set before emitting the `<policy-digest>` block.
 4. No active set resolved → digest passes through unchanged (backwards compat).
-
-## Publish Gate — Agent Review
-
-`/publish-kit` runs an Explore agent over every policy surviving the mechanical filters (scope filter, denylist scrub, Rationale strip, heuristic rejection) before the target starter-kit repo is committed. The agent applies judgment the regex filters can't: distinguishing company slugs from common English words, spotting rephrased incident narratives, flagging placeholder-style references (`{company}`, `{product}`) that describe real events.
-
-**What the agent flags:** any reference in frontmatter values, `## Rule`, or any other section to a company slug from `companies/manifest.yaml`, owner handles, internal product codenames, workspace/team/project IDs, or incident narratives. The agent returns a JSON verdict per flagged file: `sanitize` (rewrite generically), `reroute` (belongs in `companies/{co}/policies/`), or `drop` (too specific to salvage).
-
-**Consequence of a flag:** publish halts. The owner edits the source policy in `.claude/policies/{name}.md` (or moves it to the right company dir), then re-runs `/publish-kit`. Bypass via `/publish-kit --force-skip-review` is allowed but audited to `workspace/learnings/publish-kit-review-bypasses.jsonl`.
-
-**Implication for writers:** you do NOT need to pre-sanitize policies before writing them. Session-scoped learnings can land in `.claude/policies/` with company context; the gate handles scrubbing at publish time. That said, writing generic `## Rule` bodies from the start avoids publish-time churn, and if a rule is genuinely specific to one company, put it under `companies/{co}/policies/` in the first place — that's the right long-term home, and it skips the gate entirely.
 
 ## Optional Sections
 

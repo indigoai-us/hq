@@ -147,7 +147,6 @@ interface TerminalSession {
 | `/pr` | project | Pull request creation |
 | `/plan` | project | PRD generation |
 | `/preview-post` | social | Social preview |
-| `/publish-kit` | system | Publish hq-starter-kit |
 | `/remember` | system | Manual learning capture |
 | `/scheduleposts` | social | Schedule social posts |
 | `/search` | system | qmd search |

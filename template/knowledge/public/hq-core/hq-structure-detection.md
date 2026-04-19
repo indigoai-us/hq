@@ -122,7 +122,7 @@ Present in {your-name}'s production HQ but NOT in the starter-kit. These represe
 
 | Feature Area | Starter-Kit | Personal HQ | Delta |
 |-------------|------------|-------------|-------|
-| **Commands** | 18 in `.claude/commands/` | 22+ (added checkemail, email, generateimage, post-now, pr, preview-post, publish-kit, social-setup, contentidea, suggestposts, scheduleposts, digest) | +10-12 custom commands |
+| **Commands** | 18 in `.claude/commands/` | 22+ (added checkemail, email, generateimage, post-now, pr, preview-post, social-setup, contentidea, suggestposts, scheduleposts, digest) | +10-12 custom commands |
 | **Workers** | 1 (sample-worker) | 40+ (10 private, 30 public across dev-team, content-team, pr-team) | Full worker ecosystem |
 | **Worker Layout** | Flat `workers/` | Split `workers/public/` + `workers/private/` | Visibility separation |
 | **Knowledge** | Flat `knowledge/` (8 dirs) | Split `knowledge/public/` + `knowledge/private/`, symlinked to git repos | Repo-backed, visibility-split |

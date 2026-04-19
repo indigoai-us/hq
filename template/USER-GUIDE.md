@@ -62,7 +62,6 @@ Personal OS for orchestrating work across companies, workers, and AI.
 | Command | What it does |
 |---------|--------------|
 | `/pr` | {company} operations |
-| `/publish-kit` | Publish kit |
 
 ### Company & Infrastructure
 | Command | What it does |

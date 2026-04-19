@@ -88,7 +88,7 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Content:** `/contentidea`, `/suggestposts`, `/preview-post`, `/post`, `/post-results`, `/social-setup`
 **Communication:** `/email`, `/checkemail`, `/imessage`
 **Design:** `/generateimage`
-**System:** `/cleanup`, `/garden`, `/search`, `/search-reindex`, `/publish-kit`, `/harness-audit`, `/model-route`, `/update-hq`
+**System:** `/cleanup`, `/garden`, `/search`, `/search-reindex`, `/harness-audit`, `/model-route`, `/update-hq`
 **Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/bootcamp-student`, `/personal-interview`
 **Linear:** `/check-linear-voyage`, `/{product}-prd`
 **Deploy:** `/pr`
