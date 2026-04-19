@@ -75,16 +75,27 @@ function setupFetchMock() {
 
 describe("sync", () => {
   let tmpDir: string;
+  let stateDir: string;
+  let journalPath: string;
 
   beforeEach(() => {
     clearContextCache();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hq-sync-test-"));
+    // Journal moved to ~/.hq/sync-journal.{slug}.json (ADR-0001 Phase 5).
+    // Redirect to a tmp dir via HQ_STATE_DIR so the test doesn't pollute the
+    // user's real ~/.hq. mockEntity.slug is "acme".
+    stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "hq-state-test-"));
+    process.env.HQ_STATE_DIR = stateDir;
+    journalPath = path.join(stateDir, "sync-journal.acme.json");
     setupFetchMock();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(stateDir, { recursive: true, force: true });
+    delete process.env.HQ_STATE_DIR;
   });
 
   it("downloads remote files that don't exist locally", async () => {
@@ -122,7 +133,7 @@ describe("sync", () => {
     fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
 
     fs.writeFileSync(
-      path.join(tmpDir, ".hq-sync-journal.json"),
+      journalPath,
       JSON.stringify({
         version: "1",
         lastSync: new Date().toISOString(),
@@ -154,7 +165,7 @@ describe("sync", () => {
     fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
 
     fs.writeFileSync(
-      path.join(tmpDir, ".hq-sync-journal.json"),
+      journalPath,
       JSON.stringify({
         version: "1",
         lastSync: new Date().toISOString(),
@@ -184,7 +195,7 @@ describe("sync", () => {
     fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
 
     fs.writeFileSync(
-      path.join(tmpDir, ".hq-sync-journal.json"),
+      journalPath,
       JSON.stringify({
         version: "1",
         lastSync: new Date().toISOString(),

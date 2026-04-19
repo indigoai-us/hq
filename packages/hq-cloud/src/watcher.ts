@@ -98,7 +98,7 @@ export class SyncWatcher {
     const batch = new Map(this.pendingChanges);
     this.pendingChanges.clear();
 
-    const journal = readJournal(this.hqRoot);
+    const journal = readJournal(this.ctx.slug);
 
     for (const [relativePath, change] of batch) {
       try {
@@ -126,7 +126,7 @@ export class SyncWatcher {
       }
     }
 
-    writeJournal(this.hqRoot, journal);
+    writeJournal(this.ctx.slug, journal);
     this.processing = false;
 
     // Process any changes that came in while we were flushing

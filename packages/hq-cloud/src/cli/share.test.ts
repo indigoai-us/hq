@@ -61,17 +61,25 @@ function setupFetchMock() {
 
 describe("share", () => {
   let tmpDir: string;
+  let stateDir: string;
 
   beforeEach(() => {
     clearContextCache();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hq-share-test-"));
+    // Redirect per-company journal into tmp so share() doesn't write to the
+    // real ~/.hq during tests (ADR-0001 Phase 5).
+    stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "hq-state-test-"));
+    process.env.HQ_STATE_DIR = stateDir;
     setupFetchMock();
     vi.mocked(headRemoteFile).mockResolvedValue(null);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(stateDir, { recursive: true, force: true });
+    delete process.env.HQ_STATE_DIR;
   });
 
   it("shares a single file", async () => {

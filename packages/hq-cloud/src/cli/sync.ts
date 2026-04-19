@@ -75,7 +75,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   // Resolve entity context
   let ctx = await resolveEntityContext(companyRef, vaultConfig);
   const shouldSync = createIgnoreFilter(hqRoot);
-  const journal = readJournal(hqRoot);
+  const journal = readJournal(ctx.slug);
 
   let filesDownloaded = 0;
   let bytesDownloaded = 0;
@@ -121,7 +121,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
         );
 
         if (resolution === "abort") {
-          writeJournal(hqRoot, journal);
+          writeJournal(ctx.slug, journal);
           return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: true };
         }
         if (resolution === "keep" || resolution === "skip") {
@@ -176,7 +176,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
     }
   }
 
-  writeJournal(hqRoot, journal);
+  writeJournal(ctx.slug, journal);
 
   return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: false };
 }
