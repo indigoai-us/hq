@@ -15,7 +15,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install
+      # --ignore-scripts prevents npm ascending to the workspace root and
+      # running its prepare script (husky), which isn't installed in the child.
+      - run: npm install --ignore-scripts
         working-directory: packages/create-hq
       - run: npm test
         working-directory: packages/create-hq

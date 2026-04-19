@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-HQ="/Users/{your-name}/Documents/HQ"
+HQ="${HOME}/Documents/HQ"
 INPUT=$(cat)
 
 # Ensure learnings directory exists

@@ -38,16 +38,17 @@ jobs:
             npm publish --workspace packages/hq-cloud --access public
           fi
 
+      # Publish hq-cli via npm trusted publishing (OIDC). No NODE_AUTH_TOKEN —
+      # auth is short-lived, minted from GitHub OIDC token, and scoped to this
+      # workflow file by npm's trusted-publisher config for @indigoai-us/hq-cli.
       - name: Publish hq-cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NAME=$(jq -r .name packages/hq-cli/package.json)
           VER=$(jq -r .version packages/hq-cli/package.json)
           if npm view "$NAME@$VER" version >/dev/null 2>&1; then
             echo "$NAME@$VER already on npm — skipping"
           else
-            npm publish --workspace packages/hq-cli --access public
+            npm publish --workspace packages/hq-cli --access public --provenance
           fi
 
       - name: Publish create-hq
