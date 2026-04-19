@@ -19,7 +19,7 @@ set -euo pipefail
 # Read and discard stdin
 cat >/dev/null 2>&1 || true
 
-HQ_ROOT="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+HQ_ROOT="${HQ_ROOT:-/Users/{your-name}/Documents/HQ}"
 REGISTRY="$HQ_ROOT/scripts/repo-run-registry.sh"
 
 [[ ! -x "$REGISTRY" ]] && exit 0

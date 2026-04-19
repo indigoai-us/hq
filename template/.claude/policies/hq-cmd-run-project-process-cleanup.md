@@ -22,3 +22,4 @@ If stale processes exist, kill them before launching. Multiple orchestrator inst
 - Waste compute (orphaned sub-agents run indefinitely at 0% useful output)
 - Corrupt `state.json` (race conditions on `current_task`, duplicate `completed_tasks` entries)
 - Spawn new sub-agents from dying parents (kill → child spawns → need to kill again)
+

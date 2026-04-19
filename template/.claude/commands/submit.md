@@ -163,7 +163,7 @@ Determine title: if `--title` was provided, use it. Otherwise derive from file p
 ```bash
 TEAM_ID=$(cat ~/hq/companies/{slug}/team.json | python3 -c "import sys,json; print(json.load(sys.stdin)['team_id'])")
 
-RESPONSE=$(curl -s -X POST "https://hq.indigoai.com/api/teams/${TEAM_ID}/submissions" \
+RESPONSE=$(curl -s -X POST "https://hq.{company}ai.com/api/teams/${TEAM_ID}/submissions" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{

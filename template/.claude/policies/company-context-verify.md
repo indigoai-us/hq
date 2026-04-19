@@ -25,6 +25,3 @@ Infrastructure lookup checklist:
 - **DNS zone** → manifest `dns_zones` field → hosted zone ID
 - **Linear** → company `settings/linear/config.json` → validate workspace
 
-## Rationale
-
-Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for certain domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.

@@ -15,3 +15,4 @@ curl -s "https://fonts.googleapis.com/css2?family=Font+Name:wght@400&display=swa
 ```
 
 Extract the `url(...)` from the response. The User-Agent header is required — without it, Google returns WOFF2 instead of TTF.
+

@@ -13,6 +13,7 @@ MCP servers spawned via stdio (npx/tsx) leak as orphaned processes when Claude s
 
 Known leakers:
 - `slack-mcp/src/server.ts` — 2 node processes per session (~200MB each)
-- `advanced-gmail-mcp/src/server.ts` — leaks same pattern when enabled
+- `advanced-gmail-mcp/src/server.ts` — disabled 2026-04-06, was leaking same pattern
 - `agent-browser` — Chromium engine, 2-4 GB per leaked instance
 - `detached-flush.js` — Next.js telemetry orphans (~100MB each)
+

@@ -14,6 +14,3 @@ Code paths that must set `wasGuestRef.current = true`:
 1. `enterGuestMode()` — user taps "Get Started"
 2. Session init detecting existing guest mode from AsyncStorage
 
-## Rationale
-
-`enterGuestMode()` was missing `wasGuestRef.current = true`, causing guest→Apple Sign-In to skip migration entirely. The new user had no profile row, so `fetchOnboardingStatus()` returned false, and AuthGuard looped back to onboarding forever. The fix also reads `guestOnboarded` from AsyncStorage BEFORE migration clears it, carrying the status forward without relying on a DB query that could race the upsert.

@@ -171,7 +171,7 @@ git -C ~/hq/companies/{slug} checkout main 2>/dev/null || git -C ~/hq/companies/
 ```bash
 TEAM_ID=$(cat ~/hq/companies/{slug}/team.json | python3 -c "import sys,json; print(json.load(sys.stdin)['team_id'])")
 
-RESPONSE=$(curl -s -X POST "https://hq.indigoai.com/api/teams/${TEAM_ID}/shares" \
+RESPONSE=$(curl -s -X POST "https://hq.{company}ai.com/api/teams/${TEAM_ID}/shares" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{

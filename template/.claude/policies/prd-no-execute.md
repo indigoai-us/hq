@@ -18,12 +18,6 @@ command: prd
 3. No exceptions — regardless of project size, story count, or user request to "just start"
 4. If user asks to execute immediately, explain: "Execution requires a fresh session for context isolation (Ralph pattern). Run `/run-project {name}` or `/execute-task {name}/US-001` in a new session"
 
-## Rationale
-
-- `prd.json` is the source of truth for tracking work across humans and future agent runs. Skipping PRD creation and jumping to implementation bypasses project tracking, worker assignment, handoffs, and quality gates
-- Ralph pattern requires fresh context per execution phase — planning context bleeds into execution and degrades quality
-- Every project, no matter how small, must go through the PRD → handoff → execute pipeline to maintain consistent work tracking
-
 ## Examples
 
 **Correct:**

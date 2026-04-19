@@ -155,7 +155,6 @@ find . -name "SKILL.md" -not -path "./repos/*"
 - `projects/INDEX.md`
 - `companies/{company}/knowledge/INDEX.md`
 - `companies/{company}/knowledge/INDEX.md`
-- `companies/{company}/knowledge/INDEX.md`
 - `knowledge/public/INDEX.md`
 - `workers/public/INDEX.md`
 - `workers/private/INDEX.md`
@@ -204,14 +203,18 @@ done
 
 ### 11. qmd Collection Completeness
 
-**Policy**: Every company with a knowledge symlink should have a qmd collection.
+**Policy**: Every company with a knowledge symlink should have a qmd collection. HQ itself should have 4 sub-collections: `hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects` (not a monolithic `hq`).
 
 ```bash
 # Check companies with knowledge but empty qmd_collections
 grep -B10 "qmd_collections: \[\]" companies/manifest.yaml | grep "^[a-z]"
+# Check HQ sub-collections exist
+for c in hq-infra hq-workers hq-knowledge hq-projects; do
+  qmd ls "$c" 2>/dev/null | head -1 | grep -q . || echo "MISSING: $c"
+done
 ```
 
-**With --fix**: Create qmd collection for each missing company.
+**With --fix**: Create qmd collection for each missing company. If any `hq-*` sub-collection is missing, run `scripts/migrate-qmd-collections.sh`.
 
 ---
 

@@ -47,7 +47,7 @@ If empty: `Error: Not authenticated. Run: hq login`
 TEAM_ID=$(cat ~/hq/companies/{slug}/team.json | python3 -c "import sys,json; print(json.load(sys.stdin)['team_id'])")
 
 RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
-  "https://hq.indigoai.com/api/teams/${TEAM_ID}/entitlements" \
+  "https://hq.{company}ai.com/api/teams/${TEAM_ID}/entitlements" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Accept: application/json")
 
@@ -64,7 +64,7 @@ Parse `packs` and `assignments` from the response body.
 ```
 Error: No entitlements manifest found for {team_name}.
 An admin must create the manifest first with the full pack definitions.
-See: https://hq.indigoai.com/docs/teams/entitlements
+See: https://hq.{company}ai.com/docs/teams/entitlements
 ```
 
 ## Step 5: Validate Pack Name
@@ -165,7 +165,7 @@ print(json.dumps(manifest))
 ")
 
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-  "https://hq.indigoai.com/api/teams/${TEAM_ID}/entitlements" \
+  "https://hq.{company}ai.com/api/teams/${TEAM_ID}/entitlements" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "${UPDATED_MANIFEST}")

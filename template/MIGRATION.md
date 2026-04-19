@@ -4,6 +4,58 @@ Instructions for updating existing HQ installations to new versions.
 
 ---
 
+## Migrating to v11.1.0 (from v11.0.0)
+
+### Headline
+
+qmd sub-collection refactor + design system knowledge sync. Non-breaking — run `setup.sh` to create new collections.
+
+### Step 1 — Re-run setup.sh for qmd sub-collections
+
+The monolithic `hq` qmd collection is now split into 4 focused collections. Re-run setup to create them:
+
+```bash
+bash setup.sh
+```
+
+This creates `hq-infra`, `hq-workers`, `hq-knowledge`, and `hq-projects` collections with scoped include paths. Your existing `hq` collection is not removed — you can delete it manually with `qmd collection remove hq` if desired.
+
+### Step 2 — Rename `.impeccable.md` → `design.md` (if applicable)
+
+If any of your repos have an `.impeccable.md` file, rename it:
+
+```bash
+# In each repo that has one:
+mv .impeccable.md design.md
+```
+
+The `style:` field is now `style-pack:` in the Design Direction section. Workers auto-resolve via `knowledge/design-styles/registry.yaml`.
+
+### Step 3 — Verify knowledge bases synced
+
+New knowledge bases were added. Verify they exist:
+
+```bash
+ls knowledge/design-styles/registry.yaml
+ls knowledge/design-quality/
+ls knowledge/hq-core/design-md-spec.md
+ls knowledge/hq-core/insights-spec.md
+```
+
+### Step 4 — (Optional) Clean removed policies
+
+Seven company-specific policies were removed. If you added custom rules to any of these files, back them up first. Otherwise they should already be gone from the update:
+
+- `hq-paper-mcp-sequential-agents.md`
+- `hq-slack-channel-indigo-workspace.md`
+- `indigo-hq-app-release.md`
+- `indigo-signals-mcp-queries.md`
+- `paper-flex-column-reorder.md`
+- `paper-text-width.md`
+- `paper-text-wrapping.md`
+
+---
+
 ## Migrating to v10.8.0 (from v10.7.1)
 
 ### Headline

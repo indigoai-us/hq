@@ -212,6 +212,21 @@ for dir in "$REPO_ROOT"/companies/*/knowledge; do
   fi
 done
 
+# Create HQ sub-collections (4 focused collections, NOT one monolithic hq)
+if command -v qmd &>/dev/null; then
+  qmd collection add "$REPO_ROOT/.claude" --name hq-infra --mask "**/*.{md,yaml,yml,json,sh}" 2>/dev/null || true
+  qmd context add qmd://hq-infra "HQ infrastructure: commands, skills, policies, hooks, scripts." 2>/dev/null || true
+
+  qmd collection add "$REPO_ROOT/workers" --name hq-workers --mask "**/*.{md,yaml,yml,json}" 2>/dev/null || true
+  qmd context add qmd://hq-workers "AI worker definitions and skill files." 2>/dev/null || true
+
+  qmd collection add "$REPO_ROOT/knowledge" --name hq-knowledge --mask "**/*.{md,yaml,yml}" 2>/dev/null || true
+  qmd context add qmd://hq-knowledge "Shared knowledge bases: methodology, design, testing, security." 2>/dev/null || true
+
+  qmd collection add "$REPO_ROOT/projects" --name hq-projects --mask "**/*.{md,json}" 2>/dev/null || true
+  qmd context add qmd://hq-projects "Project PRDs and documentation." 2>/dev/null || true
+fi
+
 # Update qmd search index and build embeddings
 qmd update 2>/dev/null || true
 qmd embed 2>/dev/null || true

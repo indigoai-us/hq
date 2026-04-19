@@ -14,6 +14,3 @@ created: 2026-03-31
 - Fall back to `navigator.clipboard` only if execCommand fails
 - Position the textarea offscreen (`position: fixed; left: -9999px`) to avoid visual flash
 
-## Rationale
-
-Discovered when the {product} content review page copy button failed. The `file://` protocol is not a secure context.

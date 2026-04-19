@@ -23,3 +23,4 @@ NEVER edit, modify, or create any files outside the `projects/{name}/` directory
 Even if plan mode approval is given, the plan MUST describe the PRD structure, NOT the direct edits to target files. Plan mode approval during `/prd` means "approved to generate the PRD files" — NOT "approved to implement the changes."
 
 Implementation happens via `/execute-task` or `/run-project` AFTER the PRD is created.
+

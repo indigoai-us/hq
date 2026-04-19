@@ -26,9 +26,9 @@ worker:
 | Type | Count | Examples |
 |------|-------|---------|
 | CodeWorker | 16 | architect, frontend-dev, backend-dev, codex-coder |
-| OpsWorker | 10 | cfo-{company}, qa-tester, pretty-mermaid |
-| ContentWorker | 5 | content-brand, content-sales, {company}-brand-writer |
-| ResearchWorker | 2 | {company}-analyst, pr-monitor |
+| OpsWorker | 10 | cfo-liverecover, infobip-admin, qa-tester, pretty-mermaid |
+| ContentWorker | 5 | content-brand, content-sales,  |
+| ResearchWorker | 2 | liverecover-analyst, pr-monitor |
 | SocialWorker | 1 | x-{your-name} |
 | Library | 2 | content-shared, pr-shared |
 
@@ -267,7 +267,7 @@ Worker state is persisted in thread JSON files at `workspace/threads/`:
 ```json
 {
   "worker": {
-    "id": "cfo-{company}",
+    "id": "cfo-liverecover",
     "skill": "mrr",
     "state": "completed",
     "started_at": "2026-01-23T14:30:52.000Z",
@@ -688,11 +688,9 @@ workers/registry.yaml
 ```
 companies/manifest.yaml
   │
-  ├─ {company}:
-  │     workers: [cfo-{company}, {company}-analyst, {product}-deploy]
+  ├─ liverecover:
+  │     workers: [cfo-liverecover, liverecover-analyst, {product}-deploy, infobip-admin, lr-qa, liverecover-gtm]
   │
-  ├─ {company}:
-  │     workers: [cmo-{company}, {company}-brand-writer, {company}-copy-auditor]
   │
   ├─ {company}:
   │     workers: [cmo-{company}]

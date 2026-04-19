@@ -1,12 +1,14 @@
 /**
  * Shared Cognito session helpers for hq-cli commands.
  *
- * Exists because both `hq onboard` and `hq sync push|pull` need:
- *   1. A non-expired Cognito access token (cached, refreshed, or browser-login)
- *   2. A VaultServiceConfig built from that token
+ * Consumed by:
+ *   - `hq onboard` and `hq sync push|pull` (need token + VaultServiceConfig)
+ *   - `hq auth refresh` and the standalone `hq-auth-refresh` bin invoked by
+ *     the deploy skill (.claude/skills/deploy/SKILL.md step 4)
  *
- * The defaults here mirror scripts/e2e-create-company-smoke.ts so the CLI
- * and the in-tree demo script stay drift-free. Override any of them via env:
+ * Defaults point at the shared hq-vault-dev Cognito pool. They mirror
+ * scripts/e2e-create-company-smoke.ts so the CLI and the in-tree demo script
+ * stay drift-free. Override any of them via env:
  *
  *   AWS_REGION                 — e.g. us-east-1
  *   HQ_COGNITO_DOMAIN          — Cognito User Pool domain prefix
@@ -45,25 +47,45 @@ export const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
 /**
  * Return a non-expired Cognito access token, refreshing or browser-logging-in
  * as needed. Cache lives at ~/.hq/cognito-tokens.json.
+ *
+ * Pass `interactive: false` from automated contexts (e.g. the `hq-auth-refresh`
+ * bin invoked by the deploy skill) where failing fast is better than opening
+ * a browser.
  */
-export async function ensureCognitoToken(): Promise<string> {
+export async function ensureCognitoToken(options: {
+  interactive?: boolean;
+} = {}): Promise<string> {
+  const interactive = options.interactive ?? true;
   const cached = loadCachedTokens();
+
   if (cached && !isExpiring(cached, 120)) {
     return cached.accessToken;
   }
+
   if (cached) {
     try {
-      console.log(chalk.dim("  Refreshing expiring HQ session..."));
+      if (interactive) {
+        console.log(chalk.dim("  Refreshing expiring HQ session..."));
+      }
       const refreshed = await refreshTokens(DEFAULT_COGNITO, cached.refreshToken);
       return refreshed.accessToken;
     } catch (err) {
-      console.log(
-        chalk.dim(
-          `  Refresh failed (${err instanceof Error ? err.message : err}), falling back to browser login`,
-        ),
-      );
+      if (interactive) {
+        console.log(
+          chalk.dim(
+            `  Refresh failed (${err instanceof Error ? err.message : err}), falling back to browser login`,
+          ),
+        );
+      }
     }
   }
+
+  if (!interactive) {
+    throw new Error(
+      "No valid HQ session and interactive login is disabled. Run `hq login` first.",
+    );
+  }
+
   console.log(chalk.cyan("  No cached HQ session — launching browser sign-in..."));
   const tokens = await browserLogin(DEFAULT_COGNITO);
   return tokens.accessToken;
@@ -76,4 +98,29 @@ export function buildVaultConfig(authToken: string): VaultServiceConfig {
     authToken,
     region: DEFAULT_COGNITO.region,
   };
+}
+
+/**
+ * Refresh the cached Cognito session once and return the result. Used by
+ * `hq auth refresh` and the `hq-auth-refresh` bin. Never opens a browser —
+ * if no cached tokens exist or the refresh fails, returns `refreshed: false`
+ * with a reason string so the caller can decide what to do.
+ */
+export async function refreshCachedSession(): Promise<{
+  refreshed: boolean;
+  reason?: string;
+}> {
+  const cached = loadCachedTokens();
+  if (!cached) {
+    return { refreshed: false, reason: "no cached session" };
+  }
+  try {
+    await refreshTokens(DEFAULT_COGNITO, cached.refreshToken);
+    return { refreshed: true };
+  } catch (err) {
+    return {
+      refreshed: false,
+      reason: err instanceof Error ? err.message : String(err),
+    };
+  }
 }

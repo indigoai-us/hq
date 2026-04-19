@@ -28,9 +28,9 @@
 │ │ └──────────────┘ └──────────────┘ └──────────────┘ └────────┘ │ │
 │ └─────────────────────────────────────────────────────────────────┘ │
 │                                                                     │
-│ ┌─ Group: {company} (6) ────────────────────────────────────────┐ │
+│ ┌─ Group: liverecover (6) ────────────────────────────────────────┐ │
 │ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────┐ │ │
-│ │ │ cfo-{co}     │ │ {co}-analyst │ │ {co}-deploy  │ │ ...    │ │ │
+│ │ │ cfo-lr       │ │ lr-analyst   │ │ infobip-adm  │ │ ...    │ │ │
 │ │ │ OpsWorker    │ │ Research     │ │ OpsWorker    │ │        │ │ │
 │ │ │ ● idle       │ │ ● idle       │ │ ● idle       │ │        │ │ │
 │ │ │ 🔒 private   │ │ 🔒 private   │ │ 🔒 private   │ │        │ │ │
@@ -52,12 +52,12 @@
 | Filter | Type | Options | Default |
 |--------|------|---------|---------|
 | Type | Dropdown (multi-select) | CodeWorker, OpsWorker, ContentWorker, ResearchWorker, SocialWorker, Library | All |
-| Company | Dropdown (multi-select) | {company}, {company}, {company}, personal, (public) | All |
+| Company | Dropdown (multi-select) | liverecover, {company}, personal, (public) | All |
 | Status | Dropdown | Active, Inactive, All | Active |
 | Search | Text input | Free-text filter on id, name, description | Empty |
 
 **Filter behavior:**
-- Filters are AND-combined (type=CodeWorker AND company={company})
+- Filters are AND-combined (type=CodeWorker AND company=liverecover)
 - Group headers show filtered count (e.g., "dev-team (3 of 16)")
 - Empty groups are hidden when filters are active
 - Filter state persists across navigation (stored in URL params or Zustand)
@@ -67,7 +67,7 @@
 | Group By | Default | Sections |
 |----------|---------|----------|
 | Team | Yes | dev-team, content-team, standalone + company-private groups |
-| Company | No | {company}, {company}, {company}, personal, public |
+| Company | No | liverecover, {company}, personal, public |
 | Type | No | CodeWorker, OpsWorker, etc. |
 | Status | No | Active, Inactive |
 

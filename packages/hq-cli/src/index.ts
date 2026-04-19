@@ -19,13 +19,14 @@ import { registerPackageRemoveCommand } from "./commands/pkg-remove.js";
 import { registerPackageUpdateCommand } from "./commands/pkg-update.js";
 import { registerPackageListCommand } from "./commands/pkg-list.js";
 import { registerTeamSyncCommand } from "./commands/team-sync.js";
+import { registerAuthCommands } from "./commands/auth.js";
 
 const program = new Command();
 
 program
   .name("hq")
   .description("HQ management CLI — modules, packages, and cloud sync")
-  .version("5.0.0");
+  .version("5.5.0");
 
 // Module management subcommand group
 const modulesCmd = program
@@ -67,6 +68,7 @@ registerTeamSyncCommand(program);
 registerLoginCommand(program);
 registerLogoutCommand(program);
 registerWhoamiCommand(program);
+registerAuthCommands(program);
 
 // Onboarding (top-level — Cognito + vault-service provisioning)
 registerOnboardCommand(program);

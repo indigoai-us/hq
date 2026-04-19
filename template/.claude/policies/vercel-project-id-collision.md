@@ -18,3 +18,4 @@ Before any `vercel deploy` or `vercel link`, check `settings/deploy-registry.yam
 2. ALWAYS check `deploy-registry.yaml` for `COLLISION` notes on the target project
 3. NEVER run `vercel link` and reuse an existing project name without confirming it won't collide
 4. After creating a new Vercel project, update `deploy-registry.yaml` with the new project ID immediately
+

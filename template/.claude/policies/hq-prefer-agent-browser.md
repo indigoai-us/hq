@@ -25,6 +25,3 @@ agent-browser advantages:
 
 Reserve Claude in Chrome for tasks requiring real-time visual interaction or when agent-browser is unavailable.
 
-## Rationale
-
-User correction: Claude in Chrome requires an active extension connection that frequently disconnects. agent-browser is self-contained, supports headed mode for authentication, and has built-in state persistence for reusable auth sessions.

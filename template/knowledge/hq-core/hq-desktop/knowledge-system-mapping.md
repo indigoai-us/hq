@@ -35,8 +35,7 @@ Each company directory contains a knowledge subdirectory that is its own git rep
 
 | Company | Knowledge Path | Git Repo | File Count |
 |---------|---------------|----------|------------|
-| {company} | `companies/{company}/knowledge/` | Own repo (has `.git/`) | ~40 files across 8 subdirs |
-| {company} | `companies/{company}/knowledge/` | Own repo (has `.git/`) | ~20 files across 7 subdirs |
+| liverecover | `companies/liverecover/knowledge/` | Own repo (has `.git/`) | ~40 files across 8 subdirs |
 | {company} | `companies/{company}/knowledge/` | Own repo (has `.git/`) | ~12 files across 3 subdirs |
 | personal | `companies/personal/knowledge/` | Own repo (has `.git/`) | ~8 files |
 | {company} | N/A | No knowledge dir | 0 |
@@ -108,7 +107,7 @@ pub struct KnowledgeRepo {
     pub is_alias: bool,            // true if another entry points to same canonical_path
     pub alias_of: Option<String>,  // name of the canonical entry this aliases
     pub visibility: String,        // "public" or "private"
-    pub scope: String,             // "hq" or company ID ("{company}", etc.)
+    pub scope: String,             // "hq" or company ID ("liverecover", etc.)
     pub has_git: bool,             // Whether .git exists in resolved path
     pub has_index: bool,           // Whether INDEX.md exists
     pub file_count: usize,         // Number of non-hidden files (recursive)
@@ -141,8 +140,8 @@ The `@tauri-apps/plugin-fs` `readDir()` also follows symlinks transparently. The
 ### Edge Cases
 
 1. **Broken symlinks:** If a repo is deleted but the symlink remains, `fs::read_dir()` will fail. Desktop should catch this and show a "broken link" indicator.
-2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`~/HQ/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
-3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., {Product} CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
+2. **Relative vs absolute symlinks:** HQ uses both relative (`../../repos/public/knowledge-hq-core`) and absolute (`/Users/{your-name}epstein/Documents/HQ/repos/public/knowledge-curious-minds`) symlinks. `fs::canonicalize()` handles both.
+3. **Nested symlinks:** Some knowledge repos contain internal symlinks (e.g., LiveRecover CDP knowledge has `audit/` and `flow-migration/` symlinks). Desktop should resolve these recursively.
 
 ---
 
@@ -169,9 +168,8 @@ INDEX.md files are auto-generated navigation indexes placed at key directory lev
 |----------|--------|---------|
 | `knowledge/public/INDEX.md` | Yes | Lists all public knowledge bases |
 | `knowledge/private/INDEX.md` | No | Missing -- only 1 entry (linear) |
-| `companies/{company}/knowledge/INDEX.md` | Yes | Lists LR knowledge files/dirs |
+| `companies/liverecover/knowledge/INDEX.md` | Yes | Lists LR knowledge files/dirs |
 | `companies/{company}/knowledge/INDEX.md` | Yes | Lists {company} knowledge files/dirs |
-| `companies/{company}/knowledge/INDEX.md` | Yes | Lists {Product} knowledge files/dirs |
 | `companies/personal/knowledge/INDEX.md` | Yes | Lists personal knowledge files |
 
 ### Navigation Pattern for Desktop
@@ -214,7 +212,7 @@ INDEX.md files are excluded from qmd indexing via `.qmdignore`. They are navigat
 
 ```
 KnowledgeBase (top-level grouping)
-├── name: "Ralph", "hq-core", "{company}", etc.
+├── name: "Ralph", "hq-core", "liverecover", etc.
 ├── scope: "hq-public" | "hq-private" | "company:{id}"
 ├── repo_info: { path, is_symlink, target, git_status }
 ├── index: parsed INDEX.md (if exists)
@@ -231,7 +229,7 @@ KnowledgeBase (top-level grouping)
 ### What Desktop Needs to Display
 
 **Knowledge Base List View:**
-- Name (e.g., "Ralph", "HQ Core", "{Product}")
+- Name (e.g., "Ralph", "HQ Core", "LiveRecover")
 - Scope badge (Public / Private / Company: {name})
 - File count
 - Last modified date
@@ -261,13 +259,10 @@ KnowledgeBase (top-level grouping)
 Per `manifest.yaml`, each company owns its knowledge:
 
 ```yaml
-{company}:
-  knowledge: companies/{company}/knowledge/
-  qmd_collections: [{company}, {product}]
+liverecover:
+  knowledge: companies/liverecover/knowledge/
+  qmd_collections: [liverecover, {product}]
 
-{company}:
-  knowledge: companies/{company}/knowledge/
-  qmd_collections: [{company}]
 
 {company}:
   knowledge: companies/{company}/knowledge/
@@ -280,7 +275,7 @@ personal:
 
 ### Desktop Isolation Rules
 
-1. **Company filter in UI**: When user selects a company context (e.g., "{Product}"), the knowledge browser should:
+1. **Company filter in UI**: When user selects a company context (e.g., "LiveRecover"), the knowledge browser should:
    - Show that company's knowledge base
    - Show HQ-level public knowledge (always accessible)
    - Hide other companies' knowledge bases
@@ -311,7 +306,7 @@ Knowledge Browser
 │   │   └── {product}
 │   └── Private
 │       └── Linear
-├── Company: {Product} (when LR context active)
+├── Company: LiveRecover (when LR context active)
 │   ├── Architecture
 │   ├── Database Schema
 │   ├── Infrastructure
@@ -320,7 +315,6 @@ Knowledge Browser
 │   ├── CDP/
 │   ├── GTM/
 │   └── ...
-├── Company: {company} (when {company} context active)
 │   ├── Brand Guidelines
 │   ├── Master Narrative
 │   ├── CRO/
@@ -338,9 +332,8 @@ Knowledge Browser
 |-----------|------------|---------|-------|----------|---------|
 | `hq` | HQ root | `**/*.md` | 2,285 | 7 | All HQ markdown |
 | `{product}` | {PRODUCT} monorepo | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | 3,078 | 3 | {PRODUCT} codebase |
-| `{company}` | LR knowledge | `**/*.md` | 121 | 1 | LR company knowledge |
-| `{company}` | {company} knowledge | `**/*.md` | 87 | 1 | {company} company knowledge |
-| `{company}` | {Product} knowledge | `**/*.md` | 15 | 1 | {Product} company knowledge |
+| `liverecover` | LR knowledge | `**/*.md` | 121 | 1 | LR company knowledge |
+| `{company}` | {company} knowledge | `**/*.md` | 15 | 1 | {company} company knowledge |
 | `personal` | Personal knowledge | `**/*.md` | 8 | 1 | Personal knowledge |
 
 ### Collection Contexts
@@ -460,9 +453,8 @@ Collection Picker
 ├── All Collections (default)
 ├── HQ (2,285 files)
 ├── ─── Company Collections ───
-├── {Product} (121 files)
-├── {company} (87 files)
-├── {Product} (15 files)
+├── LiveRecover (121 files)
+├── {company} (15 files)
 ├── Personal (8 files)
 ├── ─── Codebase Collections ───
 └── {PRODUCT} (3,078 files)

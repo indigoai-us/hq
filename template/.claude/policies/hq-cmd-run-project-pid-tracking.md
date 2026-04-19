@@ -20,3 +20,4 @@ ALWAYS verify story completion via:
 3. `ps aux | grep "claude.*{story-id}"` — find the real process PID
 
 When the orchestrator shows a story PID as "exited" but `passes` is still false: check for the real `claude -p` process before declaring failure.
+

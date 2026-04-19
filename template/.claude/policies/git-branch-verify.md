@@ -14,6 +14,3 @@ source: migration
 
 ALWAYS run `git branch --show-current` before committing to any repo. Never assume the current branch — inherited cwd or installs can silently land you on an unintended branch. If wrong branch: create correct branch, cherry-pick, revert from wrong branch.
 
-## Rationale
-
-Inherited cwd or package installs can silently change the active branch, causing commits to land on wrong branches.

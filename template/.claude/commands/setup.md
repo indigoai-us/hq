@@ -174,14 +174,39 @@ This is optional — plain directories work fine for read-only knowledge.
 Run `/personal-interview` to populate this file with your authentic voice and communication style.
 ```
 
-**agents.md** (root level):
+**agents-profile.md** (root level — first line MUST match `# {Name} - Profile` for the inject-local-context.sh hook regex):
 ```markdown
-# {Name}
+# {Name} - Profile
 
-{Answer from Q2}
+- **Location**: {city}
+- **Background**: {Answer from Q2}
 
 ## Goals
 {Answer from Q3}
+
+## Working Preferences
+
+Run `/personal-interview` to populate the autonomy matrix and communication style.
+
+## Company Roster
+
+Full company/role context lives in `agents-companies.md` (three tiers: Operate / Client / Portfolio).
+```
+
+**agents-companies.md** (root level — created empty, populated by `/personal-interview` or manually):
+```markdown
+# {Name} — Company Contexts
+
+> Three tiers: (1) Operate = founder/CEO hats. (2) Client = paid build work. (3) Portfolio = advisory/equity.
+> Within Operate: active / slow-burn / on hold. `slug` = the key in `companies/manifest.yaml`.
+
+## 1. Operate — Founder / CEO hats
+
+_Run `/personal-interview` or edit manually to populate._
+
+## 2. Client work (build, not owned)
+
+## 3. Portfolio / Advisory
 ```
 
 Add to `.gitignore` if not already present:
@@ -213,7 +238,8 @@ Created:
 - companies/personal/ (settings, data, knowledge)
 - companies/personal/knowledge/profile.md
 - companies/personal/knowledge/voice-style.md
-- agents.md
+- agents-profile.md
+- agents-companies.md
 - Knowledge repo: repos/private/knowledge-personal/ → companies/personal/knowledge/personal
 
 Dependencies:

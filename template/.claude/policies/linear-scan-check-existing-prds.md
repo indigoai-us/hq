@@ -9,3 +9,4 @@ enforcement: hard
 ## Rule
 
 Before recommending a new PRD from a Linear scan, always check `companies/{company}/projects/` for existing PRDs that cover the same Linear issues. Use `ls companies/{company}/projects/` and read matching `prd.json` files to check `linearIssueId` fields against scan results.
+

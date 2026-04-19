@@ -17,3 +17,4 @@ When a container spawns sibling containers via the mounted Docker socket (`/var/
 Example: if the host container maps `/mnt/data` → `/data`, and the container writes to `/data/ipc/`, the sibling container mount must use `-v /mnt/data/ipc/:/ipc/` (the EC2 path), NOT `-v /data/ipc/:/ipc/` (the container path).
 
 Use a separate env var (e.g., `HOST_DATA_DIR`) to carry the outer host path. Container code reads/writes via `DATA_DIR` (its internal mount) but constructs bind-mount args using `HOST_DATA_DIR`.
+

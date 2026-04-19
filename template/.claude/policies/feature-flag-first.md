@@ -24,12 +24,6 @@ updated: 2026-02-27
 
 5. Global `FEATURE_FLAGS` env var is for platform-wide rollouts only (affects all clients). Do NOT use it for per-client beta programs.
 
-## Rationale
-
-{PRODUCT} is a multi-tenant platform serving hundreds of live clients. Shipping unfinished features to all clients causes support issues and brand damage. The `brand_permissions` system was purpose-built for per-client beta programs and requires no schema migration — just data INSERTs — making it safe to deploy on any timeline.
-
-This pattern was established with `beta:agents` (PR: 20260128) and `beta:cdp-unomi-sync`, and is the standard going forward. See reference implementation: `libs/db/src/prisma/migrations/20260128_add_agents_beta_permission/` and `libs/core/brand/src/data/permission.ts`.
-
 ## Examples
 
 **Correct:**

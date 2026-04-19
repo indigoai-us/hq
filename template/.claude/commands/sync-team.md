@@ -2,17 +2,17 @@
 
 Pull latest team content and push local changes for all joined teams. Bidirectional git sync using `gh` CLI for authentication — no manual git operations needed.
 
-**Usage:** `/sync` or `/sync --team <slug>` or `/sync --dry-run`
+**Usage:** `/sync` or `/sync <company>` or `/sync --dry-run`
 
 **Requires:** `gh` CLI authenticated (`gh auth status`)
 
 ## Arguments
 
 Parse the user's input for:
-- `--team <slug>` — Sync only a specific team by slug (e.g., `--team indigo`)
+- `<company>` — Sync (or promote) a specific company by slug (e.g., `/sync {company}`). Also accepts `--team <slug>` for backwards compatibility.
 - `--dry-run` — Show what would be synced without making changes
 
-If no flags, sync all discovered teams.
+If no company specified, sync all discovered teams.
 
 ## Process
 
@@ -62,15 +62,23 @@ If no files found:
 ```
 No teams found. Join a team first:
   npx create-hq
+
+To promote an existing company folder to a team repo:
+  /sync <company-slug>
 ```
 Stop here.
 
-If `--team <slug>` was specified, filter to only `companies/{slug}/team.json`. If that file doesn't exist:
+If a company slug was specified (e.g., `/sync acme` or `/sync --team acme`):
+
+First check if `companies/{slug}/` exists as a directory. If not:
 ```
-Team "{slug}" not found. Available teams:
-  {list discovered team slugs}
+Company folder "companies/{slug}/" not found.
 ```
 Stop here.
+
+Then check if `companies/{slug}/team.json` exists:
+- **If yes:** filter to only this team and continue to step 3 (normal sync).
+- **If no:** this company isn't a team yet. Proceed to the **Promote Flow** (section 6 below).
 
 ### 3. Sync each team
 
@@ -415,6 +423,159 @@ Dry run complete — no changes were made.
     Would pull: {N} incoming commits
     Would push: {N} local changes
 ```
+
+## 6. Promote Flow (inline)
+
+When `/sync <slug>` targets a company folder that has no `team.json`, run this flow instead of the normal sync. This creates a GitHub team repo from the existing local folder.
+
+```
+companies/{slug}/ isn't shared as a team yet.
+Promote it to a team repo so it can be synced and shared? (Y/n)
+```
+
+If the user says no, stop here. If yes, continue.
+
+### 6a. Authenticate
+
+Verify `gh` is authenticated (already done in step 1). Get the authenticated user:
+```bash
+gh api user --jq '.login' 2>/dev/null
+```
+
+### 6b. Select GitHub organization
+
+List orgs the user is admin of:
+```bash
+gh api user/orgs --jq '.[].login' 2>/dev/null
+```
+
+If no orgs found:
+```
+You need a GitHub organization to host the team repo.
+Create one at: https://github.com/organizations/new
+Then re-run /sync.
+```
+Stop the promote flow (sync results still reported normally).
+
+If one org, auto-select. If multiple, present numbered list.
+
+### 6c. Pre-push secrets scan
+
+Before creating the repo, scan the folder for accidental secrets:
+
+```bash
+# Scan settings/ directory (highest risk)
+grep -rnE '(api[_-]?key|password|secret|token)\s*[:=]\s*\S{10,}|-----BEGIN .* PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9_]{36,}|op://|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}' companies/{slug}/ --include='*.json' --include='*.yaml' --include='*.yml' --include='*.env' --include='*.md' --include='*.ts' --include='*.js' --include='*.sh' 2>/dev/null || true
+```
+
+**If matches found:**
+```
+Pre-push security scan found potential secrets in companies/{slug}/:
+
+  {file}:{line}: {match preview}
+
+These would be pushed to a shared GitHub repo (visible to all org members).
+
+Options:
+  1. Remove the sensitive data first (recommended)
+  2. Continue anyway (I've verified these are safe to share)
+```
+
+If option 1: abort promote flow, report which files to clean.
+If option 2: continue.
+
+**If no matches:** continue silently.
+
+### 6d. Create team repo
+
+```bash
+gh api orgs/{org}/repos -X POST -f name="hq-{slug}" -f private=true -f description="HQ Teams workspace for {slug}" --jq '.html_url' 2>&1
+```
+
+If the repo already exists (422 error), ask to reuse or abort.
+
+### 6e. Initialize and push
+
+```bash
+cd companies/{slug}
+
+# Init git if not already
+[ -d .git ] || git init -b main
+
+# Check for existing remote
+if git remote get-url origin 2>/dev/null; then
+  echo "This folder already has a git remote. Aborting to avoid conflict."
+  # Stop promote flow
+fi
+
+# Configure and push
+git remote add origin "https://github.com/{org}/hq-{slug}.git"
+git add -A
+git commit -m "Initial team content from HQ promote"
+git push -u origin main
+```
+
+### 6f. Write team.json
+
+Create `companies/{slug}/team.json` with metadata:
+```json
+{
+  "team_id": "{generated UUID}",
+  "team_name": "{slug}",
+  "team_slug": "{slug}",
+  "org_login": "{org}",
+  "org_id": {org_id},
+  "created_by": "{gh_username}",
+  "created_at": "{ISO8601}",
+  "hq_version": "promoted",
+  "repo_url": "https://github.com/{org}/hq-{slug}",
+  "clone_url": "https://github.com/{org}/hq-{slug}.git"
+}
+```
+
+Generate UUID:
+```bash
+uuidgen 2>/dev/null || python3 -c "import uuid; print(uuid.uuid4())"
+```
+
+Get org_id:
+```bash
+gh api orgs/{org} --jq '.id'
+```
+
+Commit and push team.json:
+```bash
+git -C companies/{slug} add team.json
+git -C companies/{slug} commit -m "chore: add team.json metadata"
+git -C companies/{slug} push origin main
+```
+
+### 6g. Post-promote wiring
+
+Update `companies/manifest.yaml` to include the team repo reference:
+- If company entry exists, add `hq-{slug}` to its `repos` array
+- If no entry exists, create a minimal entry with the repo
+
+Run search reindex:
+```bash
+qmd update 2>/dev/null || true
+```
+
+### 6h. Report promote results
+
+```
+Promoted companies/{slug}/ → https://github.com/{org}/hq-{slug}
+
+  Files pushed: {N}
+  team.json: companies/{slug}/team.json
+  Manifest: updated
+
+Next steps:
+  /sync — sync this team going forward
+  /invite — invite team members
+```
+
+After promoting, the newly created team is immediately eligible for normal sync in step 3.
 
 ## Security Notes
 

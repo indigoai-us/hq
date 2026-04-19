@@ -30,7 +30,7 @@ Available Workers:
 
   x-{your-name}            X/Twitter posting for {your-name}
   cfo-{company}    Financial reporting
-  {company}-analyst LR/{PRODUCT} data analysis
+  {company}-analyst LR/{company} data analysis
   ...
 
 Usage: /run {worker-id} to see skills

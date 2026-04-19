@@ -19,3 +19,4 @@ ALWAYS include `"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"` in the
 ALWAYS use full paths for Homebrew-installed binaries in the Bash tool. Claude Code's shell environment does NOT include `/opt/homebrew/bin/` in PATH. Common binaries affected: `/opt/homebrew/bin/aws`, `/opt/homebrew/bin/brew`, `/opt/homebrew/bin/node`, `/opt/homebrew/bin/npx`. Bare `aws` or `brew` will exit 127 ("command not found").
 
 HTTP-type MCP servers are unaffected (they connect to already-running processes).
+

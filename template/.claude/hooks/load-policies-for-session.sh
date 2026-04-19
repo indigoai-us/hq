@@ -18,8 +18,14 @@
 
 set -euo pipefail
 
-# Read and discard any stdin (hooks always consume stdin)
-cat >/dev/null 2>&1 || true
+# Read stdin — Claude Code passes JSON with a "source" field
+# (startup|resume|clear|compact). Slim the digest on resume/compact because the
+# model already has the prior conversation in context and a 17KB policy wall
+# creates signal-to-noise collapse that triggers the "No response requested"
+# failure mode. See .claude/plans/mighty-noodling-parasol.md
+STDIN_JSON="$(cat 2>/dev/null || echo '{}')"
+SOURCE="$(printf '%s' "$STDIN_JSON" | sed -nE 's/.*"source"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -1)"
+[ -z "$SOURCE" ] && SOURCE="startup"
 
 # Determine HQ_ROOT by walking up until we find .claude/policies + companies/
 # with at least one real company (not just the _template scaffold — that would
@@ -40,7 +46,7 @@ while [ "$search" != "/" ]; do
 done
 
 # Fall back to canonical path if not found via walk-up
-[ -z "$HQ_ROOT" ] && HQ_ROOT="$HOME/HQ"
+[ -z "$HQ_ROOT" ] && HQ_ROOT="/Users/{your-name}/Documents/HQ"
 
 GLOBAL_DIGEST="$HQ_ROOT/.claude/policies/_digest.md"
 
@@ -128,5 +134,24 @@ emit_block() {
   printf '\n</policy-digest>\n'
 }
 
-emit_block
+# Emit a minimal stub on resume/compact — prior context already has policy state
+emit_slim() {
+  printf '<policy-digest>\n'
+  printf '# Session resume — policies loaded via prior context\n\n'
+  printf '> Full digest: `.claude/policies/_digest.md` | Rebuild: `bash scripts/build-policy-digest.sh`\n'
+  if [ -n "$ACTIVE_CO" ]; then
+    printf '> Active company: **%s** — policies at `companies/%s/policies/`\n' "$ACTIVE_CO" "$ACTIVE_CO"
+  fi
+  if [ -n "$ACTIVE_REPO" ] && [ -n "$ACTIVE_REPO_SCOPE" ]; then
+    printf '> Active repo: **%s/%s** — policies at `repos/%s/%s/.claude/policies/`\n' "$ACTIVE_REPO_SCOPE" "$ACTIVE_REPO" "$ACTIVE_REPO_SCOPE" "$ACTIVE_REPO"
+  fi
+  printf '\n</policy-digest>\n'
+}
+
+# Dispatch: slim on resume/compact, full on startup (and any unknown source)
+if [ "$SOURCE" = "resume" ] || [ "$SOURCE" = "compact" ]; then
+  emit_slim
+else
+  emit_block
+fi
 exit 0

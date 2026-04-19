@@ -25,3 +25,4 @@ curl -s -X POST "https://api.post-bridge.com/v1/posts" \
   -H "Content-Type: application/json" \
   -d @/tmp/pb-post-body.json
 ```
+

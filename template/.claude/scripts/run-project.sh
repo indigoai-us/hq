@@ -81,6 +81,30 @@ ensure_worktree() {
   local branch_slug="${branch_name//\//-}"
   local wt_path="${repo_path}-wt-${branch_slug}"
 
+  # Heal orphan worktree directories left from prior failed runs.
+  # git worktree add refuses to reuse a pre-existing path, even an empty one.
+  # Prune stale metadata, then remove the dir only if it's a safe orphan
+  # (no .git entry AND contents limited to regenerable artifacts). Anything
+  # else → bail so we never destroy real work.
+  if [[ -e "$wt_path" ]]; then
+    git -C "$repo_path" worktree prune 2>/dev/null || true
+    if [[ -e "$wt_path/.git" ]]; then
+      log_err "Worktree path $wt_path still registered after prune — manual cleanup required"
+      log_err "  git -C $repo_path worktree remove --force $wt_path"
+      return 1
+    fi
+    local _orphan_contents
+    _orphan_contents=$(cd "$wt_path" && ls -A 2>/dev/null | grep -v -E '^(node_modules|\.expo|\.next|\.turbo|dist|build|\.DS_Store)$' || true)
+    if [[ -n "$_orphan_contents" ]]; then
+      log_err "Worktree path $wt_path exists with unexpected contents — refusing to overwrite"
+      log_err "  Contents: $(echo "$_orphan_contents" | tr '\n' ' ')"
+      log_err "  Manual cleanup: rm -rf $wt_path  (verify first!)"
+      return 1
+    fi
+    log_warn "Removing orphan worktree directory (regenerable artifacts only): $wt_path"
+    rm -rf "$wt_path"
+  fi
+
   # Create the worktree
   log_info "Creating worktree: $wt_path (branch: $branch_name)"
   if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$branch_name" 2>/dev/null; then
@@ -1623,6 +1647,21 @@ validate_git_state() {
   if [[ -n "$dirty" ]]; then
     log_warn "Sub-agent left uncommitted changes. Auto-committing..."
     git -C "$REPO_PATH" add -A
+    # Guard (policy: run-project-conflict-marker-guard): refuse to commit if any
+    # staged file contains unresolved merge-conflict markers. Pre-existing
+    # garbage in the worktree must never be swept into the branch — doing so
+    # broke the moonflow-redesign run on 2026-04-16 (94 tsc TS1185 errors).
+    local _marker_files
+    _marker_files=$(git -C "$REPO_PATH" diff --cached --name-only 2>/dev/null | while IFS= read -r _f; do
+      [[ -f "$REPO_PATH/$_f" ]] && grep -lE '^(<{7}|={7}|>{7})([^<=>]|$)' "$REPO_PATH/$_f" 2>/dev/null
+    done)
+    if [[ -n "$_marker_files" ]]; then
+      log_err "REFUSING auto-commit for ${story_id}: conflict markers detected in:"
+      while IFS= read -r _f; do [[ -n "$_f" ]] && log_err "  $_f"; done <<< "$_marker_files"
+      log_err "  Resetting index — manual cleanup required before run can continue."
+      git -C "$REPO_PATH" reset -q 2>/dev/null || true
+      return 1
+    fi
     git -C "$REPO_PATH" commit -m "[orchestrator] ${story_id}: auto-commit uncommitted work" --no-verify 2>/dev/null || true
   fi
 }
@@ -1680,6 +1719,239 @@ get_pre_story_sha() {
   local repo="${1:-$REPO_PATH}"
   { [[ -z "$repo" ]] || ! is_git_repo "$repo"; } && echo "" && return
   git -C "$repo" rev-parse HEAD 2>/dev/null || echo ""
+}
+
+# =============================================================================
+# Cross-Repo Commit Attribution (US-019/US-020 fix)
+# =============================================================================
+# Problem: orchestrator previously only inspected $REPO_PATH for post-story
+# commits. When a sub-agent committed in a sibling repo, it was recorded as
+# "no-commit" (US-019). Combined with .completed_tasks being append-only
+# by id, a retry-path "no-commit" could also shadow a correct earlier SHA
+# (US-020, "duplicate overwrote it").
+#
+# Fix: capture a pre-story HEAD anchor in every candidate repo, inspect all
+# of them after the story runs, write an immutable per-story sidecar, and
+# upsert-by-id into state.json with "prefer real SHA over no-commit" merge.
+
+# Parallel indexed arrays (macOS bash 3.2 has no declare -A)
+CANDIDATE_REPOS=()
+CANDIDATE_PRE_SHAS=()
+
+# Story attribution output — set by resolve_story_attribution(), read by
+# update_state_completed() and the call sites.
+ATTR_PRIMARY_SHA=""
+ATTR_PRIMARY_REPO=""
+ATTR_FILES_CHANGED_JSON="[]"
+ATTR_CROSS_REPO="false"
+ATTR_SIDECAR_REL=""
+
+# Discover candidate repos for a story. Precedence:
+#   1. Story's .repos array in prd.json (verbatim — absolute or HQ-root-relative)
+#   2. PRD top-level .crossRepoCandidates
+#   3. Auto: scan $HQ_ROOT/repos/{public,private}/* for git repos
+# Output: newline-separated absolute paths, $REPO_PATH first (always present).
+discover_candidate_repos() {
+  local story_id="$1"
+  local -a out=()
+
+  if [[ -n "$REPO_PATH" ]] && is_git_repo "$REPO_PATH"; then
+    out+=("$REPO_PATH")
+  fi
+
+  local story_repos=""
+  if [[ -n "${PRD_PATH:-}" && -f "$PRD_PATH" ]]; then
+    story_repos=$(jq -r --arg id "$story_id" \
+      '(.userStories[]? | select(.id == $id) | .repos // [])[]?' \
+      "$PRD_PATH" 2>/dev/null || true)
+    if [[ -z "$story_repos" ]]; then
+      story_repos=$(jq -r '(.crossRepoCandidates // [])[]?' "$PRD_PATH" 2>/dev/null || true)
+    fi
+  fi
+
+  if [[ -n "$story_repos" ]]; then
+    local r resolved
+    while IFS= read -r r; do
+      [[ -z "$r" ]] && continue
+      resolved="$r"
+      [[ "$resolved" != /* ]] && resolved="$HQ_ROOT/$resolved"
+      if is_git_repo "$resolved" && [[ "$resolved" != "$REPO_PATH" ]]; then
+        out+=("$resolved")
+      fi
+    done <<< "$story_repos"
+  else
+    # Auto-discover. Tolerate missing dirs (nullglob not portable to bash 3.2).
+    local d repo
+    for d in "$HQ_ROOT"/repos/public/*/ "$HQ_ROOT"/repos/private/*/; do
+      [[ -d "$d" ]] || continue
+      repo="${d%/}"
+      [[ "$repo" == "$REPO_PATH" ]] && continue
+      if is_git_repo "$repo"; then
+        out+=("$repo")
+      fi
+    done
+  fi
+
+  printf '%s\n' "${out[@]}"
+}
+
+# Populate CANDIDATE_REPOS and CANDIDATE_PRE_SHAS arrays with the candidate
+# repos' pre-story HEAD anchors. Call immediately before run_story().
+capture_pre_story_anchors() {
+  local story_id="$1"
+  CANDIDATE_REPOS=()
+  CANDIDATE_PRE_SHAS=()
+  local repo
+  while IFS= read -r repo; do
+    [[ -z "$repo" ]] && continue
+    CANDIDATE_REPOS+=("$repo")
+    CANDIDATE_PRE_SHAS+=("$(get_pre_story_sha "$repo")")
+  done < <(discover_candidate_repos "$story_id")
+}
+
+# Inspect every candidate repo post-story, determine the primary attribution,
+# write an immutable sidecar, and populate the ATTR_* globals. Call once per
+# story (or per retry attempt) after run_story() returns.
+#
+# Sets:
+#   ATTR_PRIMARY_SHA       — primary repo's short SHA if advanced, else first
+#                            advanced sibling's short SHA, else "no-commit"
+#   ATTR_PRIMARY_REPO      — absolute path of whichever repo supplied the SHA
+#   ATTR_CROSS_REPO        — "true" if any non-primary repo advanced
+#   ATTR_FILES_CHANGED_JSON — repo-relative when single-repo, HQ-root-relative
+#                            when cross-repo (so dashboards get unambiguous paths)
+#   ATTR_SIDECAR_REL       — HQ-root-relative path to the attribution sidecar
+resolve_story_attribution() {
+  local story_id="$1"
+  local started_iso="${2:-}"
+  ATTR_PRIMARY_SHA="no-commit"
+  ATTR_PRIMARY_REPO=""
+  ATTR_CROSS_REPO="false"
+  ATTR_SIDECAR_REL=""
+  ATTR_FILES_CHANGED_JSON="[]"
+
+  local advanced_count=0
+  local primary_advanced="false"
+  local per_repo_entries=""
+
+  local i
+  for i in "${!CANDIDATE_REPOS[@]}"; do
+    local repo="${CANDIDATE_REPOS[i]}"
+    local pre="${CANDIDATE_PRE_SHAS[i]}"
+    local post=""
+    post=$(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo "")
+    local advanced="false"
+    local commits_json="[]"
+    local files_json="[]"
+
+    if [[ -n "$pre" && -n "$post" ]]; then
+      local pre_short="${pre:0:${#post}}"
+      if [[ "$post" != "$pre_short" ]]; then
+        advanced="true"
+        advanced_count=$((advanced_count + 1))
+        commits_json=$(git -C "$repo" log --format=%h "$pre"..HEAD 2>/dev/null \
+          | jq -R -s 'split("\n")|map(select(length>0))' 2>/dev/null || echo "[]")
+        files_json=$(git -C "$repo" diff --name-only "$pre"..HEAD 2>/dev/null \
+          | jq -R -s 'split("\n")|map(select(length>0))' 2>/dev/null || echo "[]")
+        if ! jq -e . <<< "$commits_json" &>/dev/null; then commits_json="[]"; fi
+        if ! jq -e . <<< "$files_json" &>/dev/null; then files_json="[]"; fi
+
+        # Prefer REPO_PATH as primary when it advanced; otherwise first advanced sibling
+        if [[ "$repo" == "$REPO_PATH" ]]; then
+          ATTR_PRIMARY_SHA="$post"
+          ATTR_PRIMARY_REPO="$repo"
+          primary_advanced="true"
+        elif [[ "$primary_advanced" == "false" && "$ATTR_PRIMARY_SHA" == "no-commit" ]]; then
+          ATTR_PRIMARY_SHA="$post"
+          ATTR_PRIMARY_REPO="$repo"
+        fi
+      fi
+    fi
+
+    local rel="${repo#$HQ_ROOT/}"
+    local entry
+    entry=$(jq -n \
+      --arg path "$rel" \
+      --arg pre "$pre" \
+      --arg post "$post" \
+      --argjson advanced "$advanced" \
+      --argjson commits "$commits_json" \
+      --argjson files "$files_json" \
+      '{path:$path, pre_sha:$pre, post_sha:$post, advanced:$advanced, commits:$commits, files_changed:$files}')
+    per_repo_entries+="$entry"$'\n'
+  done
+
+  local candidate_repos_json="[]"
+  if [[ -n "$per_repo_entries" ]]; then
+    candidate_repos_json=$(printf '%s' "$per_repo_entries" | jq -s '.' 2>/dev/null || echo "[]")
+  fi
+
+  # cross_repo iff more than one repo advanced, or the single advanced repo is a sibling
+  if (( advanced_count > 1 )); then
+    ATTR_CROSS_REPO="true"
+  elif (( advanced_count == 1 )) && [[ "$primary_advanced" == "false" ]]; then
+    ATTR_CROSS_REPO="true"
+  fi
+
+  # Aggregate files_changed. Cross-repo → HQ-root-relative; single-repo → repo-relative.
+  if [[ "$ATTR_CROSS_REPO" == "true" ]]; then
+    ATTR_FILES_CHANGED_JSON=$(printf '%s' "$candidate_repos_json" \
+      | jq '[ .[] | select(.advanced) | .path as $p | .files_changed[] | ($p + "/" + .) ]' 2>/dev/null || echo "[]")
+  elif [[ "$primary_advanced" == "true" ]]; then
+    local primary_rel="${REPO_PATH#$HQ_ROOT/}"
+    ATTR_FILES_CHANGED_JSON=$(printf '%s' "$candidate_repos_json" \
+      | jq --arg p "$primary_rel" '[ .[] | select(.path == $p and .advanced) | .files_changed[] ]' 2>/dev/null || echo "[]")
+  else
+    ATTR_FILES_CHANGED_JSON="[]"
+  fi
+
+  if ! jq -e . <<< "$ATTR_FILES_CHANGED_JSON" &>/dev/null; then
+    ATTR_FILES_CHANGED_JSON="[]"
+  fi
+
+  # Write immutable sidecar; rotate on retry
+  local sidecar_dir="$HQ_ROOT/workspace/orchestrator/$PROJECT/executions"
+  mkdir -p "$sidecar_dir"
+  local sidecar_path="$sidecar_dir/$story_id.attribution.json"
+  ATTR_SIDECAR_REL="workspace/orchestrator/$PROJECT/executions/$story_id.attribution.json"
+  if [[ -f "$sidecar_path" ]]; then
+    mv "$sidecar_path" "$sidecar_path.prev-$(date +%s)" 2>/dev/null || true
+  fi
+
+  jq -n \
+    --arg story_id "$story_id" \
+    --arg project "$PROJECT" \
+    --arg session_id "${SESSION_ID:-}" \
+    --arg started_at "$started_iso" \
+    --arg completed_at "$(ts)" \
+    --arg primary_repo "${ATTR_PRIMARY_REPO#$HQ_ROOT/}" \
+    --arg summary_sha "$ATTR_PRIMARY_SHA" \
+    --argjson cross_repo "$ATTR_CROSS_REPO" \
+    --argjson candidate_repos "$candidate_repos_json" \
+    '{
+      story_id: $story_id, project: $project, session_id: $session_id,
+      started_at: $started_at, completed_at: $completed_at,
+      primary_repo: $primary_repo, summary_sha: $summary_sha,
+      cross_repo: $cross_repo, candidate_repos: $candidate_repos
+    }' > "$sidecar_path.tmp" 2>/dev/null && mv "$sidecar_path.tmp" "$sidecar_path"
+
+  # Diagnostic — one structured line, plus a per-repo warn on cross-repo commits
+  local total="${#CANDIDATE_REPOS[@]}"
+  log_info "[attribution] story=$story_id primary_repo=${ATTR_PRIMARY_REPO#$HQ_ROOT/} primary_sha=$ATTR_PRIMARY_SHA advanced=$advanced_count/$total sidecar=$ATTR_SIDECAR_REL"
+  if (( advanced_count > 1 )); then
+    log_warn "[attribution] $story_id: cross-repo commits detected across $advanced_count repos"
+    local j r p q ps cc
+    for j in "${!CANDIDATE_REPOS[@]}"; do
+      r="${CANDIDATE_REPOS[j]}"
+      p="${CANDIDATE_PRE_SHAS[j]}"
+      q=$(git -C "$r" rev-parse --short HEAD 2>/dev/null || echo "")
+      ps="${p:0:${#q}}"
+      if [[ -n "$q" && "$q" != "$ps" ]]; then
+        cc=$(git -C "$r" rev-list --count "$p"..HEAD 2>/dev/null || echo "?")
+        log_warn "  ${r#$HQ_ROOT/}: $ps..$q ($cc commits)"
+      fi
+    done
+  fi
 }
 
 # =============================================================================
@@ -2226,18 +2498,49 @@ update_state_completed() {
   local story_id="$1"
   local commit_sha="$2"
   local files_changed="$3"
+  # Cross-repo metadata pulled from globals set by resolve_story_attribution().
+  # Defaults keep this function safe to call from legacy/test contexts that
+  # haven't run the attribution resolver.
+  local cross_repo="${ATTR_CROSS_REPO:-false}"
+  local sidecar_rel="${ATTR_SIDECAR_REL:-}"
 
   read_prd_stats
 
+  # Defect B/C fix (US-019/US-020): upsert-by-id with "prefer real SHA over
+  # no-commit" merge. Two legitimate write sites exist (sequential + retry);
+  # append-only produced duplicate entries where the later "no-commit" write
+  # shadowed an earlier real SHA for tail-reading audits. Upsert collapses
+  # duplicates; the merge rule protects against an unlucky write order.
   jq \
     --arg id "$story_id" \
     --arg ts "$(ts)" \
     --arg sha "$commit_sha" \
     --argjson files "$files_changed" \
+    --argjson cross_repo "$cross_repo" \
+    --arg sidecar_rel "$sidecar_rel" \
     --argjson total "$TOTAL" \
     --argjson completed "$COMPLETED" \
   '
-    .completed_tasks += [{"id": $id, "completed_at": $ts, "commit_sha": $sha, "files_changed": $files}] |
+    .completed_tasks = (
+      (.completed_tasks // []) as $ct
+      | (($ct | map(select(.id == $id)))[0] // {}) as $prev
+      | ($ct | map(select(.id != $id))) as $rest
+      | $rest + [{
+          id: $id,
+          completed_at: $ts,
+          commit_sha: (
+            if $sha == "no-commit"
+               and (($prev.commit_sha // "") != "")
+               and ($prev.commit_sha != "no-commit")
+            then $prev.commit_sha
+            else $sha
+            end
+          ),
+          files_changed: $files,
+          cross_repo: $cross_repo,
+          attribution_sidecar: $sidecar_rel
+        }]
+    ) |
     .current_tasks = [(.current_tasks // [])[] | select(.id != $id)] |
     .progress.total = $total |
     .progress.completed = $completed |
@@ -3093,29 +3396,28 @@ spawn_cmux_monitor() {
     return 0
   fi
 
-  # Launch the monitor dashboard in a new Terminal.app window via AppleScript.
-  # Terminal.app is always scriptable on macOS (no TCC gate, no config flag),
-  # so this works regardless of whether /run-project was invoked from a cmux
-  # shell or from Claude Code running inside Claude.app desktop. We previously
-  # tried the cmux CLI (blocked by socket-ancestry auth) and cmux AppleScript
-  # dictionary (gated by the `macos-applescript` ghostty setting, off by
-  # default) — both failed silently in the Claude.app case.
-  local monitor_cmd="cd '$HQ_ROOT' && clear && bash workspace/orchestrator/monitor-project.sh '$PROJECT' --watch"
+  # Launch the monitor dashboard in a new Terminal.app window.
+  # We write a .command file and `open` it with Terminal — this avoids the
+  # AppleScript `do script` keystroke-injection race where a frontmost
+  # Terminal window's input buffer can corrupt the first characters of the
+  # injected command (observed: "cd ..." → "kcd ..." → command not found).
+  # A .command file is invoked via exec rather than keystrokes, so the first
+  # line of the script always runs verbatim.
+  local monitor_launcher="$HQ_ROOT/workspace/orchestrator/${PROJECT}/.monitor-launcher.command"
+  mkdir -p "$(dirname "$monitor_launcher")"
+  cat > "$monitor_launcher" <<LAUNCHER
+#!/usr/bin/env bash
+cd '$HQ_ROOT' || exit 1
+clear
+exec bash workspace/orchestrator/monitor-project.sh '$PROJECT' --watch
+LAUNCHER
+  chmod +x "$monitor_launcher"
 
-  local osa_out osa_status
-  osa_out=$(osascript 2>&1 <<APPLESCRIPT
-tell application "Terminal"
-  activate
-  do script "${monitor_cmd}"
-end tell
-APPLESCRIPT
-)
-  osa_status=$?
-  if [[ $osa_status -ne 0 ]]; then
-    echo -e "${DIM}(monitor spawn failed: ${osa_out})${NC}"
-    return 0
+  if open -a Terminal "$monitor_launcher" 2>/dev/null; then
+    echo -e "${DIM}Spawned monitor window for ${PROJECT} (Terminal.app)${NC}"
+  else
+    echo -e "${DIM}(monitor spawn failed — run manually: bash workspace/orchestrator/monitor-project.sh $PROJECT --watch)${NC}"
   fi
-  echo -e "${DIM}Spawned monitor window for ${PROJECT} (Terminal.app)${NC}"
 }
 
 spawn_cmux_monitor
@@ -3195,7 +3497,10 @@ if [[ "$SWARM_MODE" == true ]]; then
       story_start=$(date +%s)
       # Defect B: anchor attribution to HEAD-before-story so we can't latch
       # onto a stale commit from an earlier story.
+      # US-019 fix: also anchor every candidate sibling repo so cross-repo
+      # commits get attributed correctly by resolve_story_attribution().
       pre_story_sha=$(get_pre_story_sha)
+      capture_pre_story_anchors "$STORY_ID"
 
       "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
         ${COMPANY:+--company "$COMPANY"} \
@@ -3227,11 +3532,14 @@ if [[ "$SWARM_MODE" == true ]]; then
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
 
       if [[ "$passes" == "true" ]]; then
-        commit_sha=$(get_commit_sha "$pre_story_sha")
+        # US-019/US-020 fix: multi-repo attribution + immutable sidecar.
+        # ATTR_* globals are consumed by update_state_completed below.
+        resolve_story_attribution "$STORY_ID" "$checkout_ts_iso"
+        commit_sha="$ATTR_PRIMARY_SHA"
+        files_changed="$ATTR_FILES_CHANGED_JSON"
         if [[ "$commit_sha" == "no-commit" ]]; then
-          log_warn "$STORY_ID: HEAD did not advance — sub-agent committed elsewhere or not at all"
+          log_warn "$STORY_ID: HEAD did not advance in any candidate repo — sub-agent committed nothing"
         fi
-        files_changed=$(get_changed_files "$STORY_ID" "$pre_story_sha")
         update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
         release_checkout "$STORY_ID"
         echo "[$(ts)] $STORY_ID: $STORY_TITLE — completed (${duration}s) [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
@@ -3424,7 +3732,9 @@ else
       story_start=$(date +%s)
       # Defect B: anchor attribution to HEAD-before-story so we can't latch
       # onto a stale commit from an earlier story.
+      # US-019 fix: also anchor every candidate sibling repo.
       pre_story_sha=$(get_pre_story_sha)
+      capture_pre_story_anchors "$STORY_ID"
       # Defect C: refresh state.json PID/timestamp on every attempt so the
       # check-in printer shows the current attempt's orchestrator PID rather
       # than stale data from a previous run/session.
@@ -3464,11 +3774,13 @@ else
       passes=$(jq -r --arg id "$STORY_ID" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
 
       if [[ "$passes" == "true" ]]; then
-        commit_sha=$(get_commit_sha "$pre_story_sha")
+        # US-019/US-020 fix: multi-repo attribution + immutable sidecar.
+        resolve_story_attribution "$STORY_ID" "$checkout_ts_iso"
+        commit_sha="$ATTR_PRIMARY_SHA"
+        files_changed="$ATTR_FILES_CHANGED_JSON"
         if [[ "$commit_sha" == "no-commit" ]]; then
-          log_warn "$STORY_ID: HEAD did not advance — sub-agent committed elsewhere or not at all"
+          log_warn "$STORY_ID: HEAD did not advance in any candidate repo — sub-agent committed nothing"
         fi
-        files_changed=$(get_changed_files "$STORY_ID" "$pre_story_sha")
 
         update_state_completed "$STORY_ID" "$commit_sha" "$files_changed"
         release_checkout "$STORY_ID"
@@ -3571,7 +3883,9 @@ if [[ ${#retry_queue[@]} -gt 0 ]]; then
     retry_start=$(date +%s)
     # Defect B: anchor attribution to HEAD-before-story so retries can't latch
     # onto a previous story's SHA.
+    # US-019 fix: also anchor every candidate sibling repo.
     pre_story_sha=$(get_pre_story_sha)
+    capture_pre_story_anchors "$story_id"
 
     "$AUDIT_SCRIPT" append --event story_dispatched --project "$PROJECT" \
       ${COMPANY:+--company "$COMPANY"} \
@@ -3589,11 +3903,15 @@ if [[ ${#retry_queue[@]} -gt 0 ]]; then
 
     passes=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .passes' "$PRD_PATH")
     if [[ "$passes" == "true" ]]; then
-      commit_sha=$(get_commit_sha "$pre_story_sha")
+      # US-019/US-020 fix: multi-repo attribution + immutable sidecar.
+      retry_start_iso=""
+      retry_start_iso=$(date -u -r "$retry_start" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || retry_start_iso=""
+      resolve_story_attribution "$story_id" "$retry_start_iso"
+      commit_sha="$ATTR_PRIMARY_SHA"
+      files_changed="$ATTR_FILES_CHANGED_JSON"
       if [[ "$commit_sha" == "no-commit" ]]; then
-        log_warn "$story_id: HEAD did not advance on retry — sub-agent committed elsewhere or not at all"
+        log_warn "$story_id: HEAD did not advance in any candidate repo on retry — sub-agent committed nothing"
       fi
-      files_changed=$(get_changed_files "$story_id" "$pre_story_sha")
       update_state_completed "$story_id" "$commit_sha" "$files_changed"
       echo "[$(ts)] $story_id: $title — completed on retry [$commit_sha] ($COMPLETED/$TOTAL)" >> "$PROGRESS_FILE"
       log_ok "$story_id completed on retry [$commit_sha]"
@@ -3618,6 +3936,44 @@ if [[ ${#retry_queue[@]} -gt 0 ]]; then
         --session-id "$SESSION_ID" || true
     fi
   done
+fi
+
+# =============================================================================
+# Attribution Audit (US-019/US-020 defect regression guard)
+# =============================================================================
+# After all stories have run, sweep state.json for entries that look like the
+# old defect: a completed story with commit_sha="no-commit" and cross_repo=false.
+# Those are only legitimate when the sub-agent genuinely committed nothing
+# (e.g. a pure-docs story that was auto-committed by the orchestrator). Emit a
+# warning so the defect can't silently regress. Set HQ_ATTRIBUTION_STRICT=1 to
+# fail the run instead of warning.
+
+if [[ -f "$STATE_FILE" ]]; then
+  suspicious_count=$(jq -r '
+    [.completed_tasks[]?
+     | select(.commit_sha == "no-commit")
+     | select((.cross_repo // false) == false)
+     | .id
+    ] | length
+  ' "$STATE_FILE" 2>/dev/null || echo 0)
+
+  if [[ "${suspicious_count:-0}" -gt 0 ]]; then
+    suspicious_ids=$(jq -r '
+      [.completed_tasks[]?
+       | select(.commit_sha == "no-commit")
+       | select((.cross_repo // false) == false)
+       | .id
+      ] | join(", ")
+    ' "$STATE_FILE" 2>/dev/null || echo "")
+    log_warn "[attribution-audit] $suspicious_count completed story/stories recorded \"no-commit\" with cross_repo=false: $suspicious_ids"
+    log_warn "[attribution-audit] This may indicate US-019/US-020 defect regression. Inspect sidecars under workspace/orchestrator/$PROJECT/executions/*.attribution.json"
+    if [[ "${HQ_ATTRIBUTION_STRICT:-0}" == "1" ]]; then
+      log_err "[attribution-audit] HQ_ATTRIBUTION_STRICT=1 — failing run"
+      exit 1
+    fi
+  else
+    log_info "[attribution-audit] OK — no suspicious no-commit/single-repo entries"
+  fi
 fi
 
 # =============================================================================

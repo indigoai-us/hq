@@ -1,6 +1,6 @@
 ---
 description: Run a project through the Ralph loop - orchestrator for multi-task execution
-allowed-tools: Bash, Read, Write, AskUserQuestion
+allowed-tools: Bash, Read, Write, AskUserQuestion, Task
 argument-hint: [project-name] or [--status] or [--help]
 visibility: public
 ---
@@ -27,7 +27,7 @@ Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` �
 | Mode | When | How |
 |------|------|-----|
 | **Default** | `/run-project` invoked interactively | `run-project.sh` in background, Claude polls state files |
-| **inline** | `--inline` flag | Plan from PRD → user approves → execute stories in-session via worker sub-agents |
+| **inline** | `--inline` flag | Plan from PRD → user approves → execute each story in a per-story Task sub-agent (fresh context) that invokes `/execute-task` internally |
 | **tmux** | `--tmux` flag | `run-project.sh` in tmux session (observe from phone) |
 | **direct** | `bash scripts/run-project.sh` (CI/nohup/cron) | Direct shell execution |
 
@@ -89,7 +89,7 @@ Policy: `.claude/policies/repo-run-coordination.md`. Registry:
 
 ```bash
 # Bash tool with run_in_background: true
-cd ~/HQ && \
+cd /Users/{your-name}/Documents/HQ && \
   nohup bash scripts/run-project.sh {project} {passthrough_flags} --no-permissions \
   > workspace/orchestrator/{project}/run.log 2>&1 &
 echo "PID:$!"
@@ -131,6 +131,8 @@ The script runs headless (no tty) — it takes non-interactive paths automatical
 ## Inline Execution (--inline)
 
 Interactive, plan-first execution in the current session. Best for small-to-medium projects (3-8 stories) where user input is valuable — ambiguous specs, design decisions, creative work.
+
+**Isolation model (per-story sub-agent):** Each story executes inside a single `general-purpose` Task sub-agent (not per-worker). The sub-agent invokes `/execute-task` internally, which in turn spawns the usual per-worker sub-agents. The parent session holds only approved-plan state plus a compact JSON summary per story — raw worker output never enters the parent context. This matches Ralph's "pick task, complete, commit, repeat" at the story level and keeps the parent session usable across long runs (5+ stories).
 
 ### Step 1 — Parse + Validate
 
@@ -181,30 +183,88 @@ Same as default: company → repo → global policies. Display count.
 
 **Why both modes warm-start:** Default mode's parent session still runs the poll loop in-process (surfacing progress to the user), so preflight context bloat hurts it too. Inline mode is more obviously affected, but neither mode benefits from carrying preflight context into execution.
 
-### Step 4 — Sequential Story Execution (In-Session Ralph Loop)
+### Step 4 — Sequential Story Execution (Per-Story Sub-Agent Ralph Loop)
 
-For each incomplete story in approved plan order:
+For each incomplete story in approved plan order, the parent session performs only lightweight orchestration and delegates the full worker pipeline to a fresh Task sub-agent.
 
-1. **Announce**: display story ID, title, full ACs, planned worker sequence
+**Parent-session work (kept minimal — 2-3 lines of context per story):**
+
+1. **Announce**: display story ID, title, one-line summary of planned worker sequence
 2. **Branch setup**: create/checkout `branchName` from `baseBranch` (if specified in PRD)
 3. **Linear sync**: set In Progress (best-effort, non-blocking)
-4. **Execute via workers**: spawn worker sub-agents via **Agent tool** (not `claude -p`)
-   - Classify task type → select worker sequence (same as `/execute-task` steps 3-4)
-   - Each worker gets: story spec + ACs + repo context + policy summaries + prior worker output
-   - Workers run sequentially per story (e.g. architect → backend-dev → code-reviewer → QA)
-   - Use Agent tool with worker prompt built from `worker.yaml` config + task context
-5. **Back pressure**: run `metadata.qualityGates` after workers complete (tests, lint, typecheck)
-6. **Commit**: verify all changes committed. Auto-commit if sub-agent forgot
-7. **User checkpoint**: report what was done, then ask:
-   - **Continue** → proceed to next story
+
+**Delegate to story sub-agent (Task tool):**
+
+4. Spawn exactly ONE Task sub-agent for the story:
+
+   ```
+   Task({
+     subagent_type: "general-purpose",
+     model: CLAUDE_CODE_SUBAGENT_MODEL,   // opus
+     description: "Execute story {story-id}",
+     prompt: <<PROMPT
+       Execute story {project}/{story-id} by running the /execute-task skill.
+
+       Follow all existing execute-task behavior:
+         - Load task spec from prd.json
+         - Classify task type, select worker sequence
+         - Run the full worker pipeline (architect → backend-dev → code-reviewer → QA, etc.)
+         - Each worker runs in its own nested Task sub-agent with fresh context (standard execute-task behavior)
+         - Enforce back pressure (tests, lint, typecheck, build) per worker
+         - Commit all changes before returning (per "Sub-Agent Rules" in CLAUDE.md)
+         - Mark passes:true in prd.json on success
+
+       RETURN CONTRACT — your FINAL message MUST be EXACTLY this JSON, nothing else:
+
+       {
+         "status": "passed" | "failed" | "blocked",
+         "story_id": "{story-id}",
+         "commits": ["<short-sha>", ...],
+         "files_changed": <int>,
+         "back_pressure": {
+           "tests": "pass" | "fail" | "skip",
+           "lint": "pass" | "fail" | "skip",
+           "typecheck": "pass" | "fail" | "skip",
+           "build": "pass" | "fail" | "skip"
+         },
+         "workers_run": ["architect", "backend-dev", ...],
+         "notes": "<1-2 sentence summary; include blocker description if status != passed>"
+       }
+
+       No prose before or after. No markdown fences. No commentary. JSON only.
+     PROMPT
+   })
+   ```
+
+**Parent absorbs the JSON result (≤~300 tokens):**
+
+5. Parse JSON. On parse failure, retry once with the same prompt + "Your last output was not valid JSON. Return ONLY the JSON object specified in the return contract." If retry fails, treat as `status: "blocked"` and surface the raw tail to the user.
+6. **Render one line** per story, e.g.:
+   `✓ US-007 · architect → backend-dev → code-reviewer · 12 files · tests ✓ lint ✓ typecheck ✓ · commit abc1234`
+7. **Commit verification** (cheap, parent-side): `git log --oneline -n {len(commits)}` to confirm commits landed on current branch. Auto-commit any stragglers if sub-agent forgot (per CLAUDE.md "Sub-Agent Rules").
+8. **User checkpoint**: from the JSON `status` + `notes`, ask:
+   - **Continue** → proceed to next story (default if `status == "passed"`)
    - **Adjust** → user modifies next story's approach/ACs before execution
    - **Stop** → pause execution, preserve progress (resume later with `--inline --resume`)
-8. **Mark complete**: set `passes: true` in prd.json, update `state.json`
-9. **Linear sync**: set Done + comment (best-effort)
+9. **Mark complete**: set `passes: true` in prd.json (only if `status == "passed"`), update `state.json` with story result + commits
+10. **Linear sync**: set Done + comment (best-effort, non-blocking)
+
+**Context-preservation note:** The parent session gains only ~300-500 tokens per completed story (announce lines + JSON summary + one-line render). Compared to the previous per-worker-inline model, which could accumulate several thousand tokens per story from worker output, this preserves the parent context window across 5-8 story runs without hitting the 60% advisory.
 
 ### Step 5 — Regression Gates
 
-Every 3 completed stories, run full `metadata.qualityGates`. On failure: report to user inline (no auto-pause/retry — user decides).
+Every 3 completed stories, run full `metadata.qualityGates` in a **one-shot Task sub-agent** so raw test output stays out of the parent context:
+
+```
+Task({
+  subagent_type: "general-purpose",
+  description: "Regression gates after {n} stories",
+  prompt: "Run all metadata.qualityGates commands for {project}. Return ONLY:
+           {\"passed\": bool, \"gate_results\": {<gate>: \"pass\"|\"fail\"}, \"failures\": [<brief summary lines>]}"
+})
+```
+
+Parent renders `✓ Regression gates passed` or `✗ Regression gates failed: <summary>`. On failure, surface to user inline (no auto-pause/retry — user decides).
 
 ### Step 6 — Completion
 
@@ -432,7 +492,7 @@ This example shows `/run-project campaign-migration` executing through multiple 
   "name": "campaign-migration",
   "metadata": {
     "company": "{company}",
-    "repoPath": "repos/private/{product}",
+    "repoPath": "repos/private/{company}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [
@@ -663,7 +723,7 @@ Last updated: 2026-03-08 16:47:33 UTC
 
 ## Integration
 
-- `/prd` → creates PRD → `/run-project {name}` executes it
+- `/plan` → creates PRD → `/run-project {name}` executes it
 - `/execute-task {project}/{id}` → runs single task (standalone or headless)
 - `/run-project --resume` → continues from next incomplete story
 - `/nexttask` → shows active projects

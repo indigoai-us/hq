@@ -281,6 +281,29 @@ Read `companies/{co}/board.json`.
 
 Write updated `board.json`.
 
+## Step 6.5: Spawn Knowledge Pulse (Background)
+
+If `{co}` is resolved and company has a knowledge directory (not `null` in manifest):
+
+```
+spawn_task(
+  reason: "Pulse-garden {co} knowledge",
+  prompt: "Run the knowledge-pulse skill at .claude/skills/knowledge-pulse/SKILL.md.
+    company_slug: {co}
+    knowledge_path: companies/{co}/knowledge/
+    policies_path: companies/{co}/policies/
+    caller: brainstorm
+    qmd_collection: {qmd_collections[0] from manifest, or omit if none}
+    search_results_summary: {condensed list of qmd hits from Step 2, max 10 items — path + title per hit}
+    discovered_facts: {any new company facts surfaced during premise check or research, or 'none'}
+    Read the skill file for full instructions."
+)
+```
+
+Do NOT wait for the pulse to complete — continue immediately to Step 7.
+
+**Skip if:** company has no knowledge directory.
+
 ## Step 7: Confirm & Reindex
 
 Print:
@@ -311,7 +334,7 @@ Reindex: `qmd update 2>/dev/null || true`
 - **No Linear sync** — brainstorms are pre-planning. Linear happens at PRD time
 - **No orchestrator registration** — brainstorms are not executable
 - **Web research is conditional** — only if idea requires external context. Don't search for thoroughness
-- **board.json + brainstorm.md are the only files written** — no other files modified
+- **board.json + brainstorm.md are the only files written** — no other files modified (knowledge pulse runs as a background agent and writes its own report independently)
 - **T-shirt effort, not story points** — S (hours-days), M (days-week), L (week-month), XL (month+)
 - **Company isolation enforced** — if anchored, scope all searches to that company. Never mix company knowledge in approaches
 - **brainstorm.md is human-editable** — the user may refine it after generation. The PRD skill reads whatever is in the file, not just what was machine-generated

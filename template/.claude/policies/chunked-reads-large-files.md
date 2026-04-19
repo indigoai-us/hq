@@ -6,7 +6,7 @@ trigger: before reading files over 500 lines
 enforcement: soft
 version: 1
 created: 2026-03-31
-source: session-learning
+source: brainstorm-session
 ---
 
 ## Rule
@@ -20,6 +20,3 @@ When editing a section of a large file:
 
 When doing codebase-wide analysis on a large file, read it in ~500-line chunks to ensure full coverage.
 
-## Rationale
-
-The Read tool caps at 2,000 lines per call. Content beyond that is silently truncated — no warning is given. Edits referencing code past line 2,000 will be based on hallucinated content, causing incorrect changes. Chunked reads ensure full file coverage.

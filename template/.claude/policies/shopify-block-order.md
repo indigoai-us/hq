@@ -26,3 +26,4 @@ Correct format:
   "order": ["my-section"]
 }
 ```
+

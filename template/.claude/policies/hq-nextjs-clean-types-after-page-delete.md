@@ -14,6 +14,3 @@ source: task-completion
 
 After deleting a Next.js page file, run `rm -rf .next` before `tsc --noEmit` or `pnpm typecheck`. The `.next/types/validator.ts` cache retains references to deleted pages and causes false TS2307 errors.
 
-## Rationale
-
-Discovered when deleting `site/src/app/donate/page.tsx` — typecheck failed with "Cannot find module '../../src/app/donate/page.js'" from the cached validator until `.next` was cleared.

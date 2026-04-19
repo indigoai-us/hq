@@ -52,7 +52,7 @@ Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/p
 
 ## Structure
 
-Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
+Top-level: `.claude/commands/`, `agents-profile.md`, `agents-companies.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
 ## Companies
 
@@ -107,8 +107,10 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer (27 skills), ux-auditor (11 skills), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (17) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (2) + knowledge-tagger + site-builder.
+**Shared** (`workers/public/`): frontend-designer, impeccable-designer (**deprecated 2026-04-15** — use dev-team/frontend-dev + design-styles knowledge), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (frontend-dev: +4 design quality skills audit/polish/typeset/harden, full design-styles context; motion-designer: style-coherent animation via design-styles) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
 **Company** (`companies/{co}/workers/`): per-company workers listed in `workers/registry.yaml`.
+
+**Per-repo design context:** `design.md` at repo root (renamed from `.impeccable.md`). Declares `style-pack: <id>` in the Design Direction section. Workers resolve the pack via `knowledge/public/design-styles/registry.yaml` → pack directory → `context_paths.required`. Pack schema: `knowledge/public/design-styles/PACK-SCHEMA.md`. Design quality references (typography, color, spatial, etc.) live in `knowledge/public/design-quality/`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
 
@@ -137,7 +139,7 @@ Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orc
 
 ## Commands
 
-36 commands in `.claude/commands/` (core only). Company/niche commands live on their owning workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+30 commands in `.claude/commands/` (core only). Company/niche commands live on their owning workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
@@ -145,7 +147,13 @@ Public: listed in `modules/modules.yaml` (filter `access: public`). Company-leve
 
 ## Knowledge Repos
 
-Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/` (embedded git). Shared: `knowledge/public/` (symlinks to `repos/public/knowledge-{name}/`). Register new repos in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
+Knowledge folders use three patterns — all valid, none being migrated:
+
+1. **Embedded standalone `.git` dir** (most company knowledge): e.g. `companies/dripkit/knowledge/`, `companies/liverecover/knowledge/`, `companies/personal/knowledge/`. HQ tracks these as orphan `160000` gitlinks — the inner repo is opaque to HQ, commits happen inside. To capture advancement: commit inside the inner repo, then `git add companies/{co}/knowledge && git commit` in HQ to bump the pointer. (HQ has no `.gitmodules` file — this is intentional, not a bug.)
+2. **Symlink to `repos/private/knowledge-{co}/`** (e.g. `companies/{company}/knowledge`, `companies/{company}/knowledge`): tracked as `120000` symlink; edits land in the target repo.
+3. **Inline files tracked by HQ git** (e.g. `knowledge/public/gemini-cli/`, `knowledge/public/getting-started/`, `companies/amass/knowledge/`): simplest; no inner repo, just regular files.
+
+When adding new knowledge: pick pattern 1 for company knowledge that will grow, pattern 2 if you want a shared clone, pattern 3 for small/shared content. Register in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
 
 ## Skills
 
@@ -155,7 +163,7 @@ Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/`
 
 HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v1.0.0).
 
-**Collections:** `hq` + one per company (derived from `companies/manifest.yaml`). Use `-c {collection}` to scope.
+**Collections:** `hq-infra` (commands/skills/policies), `hq-workers` (worker defs), `hq-knowledge` (shared knowledge), `hq-projects` (PRDs) + one per company (derived from `companies/manifest.yaml`). Use `-c {collection}` to scope. Omit `-c` to search all collections.
 
 **Commands:**
 - `qmd search "<query>" --json -n 10` — BM25 keyword (fast, default)
@@ -178,7 +186,7 @@ HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + 
 
 ## Learning System
 
-Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). `/remember` delegates to `/learn` with `enforcement: hard`. Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
+Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). Use `/learn --hard` for hard-enforcement rules (formerly `/remember`). Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
 
 ## Insights
 
@@ -196,6 +204,23 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - Always verify the correct Vercel org/team before deploying (check with `vercel whoami` and `vercel teams ls`).
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
+
+## Auto-Deploy
+
+When you build or create a web-servable artifact (static site, SPA, docs site, HTML dashboard), **deploy it to hq-deploy and present the link**. Don't ask — just deploy and share the URL casually: "Here's a link: https://{app}.indigo-hq.com"
+
+- **Seven-step flow:** Preferences → Build → Localhost preview → Identity check → Guardrails → Upload → Present link. Follow `.claude/skills/deploy/SKILL.md`.
+- **Identity required for web deploy.** `api.indigo-hq.com` rejects anonymous `/api/*`. Skill reads Cognito session from `~/.hq/cognito-tokens.json` (written by `@indigoai-us/hq-cloud`); falls back to `~/.hq/auth/session.json`. Expired tokens refresh via `hq-auth-refresh`. If no session, spawns `npx -y --package=@indigoai-us/hq-cli hq auth login` (macOS-safe 180s kill-timer — see SKILL.md step 4d) — Hosted UI pops in browser, user signs in, deploy continues on same turn. If that fails, localhost preview + upsell at `onboarding.indigo-hq.com`.
+- **Localhost preview always runs**, signed in or not — that's the guaranteed instant feedback.
+- **Exclusions:** skip Vercel-managed projects (`manifest.yaml` `vercel_projects[]`), backend services, broken builds, projects with `deploy: false` in prd.json.
+- **On failure:** mention briefly, move on — deploy is a bonus, never a blocker.
+- **Full rules:** `.claude/policies/auto-deploy-on-create.md`
+
+## Learned Rules
+
+- **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
+- **NEVER**: Extract shared skills that require editing 5+ existing files to wire up. When extending behavior across multiple commands/skills, prefer layered independent additions (policy + command + skill edit) over shared extraction. Accept duplicated pattern tables as simpler than shared dependencies. <!-- user-correction | 2026-04-15 -->
+- **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`/Users/{your-name}epstein/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
 
 ## Auto-Checkpoint (PostToolUse Hook)
 
@@ -235,6 +260,7 @@ Context-usage advisories run in two stages. Both present the same three options 
 6. **Completeness is near-zero cost** - AI makes the marginal cost of doing the complete thing close to zero. Always do the complete thing when achievable (a "lake"), not the shortcut. Reserve shortcuts for genuinely unbounded scope (an "ocean")
 7. **Never skip failing tests** - Always fix tests properly. Never use test.skip, never create false positives, never loosen assertions as a workaround. Investigate root cause and fix it — unit, integration, and E2E equally <!-- user-correction | 2026-04-04 -->
 8. **Bugfixes require tests** - Every bug fix must include test or E2E coverage that catches the regression. Ask user if unsure about test type/scope. A fix without a regression test is incomplete <!-- user-correction | 2026-04-05 -->
+9. **Vague → Verifiable** - When a request lacks clear success criteria ("fix the bug", "make it faster", "clean this up"), define what "done" looks like before starting. A test that passes, a metric that improves, a behavior that changes — something observable
 
 ## E2E Testing Standards
 

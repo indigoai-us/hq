@@ -18,6 +18,3 @@ When adding a custom domain to a Vercel project where DNS is managed by AWS Rout
 6. After DNS propagates, trigger verification: `POST /v10/projects/{projectId}/domains/{domain}/verify?teamId={teamId}` — Vercel does NOT auto-verify
 7. Vercel auth token location on macOS: `~/Library/Application Support/com.vercel.cli/auth.json`
 
-## Rationale
-
-Discovered during HQ World domain setup (Mar 2026). The CLI path is a dead end for Route 53 domains — REST API is required.

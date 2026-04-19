@@ -14,6 +14,3 @@ source: task-completion
 
 ALWAYS use `@neondatabase/serverless` instead of `@vercel/postgres` for Vercel-hosted Postgres. `@vercel/postgres` is deprecated — Vercel migrated all Postgres databases to Neon. The Neon SDK uses HTTP-based queries optimized for serverless, auto-reads `POSTGRES_URL`. Create databases via `neonctl` CLI.
 
-## Rationale
-
-Discovered during {company} supporter intake form implementation. Installing `@vercel/postgres` triggers a deprecation warning and points to the Neon transition guide. The Neon SDK is the maintained replacement with identical API patterns.

@@ -18,6 +18,3 @@ source: session-learning
 4. **ALWAYS validate webhook payloads explicitly and log rejections.** If a Pydantic model, Zod schema, or manual check rejects a payload, log the rejection reason and the payload identifier (order ID, event type, etc.) at WARN or ERROR level. Silent validation rejection is invisible data loss.
 5. **Background jobs and queue handlers MUST log failures with enough context to identify the affected records.** Include entity IDs, event types, and timestamps. A failed `putEvent()` with no log means orphaned records that nobody knows about.
 
-## Rationale
-
-Silent error propagation caused the worst incidents in HQ history: Pydantic validation silently rejected checkout webhooks causing 98% checkout drop across 22+ brands for 2 days with zero alerts. PostgREST `.error` fields went unchecked, propagating null through the frontend. `putEvent()` failed silently creating 9,013 zombie checkouts. A handler returning 204 No Content hid complete data loss from operations.

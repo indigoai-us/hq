@@ -15,6 +15,3 @@ When scheduling posts in Post-Bridge with images:
 3. De-duplicate uploads — many posts share the same graphic. Map graphicRef → media_id and reuse.
 4. PATCH is the only way to update a scheduled post (no PUT endpoint). It works for caption, media, and scheduled_at.
 
-## Rationale
-
-Discovered during {product} batch scheduling. POST /v1/posts accepts media IDs but you can't upload and create in one call. PATCH support was undocumented but works.

@@ -16,6 +16,3 @@ When archiving or deleting a company, always:
 
 Stale collections pointing to deleted directories crash `qmd update` with ENOENT, blocking all reindexing.
 
-## Rationale
-
-Discovered during Mar 2026 HQ cleanup — archived {company} and deleted Puffin left stale qmd collections that crashed the indexer.

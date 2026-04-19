@@ -15,3 +15,4 @@ source: back-pressure-failure
 1. `vercel deploy --public` makes source public, NOT bypasses deployment protection (SSO). Vercel preview URLs always require login unless project-level protection is disabled. To test a preview without auth: run prod server locally (`npm run build && npm run start`).
 
 2. Vercel Deployment Protection also blocks ALL external requests (mobile apps, curl, etc.) to `.vercel.app` production domains on team plans. `vercel curl` auto-injects bypass token, but real clients get 307 redirects. For APIs consumed by mobile apps: use a **custom domain** (protection doesn't apply) or **hardcode small, stable datasets** client-side to avoid the fetch entirely.
+

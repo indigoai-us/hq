@@ -17,3 +17,4 @@ source: session-learning
 3. **Work-in-progress code for a different feature must not ride along in another PR.** If a branch contains partial work on feature B while primarily implementing feature A, revert or stash the feature B changes before opening the PR.
 4. **Infrastructure changes (configs, dependencies, CI, migrations) must ship separately from feature code** unless the feature strictly requires the infrastructure change to function. If they can be deployed independently, they must be PRed independently.
 5. **If you realize mid-PR that the scope has expanded, stop and split.** Create a stacked PR or separate branches rather than continuing to add to a growing PR.
+

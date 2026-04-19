@@ -20,3 +20,4 @@ If the Slack MCP is not loaded:
 3. Continue with remaining task steps — do not abort
 
 Browser automation is not a valid fallback for MCP tool failures.
+

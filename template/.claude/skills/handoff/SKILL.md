@@ -1,7 +1,7 @@
 ---
 name: handoff
 description: Prepare for a new session to continue this work. Captures session learnings, syncs domain knowledge and insights, commits dirty repos, writes a thread file and handoff.json, updates INDEX files, and refreshes the search index. Ensures continuity across sessions.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*), Bash(jq:*)
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(nohup:*), Bash(ls:*), Bash(date:*), Bash(jq:*)
 ---
 
 # Fresh Session Continuity
@@ -14,7 +14,41 @@ Prepare for a new session to continue this work. Commit pending changes, capture
 
 ### 0. Capture Session Learnings
 
-Reflect on this session. If any reusable learnings exist (mistakes that cost time, unexpected behaviors, patterns that worked well, gotchas, workflow improvements), run the `learn` skill for each before proceeding. Skip if nothing novel was learned.
+**Concurrent Launch — run this first, before reflection:**
+
+Launch the knowledge repo git loop as a background process so it runs concurrently with learning capture:
+
+```bash
+nohup bash -c '
+for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
+  [ -L "$symlink" ] || [ -d "$symlink/.git" ] || continue
+  repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
+  dirty=$(cd "$repo_dir" && git status --porcelain)
+  [ -z "$dirty" ] && continue
+  (cd "$repo_dir" && git add -A && git commit -m "checkpoint: auto-commit before handoff") \
+    && echo "OK: $repo_dir" || echo "ERR: $repo_dir"
+done
+' > /tmp/handoff-git-bg.log 2>&1 &
+echo $! > /tmp/handoff-git-bg.pid
+```
+
+Now proceed with learning capture while git commits run in background.
+
+Reflect on this session and collect ALL operational learnings into a structured list — do NOT call the `learn` skill yet. Learnings include: mistakes that cost time, unexpected behaviors, patterns that worked well, gotchas, workflow improvements, user corrections.
+
+If no learnings found, skip entirely.
+
+**If learnings exist**, format them as a batch JSON array:
+```json
+[
+  {"type": "rule", "content": "NEVER: ...", "scope": "global|company:{co}|...", "source": "session-learning"},
+  {"type": "rule", "content": "ALWAYS: ...", "scope": "global", "source": "session-learning"}
+]
+```
+
+Then call the `learn` skill **ONCE** with the entire batch array as input.
+
+**Why batch:** Collect all learnings into a batch first, then invoke the `learn` skill once with the full array — this runs qmd dedup once and rebuilds the policy digest once instead of 3-8 times.
 
 ### 0b. Update Knowledge (skip if trivial)
 
@@ -83,24 +117,26 @@ Ask the user with a numbered list of concrete UPDATE/CREATE proposals grouped by
 - Session already updated knowledge/docs directly → scan for remaining coverage gaps only
 - Repo README already comprehensive → skip (don't re-propose what's already covered)
 
-### 0c. Extract Session Insights
+### 0c. Sync Barrier — Wait for Background Git
 
-Complements step 0 (operational rules) and step 0b (domain knowledge).
-Insights are educational understanding (why things work, patterns, concepts).
+Wait for the background git process launched at Step 0 start to complete before proceeding. This ensures all knowledge repo commits are finished before Step 3b commits HQ changes.
 
-**Quick gate — skip if:** Session was purely mechanical (deploys, config, quick fixes) with no educational Insight blocks or explanatory content generated.
+```bash
+GIT_BG_PID=$(cat /tmp/handoff-git-bg.pid 2>/dev/null)
+if [ -n "$GIT_BG_PID" ]; then
+  wait "$GIT_BG_PID" 2>/dev/null || true
+  git_log=$(cat /tmp/handoff-git-bg.log 2>/dev/null)
+  if echo "$git_log" | grep -q "^ERR:"; then
+    echo "Warning: Some knowledge repo commits had errors:"
+    echo "$git_log" | grep "^ERR:"
+    # Record error for handoff report — handoff continues regardless
+    GIT_BG_ERRORS="$(echo "$git_log" | grep "^ERR:")"
+  fi
+  rm -f /tmp/handoff-git-bg.pid
+fi
+```
 
-**If insights exist:**
-Self-reflect on session for 0-5 educational/conceptual takeaways worth persisting.
-For each, run the `learn` skill with source `session-insight`:
-- Title + core insight text (2-4 sentences)
-- `learn` handles dedup, scope classification, and writes to `workspace/insights/`
-
-**Rules:**
-- Only persist genuinely reusable understanding, not session-specific facts
-- An insight about "why EventBridge retries reset on DLQ republish" = good
-- "We deployed to staging" = not an insight, skip
-- Max 5 per handoff (cap token cost)
+If errors are found, record them in `$GIT_BG_ERRORS` for inclusion in the Step 8 report. Do NOT abort the handoff — continue to the next step regardless of errors.
 
 ### 1. Ensure Thread Exists
 
@@ -113,7 +149,7 @@ Check `workspace/threads/` for a recent thread file. If none exists, run the `ch
   "type": "handoff",
   "created_at": "ISO8601",
   "updated_at": "ISO8601",
-  "workspace_root": "~/HQ",
+  "workspace_root": "/Users/{your-name}/Documents/HQ",
   "cwd": "current/working/dir",
   "git": {
     "branch": "current-branch",
@@ -141,22 +177,12 @@ Update the thread file with current session state if needed (conversation_summar
 
 ### 3. Commit Dirty Knowledge Repos
 
-Knowledge folders are separate git repos (often symlinked). Before handoff, commit any uncommitted knowledge changes:
-
-```bash
-for symlink in knowledge/public/* knowledge/private/* companies/*/knowledge; do
-  [ -L "$symlink" ] || [ -d "$symlink/.git" ] || continue
-  repo_dir=$(cd "$symlink" && git rev-parse --show-toplevel 2>/dev/null) || continue
-  dirty=$(cd "$repo_dir" && git status --porcelain)
-  [ -z "$dirty" ] && continue
-  (cd "$repo_dir" && git add -A && git commit -m "checkpoint: auto-commit before handoff")
-done
-```
+Knowledge repo commits ran as a background process launched at Step 0 start. The sync barrier in Step 0c awaited completion. **Skip the git loop here** — it already ran. If Step 0c reported errors, note them in Step 8 (Report).
 
 ### 3b. Commit HQ Changes
 
 ```bash
-cd ~/HQ
+cd /Users/{your-name}/Documents/HQ
 if [ -n "$(git status --porcelain)" ]; then
   git add -A
   git commit -m "checkpoint: auto-commit before handoff"
@@ -174,15 +200,38 @@ fi
 
 ### 4b. Document Release
 
-Run the `document-release` skill — it resolves company + project context on its own. Best-effort — skip silently on failure or if the skill is unavailable.
+**Session scope gate** — evaluate before running document-release:
 
-### 5. Update Search Index
+Read `files_touched` from the latest thread file (identified in Step 2). Check whether any path matches `companies/*/` or `repos/*/` patterns:
 
 ```bash
-qmd update 2>/dev/null && qmd embed 2>/dev/null || true
+# THREAD_FILE = path found in Step 2 (e.g. workspace/threads/T-20260415-123456-handoff.json)
+jq -r '.files_touched[]? // empty' "$THREAD_FILE" 2>/dev/null \
+  | grep -qE '(companies/|repos/)' \
+  && echo "SCOPE:company-or-repo" || echo "SCOPE:hq-only"
 ```
 
-Ensures any content created this session is searchable in the next. Skip silently if qmd CLI is unavailable.
+- **SCOPE:hq-only** → skip Step 4b entirely. Print: `Document-release skipped (no company/repo files touched)` and continue to Step 5.
+- **SCOPE:company-or-repo** → proceed with document-release below.
+
+*Why this gate exists:* `document-release` is a heavyweight sub-skill (20-60s) that audits company/repo docs, diffs changes, and may ask interactive questions. For sessions that only touched HQ infra files (skills, policies, orchestrator state, thread files), this audit is a no-op and wastes time. Gating on session scope is the highest-value single optimization for pure HQ infra sessions.*
+
+**If scope matched:** Run the `document-release` skill — it resolves company + project context on its own. Best-effort — skip silently on failure or if the skill is unavailable.
+
+### 5. Update Search Index (Background)
+
+Launch qmd reindex as a fire-and-forget background process — do NOT wait for it to complete:
+
+```bash
+nohup bash -c 'qmd cleanup 2>/dev/null; qmd update 2>/dev/null && qmd embed 2>/dev/null' > /tmp/qmd-handoff.log 2>&1 &
+```
+
+- `qmd cleanup` runs first to clear tombstones (fixes SQLite UNIQUE constraint crash from stale index entries)
+- `qmd update` reindexes new content for BM25 search
+- `qmd embed` generates embeddings for semantic search (may take 30-90s — runs entirely in background)
+- Log output goes to `/tmp/qmd-handoff.log` for diagnostics
+- Proceed immediately to Steps 6-8 — do NOT wait for this process
+- Skip silently if qmd CLI is unavailable
 
 ### 6. Detect Active Pipelines
 
@@ -243,6 +292,14 @@ To continue in a fresh session:
 2. Run: startwork (it will find your thread)
 
 Or read: workspace/threads/handoff.json
+
+Note: qmd reindex running in background → /tmp/qmd-handoff.log
+```
+
+If `$GIT_BG_ERRORS` is set (from Step 0c), append to the report:
+
+```
+⚠ Knowledge repo git errors: {GIT_BG_ERRORS}
 ```
 
 ## Thread vs Checkpoint

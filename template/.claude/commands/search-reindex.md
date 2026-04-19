@@ -15,17 +15,21 @@ Re-index and re-embed all qmd collections (HQ knowledge + indexed codebases).
 
 Run `qmd status` for live counts. Default collections:
 
-| Collection | Path | Pattern |
-|---|---|---|
-| `hq` | `$HQ_ROOT` | `**/*.{md,json,yaml,yml}` |
-| `{product}` | `$HQ_ROOT/repos/private/{product}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` |
-| `personal` | `$HQ_ROOT/companies/personal/knowledge` | `**/*.md` |
+| Collection | Path | Pattern | Contents |
+|---|---|---|---|
+| `hq-infra` | `$HQ_ROOT/.claude` | `**/*.{md,yaml,yml,json,sh}` | Commands, skills, policies, hooks |
+| `hq-workers` | `$HQ_ROOT/workers` | `**/*.{md,yaml,yml,json}` | Worker defs + skill files |
+| `hq-knowledge` | `$HQ_ROOT/knowledge` | `**/*.{md,yaml,yml}` | Shared knowledge bases |
+| `hq-projects` | `$HQ_ROOT/projects` | `**/*.{md,json}` | PRDs + READMEs |
+| `{company}` | `$HQ_ROOT/repos/private/{company}` | `**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}` | Product codebase |
 
 Each company added via `/newcompany` gets its own collection:
 
 | Collection | Path | Pattern |
 |---|---|---|
-| `{company-slug}` | `$HQ_ROOT/companies/{company-slug}/knowledge` | `**/*.md` |
+| `{company-slug}` | `$HQ_ROOT/companies/{company-slug}` | `**/*.md` |
+
+> **Note:** Do NOT create a monolithic `hq` collection at HQ root — it double-indexes company/repo content and misses `.claude/` (qmd skips dotdirs during traversal). Use the 4 `hq-*` sub-collections above instead.
 
 ## Process
 
@@ -81,28 +85,30 @@ To completely rebuild all collections:
 ```bash
 qmd cleanup
 
-# HQ collection
-qmd collection add $HQ_ROOT --name hq --mask "**/*.{md,json,yaml,yml}"
-qmd context add qmd://hq "HQ knowledge base: company knowledge, AI worker definitions, project PRDs, slash commands, reports, social drafts, and session threads."
-qmd context add qmd://hq/knowledge "HQ-level knowledge bases: Ralph coding methodology, worker framework patterns, dev-team practices, design styles, security framework, project templates."
-qmd context add qmd://hq/.claude/commands "Claude Code slash commands: 44 agent skills for session management, worker execution, project management, content creation, design, deployment."
-qmd context add qmd://hq/companies "Company-scoped directories each with knowledge bases, settings, and data."
-qmd context add qmd://hq/workers "AI worker definitions with YAML configs and skill markdown files. Top-level ops workers, dev-team, content team, social team, pr-team, gardener-team, gemini-team."
-qmd context add qmd://hq/projects "Project PRDs and READMEs for active and planned projects across all companies."
-qmd context add qmd://hq/workspace "Runtime workspace: session threads, checkpoints, orchestrator state, reports, social drafts, content ideas, metrics."
+# HQ sub-collections (4 focused collections, NOT one monolithic hq)
+qmd collection add $HQ_ROOT/.claude --name hq-infra --mask "**/*.{md,yaml,yml,json,sh}"
+qmd context add qmd://hq-infra "HQ infrastructure: commands, skills, policies, hooks, scripts."
 
-# {PRODUCT} collection
-qmd collection add $HQ_ROOT/repos/private/{product} --name {product} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
-qmd context add qmd://{product} "{PRODUCT} monorepo: Nx monorepo for {Product}/{Product}. Apps (web-admin, web-client, web-front, function, {company}, cdp) + libs (core, db, ui, web, util, schema). Next.js, React 19, TypeScript, SST, Prisma, PostgreSQL."
-qmd context add qmd://{product}/apps "Application code: Next.js web apps, AWS Lambda functions, {Product} SMS platform, CDP."
-qmd context add qmd://{product}/libs "Shared libraries: db/Prisma schemas, core feature modules (auth, billing, brand, conversation, ai, workflow), UI components, utilities."
+qmd collection add $HQ_ROOT/workers --name hq-workers --mask "**/*.{md,yaml,yml,json}"
+qmd context add qmd://hq-workers "AI worker definitions and skill files."
 
-# Company collections (one per company knowledge base)
+qmd collection add $HQ_ROOT/knowledge --name hq-knowledge --mask "**/*.{md,yaml,yml}"
+qmd context add qmd://hq-knowledge "Shared knowledge bases: methodology, design, testing, security."
+
+qmd collection add $HQ_ROOT/projects --name hq-projects --mask "**/*.{md,json}"
+qmd context add qmd://hq-projects "Project PRDs and documentation."
+
+# {company} collection (if you have a main product repo)
+qmd collection add $HQ_ROOT/repos/private/{company} --name {company} --mask "**/*.{ts,tsx,js,jsx,md,json,yaml,yml,sql,css,prisma}"
+qmd context add qmd://{company} "{company} monorepo description."
+
+# Company collections (one per company)
 # Add each company slug from companies/manifest.yaml:
 for co in personal {your-company-1} {your-company-2}; do
-  qmd collection add $HQ_ROOT/companies/$co/knowledge --name $co --mask "**/*.md"
+  qmd collection add $HQ_ROOT/companies/$co --name $co --mask "**/*.md"
   qmd context add qmd://$co "$co company knowledge base"
 done
 
+qmd update
 qmd embed
 ```

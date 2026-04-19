@@ -16,6 +16,3 @@ When scheduling posts in Post-Bridge, images cannot be added inline. Use the 2-s
 
 PATCH works on scheduled posts for updating caption and media. PUT does not exist. De-duplicate uploads when multiple posts share the same image file.
 
-## Rationale
-
-Discovered during {product} batch scheduling — 56 posts were created text-only, then images had to be attached via PATCH. Raw URLs in the `media` array silently fail.

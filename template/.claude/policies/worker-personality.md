@@ -46,10 +46,3 @@ for any worker in a quality, review, or gating role:
 - Builder workers (frontend-dev, backend-dev) — need constructive posture
 - Research workers (analyst, trend) — need neutral observation
 
-## Rationale
-
-Models have a default optimism bias — they prefer to report success over failure. Without
-explicit adversarial framing, QA agents consistently under-report issues. The negative
-experience memory pattern (from agency-agents repo) counteracts this by giving the agent
-a narrative reason to be skeptical, which persists through the entire interaction more
-reliably than rules alone.

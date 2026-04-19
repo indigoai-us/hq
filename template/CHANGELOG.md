@@ -1,5 +1,163 @@
 # Changelog
 
+## [11.1.1] — 2026-04-16
+
+### Headline
+Orchestrator + core-command patch. `/run-project` inline mode hardened around context preservation — each story now executes in a single per-story `Task` sub-agent with a strict JSON return contract, keeping raw worker output out of the parent session (gains ~300-500 tokens/story vs. several thousand under the old per-worker-inline model). `run-project.sh` hardened with worktree auto-create, builder phase-state heartbeats, cross-PRD deps, monitor-window keystroke-race fix, and a `validate_git_state()` conflict-marker guard that refuses to auto-commit unresolved merge artifacts. `/prd` renamed to `/plan` (compat alias keeps `/prd` working as a deprecation stub). Default model pinned to `claude-opus-4-7` (Opus 4.7 standard 200K — not the 1M variant).
+
+### Changed
+- `/run-project` (`.claude/commands/run-project.md`) — inline mode switched to a **per-story Task sub-agent** isolation model. Added `Task` to `allowed-tools`. The parent session performs only lightweight orchestration (announce, branch setup, Linear sync) and delegates the full worker pipeline to a fresh `general-purpose` Task sub-agent per story; the sub-agent runs `/execute-task` internally (which spawns the usual nested per-worker sub-agents) and returns a compact JSON summary. Regression gates now run in a one-shot Task sub-agent so raw test output never enters the parent context. Documentation references updated from `/prd` to `/plan`.
+- Default model pinned to `claude-opus-4-7` in `.claude/settings.json` (top-level `"model"` key). `CLAUDE_CODE_SUBAGENT_MODEL=opus` alias unchanged.
+
+### Fixed — Orchestrator (`scripts/run-project.sh` + `.claude/scripts/run-project.sh`)
+- Auto-create worktree directory and `cd` into it before invoking the builder (previously failed when target dir didn't exist or session started outside it).
+- Codex builder phase-state heartbeats — surface progress to the monitor instead of silent multi-minute gaps.
+- Cross-PRD dependency resolution + worktree anchoring — sibling PRDs in the same repo now share a single worktree instead of fighting for the lockfile.
+- Audit vocabulary normalized across log lines.
+- **Conflict-marker guard in `validate_git_state()`** — refuses auto-commit when staged files contain unresolved merge markers (`^(<{7}|={7}|>{7})([^<=>]|$)`), resets the index, and pauses the run for manual cleanup. Prevents the failure mode where a sub-agent's surgical edit triggers a `git add -A` sweep that ingests pre-existing conflict garbage into the branch.
+
+### Added
+- **`/plan`** (`.claude/commands/plan.md`) — renamed from `/prd`. Both invocations work in 11.1.1; `/prd` is now a thin redirect stub.
+- **3 orchestrator policies** (all `scope: command`, `enforcement: hard`):
+  - `run-project-conflict-marker-guard.md` — codifies the guard above
+  - `run-project-monitor-spawn-keystroke-race.md` — monitor window must spawn via `.command` file (not AppleScript `do script`) to dodge keystroke races
+  - `run-project-worktree-heal-orphan.md` — `ensure_worktree` must heal orphan target directories (regenerable artifacts only) before `git worktree add`
+- **3 cross-cutting policies** (`scope: global`/`command`, `public: true`):
+  - `hq-cmd-handoff-must-complete.md` — `/handoff` must complete its full sequence (commit → write thread → update INDEX) before returning
+  - `git-add-explicit-paths-no-drift.md` — never `git add -A`/`.` for orchestrated work; stage explicit paths
+  - `reskin-separate-orchestration-from-visual.md` — reskin work must split orchestration changes from pure visual changes
+- **Auto-deploy skill + directive** (merged from `main` via PR #76) — `skills/deploy/`, `policies/auto-deploy-on-create.md`, and `CLAUDE.md` Auto-Deploy section. When a web-servable artifact is created, it is deployed to `hq-deploy` and the link is presented — non-blocking, skipped for Vercel-managed projects, backend services, broken builds, or projects with `deploy: false` in prd.json.
+
+### Migrating to v11.1.1
+The `/prd → /plan` rename is **backward-compatible**. The shipped `/prd` is now a redirect stub that prints a deprecation notice and points consumers at `/plan`. Update any scripts, docs, or muscle memory that invoke `/prd` to use `/plan` instead. The stub will be removed in a future minor release.
+
+The default model bump pins both Claude Code's main loop and `CLAUDE_CODE_SUBAGENT_MODEL` alias resolution to `claude-opus-4-7` (the standard 200K-context Opus 4.7 — explicitly NOT the 1M-context variant). If your project requires the 1M-context model, override at the project level via `.claude/settings.json`.
+
+## [11.1.0] — 2026-04-16
+
+### Headline
+qmd sub-collection refactor — the monolithic `hq` collection is split into 4 focused collections (`hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`), cutting indexed files from ~16K to ~1K per collection. Also: `design.md` replaces `.impeccable.md` as the per-repo design context file, 54 policies refreshed, 23 commands updated, `knowledge-pulse` skill added, and design-styles/design-quality knowledge bases synced.
+
+### Added — Knowledge
+- **`knowledge/design-styles/`** — full style pack system with 9 packs, foundations references, `_template/` scaffold, and `registry.yaml`. 52 new files including `PACK-SCHEMA.md`.
+- **`knowledge/design-quality/`** — design quality references (typography, color, spatial, etc.)
+- **`knowledge/hq-core/design-md-spec.md`** — spec for the new `design.md` repo context file
+- **`knowledge/hq-core/insights-spec.md`** — spec for the `workspace/insights/` educational insights system
+- **`knowledge/Ralph/11-team-training-guide.md`** — training guide for the Ralph orchestration pattern
+
+### Added — Skills
+- **`knowledge-pulse`** — lightweight background gardening pass for a company's knowledge base and policies
+
+### Added — Policies (3 new)
+- `run-project-swarm-branch-validation.md` — branch validation for swarm mode
+- `run-project-swarm-merge-conflict-tombstone.md` — merge conflict tombstone handling
+- `vercel-domain-transfer-reissues-verification.md` — domain transfer verification checks
+
+### Removed — Policies (7)
+- `hq-paper-mcp-sequential-agents.md` — company-specific (Paper MCP)
+- `hq-slack-channel-indigo-workspace.md` — company-specific (Indigo workspace)
+- `indigo-hq-app-release.md` — company-specific (Indigo releases)
+- `indigo-signals-mcp-queries.md` — company-specific (Indigo Signals)
+- `paper-flex-column-reorder.md` — product-specific (Paper)
+- `paper-text-width.md` — product-specific (Paper)
+- `paper-text-wrapping.md` — product-specific (Paper)
+
+### Changed
+- **qmd collections** — `setup.sh` now creates 4 sub-collections (`hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`) instead of one monolithic `hq` collection. Dramatically reduces noise in semantic search.
+- **`design.md` replaces `.impeccable.md`** — per-repo design context file renamed. Workers resolve style packs via `knowledge/design-styles/registry.yaml`.
+- **54 policies refreshed** — context-stripped, narrative-cleaned, and re-digested
+- **23 commands updated** — synced from upstream with latest improvements
+- **9 skills updated** — brainstorm, execute-task, handoff, investigate, land, learn, prd, run, startwork
+- **8 hooks refreshed** — all `.sh` files synced from upstream
+- **CLAUDE.md** — updated with qmd sub-collection docs, `design.md` references, new workers section, insights system
+- **USER-GUIDE.md** — refreshed with current command catalog and workflow examples
+- **`modules/modules.yaml`** — updated collection references
+- **`workers/registry.yaml`** — refreshed worker descriptions
+- **Policy digest** — regenerated with current 187 policies
+
+### Migration
+See migration steps below in `MIGRATION.md` — non-breaking, but `setup.sh` should be re-run to create the new qmd sub-collections.
+
+## [11.0.0] — 2026-04-15
+
+### Headline
+**BREAKING:** Orchestrator externalized. `/run-project` is now a thin router around `scripts/run-project.sh`. Kits pulling this release must ensure the script exists and is executable — inline-run kits will stop working until the script is present. Also: cross-session repo-level active-run coordination, PII-free SessionStart context injection via `inject-local-context.sh`, two-stage context advisories (60% Stop + 75% PreCompact), hook profile system via `HQ_HOOK_PROFILE`, and a desktop bridge health check for the 260 GB leak class.
+
+### Breaking
+- **`/run-project` is a router.** The Ralph loop now lives in `scripts/run-project.sh` (worktree auto-create, per-story heartbeats, cmux monitor, stale PID detection). See `MIGRATION-v11.md` for the exact upgrade steps.
+- **Repo-level active-run coordination.** A second session attempting to Edit/Write/destructive-Bash against a repo that another session's `/run-project` currently owns will be blocked with exit code 2. Emergency bypass: `HQ_IGNORE_ACTIVE_RUNS=1` (audited to `workspace/learnings/active-run-bypasses.jsonl`). Read/Grep/Glob/`git status` always allowed. Composes above the existing story-level `.file-locks.json` without regression.
+
+### Added — Scripts
+- **`scripts/run-project.sh`** — externalized Ralph loop. Worktree auto-create, per-story heartbeats, cmux monitor, stale PID detection.
+- **`scripts/repo-run-registry.sh`** — cross-session repo lock registry at `workspace/orchestrator/active-runs.json`.
+- **`.claude/scripts/monitor-project.sh`** — 552-line TUI refresh with 24-bit color palette, Unicode glyphs, ANSI Shadow banner. Walk-up root resolution is portable across kits.
+
+### Added — Commands
+- **`/land`** — PR → CI → review → merge → prod-monitor pipeline. Promoted from skill-only in v10.10.0.
+
+### Added — Hooks
+- **`check-claude-desktop-bridge-health.sh`** (SessionStart) — dual-signal detector for the 260 GB desktop-bridge memory leak pattern (bridge-state.json zombie entry + main.log leak signature). Advisory-only, always exits 0.
+- **`rewrite-resume-sentinel.sh`** (UserPromptSubmit) — fixes the "No response requested" failure mode that can occur when resuming compacted sessions.
+- **Settings**: new `UserPromptSubmit` event block wired to `rewrite-resume-sentinel.sh`; `check-claude-desktop-bridge-health.sh` added to `SessionStart`.
+
+### Added — Policies
+- `credential-access-protocol.md` — frontmatter audit trail (`learned_from` + `source`).
+- `claude-desktop-bridge-state-zombie.md` — full policy for the 260 GB leak class. Pairs with the new `check-claude-desktop-bridge-health.sh` hook.
+
+### Changed
+- **`context-warning-60.sh`** moved from `SessionStart` → `Stop` in `settings.json`. The advisory fires after assistant turns when transcript crosses ~60% of the window — it's a Stop-event signal, not a session-start signal. Previously latent bug: it never fired on Stop.
+- **`load-policies-for-session.sh`** — `HQ_ROOT` fallback now uses `${CLAUDE_PROJECT_DIR:-$HOME/HQ}` instead of a hardcoded tilde path. Works correctly in any Claude Code kit, not just the author's machine.
+- **`inject-local-context.sh`** — 4-line filter that strips `{company}`/`{product}` placeholder noise from the worker count so a fresh kit with template-only companies displays a clean SessionStart banner.
+- **`hook-gate.sh`** — 2-line add: `rewrite-resume-sentinel` recognized in `standard` + `strict` profiles.
+- **`run-pipeline.sh`** — product-specific PR-creation branch stripped. All repos now use the standard `gh pr create` path.
+- **15 commands refreshed**: `brainstorm`, `document-release`, `execute-task`, `harness-audit`, `land`, `learn`, `personal-interview`, `prd`, `quality-gate`, `retro`, `review`, `setup`, `strategize`, `tdd`, `update-hq`.
+- **`prd/SKILL.md`** — **PRD v2 deep interview.** Three-phase upgrade: Phase 1 adds research subagents (codebase scan, HQ context scan, repo deep-read → `research/` directory). Phase 2 replaces 7-batch shorthand with one-at-a-time sequential questioning via `AskUserQuestion` (15-question bank across Strategic/Architecture/Quality tiers, pushback on vague answers, anti-sycophancy, smart-skip from research). Phase 3 adds adversarial spec review subagent (5 dimensions, max 3 fix-review iterations). Also includes Step 8.5 "Resolve Open Questions (Decision Mode)."
+- **`prd-minimum-questions.md`** (new policy) — hard enforcement: minimum 10 questions spanning ≥2 tiers before PRD generation.
+- **`learn/SKILL.md`** — `/remember` → `/learn --hard` refresh, new `public:` policy frontmatter, workflow self-check step.
+
+### Migration
+See `MIGRATION-v11.md` at the template root for the step-by-step upgrade (pull scripts, `chmod +x`, install required hooks, verify `run-project.sh --help`).
+
+## [10.10.0] — 2026-04-13
+
+### Headline
+Command/skill cleanup: 38 → 30 commands, 18 → 16 skills. Pack frontmatter tags for organizational grouping. `/remember` merged into `/learn --hard`. `/land` promoted to core command.
+
+### Removed — Commands (7)
+- `dashboard` — Goals command is sufficient
+- `model-route` — Moot with Opus 4.6 universal default
+- `recover-session` — Handoff is reliable enough
+- `remember` — Merged into `/learn --hard`
+- `search` — Agents call qmd directly
+- `search-reindex` — Triggered by hooks/scripts, not user-facing
+- `understand-project` — Redundant with brainstorm
+
+### Removed — Skills (2)
+- `search` — Agents use qmd directly
+- `agent-browser` — Relocated to qa-tester worker
+
+### Added
+- **`/land` command** — promoted from skill-only; lands PRs through CI → review → merge → production pipeline
+- **Pack frontmatter tags** — `pack: dev` on quality-gate, review, retro, document-release, tdd; `pack: maintenance` on harness-audit
+- **`ascii-artist` worker** — dedicated worker for ASCII block-art banner generation
+- **14 new policies** synced from upstream
+
+### Changed
+- **`/learn`** absorbs `/remember` — use `--hard` or `--enforce` flag for hard-enforcement rules
+- **10 skills updated** — ascii-graphic, brainstorm, execute-task, handoff, land, learn, prd, run, run-project, startwork
+- **183 policies synced** (up from 162) — scope-filtered, context-stripped
+- **CLAUDE.md** — updated command count (30), removed stale `/remember` references
+- **Registry** — added ascii-artist worker entry
+
+### Migration
+- Replace `/remember` with `/learn --hard` in any custom scripts or workflows
+- Removed commands will show "command not found" — no action needed unless referenced in custom automation
+
+## [10.9.0] — 2026-04-13
+
+### Changed
+- Version bump (infrastructure release)
+
 ## [10.8.0] — 2026-04-11
 
 ### Headline
@@ -85,7 +243,7 @@ Performance Audit Complete — ~50% session-start context reduction via pre-buil
 ### Performance
 - HQ root session start: **−53% context** (37.2 KB → 17.3 KB)
 - personal cwd: **−58% context** (45.5 KB → 19.1 KB)
-- liverecover-class cwd: **−61% context** (58.7 KB → 22.8 KB)
+- {company}-class cwd: **−61% context** (58.7 KB → 22.8 KB)
 - vyg-class cwd: **−62% context** (67.1 KB → 25.5 KB)
 
 ### Removed

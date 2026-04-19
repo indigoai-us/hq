@@ -64,7 +64,7 @@ If project has code:
 Good project folders:
 - `projects/sol-reader/` - iPad app
 - `projects/{company}-capital/` - Token launch
-- `projects/{company}-site/` - Website migration
+- `projects/liverecover-site/` - Website migration
 
 Not projects (too small):
 - Fix a typo in docs

@@ -18,6 +18,3 @@ Never use Glob to find `prd.json`, `worker.yaml`, or discover project/company/wo
 
 Glob is only for listing files within a known, scoped directory (e.g. `Glob pattern="*.ts" path="repos/private/{product}/apps/"`).
 
-## Rationale
-
-HQ root contains 1.38M+ files via symlinked repos. Glob-based discovery causes timeouts, kills sibling tool calls, and teaches the wrong pattern. Index files (`manifest.yaml`, `registry.yaml`) and `qmd search` are faster and more reliable.

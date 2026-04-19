@@ -47,7 +47,7 @@ Max 80 chars per description. If no metadata extractable, use filename.
 ### Core (10 directories)
 
 1. `projects/`
-2. `companies/{company}/knowledge/`
+2. `companies/liverecover/knowledge/`
 3. `companies/{company}/knowledge/`
 4. `companies/{company}/knowledge/`
 5. `knowledge/public/`

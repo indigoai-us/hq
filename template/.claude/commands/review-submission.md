@@ -42,7 +42,7 @@ If empty: `Error: Not authenticated. Run: hq login`
 ```bash
 TEAM_ID=$(cat ~/hq/companies/{slug}/team.json | python3 -c "import sys,json; print(json.load(sys.stdin)['team_id'])")
 
-RESPONSE=$(curl -s -X GET "https://hq.indigoai.com/api/teams/${TEAM_ID}/submissions" \
+RESPONSE=$(curl -s -X GET "https://hq.{company}ai.com/api/teams/${TEAM_ID}/submissions" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Accept: application/json")
 ```

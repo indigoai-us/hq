@@ -22,3 +22,4 @@ When `run-project.sh` swarm mode reports "passes not set" despite a sub-agent ex
    git cherry-pick <commit-sha>
    ```
 5. Only after checking worktree history should work be considered lost and re-executed
+
