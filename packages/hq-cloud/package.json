@@ -4,6 +4,9 @@
   "description": "HQ by Indigo cloud sync engine — bidirectional S3 sync for mobile access",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "hq-sync-runner": "dist/bin/sync-runner.js"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

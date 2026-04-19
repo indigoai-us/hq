@@ -83,7 +83,7 @@ export type {
 
 // CLI commands
 export { share, sync } from "./cli/index.js";
-export type { ShareOptions, ShareResult, SyncOptions, SyncResult } from "./cli/index.js";
+export type { ShareOptions, ShareResult, SyncOptions, SyncResult, SyncProgressEvent } from "./cli/index.js";
 export { resolveConflict, showDiff } from "./cli/index.js";
 export type { ConflictStrategy, ConflictInfo, ConflictResolution } from "./cli/index.js";
 

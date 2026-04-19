@@ -15,6 +15,21 @@ import { createIgnoreFilter } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
 
+/**
+ * Per-file events emitted by `sync()` as it progresses.
+ *
+ * When `SyncOptions.onEvent` is set, these events are delivered to the caller
+ * in place of the default human-readable `console.log` / `console.error`
+ * output. This is the seam that lets `hq-sync-runner` stream ndjson to the
+ * AppBar menubar without the engine knowing anything about ndjson (ADR-0001).
+ *
+ * The human CLI (`hq sync`) leaves `onEvent` undefined and falls through to
+ * `defaultConsoleLogger` below, which preserves the existing tty output.
+ */
+export type SyncProgressEvent =
+  | { type: "progress"; path: string; bytes: number; message?: string }
+  | { type: "error"; path: string; message: string };
+
 export interface SyncOptions {
   /** Company slug or UID (defaults to active company from config) */
   company?: string;
@@ -24,6 +39,13 @@ export interface SyncOptions {
   vaultConfig: VaultServiceConfig;
   /** HQ root directory */
   hqRoot: string;
+  /**
+   * Per-file event callback. When present, suppresses the default
+   * `console.log`/`console.error` human output — the caller is expected to
+   * render events themselves (e.g. emit ndjson to stdout). When absent, the
+   * default human logger is used. See `SyncProgressEvent`.
+   */
+  onEvent?: (event: SyncProgressEvent) => void;
 }
 
 export interface SyncResult {
@@ -39,6 +61,7 @@ export interface SyncResult {
  */
 export async function sync(options: SyncOptions): Promise<SyncResult> {
   const { company, onConflict, vaultConfig, hqRoot } = options;
+  const emit = options.onEvent ?? defaultConsoleLogger;
 
   // Resolve company
   const companyRef = company ?? resolveActiveCompany(hqRoot);
@@ -129,11 +152,12 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
       // Attach message from journal entry if present
       const remoteJournalMessage = (journalEntry as { message?: string } | undefined)?.message;
-      if (remoteJournalMessage) {
-        console.log(`  ✓ ${remoteFile.key} — "${remoteJournalMessage}"`);
-      } else {
-        console.log(`  ✓ ${remoteFile.key}`);
-      }
+      emit({
+        type: "progress",
+        path: remoteFile.key,
+        bytes: stat.size,
+        ...(remoteJournalMessage ? { message: remoteJournalMessage } : {}),
+      });
 
       filesDownloaded++;
       bytesDownloaded += stat.size;
@@ -143,9 +167,11 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
       if (isAccessDenied(err)) {
         filesSkipped++;
       } else {
-        console.error(
-          `  ✗ ${remoteFile.key} — ${err instanceof Error ? err.message : err}`,
-        );
+        emit({
+          type: "error",
+          path: remoteFile.key,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   }
@@ -179,4 +205,21 @@ function isAccessDenied(err: unknown): boolean {
     return err.name === "AccessDenied" || err.name === "Forbidden";
   }
   return false;
+}
+
+/**
+ * Default human-readable event rendering. Preserves the exact output format
+ * that `hq sync` emitted before SyncProgressEvent was introduced, so callers
+ * without an `onEvent` see no behavioral change.
+ */
+function defaultConsoleLogger(event: SyncProgressEvent): void {
+  if (event.type === "progress") {
+    if (event.message) {
+      console.log(`  ✓ ${event.path} — "${event.message}"`);
+    } else {
+      console.log(`  ✓ ${event.path}`);
+    }
+  } else if (event.type === "error") {
+    console.error(`  ✗ ${event.path} — ${event.message}`);
+  }
 }
