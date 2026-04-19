@@ -8,7 +8,7 @@ public: true
 version: 1
 created: 2026-04-16
 updated: 2026-04-16
-source: starter-kit
+source: session-learning
 ---
 
 ## Rule
@@ -19,3 +19,4 @@ When adapting a reference implementation (another site, app, or codebase) into a
 - **Visual vocabulary to replace** — palette, geometry, particle effects, texture, typography, shaders. These express the target brand, not the reference.
 
 Record the split as a translation table in the plan/PRD (columns: "Reference element" → "Our execution"). Acceptance criteria then reference the orchestration pattern by name and the visual treatment by token, making it legible which decisions are borrowed vs. owned.
+

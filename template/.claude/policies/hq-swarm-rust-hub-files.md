@@ -2,7 +2,7 @@
 id: hq-swarm-rust-hub-files
 title: Serialize swarm stories that touch Rust hub files
 scope: command
-trigger: /run-project --swarm with Tauri/Rust projects, /prd for Tauri projects
+trigger: /run-project --swarm with Tauri/Rust projects, /plan for Tauri projects
 enforcement: soft
 version: 1
 created: 2026-03-26

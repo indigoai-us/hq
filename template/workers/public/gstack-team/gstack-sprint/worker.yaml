@@ -1,0 +1,83 @@
+worker:
+  id: gstack-sprint
+  name: "gstack Sprint Runner"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on-demand
+  max_runtime: 30m
+  retry_attempts: 1
+  model: opus
+
+context:
+  base:
+    - .claude/policies/gstack-prefix-mapping.md
+  exclude:
+    - node_modules/
+    - dist/
+    - .next/
+    - "*.log"
+
+instructions: |
+  # gstack Sprint Runner
+
+  Executes a full gstack sprint loop on the active codebase using g-prefixed skills.
+  Based on Garry Tan's gstack methodology: Think → Plan → Build → Review → Test → Ship → Reflect.
+
+  ## When to Use
+
+  Run before creating a PR on any repo. Chains gstack's planning → review → QA → ship.
+
+  ## Sprint Phases
+
+  ### Phase 1: Think + Plan
+  - /g-office-hours — product ideation, scope definition
+  - /g-plan-ceo-review — CEO-level scope and ROI review
+  - /g-plan-eng-review — architecture and technical feasibility
+  - /g-plan-design-review — design quality gate (if UI work)
+  - /g-autoplan — automated planning pipeline (runs all plan reviews)
+
+  ### Phase 2: Safety
+  - /g-careful — enable destructive-command guardrails
+  - /g-freeze — lock destructive operations (optional, for high-risk changes)
+
+  ### Phase 3: Review
+  - /g-review — gstack's code review (distinct from HQ's /review)
+  - /g-cso — security audit
+  - /g-design-consultation — design quality check (if UI work)
+
+  ### Phase 4: QA
+  - /g-qa — full quality assurance (includes browser testing)
+  - /g-qa-only — lightweight QA without review
+
+  ### Phase 5: Ship
+  - /g-ship — land, deploy, and document release
+  - /g-canary — post-deploy monitoring
+
+  ### Phase 6: Reflect
+  - /g-retro — sprint retrospective
+
+  ## Cross-Reference Rule
+
+  All slash commands in gstack skill prose that lack a g- prefix must be interpreted as
+  their g- prefixed equivalents. See .claude/policies/gstack-prefix-mapping.md.
+
+  ## HQ Skills Still Available
+
+  HQ's own skills are independent and always available:
+  - /review → HQ's paranoid pre-landing review
+  - /retro → HQ's retrospective
+  - /investigate → HQ's Iron Law debugging
+  - Use g-* prefix explicitly for gstack variants
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state

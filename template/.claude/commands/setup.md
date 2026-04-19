@@ -256,7 +256,7 @@ See "Knowledge Repos" in CLAUDE.md for details.
 Next steps:
 1. Run /personal-interview — deep interview to build your voice + profile
 2. Run /newworker — create your first worker
-3. Run /prd — plan your first project
+3. Run /plan — plan your first project
 4. Run /search <topic> — find relevant knowledge in HQ
 ```
 

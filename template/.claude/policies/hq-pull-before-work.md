@@ -2,6 +2,7 @@
 id: hq-pull-before-work
 title: Always pull latest main before starting repo work
 scope: global
+public: true
 trigger: Starting any coding session on a repo
 enforcement: hard
 version: 1

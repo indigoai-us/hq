@@ -24,7 +24,7 @@ set -euo pipefail
 #   --tmux              Launch in tmux session with Remote Control
 # =============================================================================
 
-HQ_ROOT="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+HQ_ROOT="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 ORCH_DIR="$HQ_ROOT/workspace/orchestrator"
 REGRESSION_INTERVAL=3
@@ -513,7 +513,7 @@ PRD_PATH=$(resolve_prd_path "$PROJECT") || true
 
 if [[ -z "$PRD_PATH" || ! -f "$PRD_PATH" ]]; then
   echo -e "${RED}ERROR: prd.json not found for '$PROJECT'.${NC}"
-  echo "Run /prd $PROJECT to generate one."
+  echo "Run /plan $PROJECT to generate one."
   exit 1
 fi
 

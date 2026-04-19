@@ -113,7 +113,7 @@ Total score: **70 points** (10 points × 7 categories). Grade: A (63-70), B (56-
 - `qmd` is installed
 - Number of qmd collections (target: 8+)
 - Index freshness (last update <7 days ago)
-- Collections: hq-infra, hq-workers, hq-knowledge, hq-projects, {company}, {company}, {company}, personal minimum
+- Collections: hq-infra, hq-workers, hq-knowledge, hq-projects, {product}, {product}, {company}, personal minimum
 
 **Scoring:**
 - qmd installed + 8+ collections + index <7 days old = 10 points

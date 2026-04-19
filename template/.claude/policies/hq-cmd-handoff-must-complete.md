@@ -8,7 +8,7 @@ public: true
 version: 2
 created: 2026-04-16
 updated: 2026-04-16
-source: starter-kit
+source: user-correction
 ---
 
 ## Rule
@@ -25,3 +25,4 @@ Specifically at Step 7 (write `workspace/threads/handoff.json`):
 4. Only after verification passes may the skill proceed to Step 8 and report "Handoff ready."
 
 If any step (commit, INDEX update, qmd reindex launch, handoff.json write) cannot complete, surface the failure to the user in the Step 8 report — do not hide it.
+

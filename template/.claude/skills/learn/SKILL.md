@@ -267,6 +267,7 @@ version: 1
 created: {YYYY-MM-DD}
 updated: {YYYY-MM-DD}
 source: {back-pressure-failure|user-correction|success-pattern|task-completion|hook-observation}
+# applies_to: [vercel, clerk]   # optional — stack-specific filter; see mapping below
 ---
 
 ## Rule
@@ -283,23 +284,14 @@ source: {back-pressure-failure|user-correction|success-pattern|task-completion|h
 - `severity: critical` → `enforcement: hard`
 - Everything else → `enforcement: soft`
 
-**`public:` field mapping (controls publish-kit eligibility):**
-- Default: `public: false` for every new policy regardless of scope
-- `public: true` ONLY when ALL of the following hold:
-  - Scope is `global` or `command` (company/repo/worker scope is always private)
-  - Rule is universally applicable — no hardcoded tool names, workspace IDs, account IDs, vendor names, or user handles
-  - Rationale contains no incident-specific narrative (or would be equivalent after `## Rationale` is stripped — since publish-kit strips it unconditionally)
-  - User invoked `/learn --public` explicitly, OR rule was generated from a `user-correction` with clearly universal language
-- When uncertain → default to `public: false`. Private is the safe option; the owner can promote later via explicit `/learn --public` or a manual edit
-- `public: false` means the policy still loads normally in HQ (no runtime behavior change) — it just blocks publish-kit from syncing it to the template
-
-**Workflow-specificity self-check before setting `public: true`:** ask these questions. Any "yes" forces `public: false`.
-
-1. Does the rule name a specific Slack workspace, team ID, channel, or user?
-2. Does the rule name a specific Vercel project ID, GitHub repo, or company slug?
-3. Does the rule reference a specific MCP server instance (e.g. `slack MCP voyage workspace`)?
-4. Does the rule describe the owner's personal workflow sequence (e.g. "after I run /publish-kit, always X")?
-5. Would a stranger installing HQ for the first time find this rule confusing, irrelevant, or impossible to satisfy without their own equivalent setup?
+**`applies_to:` field mapping (stack applicability filter):**
+- Include the `applies_to:` line ONLY when the rule is *wrong or useless* without a specific service. Tag vocabulary must match the `services:` enum used in `companies/manifest.yaml` plus inferred `vercel` / `aws`. Examples:
+  - Rule about Vercel env-var newlines → `applies_to: [vercel]`
+  - Rule spanning two stacks (e.g. Clerk edge runtime on Vercel) → `applies_to: [clerk, vercel]`
+  - Generic git/bash/HQ hygiene rule, or a rule that merely *mentions* Vercel as one example → omit the field entirely (loads everywhere)
+- OR semantics: `[clerk, vercel]` means "load if workspace has clerk OR vercel." Omit the field for the 89%+ cross-cutting case.
+- Lint with `bash scripts/validate-policy-tags.sh` after write (it fails on unknown tags — prevents typos that would silently filter everywhere).
+- Full spec: `knowledge/public/hq-core/policies-spec.md` → "Applicability Tagging (`applies_to`)" section.
 
 **Slug generation:** lowercase, hyphens, from rule keywords. Prefix: `{co}-` for company, `{repo}-` for repo, `hq-cmd-{name}-` for command, `hq-` for global.
 
@@ -473,7 +465,6 @@ If multiple rules/insights were extracted, report each.
 ## Rules
 
 - **Policy files first** — always create structured policy files for company/repo/global/command scoped rules. Worker.yaml injection only for worker-specific learnings
-- **`public: false` by default** — every new policy ships with `public: false` in frontmatter. Only flip to `public: true` when the rule passes the workflow-specificity self-check (5 questions in Step 5) AND the user invoked `/learn --public` OR the rule is a universal user-correction. When in doubt, stay private — publish-kit won't sync private policies to the template
 - **Scan before create** — always check existing policies for updates before creating new files (Step 4.5)
 - **Never inject empty/trivial rules** — "task completed successfully" is not a learning
 - **Dedup is mandatory** — always check before injecting (qmd first, Grep fallback)

@@ -11,7 +11,7 @@ Run the `/brainstorm` skill to think through a problem before committing to a PR
 
 **Input:** $ARGUMENTS
 
-**Pipeline:** `/idea` → **`/brainstorm`** → `/prd` → `/run-project`
+**Pipeline:** `/idea` → **`/brainstorm`** → `/plan` → `/run-project`
 
 ## Steps
 
@@ -22,6 +22,6 @@ Run the `/brainstorm` skill to think through a problem before committing to a PR
 
 ## After Brainstorm
 
-- Promote to PRD: `/prd {co} {slug}` (pre-populates interview from brainstorm.md)
+- Promote to PRD: `/plan {co} {slug}` (pre-populates interview from brainstorm.md)
 - Refine: edit `brainstorm.md` directly before promoting
 - Park: leave as exploring on the board

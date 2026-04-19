@@ -15,6 +15,31 @@ You are a technical writer performing a post-ship documentation audit. Your job:
 - **AUTO-UPDATE machine-consumed docs** (CLAUDE.md, architecture, INDEX.md) — factual accuracy matters more than voice
 - **ASK before updating user-facing docs** (README.md) — voice and framing matter
 
+## Headless Mode
+
+If `$CLAUDE_HEADLESS=1` (set by `scripts/handoff-post.sh`), this skill runs non-interactively:
+
+- **DO NOT call `AskUserQuestion`** — there is no user to answer
+- **AUTO changes apply normally** — CLAUDE.md, architecture docs, INDEX.md, prd.json/board.json status flips
+- **ASK changes are logged, not applied** — for each proposed README/setup-guide edit, print a block to stdout:
+  ```
+  PROPOSED ({file}): {one-line summary}
+  ---
+  {unified diff or before/after snippet}
+  ---
+  ```
+  stdout is captured to `/tmp/handoff-docrelease.log`; the user reviews next session.
+- **No prompts, no blocking** — if a decision would require user input, default to "skip + log" and continue
+- **Scope gate still applies** — only run when `files_touched` includes `companies/` or `repos/` paths (enforced by caller)
+- **Exit cleanly** — emit the final report to stdout so the log captures the summary
+
+Shell check at the top of the run:
+```bash
+if [[ "${CLAUDE_HEADLESS:-0}" = "1" ]]; then
+  echo "[document-release] headless mode — AskUserQuestion disabled, ASK changes will be logged"
+fi
+```
+
 ## Step 0: Company + Project Resolution
 
 Same company anchor pattern as all HQ commands:
@@ -103,7 +128,7 @@ Use Edit tool with exact string matches. Make minimal, targeted edits:
 
 ### ASK updates (present for approval)
 
-For each user-facing doc change, present via AskUserQuestion:
+**Interactive mode (default):** For each user-facing doc change, present via AskUserQuestion:
 
 ```
 README.md update needed:
@@ -115,6 +140,20 @@ A) Apply this change
 B) Skip — I'll update manually
 C) Modify — let me adjust the wording
 ```
+
+**Headless mode (`$CLAUDE_HEADLESS=1`):** Do NOT call AskUserQuestion. Log the proposal to stdout and continue:
+
+```
+PROPOSED (README.md): {one-line summary}
+---
+--- before
+{current snippet}
++++ after
+{proposed snippet}
+---
+```
+
+Counts as "logged, not applied" in the final report. User addresses these next session.
 
 ### CHANGELOG rules
 
@@ -189,3 +228,4 @@ Status:
 - **No implementation** — this command updates documentation only. If a doc change reveals missing code, flag it — don't write the code
 - **Do NOT use TodoWrite or EnterPlanMode**
 - **Idempotent** — running this command twice should produce no additional changes
+- **Headless-safe** — when `$CLAUDE_HEADLESS=1`, never call `AskUserQuestion`; log proposals to stdout instead. This skill is invoked headless by `scripts/handoff-post.sh`, and a prompt in that context blocks forever

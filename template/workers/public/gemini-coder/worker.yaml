@@ -1,0 +1,168 @@
+worker:
+  id: gemini-coder
+  name: "Gemini Coder"
+  description: "Code generation and implementation via Google Gemini CLI — scaffolding, features, refactoring with 1M token context"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 20m
+  retry_attempts: 2
+  spawn_method: task_tool
+  model: sonnet
+
+context:
+  base:
+    - workers/public/gemini-coder/skills/
+    - knowledge/public/gemini-cli/
+  dynamic:
+    - pattern: "{target_repo}/src/"
+      when: always
+    - pattern: "{target_repo}/package.json"
+      when: always
+    - pattern: "{target_repo}/tsconfig.json"
+      when: always
+    - pattern: "{target_repo}/GEMINI.md"
+      when: exists
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+    - "*.lock"
+
+skills:
+  - id: implement-feature
+    file: skills/implement-feature.md
+  - id: write-function
+    file: skills/write-function.md
+  - id: scaffold
+    file: skills/scaffold.md
+  - id: refactor
+    file: skills/refactor.md
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: lint
+      command: npm run lint
+    - check: test
+      command: npm test
+  approval_required: true
+  human_checkpoints:
+    - before_feature_implementation
+    - on_breaking_changes
+
+cli:
+  binary: gemini
+  install: npm install -g @google/gemini-cli
+  env:
+    - GEMINI_API_KEY
+  commands:
+    - gemini -p "{prompt}" --model pro --sandbox --output-format text
+    - gemini -p "{prompt}" --model pro --approval-mode yolo --output-format text
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+reporting:
+  on_complete:
+    - log_generation
+    - extract_learnings
+  metrics:
+    - generation_time
+    - files_created
+    - back_pressure_pass_rate
+
+instructions: |
+  # Gemini Coder
+
+  Code generation and implementation using Google Gemini CLI (`gemini`).
+  Leverages Gemini's 1M token context window for large-codebase-aware generation.
+
+  ## Prerequisites
+
+  - Gemini CLI installed: `npm install -g @google/gemini-cli`
+  - Auth: `GEMINI_API_KEY` env var (from `settings/gemini/credentials.env`)
+  - Rate limits: 60 req/min, 1000/day (free tier)
+
+  ## When to Use
+
+  - **implement-feature**: Multi-step feature from a story/spec
+  - **write-function**: Single function generation with types
+  - **scaffold**: Project/module scaffolding (dirs, boilerplate, configs)
+  - **refactor**: Code restructuring without behavior change
+
+  Use gemini-coder when:
+  - Task benefits from Gemini's 1M context (large codebases, many-file changes)
+  - You want a second-model perspective (diversity from Claude-generated code)
+  - Sandbox execution is preferred (isolated from main session)
+  - Google Search grounding is useful (latest API docs, library patterns)
+
+  Do NOT use gemini-coder when:
+  - Task is code review (use gemini-reviewer)
+  - Task is frontend-specific (use gemini-frontend)
+  - Task requires deep HQ context (use backend-dev/frontend-dev)
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | implement-feature | Multi-step: analyze story -> generate -> back-pressure -> iterate |
+  | write-function | Single function with types, JSDoc, and tests |
+  | scaffold | Project/module scaffolding with directory structure |
+  | refactor | Restructure code: extract, rename, reorganize without behavior change |
+
+  ## CLI Usage
+
+  ```bash
+  /run gemini-coder implement-feature --story US-001 --repo repos/private/{product}
+  /run gemini-coder write-function --name "rateLimiter" --spec "sliding window, Redis-backed" --cwd repos/private/{product}
+  /run gemini-coder scaffold --template "next-api-route" --name "webhooks" --cwd repos/private/app
+  /run gemini-coder refactor --goal "extract auth middleware" --files src/api/*.ts --cwd repos/private/{product}
+  ```
+
+  ## Invocation Patterns
+
+  One-shot generation (sandbox for safety):
+  ```bash
+  cd {cwd} && GEMINI_API_KEY=$KEY \
+    gemini -p "{prompt}" --model pro --sandbox --output-format text 2>&1
+  ```
+
+  Piped context:
+  ```bash
+  cd {cwd} && cat {context_files} | GEMINI_API_KEY=$KEY \
+    gemini -p "Given this context, {task}" --model pro --sandbox 2>&1
+  ```
+
+  Full-auto with tool use (reads/writes files):
+  ```bash
+  cd {cwd} && GEMINI_API_KEY=$KEY \
+    gemini -p "{prompt}" --model pro --approval-mode yolo --output-format text 2>&1
+  ```
+
+  ## Patterns
+
+  - Always use `--sandbox` for generation unless the task requires writing files
+  - Use `--approval-mode yolo` only when back-pressure checks will validate output
+  - Use `--output-format json` when you need structured results to parse
+  - Pipe relevant context files for better output quality
+  - If target repo has GEMINI.md, gemini CLI loads it automatically
+  - Run back-pressure (typecheck, lint, test) after every generation
+  - On back-pressure failure, re-invoke with error context (max 2 retries)
+
+  ## Human-in-the-loop
+
+  - Show generation plan before executing
+  - Surface breaking changes or new dependencies
+  - Get approval before writing to repo

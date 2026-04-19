@@ -2,7 +2,7 @@
 # monitor-project.sh — single-project dashboard for run-project.sh orchestrator
 #
 # Reads workspace/orchestrator/{project}/{state.json,executions/*.json,progress.txt}
-# and renders an HQ/Indigo-branded TUI widget.
+# and renders an HQ/{company}-branded TUI widget.
 #
 # Usage:
 #   monitor-project.sh <project>              # one-shot render
@@ -52,16 +52,16 @@ if [[ $PLAIN -eq 1 ]] || [[ ! -t 1 && $WATCH -eq 0 ]]; then
   GLYPH_OK="v"; GLYPH_RUN="*"; GLYPH_WAIT="o"; GLYPH_FAIL="x"
   BANNER_MODE="plain"
 elif [[ "${COLORTERM:-}" == "truecolor" || "${COLORTERM:-}" == "24bit" ]]; then
-  # Indigo Midnight (24-bit) — sourced from .claude/skills/ascii-graphic/SKILL.md
+  # {company} Midnight (24-bit) — sourced from .claude/skills/ascii-graphic/SKILL.md
   C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_BOLD=$'\033[1m'
-  C_FG=$'\033[38;2;123;155;199m'        # #7B9BC7 faded indigo — primary
+  C_FG=$'\033[38;2;123;155;199m'        # #7B9BC7 faded {company} — primary
   C_TEXT=$'\033[38;2;200;210;224m'      # #C8D2E0 — readable body text
   C_MUTED=$'\033[38;2;155;165;184m'     # #9BA5B8 — readable labels (bumped from #5A6270)
   C_SUBTLE=$'\033[38;2;61;67;76m'       # #3D434C — borders only (meant to recede)
   C_OK=$'\033[38;2;143;188;143m'        # Forest accent — success
   C_WARN=$'\033[38;2;196;148;100m'      # Ember accent — warning
   C_ERR=$'\033[38;2;220;90;90m'         # muted red — failure
-  C_LIVE=$'\033[38;2;180;210;240m'      # brighter indigo — active pulse
+  C_LIVE=$'\033[38;2;180;210;240m'      # brighter {company} — active pulse
   TL="╭"; TR="╮"; BL="╰"; BR="╯"; HZ="─"; VT="│"; LT="├"; RT="┤"
   BLK_FULL="█"; BLK_EMPTY="·"
   GLYPH_OK="✓"; GLYPH_RUN="●"; GLYPH_WAIT="◌"; GLYPH_FAIL="✗"
