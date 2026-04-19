@@ -353,4 +353,38 @@ describe("API surface", () => {
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toBe("https://vault.test.example.com/membership/company/cmp_abc/pending");
   });
+
+  it("listMyMemberships hits GET /membership/me and unwraps memberships[]", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        memberships: [
+          { membershipKey: "psn_1#cmp_a", role: "owner", status: "active" },
+          { membershipKey: "psn_1#cmp_b", role: "member", status: "active" },
+        ],
+      }),
+    );
+
+    const memberships = await client.listMyMemberships();
+    expect(memberships).toHaveLength(2);
+    expect(memberships[0].membershipKey).toBe("psn_1#cmp_a");
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://vault.test.example.com/membership/me");
+    expect(init.method).toBe("GET");
+    // No body on GET.
+    expect(init.body).toBeUndefined();
+  });
+
+  it("listMyMemberships returns [] for callers with no person entity (bootstrap case)", async () => {
+    // Server returns 200 + { memberships: [] } rather than 404 when the
+    // caller is signed in but hasn't been provisioned yet. The SDK must
+    // surface an empty array, NOT throw — hq-sync-runner relies on this
+    // to emit `setup-needed` without catching HTTP errors.
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, { memberships: [] }),
+    );
+
+    const memberships = await client.listMyMemberships();
+    expect(memberships).toEqual([]);
+  });
 });

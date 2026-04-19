@@ -218,6 +218,26 @@ export class VaultClient {
     await this.post("/membership/revoke", { membershipKey, companyUid });
   }
 
+  /**
+   * List the caller's own active memberships.
+   *
+   * Server infers the caller's identity from the Cognito JWT `sub` claim and
+   * returns the union of active memberships across every person entity owned
+   * by that sub (orphan-tolerant — prior failed provisioning runs can leave
+   * multiple `prs_*` rows for the same Cognito identity).
+   *
+   * Returns `[]` — NOT a 404 — when the caller has no person entity yet.
+   * This lets `hq-sync-runner` distinguish "signed in but not bootstrapped"
+   * (empty array → emit `setup-needed`) from "auth broken" (throws
+   * VaultAuthError) without catching HTTP errors for flow control.
+   *
+   * Backed by `GET /membership/me` (see hq-pro ADR-0002).
+   */
+  async listMyMemberships(): Promise<Membership[]> {
+    const data = await this.get<{ memberships: Membership[] }>("/membership/me");
+    return data.memberships;
+  }
+
   async listMembersOfCompany(companyUid: string): Promise<Membership[]> {
     const data = await this.get<{ members: Membership[] }>(
       `/membership/company/${encodeURIComponent(companyUid)}`,
