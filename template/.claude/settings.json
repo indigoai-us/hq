@@ -1,5 +1,20 @@
 {
   "outputStyle": "Explanatory",
+  "permissions": {
+    "deny": [
+      "Read(/Users/{your-name}/.ssh/**)",
+      "Read(/Users/{your-name}/.aws/credentials)",
+      "Read(/Users/{your-name}/.aws/config)",
+      "Read(/Users/{your-name}/.gnupg/**)",
+      "Read(/Users/{your-name}/.env)",
+      "Read(/Users/{your-name}/.netrc)",
+      "Read(/Users/{your-name}/.zshrc)",
+      "Read(/Users/{your-name}/.zprofile)",
+      "Read(/Users/{your-name}/.zshenv)",
+      "Read(/Users/{your-name}/.bashrc)",
+      "Read(/Users/{your-name}/.bash_profile)"
+    ]
+  },
   "env": {
     "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
     "MAX_THINKING_TOKENS": "31999",
