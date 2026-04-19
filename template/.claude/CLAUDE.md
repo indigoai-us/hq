@@ -155,6 +155,31 @@ Knowledge folders use three patterns — all valid, none being migrated:
 
 When adding new knowledge: pick pattern 1 for company knowledge that will grow, pattern 2 if you want a shared clone, pattern 3 for small/shared content. Register in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
 
+## Resource Registry
+
+Some companies maintain a **resource registry** — a plain folder inside the company directory (`companies/{co}/registry/`) holding YAML topology files, one per persistent resource (repos, apps, services, databases, infra, packages). The registry is declared by setting `registry: companies/{co}/registry` on the company's entry in `companies/manifest.yaml`.
+
+**Detection:** Check `companies.{co}.registry` in `manifest.yaml`. If set, the company has a registry.
+
+**Before creating** a new repo/app/service/DB, consult the registry first:
+```bash
+yq '.resources[] | "  " + .id + " - " + .name + " (" + .type + ")"' companies/{co}/registry/registry.yaml
+```
+If a matching resource exists, reuse it rather than silently duplicating.
+
+**After creating/renaming/deprecating** a resource, update the registry:
+- Add/edit `companies/{co}/registry/resources/{id}.yaml`
+- Regenerate the index: `cd companies/{co}/registry && bash scripts/generate-index.sh` (or `/sync-registry {co}`)
+
+**Credentials never go in the shared topology** — they live in `companies/{co}/settings/resource-overrides/` (gitignored). The `resources/*.yaml` files carry topology only — no `op://` refs, no API keys, no endpoints.
+
+**Sync across machines** is handled by `hq-sync`, not by git. The registry is not a standalone repo — it's part of the company filesystem and rides the same reconciliation path as everything else under `companies/{co}/`.
+
+**Skill:** `.claude/skills/registry/SKILL.md` — full protocol (detect, list, pre-flight, update, deprecate, bootstrap).
+**Bootstrap templates:** `.claude/skills/registry/templates/` — schema + generate-index script + README, copied into `companies/{co}/registry/` when a new registry is created.
+**Command:** `/sync-registry [company]` — regenerates `registry.yaml` from `resources/*.yaml`. Runs no git actions.
+**Hook (optional):** `.claude/hooks/auto-capture-registry.sh` — when `HQ_HOOK_PROFILE=standard`, writes stub resources on `gh repo create` (matched by `companies.{co}.github_org`) and `vercel deploy` (matched by `companies.{co}.vercel_team`). No-op for companies without a `registry:` declaration.
+
 ## Skills
 
 `.claude/skills/` is the canonical skill tree. Codex bridge: `scripts/codex-skill-bridge.sh install`. Dual-format: `command.md` (Claude Code) + `SKILL.md` (Codex). 12 promoted skills (Codex-ready). Coverage: `bash scripts/codex-skill-bridge.sh status`. Full pattern: `knowledge/public/hq-core/codex-skill-pattern.md`.

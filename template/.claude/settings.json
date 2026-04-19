@@ -110,6 +110,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh screenshot-resize-trigger .claude/hooks/screenshot-resize-trigger.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh auto-capture-registry .claude/hooks/auto-capture-registry.sh",
+            "timeout": 5
           }
         ]
       },
