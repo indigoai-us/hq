@@ -1,41 +1,56 @@
 /**
  * Shared Cognito session helpers for hq-cli commands.
  *
- * Consumed by `hq auth refresh` and the standalone `hq-auth-refresh` bin
- * invoked by the deploy skill (.claude/skills/deploy/SKILL.md step 4).
+ * Consumed by:
+ *   - `hq onboard` and `hq sync push|pull` (need token + VaultServiceConfig)
+ *   - `hq auth refresh` and the standalone `hq-auth-refresh` bin invoked by
+ *     the deploy skill (.claude/skills/deploy/SKILL.md step 4)
  *
- * Defaults point at the shared hq-vault-dev Cognito pool. Override via env:
+ * Defaults point at the shared hq-vault-dev Cognito pool. They mirror
+ * tools/vlt-e2e/e2e-create-company-smoke.ts so the CLI and the in-tree demo script
+ * stay drift-free. Override any of them via env:
  *
  *   AWS_REGION                 — e.g. us-east-1
  *   HQ_COGNITO_DOMAIN          — Cognito User Pool domain prefix
  *   HQ_COGNITO_CLIENT_ID       — App Client ID
  *   HQ_COGNITO_CALLBACK_PORT   — Loopback OAuth callback port
+ *   HQ_VAULT_API_URL           — vault-service API Gateway URL
  */
 
+import * as os from "os";
+import * as path from "path";
+import chalk from "chalk";
 import {
   loadCachedTokens,
   isExpiring,
   refreshTokens,
   browserLogin,
   type CognitoAuthConfig,
+  type VaultServiceConfig,
 } from "@indigoai-us/hq-cloud";
 
 export const DEFAULT_COGNITO: CognitoAuthConfig = {
   region: process.env.AWS_REGION ?? "us-east-1",
   userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "hq-vault-dev",
-  clientId:
-    process.env.HQ_COGNITO_CLIENT_ID ?? "4mmujmjq3srakdueg656b9m0mp",
+  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "4mmujmjq3srakdueg656b9m0mp",
   port: process.env.HQ_COGNITO_CALLBACK_PORT
     ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
     : 8765,
 };
 
+export const DEFAULT_VAULT_API_URL =
+  process.env.HQ_VAULT_API_URL ??
+  "https://tqdwdqxv75.execute-api.us-east-1.amazonaws.com";
+
+export const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
+
 /**
  * Return a non-expired Cognito access token, refreshing or browser-logging-in
  * as needed. Cache lives at ~/.hq/cognito-tokens.json.
  *
- * Pass `interactive: false` from automated contexts where failing fast is
- * better than opening a browser.
+ * Pass `interactive: false` from automated contexts (e.g. the `hq-auth-refresh`
+ * bin invoked by the deploy skill) where failing fast is better than opening
+ * a browser.
  */
 export async function ensureCognitoToken(options: {
   interactive?: boolean;
@@ -49,13 +64,19 @@ export async function ensureCognitoToken(options: {
 
   if (cached) {
     try {
-      const refreshed = await refreshTokens(
-        DEFAULT_COGNITO,
-        cached.refreshToken,
-      );
+      if (interactive) {
+        console.log(chalk.dim("  Refreshing expiring HQ session..."));
+      }
+      const refreshed = await refreshTokens(DEFAULT_COGNITO, cached.refreshToken);
       return refreshed.accessToken;
-    } catch {
-      // fall through to browser login
+    } catch (err) {
+      if (interactive) {
+        console.log(
+          chalk.dim(
+            `  Refresh failed (${err instanceof Error ? err.message : err}), falling back to browser login`,
+          ),
+        );
+      }
     }
   }
 
@@ -65,14 +86,25 @@ export async function ensureCognitoToken(options: {
     );
   }
 
+  console.log(chalk.cyan("  No cached HQ session — launching browser sign-in..."));
   const tokens = await browserLogin(DEFAULT_COGNITO);
   return tokens.accessToken;
+}
+
+/** Build a VaultServiceConfig with the given access token. */
+export function buildVaultConfig(authToken: string): VaultServiceConfig {
+  return {
+    apiUrl: DEFAULT_VAULT_API_URL,
+    authToken,
+    region: DEFAULT_COGNITO.region,
+  };
 }
 
 /**
  * Refresh the cached Cognito session once and return the result. Used by
  * `hq auth refresh` and the `hq-auth-refresh` bin. Never opens a browser —
- * if no cached tokens exist or the refresh fails, throws.
+ * if no cached tokens exist or the refresh fails, returns `refreshed: false`
+ * with a reason string so the caller can decide what to do.
  */
 export async function refreshCachedSession(): Promise<{
   refreshed: boolean;

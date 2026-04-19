@@ -1,12 +1,17 @@
 /**
  * File watcher — monitors HQ directory for changes
  * Uses chokidar with debounced batching
+ *
+ * Day 1: not invoked by CLI surface; retained for future automatic-sync milestone.
+ * When re-enabled, the constructor will need an EntityContext (or a context resolver)
+ * to be passed in for entity-aware S3 operations.
  */
 
 import * as fs from "fs";
 import * as path from "path";
 import { watch } from "chokidar";
 import type { FSWatcher } from "chokidar";
+import type { EntityContext } from "./types.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "./ignore.js";
 import { readJournal, writeJournal, hashFile, updateEntry } from "./journal.js";
 import { uploadFile, deleteRemoteFile } from "./s3.js";
@@ -22,13 +27,15 @@ interface PendingChange {
 export class SyncWatcher {
   private watcher: FSWatcher | null = null;
   private hqRoot: string;
+  private ctx: EntityContext;
   private shouldSync: (filePath: string) => boolean;
   private pendingChanges = new Map<string, PendingChange>();
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private processing = false;
 
-  constructor(hqRoot: string) {
+  constructor(hqRoot: string, ctx: EntityContext) {
     this.hqRoot = hqRoot;
+    this.ctx = ctx;
     this.shouldSync = createIgnoreFilter(hqRoot);
   }
 
@@ -96,7 +103,7 @@ export class SyncWatcher {
     for (const [relativePath, change] of batch) {
       try {
         if (change.type === "unlink") {
-          await deleteRemoteFile(relativePath);
+          await deleteRemoteFile(this.ctx, relativePath);
           delete journal.files[relativePath];
         } else {
           const hash = hashFile(change.absolutePath);
@@ -106,7 +113,7 @@ export class SyncWatcher {
           const existing = journal.files[relativePath];
           if (existing && existing.hash === hash) continue;
 
-          await uploadFile(change.absolutePath, relativePath);
+          await uploadFile(this.ctx, change.absolutePath, relativePath);
           updateEntry(journal, relativePath, hash, stat.size, "up");
         }
       } catch (err) {

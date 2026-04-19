@@ -16,5 +16,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build -w packages/hq-cloud
+      - run: npm run build -w packages/hq-onboarding
       - run: npm run build --workspaces --if-present
       - run: npm run typecheck --workspaces --if-present

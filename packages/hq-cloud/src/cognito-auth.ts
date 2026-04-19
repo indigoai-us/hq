@@ -85,9 +85,26 @@ export function clearCachedTokens(): void {
   if (fs.existsSync(TOKEN_FILE)) fs.unlinkSync(TOKEN_FILE);
 }
 
+/**
+ * Parse `expiresAt` to epoch-ms. Canonical on-disk shape is ISO 8601 (what
+ * both writers in this file emit), but older/external writers may have left a
+ * raw number. Accept both so a shape mismatch during rollout doesn't wedge
+ * sign-in. Returns null for anything unparseable — callers should treat that
+ * as "expired" and force a refresh.
+ */
+function parseExpiresAtMs(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === "string") {
+    const ms = new Date(raw).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  return null;
+}
+
 /** True when the token expires within the given buffer (default 60s). */
 export function isExpiring(tokens: CognitoTokens, bufferSeconds = 60): boolean {
-  const expiresAt = new Date(tokens.expiresAt).getTime();
+  const expiresAt = parseExpiresAtMs(tokens.expiresAt);
+  if (expiresAt === null) return true;
   return expiresAt - Date.now() < bufferSeconds * 1000;
 }
 

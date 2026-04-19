@@ -1,0 +1,32 @@
+{
+  "name": "@indigoai-us/godclaw",
+  "version": "0.1.0",
+  "description": "HQ by Indigo goClaw manager — task-scoped child agent credential vending and spawning",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src/",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@indigoai-us/hq-cloud": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/godclaw"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

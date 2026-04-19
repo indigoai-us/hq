@@ -57,3 +57,38 @@ export interface DaemonState {
   startedAt: string;
   hqRoot: string;
 }
+
+/**
+ * Entity-aware context for vault-backed S3 operations (VLT-5).
+ * Resolved from vault-service entity registry + STS vending.
+ */
+export interface EntityContext {
+  /** Entity UID (cmp_*) */
+  uid: string;
+  /** S3 bucket name for this entity */
+  bucketName: string;
+  /** AWS region */
+  region: string;
+  /** STS-scoped credentials */
+  credentials: VaultCredentials;
+  /** When the credentials expire (ISO 8601) */
+  expiresAt: string;
+}
+
+export interface VaultCredentials {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken: string;
+}
+
+/**
+ * Configuration for connecting to the vault-service API.
+ */
+export interface VaultServiceConfig {
+  /** Vault API base URL (e.g. https://vault-api.example.com) */
+  apiUrl: string;
+  /** Cognito JWT token for authentication */
+  authToken: string;
+  /** AWS region for S3 client (defaults to entity region or us-east-1) */
+  region?: string;
+}

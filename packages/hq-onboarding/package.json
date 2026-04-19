@@ -1,0 +1,25 @@
+{
+  "name": "@indigoai-us/hq-onboarding",
+  "version": "0.1.0",
+  "description": "HQ by Indigo onboarding orchestrator — create-company and join-company flows",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src/",
+    "test:e2e": "vitest run test/",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@indigoai-us/hq-cloud": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
+  },
+  "license": "MIT"
+}

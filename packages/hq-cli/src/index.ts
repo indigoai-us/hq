@@ -13,6 +13,7 @@ import { registerCloudCommands } from "./commands/cloud.js";
 import { registerLoginCommand } from "./commands/login.js";
 import { registerLogoutCommand } from "./commands/logout.js";
 import { registerWhoamiCommand } from "./commands/whoami.js";
+import { registerOnboardCommand } from "./commands/onboard.js";
 import { registerPackageInstallCommand } from "./commands/pkg-install.js";
 import { registerPackageRemoveCommand } from "./commands/pkg-remove.js";
 import { registerPackageUpdateCommand } from "./commands/pkg-update.js";
@@ -63,10 +64,13 @@ registerCloudCommands(syncCmd);
 // Team commands (top-level)
 registerTeamSyncCommand(program);
 
-// Auth commands (top-level)
+// Auth commands (top-level — registry auth via Clerk, separate from Cognito)
 registerLoginCommand(program);
 registerLogoutCommand(program);
 registerWhoamiCommand(program);
 registerAuthCommands(program);
+
+// Onboarding (top-level — Cognito + vault-service provisioning)
+registerOnboardCommand(program);
 
 program.parse();

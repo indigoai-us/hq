@@ -4,9 +4,15 @@
   "description": "HQ by Indigo cloud sync engine — bidirectional S3 sync for mobile access",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "hq-sync-runner": "dist/bin/sync-runner.js"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run src/",
+    "test:e2e": "vitest run test/",
+    "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -19,7 +25,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   },
   "repository": {
     "type": "git",
