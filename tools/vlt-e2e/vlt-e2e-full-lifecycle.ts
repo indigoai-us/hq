@@ -15,7 +15,7 @@
  *   9. teardown all scratch resources
  *
  * Usage:
- *   VAULT_API_URL=https://... VAULT_AUTH_TOKEN=... npx tsx scripts/vlt-e2e-full-lifecycle.ts
+ *   VAULT_API_URL=https://... VAULT_AUTH_TOKEN=... npx tsx tools/vlt-e2e/vlt-e2e-full-lifecycle.ts
  *
  * Exit codes:
  *   0 — all steps passed
@@ -26,16 +26,16 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { VaultClient } from "../packages/hq-cloud/src/vault-client.js";
-import { clearContextCache } from "../packages/hq-cloud/src/context.js";
-import { sync } from "../packages/hq-cloud/src/cli/sync.js";
-import { invite } from "../packages/hq-cloud/src/cli/invite.js";
-import { accept } from "../packages/hq-cloud/src/cli/accept.js";
-import { promote } from "../packages/hq-cloud/src/cli/promote.js";
-import { vendChildCredentials } from "../packages/godclaw/src/vend-child-credentials.js";
-import { createCompanyFlow } from "../packages/hq-onboarding/src/orchestrator.js";
-import type { VaultServiceConfig } from "../packages/hq-cloud/src/types.js";
-import type { OnboardingProgress } from "../packages/hq-onboarding/src/types.js";
+import { VaultClient } from "../../packages/hq-cloud/src/vault-client.js";
+import { clearContextCache } from "../../packages/hq-cloud/src/context.js";
+import { sync } from "../../packages/hq-cloud/src/cli/sync.js";
+import { invite } from "../../packages/hq-cloud/src/cli/invite.js";
+import { accept } from "../../packages/hq-cloud/src/cli/accept.js";
+import { promote } from "../../packages/hq-cloud/src/cli/promote.js";
+import { vendChildCredentials } from "../../packages/godclaw/src/vend-child-credentials.js";
+import { createCompanyFlow } from "../../packages/hq-onboarding/src/orchestrator.js";
+import type { VaultServiceConfig } from "../../packages/hq-cloud/src/types.js";
+import type { OnboardingProgress } from "../../packages/hq-onboarding/src/types.js";
 
 // ---------------------------------------------------------------------------
 // Config

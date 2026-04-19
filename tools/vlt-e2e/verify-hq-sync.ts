@@ -6,7 +6,7 @@
  * to verify the sync pipeline is alive and working.
  *
  * Usage:
- *   VAULT_API_URL=https://... VAULT_AUTH_TOKEN=... VAULT_TEST_COMPANY=acme npx tsx scripts/verify-hq-sync.ts
+ *   VAULT_API_URL=https://... VAULT_AUTH_TOKEN=... VAULT_TEST_COMPANY=acme npx tsx tools/vlt-e2e/verify-hq-sync.ts
  *
  * Exit codes:
  *   0 — success
@@ -20,10 +20,10 @@ import {
   resolveEntityContext,
   clearContextCache,
   deleteRemoteFile,
-} from "../packages/hq-cloud/src/index.js";
-import { share } from "../packages/hq-cloud/src/cli/share.js";
-import { sync } from "../packages/hq-cloud/src/cli/sync.js";
-import type { VaultServiceConfig } from "../packages/hq-cloud/src/types.js";
+} from "../../packages/hq-cloud/src/index.js";
+import { share } from "../../packages/hq-cloud/src/cli/share.js";
+import { sync } from "../../packages/hq-cloud/src/cli/sync.js";
+import type { VaultServiceConfig } from "../../packages/hq-cloud/src/types.js";
 
 const VAULT_API_URL = process.env.VAULT_API_URL;
 const VAULT_AUTH_TOKEN = process.env.VAULT_AUTH_TOKEN;

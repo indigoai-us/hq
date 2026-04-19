@@ -7,7 +7,7 @@
  *     the deploy skill (.claude/skills/deploy/SKILL.md step 4)
  *
  * Defaults point at the shared hq-vault-dev Cognito pool. They mirror
- * scripts/e2e-create-company-smoke.ts so the CLI and the in-tree demo script
+ * tools/vlt-e2e/e2e-create-company-smoke.ts so the CLI and the in-tree demo script
  * stay drift-free. Override any of them via env:
  *
  *   AWS_REGION                 — e.g. us-east-1

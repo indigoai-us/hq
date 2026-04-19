@@ -49,7 +49,7 @@ S3 → another-device edit → local sync.
 
 ```bash
 cd ~/hq/companies/indigo/repos/hq
-npx tsx scripts/e2e-create-company-smoke.ts
+npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts
 ```
 
 To run against different defaults, override via env:
@@ -61,7 +61,7 @@ COMPANY_NAME="Demo Co" \
 PERSON_EMAIL=you@example.com \
 PERSON_NAME="You" \
 COGNITO_CALLBACK_PORT=53682 \
-npx tsx scripts/e2e-create-company-smoke.ts
+npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts
 ```
 
 All env overrides:
@@ -110,7 +110,7 @@ To force a cold run (e.g., to verify the OAuth path itself):
 
 ```bash
 rm ~/.hq/cognito-tokens.json
-npx tsx scripts/e2e-create-company-smoke.ts
+npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts
 ```
 
 A cold run will open a browser to the Cognito Hosted UI and wait up to
@@ -128,7 +128,7 @@ just need to re-trigger, delete `~/.hq/cognito-tokens.json` and re-run.
 
 **`Address already in use :8765`.** Some other process owns the loopback
 port. Either kill it, or pick another port:
-`COGNITO_CALLBACK_PORT=53682 npx tsx scripts/e2e-create-company-smoke.ts`.
+`COGNITO_CALLBACK_PORT=53682 npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts`.
 The Cognito client allows `3000`, `8765`, and `53682`.
 
 **Script appears to hang after `END-TO-END DEMO PASSED`.** Shouldn't

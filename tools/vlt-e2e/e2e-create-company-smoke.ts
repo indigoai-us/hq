@@ -29,11 +29,11 @@
  * Override any of them via env (see CONFIG section below).
  *
  * Usage:
- *   npx tsx scripts/e2e-create-company-smoke.ts
+ *   npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts
  *
  * Or with overrides:
  *   HQ_ROOT=/tmp/hq-demo COMPANY_SLUG=demo-co \
- *   npx tsx scripts/e2e-create-company-smoke.ts
+ *   npx tsx tools/vlt-e2e/e2e-create-company-smoke.ts
  *
  * Idempotent: re-running with the same slug + email reuses entities via
  * VaultConflictError handling in createCompanyFlow.
@@ -47,27 +47,27 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-import { createCompanyFlow } from "../packages/hq-onboarding/src/orchestrator.js";
-import type { OnboardingProgress } from "../packages/hq-onboarding/src/types.js";
-import type { VaultServiceConfig } from "../packages/hq-cloud/src/types.js";
+import { createCompanyFlow } from "../../packages/hq-onboarding/src/orchestrator.js";
+import type { OnboardingProgress } from "../../packages/hq-onboarding/src/types.js";
+import type { VaultServiceConfig } from "../../packages/hq-cloud/src/types.js";
 import {
   browserLogin,
   loadCachedTokens,
   isExpiring,
   refreshTokens,
   type CognitoAuthConfig,
-} from "../packages/hq-cloud/src/cognito-auth.js";
-import { share } from "../packages/hq-cloud/src/cli/share.js";
-import { sync } from "../packages/hq-cloud/src/cli/sync.js";
+} from "../../packages/hq-cloud/src/cognito-auth.js";
+import { share } from "../../packages/hq-cloud/src/cli/share.js";
+import { sync } from "../../packages/hq-cloud/src/cli/sync.js";
 import {
   resolveEntityContext,
   refreshEntityContext,
-} from "../packages/hq-cloud/src/context.js";
+} from "../../packages/hq-cloud/src/context.js";
 import {
   uploadFile,
   downloadFile,
   headRemoteFile,
-} from "../packages/hq-cloud/src/s3.js";
+} from "../../packages/hq-cloud/src/s3.js";
 
 // ---------------------------------------------------------------------------
 // Config

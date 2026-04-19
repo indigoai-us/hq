@@ -10,7 +10,7 @@
  * the orchestrator fix is pointless and the bug must be fixed server-side.
  *
  * Usage:
- *   npx tsx scripts/probe-findbyslug.ts
+ *   npx tsx tools/vlt-e2e/probe-findbyslug.ts
  *
  * Prints one block per probe; non-zero exit if findBySlug doesn't behave.
  */
@@ -19,13 +19,13 @@ import {
   VaultClient,
   VaultNotFoundError,
   VaultClientError,
-} from "../packages/hq-cloud/src/vault-client.js";
+} from "../../packages/hq-cloud/src/vault-client.js";
 import {
   loadCachedTokens,
   isExpiring,
   refreshTokens,
   type CognitoAuthConfig,
-} from "../packages/hq-cloud/src/cognito-auth.js";
+} from "../../packages/hq-cloud/src/cognito-auth.js";
 
 const cognitoConfig: CognitoAuthConfig = {
   region: "us-east-1",
