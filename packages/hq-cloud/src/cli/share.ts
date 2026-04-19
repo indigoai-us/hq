@@ -55,7 +55,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   // Resolve entity context (handles STS vending + caching)
   let ctx = await resolveEntityContext(companyRef, vaultConfig);
   const shouldSync = createIgnoreFilter(hqRoot);
-  const journal = readJournal(hqRoot);
+  const journal = readJournal(ctx.slug);
 
   let filesUploaded = 0;
   let bytesUploaded = 0;
@@ -132,7 +132,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     }
   }
 
-  writeJournal(hqRoot, journal);
+  writeJournal(ctx.slug, journal);
 
   return { filesUploaded, bytesUploaded, filesSkipped, aborted: false };
 }

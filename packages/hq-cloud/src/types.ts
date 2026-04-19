@@ -65,6 +65,8 @@ export interface DaemonState {
 export interface EntityContext {
   /** Entity UID (cmp_*) */
   uid: string;
+  /** Entity slug (human-readable, stable key for per-company local state). */
+  slug: string;
   /** S3 bucket name for this entity */
   bucketName: string;
   /** AWS region */

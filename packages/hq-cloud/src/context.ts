@@ -52,6 +52,7 @@ export async function resolveEntityContext(
 
   const ctx: EntityContext = {
     uid: entity.uid,
+    slug: entity.slug,
     bucketName: entity.bucketName,
     region: config.region ?? "us-east-1",
     credentials: {
