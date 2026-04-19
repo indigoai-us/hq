@@ -1,0 +1,152 @@
+worker:
+  id: gemini-reviewer
+  name: "Gemini Reviewer"
+  description: "Code review and analysis via Google Gemini CLI — PR review, file review, security scanning, improvement suggestions"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 15m
+  retry_attempts: 1
+  spawn_method: task_tool
+  model: sonnet
+
+context:
+  base:
+    - workers/public/gemini-reviewer/skills/
+    - knowledge/public/gemini-cli/
+  dynamic:
+    - pattern: "{target_repo}/src/"
+      when: always
+    - pattern: "{target_repo}/package.json"
+      when: always
+    - pattern: "{target_repo}/GEMINI.md"
+      when: exists
+  exclude:
+    - node_modules/
+    - dist/
+    - "*.log"
+    - "*.lock"
+
+skills:
+  - id: review-pr
+    file: skills/review-pr.md
+  - id: review-file
+    file: skills/review-file.md
+  - id: security-scan
+    file: skills/security-scan.md
+  - id: suggest-improvements
+    file: skills/suggest-improvements.md
+
+verification:
+  post_execute: []
+  approval_required: false
+
+cli:
+  binary: gemini
+  install: npm install -g @google/gemini-cli
+  env:
+    - GEMINI_API_KEY
+  commands:
+    - git diff | gemini -p "{prompt}" --model flash --sandbox --output-format text
+    - cat {files} | gemini -p "{prompt}" --model flash --sandbox --output-format json
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+reporting:
+  on_complete:
+    - log_review
+    - extract_learnings
+  metrics:
+    - review_time
+    - issues_found
+    - severity_distribution
+
+instructions: |
+  # Gemini Reviewer
+
+  Code review and analysis using Google Gemini CLI (`gemini`).
+  Read-only by default — uses piping to feed code/diffs to Gemini.
+
+  ## Prerequisites
+
+  - Gemini CLI installed: `npm install -g @google/gemini-cli`
+  - Auth: `GEMINI_API_KEY` env var (from `settings/gemini/credentials.env`)
+
+  ## When to Use
+
+  - **review-pr**: Review a PR diff, severity-grouped findings
+  - **review-file**: Review specific files for quality/correctness
+  - **security-scan**: Security-focused review (OWASP, auth, secrets)
+  - **suggest-improvements**: Ranked improvement suggestions without applying
+
+  Use gemini-reviewer when:
+  - You want a Gemini perspective (different from Claude/Codex findings)
+  - Large diffs benefit from 1M context window
+  - Security review benefits from Google Search grounding (latest CVEs)
+  - You want structured review output
+
+  Do NOT use gemini-reviewer when:
+  - You need code changes applied (use gemini-coder refactor)
+  - Task is new code generation (use gemini-coder)
+  - Task is frontend-specific review (use gemini-frontend a11y-audit)
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | review-pr | Pipe PR diff to gemini, severity-grouped findings |
+  | review-file | Pipe specific files, focused quality review |
+  | security-scan | Security-focused: injection, auth, secrets, SSRF, XSS |
+  | suggest-improvements | Ranked improvement suggestions without applying |
+
+  ## CLI Usage
+
+  ```bash
+  /run gemini-reviewer review-pr --pr 123 --repo repos/private/{product}
+  /run gemini-reviewer review-file --files src/auth/*.ts --focus correctness
+  /run gemini-reviewer security-scan --files src/api/**/*.ts --cwd repos/private/{product}
+  /run gemini-reviewer suggest-improvements --files src/services/billing.ts --goals "error handling, types"
+  ```
+
+  ## Invocation Patterns
+
+  PR diff review:
+  ```bash
+  cd {repo} && gh pr diff {pr} | GEMINI_API_KEY=$KEY \
+    gemini -p "Review this PR diff. Group by severity: critical/high/medium/low/info. For each: file, line, category, description, fix." \
+    --model flash --sandbox --output-format text 2>&1
+  ```
+
+  File review (piped):
+  ```bash
+  cd {repo} && cat {files} | GEMINI_API_KEY=$KEY \
+    gemini -p "Review this code. Focus: {focus}. Report issues by severity." \
+    --model flash --sandbox --output-format text 2>&1
+  ```
+
+  Security scan:
+  ```bash
+  cd {repo} && cat {files} | GEMINI_API_KEY=$KEY \
+    gemini -p "Security audit: SQL injection, XSS, SSRF, auth bypass, secret exposure, insecure deserialization, path traversal. Severity-grouped output." \
+    --model flash --sandbox --output-format text 2>&1
+  ```
+
+  ## Patterns
+
+  - ALWAYS use `--sandbox` (reviewer never writes files)
+  - Use `--model flash` for speed (sufficient for review tasks)
+  - Pipe diffs/files rather than relying on gemini's built-in file read
+  - Parse output into severity groups: critical > high > medium > low > info
+  - For large PRs, split review into chunks (max ~500KB per pipe)
+  - Cross-reference findings with code-reviewer/codex-reviewer results

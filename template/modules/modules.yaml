@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/indigoai-us"/hq.git
+    repo: https://github.com/indigoai-us/hq.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
@@ -140,13 +140,13 @@ modules:
 
   # ─── Company Knowledge Repos ──────────────────────────────────────────
 
-  - name: knowledge-{company}
-    repo: https://github.com/{your-name}/knowledge-{company}.git
+  - name: knowledge-{product}
+    repo: https://github.com/{your-name}/knowledge-{product}.git
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/{product}/knowledge
 
   - name: knowledge-{company}
     repo: https://github.com/{your-name}/knowledge-{company}.git
@@ -164,150 +164,8 @@ modules:
     paths:
       .: companies/personal/knowledge
 
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: {company}-docs-internal
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/repos/{company}-docs-internal
-
-  - name: {company}-docs-customer
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/repos/{company}-docs-customer
-
-  - name: knowledge-dripkit
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/dripkit/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: link
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
+  # Add one entry per company knowledge repo you maintain.
+  # `strategy: embedded` for a private repo sync; `strategy: link` for a local clone.
 
   # ─── Add-On Kits ────────────────────────────────────────────────────
 

@@ -1,0 +1,33 @@
+id: hq-cinematic
+name: HQ Cinematic
+version: "0.1.0"
+type: style
+aesthetic: "Cinematic navy-void with prismatic light — refracted spectrum beams, floating dust, warm neutral counterweights. Authority of a film colorist's timing suite, not a synthwave arcade."
+origin: "HQ internal — {your-name}"
+
+contents:
+  style_guide: README.md
+  implementation: README.md
+  tokens_css: tokens.css
+  tokens_json: tokens.css
+  keyframes: keyframes.css
+
+compatibility:
+  formulas:
+    - web
+    - app
+  industries:
+    - saas
+    - ai-ml
+    - enterprise
+    - creative-tools
+
+context_paths:
+  required:
+    - tokens.css
+    - keyframes.css
+    - README.md
+  optional: []
+
+consumers:
+  - hq-onboarding

@@ -21,6 +21,19 @@ Execute a single user story from a PRD through coordinated worker phases. Each w
 - Handoffs preserve context between workers
 - Each sub-agent commits its own work before returning
 
+## Return Contract (when invoked under a story sub-agent)
+
+When the prompt invoking this skill explicitly includes a `RETURN CONTRACT` directive (used by `/run-project --inline` Step 4 to keep parent-session context minimal), override the default completion summary and emit **only** the JSON object specified by the caller as the final message. Rules:
+
+- Final message MUST be exactly the JSON object — nothing before, nothing after, no markdown fences, no commentary.
+- All normal execute-task behavior still runs (task classification, worker sequence, back pressure, commits, prd.json `passes:true` on success). Only the shape of the final output message changes.
+- Status semantics: `passed` = all workers succeeded + all back-pressure gates green + commit(s) landed; `failed` = back-pressure failure that could not be auto-recovered; `blocked` = missing spec, credential, or external dependency prevented completion.
+- `commits` = short SHAs of all commits created during this execution (`git log --oneline` delta since start), in order.
+- `files_changed` = total files touched across those commits (`git diff --stat` count).
+- `notes` = 1-2 sentences; on non-`passed` status, describe the blocker concisely enough for the parent orchestrator to surface to the user.
+
+When invoked **without** a `RETURN CONTRACT` directive (default, e.g. `claude -p /execute-task ...` from `run-project.sh`), use the normal human-readable completion summary as before. This dual mode keeps the skill backward-compatible with headless mode.
+
 ## Process
 
 ### 1. Parse Arguments
@@ -55,7 +68,7 @@ From results, find the entry whose path includes `/{project}/prd.json`. If qmd i
 If no `prd.json` found:
 
 ```
-ERROR: prd.json not found for {project}. Run /prd {project} first.
+ERROR: prd.json not found for {project}. Run /plan {project} first.
 ```
 
 Stop.

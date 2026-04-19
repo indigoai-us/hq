@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Goclaw Admin — design tokens (CSS custom properties)
+   --------------------------------------------------------------------------
+   Extracted 2026-04-17 from an internal admin console reference (commit 3bb35c5).
+   Dark-first industrial admin palette. Monochrome zinc foundation + status
+   accents only. No brand color. No decorative color.
+
+   Intended use (Tailwind v4):
+     @import url(...fonts...);
+     @import 'tailwindcss';
+     @import './design-tokens.css';
+     @theme { ...map aliases as needed... }
+   ========================================================================== */
+
+:root {
+  /* ── Typography ────────────────────────────────────────────────────────── */
+  --ga-font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ga-font-display: 'Barlow Condensed', ui-sans-serif, system-ui, sans-serif;
+  --ga-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ga-tracking-body: 0.01em;     /* industrial body copy */
+  --ga-tracking-label: 0.15em;    /* wordmark / brand */
+  --ga-tracking-section: 0.2em;   /* 9px uppercase section headings */
+
+  /* Size ramp (px) — matches Tailwind utilities used in the source shell */
+  --ga-text-9: 9px;    /* section headings (uppercase, display weight) */
+  --ga-text-10: 10px;  /* micro mono labels */
+  --ga-text-12: 12px;  /* nav items, data cells */
+  --ga-text-xs: 12px;
+  --ga-text-sm: 14px;  /* default body */
+  --ga-text-base: 16px;
+  --ga-text-lg: 18px;
+  --ga-text-xl: 20px;
+  --ga-text-2xl: 24px;
+  --ga-text-3xl: 30px;
+
+  /* ── Surface scale (zinc) ──────────────────────────────────────────────── */
+  /* Dark-first. Canonical page background is --ga-zinc-950.                  */
+  --ga-zinc-50:  #fafafa;
+  --ga-zinc-100: #f4f4f5;
+  --ga-zinc-200: #e4e4e7;
+  --ga-zinc-300: #d4d4d8;
+  --ga-zinc-400: #a1a1aa;
+  --ga-zinc-500: #71717a;
+  --ga-zinc-600: #52525b;
+  --ga-zinc-700: #3f3f46;
+  --ga-zinc-800: #27272a;
+  --ga-zinc-900: #18181b;
+  --ga-zinc-950: #09090b;
+
+  /* Sidebar-rail surface — one tick warmer than zinc-950 */
+  --ga-rail-bg: #0a0a0b;
+
+  /* Hairline rule alphas on dark surfaces */
+  --ga-rule-6:  rgba(255, 255, 255, 0.06);  /* structural rules, borders */
+  --ga-rule-3:  rgba(255, 255, 255, 0.03);  /* hover fills */
+  --ga-rule-8:  rgba(255, 255, 255, 0.08);  /* scrollbar thumb */
+  --ga-rule-15: rgba(255, 255, 255, 0.15);  /* scrollbar thumb hover */
+  --ga-row-2:   rgba(255, 255, 255, 0.02);  /* faint row backgrounds */
+
+  /* ── Foreground steps (opaque) ─────────────────────────────────────────── */
+  --ga-fg-strong: var(--ga-zinc-100);
+  --ga-fg:        var(--ga-zinc-300);
+  --ga-fg-muted:  var(--ga-zinc-400);
+  --ga-fg-dim:    var(--ga-zinc-500);
+  --ga-fg-dimmer: var(--ga-zinc-600);
+  --ga-fg-dimmest: var(--ga-zinc-700);
+
+  /* ── Status — the only non-monochrome color allowed ────────────────────── */
+  /* Text + background pairings that meet WCAG AA on the zinc-950 surface.    */
+  --ga-accent-success-bg: #022c22;  /* emerald-950 */
+  --ga-accent-success-fg: #34d399;  /* emerald-400 */
+  --ga-accent-success-dot: #34d399;
+
+  --ga-accent-danger-bg:  #450a0a;  /* red-950 */
+  --ga-accent-danger-fg:  #f87171;  /* red-400 */
+  --ga-accent-danger-dot: #f87171;
+
+  --ga-accent-warning-bg: #451a03;  /* amber-950 */
+  --ga-accent-warning-fg: #fbbf24;  /* amber-400 */
+  --ga-accent-warning-dot: #fbbf24;
+
+  --ga-accent-info-bg:    #172554;  /* blue-950 */
+  --ga-accent-info-fg:    #60a5fa;  /* blue-400 */
+  --ga-accent-info-dot:   #60a5fa;
+
+  --ga-accent-neutral-bg: var(--ga-row-2);
+  --ga-accent-neutral-fg: var(--ga-zinc-400);
+  --ga-accent-neutral-dot: var(--ga-zinc-400);
+
+  /* ── Radius — flat industrial; corners stay sharp on data surfaces ─────── */
+  --ga-radius-0: 0px;      /* tables, badges, pills, scrollbar — flat */
+  --ga-radius-sm: 2px;     /* inputs, modals on accent surfaces */
+  --ga-radius-md: 4px;     /* rare — tooltips only */
+
+  /* ── Spacing ramp ──────────────────────────────────────────────────────── */
+  --ga-space-0: 0px;
+  --ga-space-1: 4px;
+  --ga-space-1-5: 6px;
+  --ga-space-2: 8px;
+  --ga-space-2-5: 10px;
+  --ga-space-3: 12px;
+  --ga-space-4: 16px;
+  --ga-space-5: 20px;
+  --ga-space-6: 24px;
+  --ga-space-8: 32px;
+
+  /* Dense-table row paddings used in the source shell */
+  --ga-row-py: 6px;        /* py-1.5 */
+  --ga-cell-px: 10px;      /* px-2.5 */
+
+  /* ── Shell dimensions ──────────────────────────────────────────────────── */
+  --ga-sidebar-width: 240px;          /* fixed rail per pack spec */
+  --ga-sidebar-width-compact: 192px;  /* secondary — for ultra-dense admins */
+  --ga-topbar-height: 56px;
+
+  /* ── Scrollbars ────────────────────────────────────────────────────────── */
+  --ga-scrollbar-size: 4px;
+  --ga-scrollbar-thumb: var(--ga-rule-8);
+  --ga-scrollbar-thumb-hover: var(--ga-rule-15);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Global base rules — opt in by importing this file after Tailwind.
+   ────────────────────────────────────────────────────────────────────────── */
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  letter-spacing: var(--ga-tracking-body);
+}
+
+/* Tighter scrollbar for data-dense views */
+::-webkit-scrollbar {
+  width: var(--ga-scrollbar-size);
+  height: var(--ga-scrollbar-size);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ga-scrollbar-thumb);
+  border-radius: var(--ga-radius-0);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ga-scrollbar-thumb-hover);
+}

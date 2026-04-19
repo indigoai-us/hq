@@ -9,6 +9,7 @@ version: 1
 created: 2026-04-15
 updated: 2026-04-15
 source: task-completion
+applies_to: [vercel]
 ---
 
 ## Rule

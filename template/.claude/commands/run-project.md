@@ -1,15 +1,17 @@
 ---
-description: Run a project through the Ralph loop - orchestrator for multi-task execution
+description: Run a project — default is inline execution; --ralph-mode for background orchestrator
 allowed-tools: Bash, Read, Write, AskUserQuestion, Task
 argument-hint: [project-name] or [--status] or [--help]
 visibility: public
 ---
 
-<!-- THIN-ROUTER SPLIT — this .md is the canonical docs/examples/flags source. The paired SKILL.md is a minimal bash wrapper that execs scripts/run-project.sh. They stay forked on purpose: one is human-facing docs, the other is a dispatch shim. -->
+<!-- THIN-ROUTER SPLIT — this .md is the canonical docs/examples/flags source. The paired SKILL.md is a minimal dispatch shim. They stay forked on purpose: one is human-facing docs, the other is a routing shim. -->
 
-# /run-project - Ralph Loop Project Orchestrator
+# /run-project — Project Executor
 
-Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` — the single spawner for `claude -p` process isolation, worktree management, swarm mode, codex autofix, regression gates, and retry queues.
+Executes PRD stories for a project. **Default mode is inline** — each incomplete story runs inside a fresh per-story Task sub-agent in the current Claude session. Pass `--ralph-mode` to run the legacy background orchestrator (`scripts/run-project.sh`) that spawns `claude -p` subprocesses for each story and polls state files from the parent. Pass `--session-mode` to use the plan-file-anchored inline shape.
+
+Policy: `.claude/policies/run-project-default-is-inline.md` (hard).
 
 **Arguments:** $ARGUMENTS
 
@@ -17,7 +19,7 @@ Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` �
 
 "Pick a task, complete it, commit it."
 
-- Fresh context per task (`claude -p` process isolation)
+- Fresh context per task (per-story Task sub-agent in default/inline mode; `claude -p` subprocess in `--ralph-mode`)
 - Sub-agents do heavy lifting via `/execute-task`
 - Back pressure keeps code on rails
 - Handoffs preserve context between workers
@@ -26,32 +28,50 @@ Ralph loop orchestrator. All execution routes through `scripts/run-project.sh` �
 
 | Mode | When | How |
 |------|------|-----|
-| **Default** | `/run-project` invoked interactively | `run-project.sh` in background, Claude polls state files |
-| **inline** | `--inline` flag | Plan from PRD → user approves → execute each story in a per-story Task sub-agent (fresh context) that invokes `/execute-task` internally |
-| **tmux** | `--tmux` flag | `run-project.sh` in tmux session (observe from phone) |
-| **direct** | `bash scripts/run-project.sh` (CI/nohup/cron) | Direct shell execution |
+| **Default (inline)** | `/run-project {project}` with no execution-mode flag | Plan from PRD → user approves → execute each story in a per-story Task sub-agent (fresh context) that invokes `/execute-task` internally. See `## Inline Execution (Default)` below. |
+| **inline (explicit)** | `--inline` flag | Silent alias for default. Same behavior as bare invocation. |
+| **ralph-mode** | `--ralph-mode` flag | `nohup bash scripts/run-project.sh {project}` runs in background; each story spawns as an isolated `claude -p` subprocess; parent session polls `state.json`. Best for long unattended runs. See `## Ralph-Mode Execution (--ralph-mode)` below. |
+| **session-mode** | `--session-mode` flag | Plan distilled into Claude Code plan file (with full policy rule text) → `ExitPlanMode` approval → parent session executes each story directly (Edit/Write/Bash); bounded helper sub-agents only (review, QA, E2E, design audit). No `/execute-task` wrapper. See `## Session-Mode Execution` below. |
+| **tmux** | `--tmux` flag (implies `--ralph-mode`) | `run-project.sh` in tmux session (observe from phone) |
+| **direct** | `bash scripts/run-project.sh` (CI/nohup/cron) | Direct shell execution, outside `/run-project` scope |
 
-## In-Session Execution (Default)
-
-When `/run-project` is invoked in an interactive Claude session, it launches `run-project.sh` as a background OS process and monitors progress via state file polling.
-
-### Step 1 — Parse Arguments
+**Dispatch (Step 1 — applies to every invocation):**
 
 Parse `$ARGUMENTS` into project name + passthrough flags:
-- `--inline`: route to **Inline Execution** flow (see below) — do NOT launch `run-project.sh`
+
 - `--status`: delegate synchronously via `bash scripts/run-project.sh --status` (display + exit)
 - `--dry-run`: delegate synchronously via `bash scripts/run-project.sh --dry-run {project}` (display + exit)
 - `--help`: display flags table + exit
+- `--session-mode`: route to **Session-Mode Execution** flow (see below). Incompatible with `--inline`, `--ralph-mode`, `--tmux`, `--swarm`, `--codex-autofix`, `--dry-run`, `--status` (error immediately on conflict).
+- `--ralph-mode`: route to **Ralph-Mode Execution** flow (see below). Incompatible with `--inline` and `--session-mode` (error immediately on conflict).
+- `--inline`: silent alias for default — route to **Inline Execution** (see below). Do NOT error or warn.
+- No execution-mode flag present: route to **Inline Execution** (default).
 - Empty (no project name): error — project name required
-- All other flags pass through verbatim to `run-project.sh`
+- All other flags pass through verbatim to the chosen execution path
 
-### Step 2 — Validate PRD + Display Summary
+**Hard policy:** `.claude/policies/run-project-default-is-inline.md` — a bare `/run-project {project}` MUST NOT launch `nohup bash scripts/run-project.sh ...`. That path requires `--ralph-mode`.
+
+## Ralph-Mode Execution (--ralph-mode)
+
+Opt-in background orchestrator. When `--ralph-mode` is passed, `/run-project` launches `scripts/run-project.sh` as a `nohup` background OS process and monitors progress via state file polling from the parent Claude session. Each story runs as an isolated `claude -p` subprocess (fresh context per story). Best for long unattended runs (8+ stories), CI-like execution, or when the user wants progress surfaced from a phone via `--tmux`.
+
+### Step R2 — Validate PRD + Display Summary
+
+**Plan-mode branch (REQUIRED when Claude Code plan mode is active):**
+
+If the session is currently in plan mode (i.e. `/run-project --ralph-mode` was invoked while plan mode was on), the parent must NOT read prd.json directly. Instead, delegate to the same Plan sub-agent used by the default/inline Step 2 (see above). The sub-agent returns a condensed plan + JSON; parent presents it via `ExitPlanMode`. On approval, the JSON becomes the passthrough-state for Step R3's background launch — no re-read required.
+
+This keeps plan-mode preflight out of the parent transcript. After approval, the plan is durable in `ordered_stories` JSON; the background orchestrator re-reads prd.json from disk in its own process.
+
+**Normal-mode branch (plan mode not active):**
 
 1. Resolve PRD path: `companies/{co}/projects/{project}/prd.json` (use qmd search if needed)
 2. Read prd.json → display: project name, total stories, completed, remaining
 3. Ensure `workspace/orchestrator/{project}/` dir exists (create if not)
 
-### Step 2.4 — Repo-Run Preflight (active-run coordination)
+The normal branch reads ~5K tokens into the parent, but warm-start (Step 2.5) drops them before the poll loop. Acceptable cost for a one-shot read. Under plan mode, that compact can't run before `ExitPlanMode`, so delegation is mandatory instead of optional.
+
+### Step R2.4 — Repo-Run Preflight (active-run coordination)
 
 **Why:** Prevents colliding with another live `/run-project` on the same repo.
 Policy: `.claude/policies/repo-run-coordination.md`. Registry:
@@ -74,18 +94,18 @@ Policy: `.claude/policies/repo-run-coordination.md`. Registry:
 `{ts, run_id, bypassed_by, target_repo, reason}` to
 `workspace/learnings/active-run-bypasses.jsonl` before launching.
 
-### Step 2.5 — Warm-Start (Checkpoint + Compact)
+### Step R2.5 — Warm-Start (Checkpoint + Compact)
 
-**Unconditional.** Runs every invocation, regardless of current context usage. Preflight (PRD read, policy load, state rehydration, dry-run decisions) often consumes significant context before the orchestrator is even ready. Warm-start resets the parent session before the long-running poll loop begins.
+**Unconditional.** Runs every `--ralph-mode` invocation, regardless of current context usage. Preflight (PRD read, policy load, state rehydration, dry-run decisions) often consumes significant context before the orchestrator is even ready. Warm-start resets the parent session before the long-running poll loop begins.
 
 1. Run `/checkpoint` — writes a thread file capturing: project name, PRD path, incomplete story count, loaded policies, any preflight findings or blockers
 2. Run `/compact` — clears conversation context
 
-**Durability note:** All orchestration state is already on disk before this step runs — `workspace/orchestrator/{project}/state.json`, `{repo}/.file-locks.json`, `prd.json`, loaded policy digests. Compaction drops only conversation context, so Step 3's background launch and Step 4's poll loop read fresh from disk and continue without loss.
+**Durability note:** All orchestration state is already on disk before this step runs — `workspace/orchestrator/{project}/state.json`, `{repo}/.file-locks.json`, `prd.json`, loaded policy digests. Compaction drops only conversation context, so Step R3's background launch and Step R4's poll loop read fresh from disk and continue without loss.
 
 **Skip conditions:** `--status`, `--dry-run`, and `--help` already exit before this point (Step 1 routes them synchronously), so warm-start never runs for them.
 
-### Step 3 — Launch Background
+### Step R3 — Launch Background
 
 ```bash
 # Bash tool with run_in_background: true
@@ -96,9 +116,9 @@ echo "PID:$!"
 ```
 
 Capture the PID from output. Announce to user:
-> Launched `run-project.sh` for **{project}** (PID {pid}). Monitoring progress...
+> Launched `run-project.sh` for **{project}** (PID {pid}, `--ralph-mode`). Monitoring progress...
 
-### Step 4 — Poll Loop
+### Step R4 — Poll Loop
 
 Execute sequential Bash calls every ~30 seconds. Each poll:
 
@@ -114,7 +134,7 @@ Execute sequential Bash calls every ~30 seconds. Each poll:
 
 **Poll ceiling:** After 4 hours (480 cycles), warn user and offer to detach monitoring. Script keeps running — reattach with `/run-project --status`.
 
-### Step 5 — Completion Summary
+### Step R5 — Completion Summary
 
 1. Read final `state.json` → stories completed/failed, regression gate results
 2. Read `progress.txt` → full run log
@@ -128,49 +148,89 @@ The script runs headless (no tty) — it takes non-interactive paths automatical
 - **Regression gate failure**: auto-pause (sets `state.json` status to `paused`)
 - Claude's poll loop detects `paused` state and surfaces the choice to the user
 
-## Inline Execution (--inline)
+## Inline Execution (Default)
 
-Interactive, plan-first execution in the current session. Best for small-to-medium projects (3-8 stories) where user input is valuable — ambiguous specs, design decisions, creative work.
+Interactive, plan-first execution in the current session — **this is the default shape** when `/run-project {project}` is called with no execution-mode flag. Best for small-to-medium projects (3-8 stories) where user input is valuable — ambiguous specs, design decisions, creative work. `--inline` is accepted as a silent alias for back-compat (no warning, no error).
 
 **Isolation model (per-story sub-agent):** Each story executes inside a single `general-purpose` Task sub-agent (not per-worker). The sub-agent invokes `/execute-task` internally, which in turn spawns the usual per-worker sub-agents. The parent session holds only approved-plan state plus a compact JSON summary per story — raw worker output never enters the parent context. This matches Ralph's "pick task, complete, commit, repeat" at the story level and keeps the parent session usable across long runs (5+ stories).
 
 ### Step 1 — Parse + Validate
 
-Same as default mode:
 1. Resolve PRD path: `companies/{co}/projects/{project}/prd.json`
 2. Read prd.json → display: project name, total stories, completed, remaining
 3. Ensure `workspace/orchestrator/{project}/` dir exists
 
-**Incompatible flags** — error immediately if combined with `--inline`:
+**Incompatible flags** — error immediately if combined with the default (inline) path (same rules apply to the `--inline` alias):
+- `--ralph-mode` (default is inline; `--ralph-mode` is the explicit background orchestrator opt-in)
+- `--session-mode` (that path uses plan-file-anchored inline, not per-story Task sub-agents)
 - `--swarm` (inline is sequential by nature)
 - `--tmux` (no background process to observe)
 - `--codex-autofix` (user handles issues interactively)
 
-### Step 2 — Generate Plan from PRD
+### Step 2 — Generate Plan from PRD (delegated)
 
-1. Read all stories from prd.json
-2. Filter incomplete (`passes: false`), sort by deps → priority → array order
-3. For each story, classify task type (same logic as `/execute-task` step 3) and determine worker sequence (step 4)
-4. Present numbered implementation plan:
+**Isolation goal:** The parent session must NOT read prd.json, policies, or state.json directly. Those reads accumulate 10K+ tokens that are dead weight after plan approval. Delegate to a single Plan sub-agent; the parent only sees the rendered plan.
 
-```
-## Implementation Plan: {project}
+1. Spawn exactly ONE Task sub-agent to do the heavy preflight read:
 
-1. **{story-id}**: {title}
-   - Workers: architect → backend-dev → code-reviewer
-   - Files: {files list from PRD}
-   - ACs: {acceptance criteria summary}
+   ```
+   Task({
+     subagent_type: "Plan",
+     description: "Generate execution plan for {project}",
+     prompt: <<PROMPT
+       Read and analyze the PRD for project "{project}".
 
-2. **{story-id}**: {title}
-   ...
-```
+       Steps:
+       1. Resolve PRD path: companies/{co}/projects/{project}/prd.json (qmd search if ambiguous)
+       2. Read prd.json fully — all userStories, metadata, qualityGates
+       3. Filter incomplete stories (passes: false), sort by: dependsOn resolved → priority asc → array order
+       4. For each story, classify task type using /execute-task's rules and determine worker sequence
+       5. Read applicable policies (companies/{co}/policies/*, repos/{repoPath}/.claude/policies/*, .claude/policies/*) — hard-enforcement only, frontmatter + rule
+       6. Read workspace/orchestrator/{project}/state.json if it exists (for resume context)
 
-5. **Enter plan mode** — user reviews, can request reordering or story adjustments
-6. Wait for user approval before proceeding
+       RETURN CONTRACT — your FINAL message MUST be EXACTLY this format (markdown block followed by JSON block, nothing else):
 
-### Step 3 — Load Policies
+       ## Implementation Plan: {project}
 
-Same as default: company → repo → global policies. Display count.
+       1. **{story-id}**: {title}
+          - Workers: {worker-sequence}
+          - Files: {files from PRD, or "not declared"}
+          - ACs: {1-line summary}
+       2. ...
+
+       Policies loaded: {count} hard ({top 3 titles})
+       Resume state: {fresh | resuming from {story-id}}
+
+       ```json
+       {
+         "project": "{project}",
+         "co": "{co}",
+         "repoPath": "{repoPath or null}",
+         "ordered_stories": [
+           {"id": "{story-id}", "workers": ["..."], "files": ["..."], "branch": "{branch or null}"}
+         ],
+         "hard_policies": ["{policy-title}", ...],
+         "quality_gates": ["{cmd}", ...],
+         "resume_from": "{story-id or null}"
+       }
+       ```
+
+       No prose before or after. No file dumps. No raw PRD content. Just the plan + JSON.
+     PROMPT
+   })
+   ```
+
+2. Parent displays the markdown plan verbatim (no re-reading PRD), stores the JSON as the approved-plan state for later steps.
+
+3. **Enter plan mode** — user reviews, can request reordering or story adjustments (parent edits the JSON in place if needed; does not re-read PRD).
+
+4. Wait for user approval via `ExitPlanMode` before proceeding.
+
+**Why delegate:** Under Claude Code plan mode, every read in the parent is preserved in the transcript until autocompact fires at 75%. The Plan sub-agent has its own context window; when it returns, only the rendered plan + JSON enter the parent. This saves ~10K tokens that would otherwise block execution runway.
+
+### Step 3 — Policies (already carried in plan JSON)
+
+Do NOT re-load policies in the parent. The Plan sub-agent (Step 2) already surfaced hard-enforcement titles in the returned JSON. Display the count from `hard_policies.length` and move on. If the user wants to see a specific policy's full text, spawn a one-shot sub-agent to read it — never read policy files directly in the parent.
 
 ### Step 3.5 — Warm-Start (Checkpoint + Compact)
 
@@ -276,6 +336,167 @@ Same as default mode but all inline (no `claude -p` spawning):
 5. INDEX.md rebuild, manifest verification, `qmd update`
 6. State → `status: "completed"`
 
+## Session-Mode Execution (--session-mode)
+
+Interactive, **plan-file-anchored** execution. The parent session executes each story directly (Edit/Write/Bash). Bounded helper sub-agents are allowed for review, QA, E2E, and design audit — but **no `/execute-task` sub-agent wrapper** (that is `--inline` behavior).
+
+**Use when:** you want hands-on steering of story execution with a durable policy context lock. Mid-complexity projects (2-6 stories) where intra-story decisions benefit from in-session reasoning.
+
+**Governing policy:** `.claude/policies/run-project-session-mode.md` (hard-enforcement). Preflight delegation governed by `.claude/policies/plan-mode-preflight-delegation.md`.
+
+### Step S1 — Incompatibility Check
+
+Error immediately if `--session-mode` is combined with `--inline`, `--tmux`, `--swarm`, `--codex-autofix`, `--dry-run`, or `--status`. Print: `--session-mode is incompatible with {flag}` and exit.
+
+### Step S2 — Preflight Delegation (ONE Plan sub-agent)
+
+Parent MUST NOT read prd.json, policies, state.json, or manifest directly. Spawn exactly ONE Task sub-agent:
+
+```
+Task({
+  subagent_type: "Plan",
+  description: "Materialize session-mode plan file for {project}",
+  prompt: <<PROMPT
+    Produce the plan file body for /run-project --session-mode {project}.
+
+    Reads:
+    1. companies/{co}/projects/{project}/prd.json (use qmd search if path ambiguous)
+    2. companies/{co}/policies/*.md — hard + soft (skip _digest.md, example-policy.md, README.md)
+    3. {repoPath}/.claude/policies/*.md — hard + soft (if repoPath present)
+    4. .claude/policies/*.md — hard-enforcement ONLY, filtered to applies_to: [run-project, execute-task, task-execution, deploy, commit]
+    5. workspace/orchestrator/{project}/state.json (if present, for resume context)
+    6. companies/manifest.yaml — extract entry for {co}: vercel_team, aws_profile, dns_zones, services
+
+    Produce:
+    - Incomplete stories (passes: false), sorted by dependsOn → priority → array order
+    - For each story: classify task type (reuse /execute-task classification) and derive advisory worker sequence
+    - Full rule text (verbatim, not summarized) for each applicable policy — this is the "context lock"
+
+    RETURN CONTRACT — your final message MUST be EXACTLY one fenced markdown block containing the plan file body, followed by one fenced JSON block with structured state. No prose before/after.
+
+    Plan file body schema:
+
+    # Session-Mode Plan: {project}
+
+    ## Context
+    - Company: {co} ({vercel_team} / {aws_profile})
+    - Repo: {repoPath}
+    - Branch base: {baseBranch}
+    - Resume state: {fresh | resuming from {story-id}}
+    - Execution model: inline — parent session executes each story directly; bounded helper sub-agents only.
+
+    ## Applicable Policies (context lock)
+
+    ### Company-scoped — {co} (hard + soft)
+    1. **{policy-id}** [hard|soft] — {full rule text, verbatim}
+    2. ...
+
+    ### Repo-scoped — {repoPath} (hard + soft)
+    1. ...
+
+    ### Global hard-enforcement (filtered to run-project / execute-task / commit / deploy)
+    1. ...
+
+    > These rules are in force for every story below. Re-read before each story commit.
+
+    ## Stories (approved execution order)
+
+    ### 1. {story-id} — {title}
+    - Type: {classification}
+    - Advisory worker sequence: {architect → backend-dev → code-reviewer → qa} (reference only; parent executes directly; may spawn bounded sub-agents)
+    - Files: {files[] or "undeclared"}
+    - Acceptance criteria:
+      - {AC 1}
+      - {AC 2}
+    - E2E tests: {e2eTests[] or "none"}
+    - Linear issue: {linearIssueId or "none"}
+    - Dependencies: {dependsOn or "none"}
+    - Back-pressure gates: {tests / lint / typecheck / build / e2e from qualityGates}
+
+    ### 2. ...
+
+    ## Verification
+    - Per-story: `git log --oneline -n {k}` shows expected commits; back-pressure gates pass; `prd.json` `passes: true` set.
+    - Project-level: run `{qualityGates.command}` at end; regression sweep every 3 stories.
+    - Linear sync: Done state on story pass (best-effort, non-blocking).
+
+    ## Execution Rules (session-mode specific)
+
+    1. Parent executes stories directly (Edit/Write/Bash). Do NOT spawn Task({subagent_type: "general-purpose", prompt: "/execute-task ..."}).
+    2. Bounded helper sub-agents allowed for: code review, E2E/unit test run, design audit, accessibility check, read-heavy investigation, policy-specific verification. Must return structured JSON only.
+    3. Commit per story before advancing — in the parent session.
+    4. Re-read this plan file before each story to re-prime policy context.
+    5. Pause after each story: ✓/✗ + files + commit SHA + back-pressure gates → continue / adjust / stop.
+    6. Acquire `{repoPath}/.file-locks.json` entry per story; register in `workspace/orchestrator/active-runs.json`.
+
+    ---
+
+    <!-- session-mode-state -->
+    ```json
+    {
+      "mode": "session-mode",
+      "project": "{project}",
+      "co": "{co}",
+      "repoPath": "{repoPath}",
+      "baseBranch": "{baseBranch}",
+      "ordered_stories": [ { "id": "...", "title": "...", "files": [...], "branch": "...", "classification": "..." } ],
+      "hard_policy_ids": [ "company:{id}", "repo:{id}", "global:{id}" ],
+      "quality_gates": [ "..." ],
+      "resume_from": null
+    }
+    ```
+
+    No prose before/after. No raw PRD dumps. Just the plan body + state JSON.
+  PROMPT
+})
+```
+
+### Step S3 — Materialize Plan File
+
+Parent receives the plan body and writes it verbatim to the Claude Code plan-mode file path (harness-provided — typically `~/.claude/plans/{slug}.md` for the current plan-mode session). If no plan-mode path is provided by the harness, use `~/.claude/plans/{project}-session.md`.
+
+Plan file is the ONLY file the parent may write while plan mode is active — this matches Claude Code's plan-mode constraints.
+
+### Step S4 — `ExitPlanMode`
+
+Parent calls `ExitPlanMode`. User reviews the plan file (which now contains full policy rule text + story order + state JSON) and approves or requests edits. On edit requests, parent edits the plan file in place (still the only permitted write).
+
+### Step S5 — Warm-Start
+
+Runs after `ExitPlanMode` approval, before first story:
+1. `/checkpoint` — write thread file capturing approved plan + policy set + story list
+2. `/compact` — clear transcript
+
+**Durability claim:** the plan file on disk is the sole durable context anchor. After compact, the parent re-reads it to rehydrate.
+
+### Step S6 — Per-Story Execution Loop
+
+For each incomplete story in plan order:
+
+1. **Rehydrate.** Re-read the plan file's `## Stories` + `## Applicable Policies` sections (cheap — plan file stays 3-8K tokens).
+2. **Announce.** Display story ID + title + advisory worker sequence (reference only).
+3. **Branch + locks.** Create/checkout `branchName` from `baseBranch`; acquire `{repoPath}/.file-locks.json` entry for story `files[]`; register `workspace/orchestrator/active-runs.json`.
+4. **Linear sync (best-effort).** Set In Progress.
+5. **Execute directly in parent.** Use Edit / Write / Bash. Follow advisory worker sequence as a checklist:
+   - Architect-equivalent: reason inline (no sub-agent)
+   - Dev: apply edits directly
+   - Reviewer: MAY spawn one-shot `general-purpose` sub-agent for code review on diff — returns JSON findings (≤1K tokens)
+   - QA: MAY spawn one-shot sub-agent to run E2E/unit tests — returns `{pass, fail, log_tail}` JSON
+6. **Back-pressure.** Run tests / lint / typecheck / build locally; fix in parent until green.
+7. **Commit in parent.** No sub-agent commit delegation. Short commit message referencing story ID.
+8. **Mark complete.** Set `passes: true` in prd.json; update state.json with commits + files_changed; Linear → Done (best-effort).
+9. **Release locks.** Remove story entry from `.file-locks.json`; leave `active-runs.json` entry until completion.
+10. **User checkpoint.** Display: `✓ {story-id} · {n} files · {commit-sha} · tests ✓ lint ✓ typecheck ✓` → continue / adjust / stop.
+11. **Regression gate every 3 stories.** Run project-level `metadata.qualityGates` inline, or delegate to bounded QA sub-agent if the suite is heavy (returns `{passed, gate_results, failures}` JSON).
+
+### Step S7 — Completion
+
+1. Final summary to user: stories passed / failed / skipped + list of commits + Linear state.
+2. **Archive plan file:** `mv ~/.claude/plans/{slug}.md workspace/orchestrator/{project}/session-mode-plan-{timestamp}.md` for audit trail.
+3. Release `active-runs.json` entry.
+4. Reindex: `qmd update 2>/dev/null || true`.
+5. State → `status: "completed"` in state.json.
+
 ## Headless Bash Execution
 
 Launch the bash orchestrator directly for long-running, unattended execution:
@@ -313,7 +534,9 @@ bash scripts/run-project.sh --status
 | `--swarm [N]` | off (4) | Run eligible stories in parallel (max N concurrent) |
 | `--checkin-interval N` | 180 | Seconds between check-in status prints |
 | `--codex-autofix` | off | Auto-fix P1/P2 codex review findings (opt-in) |
-| `--inline` | off | Execute in current session with plan-first flow. User stays in the loop |
+| `--inline` | (default) | **Silent alias for default** — `/run-project {project}` and `/run-project {project} --inline` behave identically. Kept for back-compat |
+| `--ralph-mode` | off | Opt into background orchestrator: `nohup bash scripts/run-project.sh {project}` + state-file polling. Each story runs as an isolated `claude -p` subprocess. Incompatible with `--inline` and `--session-mode` |
+| `--session-mode` | off | Plan-file-anchored inline execution with full policy rule text distilled into `~/.claude/plans/{slug}.md`. Parent executes stories directly (no `/execute-task` sub-agent wrapper) |
 
 ## How It Works (Ralph Loop)
 
@@ -472,11 +695,15 @@ If $ARGUMENTS is `--status`:
 - **Back pressure** — enforced inside `/execute-task`, not by orchestrator
 - **Policy-aware** — load company + repo + global policies before first task. Hard-enforcement policies block the loop if violated
 - **ALWAYS**: Use `"userStories"` key in prd.json (not `"stories"`) — `run-project.sh` greps for this exact key name
-- **`--inline` isolation** — incompatible with `--swarm`, `--tmux`, `--codex-autofix` (error if combined)
-- **`--inline` respects `--resume`** — skips completed stories, picks up from next incomplete
-- **`--inline` does NOT launch `run-project.sh`** — all orchestration happens in the Claude session
-- **`--inline` uses Agent tool** — worker sub-agents via Agent tool (in-process), not `claude -p` (process isolation)
-- **`--inline` preserves progress** — user can stop between stories; partial progress saved in prd.json + state.json
+- **Default is inline (hard)** — a bare `/run-project {project}` executes stories in-session via per-story Task sub-agents. It does NOT launch `scripts/run-project.sh`. That requires `--ralph-mode`. Policy: `.claude/policies/run-project-default-is-inline.md`.
+- **`--inline` is a silent alias for default** — no warning, no error, identical behavior
+- **Default/inline isolation** — incompatible with `--ralph-mode`, `--session-mode`, `--swarm`, `--tmux`, `--codex-autofix` (error if combined)
+- **Default/inline respects `--resume`** — skips completed stories, picks up from next incomplete
+- **Default/inline uses Task/Agent tool** — worker sub-agents via Task tool (in-process), not `claude -p` (process isolation)
+- **Default/inline preserves progress** — user can stop between stories; partial progress saved in prd.json + state.json
+- **`--ralph-mode` launches `scripts/run-project.sh`** — the only execution path that spawns the background orchestrator. Stories run as isolated `claude -p` subprocesses; parent session polls `state.json`. Incompatible with `--inline` and `--session-mode`.
+- **`--ralph-mode` implied by `--tmux`** — observing from phone requires the background orchestrator
+- **Plan-mode preflight delegation (hard)** — when `/run-project` is invoked under Claude Code plan mode, the parent MUST NOT read prd.json, policies, or state.json directly. Spawn a `Plan` sub-agent to do the reads and return a condensed plan + JSON. Parent only ever holds the summary. This applies to all modes (default/inline, `--ralph-mode`, `--session-mode`). Rationale: plan mode defers compaction until after `ExitPlanMode` approval, so direct reads accumulate 10K+ tokens that linger across the entire execution run.
 
 ## Worked Example: Complete Project Execution (Ralph Loop)
 
@@ -491,8 +718,8 @@ This example shows `/run-project campaign-migration` executing through multiple 
 {
   "name": "campaign-migration",
   "metadata": {
-    "company": "{company}",
-    "repoPath": "repos/private/{company}",
+    "company": "{product}",
+    "repoPath": "repos/private/{product}",
     "qualityGates": ["bun test", "bun check", "bun lint"]
   },
   "userStories": [

@@ -1,3 +1,42 @@
+## [11.2.0] — 2026-04-18
+
+### Headline
+publish-kit scope discipline — the release walker is now a **strict allowlist** that never traverses owner-private directories, and the publish target `template/` is **rebuilt from scratch** on every full release. Root-cause fix for the class of leaks that put owner content (company folders, project PRDs, workspace threads, `.obsidian/` vault state, owner-local settings) into prior publishes. PII-at-source scanning for publish-kit becomes structurally unnecessary: paths outside the allowlist cannot be reached by the walker, and anything no longer emitted is deleted naturally by the Stage R rebuild.
+
+### Added — Policy
+- **`.claude/policies/publish-kit-source-is-strict-allowlist.md`** (`scope: command`, `enforcement: hard`, `public: true`) — hard allowlist, starter-scaffold carve-outs, never-traverse denylist.
+
+### Changed — Commands
+- **`.claude/commands/publish-kit.md`** — Step 0.5 Source Allowlist Assertion (ALLOW_ROOTS / REMAPS / STARTER_SCAFFOLDS / NEVER_TRAVERSE); Step 4 renamed "Rebuild Target + Copy Files" with Stage R (`rm -rf template/`) + Stage E (emit); What-to-Sync table expanded with starter-scaffold rows and never-sync patterns.
+
+### Added — Content (this release)
+- **New commands (1):** `tutorial.md` — interactive HQ tutorial skill.
+- **New policies (13):** `publish-kit-source-is-strict-allowlist`, `hq-cmd-publish-kit-python-yaml-free`, `hq-cmd-publish-kit-rerun-diff-on-scope-narrow`, `hq-cmd-stage-kit-settings-json-direct-edit`, `hq-publish-target-is-hq-template`, `hq-nested-repo-git-status-check`, `hq-permissions-fan-out-edit-write-multiedit`, `hq-settings-local-for-personal-allows`, `hq-figma-token-account-scope`, `preview-start-launch-registry-is-global`, `distributed-join-partial-failure-diagnosis`, `git-stash-build-artifacts-conflict`, `npm-subpackage-hydration`.
+- **New skills (2 dirs):** `tutorial/` (full skill), plus `knowledge-pulse/agents/openai.yaml` + `tutorial/agents/openai.yaml` (Codex dual-format).
+- **New worker scaffolds (44 files):** `dev-team/context-manager/` (audit/discover/learn/update skills), `dev-team/motion-designer/` (add-animation/add-transition/generateimage skills), `dev-team/reality-checker/` (cross-validate/final-gate), `dev-team/backend-dev/skills/e2e-testing.md`, `dev-team/frontend-dev/skills/{audit,polish,typeset,harden}/command.md` + `e2e-testing.md`, `dev-team/qa-tester/skills/electron-e2e.md`, `dev-team/gemini-coder/skills/{implement-feature,scaffold-component}.md`, `dev-team/gemini-reviewer/skills/{apply-best-practices,improve-code,review-code}.md`, `workers/public/INDEX.md`, `gemini-frontend/skills/{design-to-code,refactor-component}.md`, `pretty-mermaid/{assets,references,scripts,package.json}`, `social-publisher/skills/post.md`, `social-verifier/skills/post-results.md`, worker.yaml updates for `ascii-artist`, `frontend-designer`, `gstack-team`.
+- **New knowledge (29 files):** Three new design-styles packs — `hq-cinematic/` (cinematic navy-void motion pack), `goclaw-admin/` (admin console reference), `moonflow-editorial-v2/` (warm editorial brand). Plus `getting-started/tutorials/INDEX.md` and `impeccable/README.md`.
+
+### Changed — Content (this release)
+- **Commands modified (14):** `.claude/CLAUDE.md`, `brainstorm`, `cleanup`, `garden`, `harness-audit`, `idea`, `newworker`, `personal-interview`, `plan`, `run-project`, `run`, `setup`, `strategize`, `update-hq`.
+- **Hooks modified (2):** `inject-local-context.sh`, `load-policies-for-session.sh`.
+- **Policies modified (46):** context-stripped + denylist re-scrubbed under the new allowlist discipline. Includes `blog-post-x-draft`, `company-archive-cleanup`, `deconflict-postbridge-schedule`, `feature-flag-first`, `git-add-explicit-paths-no-drift`, `git-workflow`, `publish-kit-indigo-sed-ordering`, `publish-kit-denylist-*`, `hq-cmd-*`, and others.
+- **Skills modified (3):** `plan/` (renamed from `prd/` — `/prd` → `/plan` throughout), publish-kit related skill files normalized.
+- **Infra modified (1):** `.claude/CLAUDE.md` re-scrubbed + reformatted.
+
+### Removed — Content (this release)
+- **Skills removed (2):** `prd/` (renamed to `plan/`), `deploy/` (demoted to worker scope), `agent-browser/` (moved to `workers/public/qa-tester/skills/agent-browser/`).
+- **Commands removed (20):** Private/company-scoped commands that should never have shipped — `approve-submission`, `assign-pack`, `audit-log`, `audit`, `dashboard`, `list-shared`, `list-submissions`, `model-route`, `prd` (renamed), `reanchor`, `remember` (now `/learn --hard`), `review-plan`, `review-submission`, `review`, `search-reindex`, `search`, `share`, `submit`, `sync-team`, `understand-project`. Most were owner/team workflow commands surfaced from earlier permissive walks.
+- **Hooks removed (2):** `auto-handoff-trigger.sh`, `context-meter.sh` (neither is part of the public hook set).
+- **Policies removed (123):** Policies that fail the new opt-in gate — either `public: false`, `scope: global` without `public: true`, or otherwise owner-workflow-specific (incident-narrative, company-name prefixes). Notable removals include pricing/vendor-verify rules, company-context verification, debugging session policies, editor/IDE policies, repo-specific rules, and SOC-specific guardrails.
+- **Workers removed (394 files, from prior over-publish):** Large portions of `dev-team/` internal skills, `frontend-designer/` design-system refs, `impeccable-designer/` (deprecated worker), `content-shared/` team workflows, `ux-auditor/`, `gemini-ux-auditor/` — all filtered back out by the allowlist + per-worker `worker.yaml` public surface.
+- **Knowledge removed (304 files):** `curious-minds/` book drafts (110 files — owner-only reading list), `design-styles/` internal pack variants (92), `hq-core/` owner runbooks (30), `Ralph/` team-training internals (12), `loom/` internal ops notes (9), etc. The public-eligible subset of each knowledge repo survives.
+- **Other (8 files):** Owner-local `settings/` overrides, private `tools/` utilities, owner `data/` scaffolds, private `contacts/` sample data — all now blocked at the walker level.
+
+### Migrating to v11.2.0
+Non-breaking for HQ consumers. Downstream publish-kit authors should re-read the new allowlist policy — the walker now refuses to emit outside the allowlist, which may surface previously-silent bad paths. See `MIGRATION.md` for details.
+
+---
+
 # Changelog
 
 ## [11.1.1] — 2026-04-16

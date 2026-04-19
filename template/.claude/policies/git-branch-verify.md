@@ -2,6 +2,7 @@
 id: hq-git-branch-verify
 title: Verify Git Branch Before Committing
 scope: global
+public: true
 trigger: before any git commit
 enforcement: hard
 version: 1

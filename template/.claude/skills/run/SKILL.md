@@ -49,9 +49,9 @@ Read `workers/registry.yaml` and display all workers:
 ```
 Available Workers:
 
-  x-{your-name}            X/Twitter posting for {your-name}
-  cfo-{company}    Financial reporting
-  {company}-analyst LR/{PRODUCT} data analysis
+  x-{your-handle}    X/Twitter posting for {your-name}
+  cfo-{product}    Financial reporting
+  {product}-analyst LR/{PRODUCT} data analysis
   ...
 
 Usage: run {worker-id} [skill] [args]
@@ -67,7 +67,7 @@ Stop here.
 4. List skills from the `skills:` section
 
 ```
-Worker: x-{your-name}
+Worker: x-{your-handle}
 Description: X/Twitter posting for {your-name}
 
 Skills:
@@ -75,7 +75,7 @@ Skills:
   suggestposts  Research and suggest posts
   scheduleposts Choose what to post now
 
-Usage: run x-{your-name} {skill}
+Usage: run x-{your-handle} {skill}
 ```
 
 Stop here.
@@ -94,8 +94,8 @@ Use the Read tool to read `workers/registry.yaml`. The registry stores workers a
 
 ```yaml
 workers:
-  - id: x-{your-name}
-    path: companies/personal/workers/x-{your-name}/
+  - id: x-user
+    path: companies/personal/workers/x-user/
     description: "..."
 ```
 
@@ -228,11 +228,11 @@ Set `dirty: true` if `git status --short` output is non-empty; `false` if empty.
 
 ```
 run                              # See all workers
-run x-{your-name}                      # See x-{your-name} skills
-run x-{your-name} contentidea          # Run contentidea skill
-run x-{your-name} contentidea "AI workforce"  # Run with topic arg
-run cfo-{company} mrr          # Run MRR report
-run {company}-analyst weekly   # Run weekly analysis
+run x-user                      # See x-user skills
+run x-user contentidea          # Run contentidea skill
+run x-user contentidea "AI workforce"  # Run with topic arg
+run cfo-{product} mrr          # Run MRR report
+run {product}-analyst weekly   # Run weekly analysis
 ```
 
 ---
