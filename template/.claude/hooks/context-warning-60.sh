@@ -11,7 +11,7 @@
 
 set -uo pipefail
 
-HQ="/Users/{your-name}/Documents/HQ"
+HQ="${HOME}/Documents/HQ"
 STATE_DIR="$HQ/workspace/.context-warnings"
 
 # Always succeed — wrap everything so a malformed input never blocks Stop.

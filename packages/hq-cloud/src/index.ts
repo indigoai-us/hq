@@ -90,7 +90,68 @@ export async function getStatus(hqRoot: string): Promise<SyncStatus> {
 }
 
 /**
- * Force push all local files to S3
+ * Classify a sync error into a user-friendly top-line message.
+ *
+ * The common failure modes all surface through the AWS SDK or Node's fetch,
+ * with messages that aren't self-explanatory in a CLI ("fetch failed" for a
+ * push operation is especially confusing). This maps the raw error to a
+ * single actionable hint.
+ */
+function classifySyncError(err: unknown): Error {
+  const raw = err instanceof Error ? err : new Error(String(err));
+  const msg = raw.message.toLowerCase();
+  const name = (raw.name || "").toLowerCase();
+
+  let hint: string;
+  if (
+    msg.includes("not authenticated") ||
+    msg.includes("run 'hq sync init'") ||
+    msg.includes("run `hq login`")
+  ) {
+    hint = "Not authenticated. Run `hq login` (or `hq sync init`) first.";
+  } else if (
+    msg.includes("fetch failed") ||
+    msg.includes("econnrefused") ||
+    msg.includes("enotfound") ||
+    msg.includes("unrecognized name") ||
+    msg.includes("network") ||
+    name.includes("fetcherror")
+  ) {
+    hint =
+      "Can't reach HQ cloud (network error). Check your connection, then run `hq login` to refresh credentials.";
+  } else if (
+    msg.includes("expiredtoken") ||
+    msg.includes("invalidaccesskeyid") ||
+    msg.includes("signaturedoesnotmatch") ||
+    msg.includes("401")
+  ) {
+    hint =
+      "HQ cloud credentials expired or invalid. Run `hq login` to sign in again.";
+  } else if (
+    msg.includes("nosuchbucket") ||
+    msg.includes("bucket") && msg.includes("not")
+  ) {
+    hint = "Cloud storage bucket not configured. Run `hq sync init` to provision.";
+  } else if (msg.includes("accessdenied") || msg.includes("403")) {
+    hint = "Permission denied by HQ cloud. Check your account with `hq whoami`.";
+  } else {
+    hint = `Sync failed: ${raw.message}`;
+  }
+
+  const wrapped = new Error(hint);
+  (wrapped as Error & { cause?: unknown }).cause = raw;
+  return wrapped;
+}
+
+// Abort a push/pull loop after this many back-to-back identical failures.
+// Prevents the "525 fetch failed lines" output when auth/network is dead.
+const MAX_CONSECUTIVE_IDENTICAL_FAILURES = 3;
+
+/**
+ * Force push all local files to S3.
+ *
+ * Runs a pre-flight (`listRemoteFiles`) to surface auth/network errors once
+ * instead of per-file, and aborts mid-loop if the same error repeats.
  */
 export async function pushAll(hqRoot: string): Promise<PushResult> {
   const shouldSync = createIgnoreFilter(hqRoot);
@@ -98,7 +159,18 @@ export async function pushAll(hqRoot: string): Promise<PushResult> {
   let filesUploaded = 0;
   let bytesUploaded = 0;
 
+  // Pre-flight: verify we can actually talk to S3 before walking the tree.
+  try {
+    await listRemoteFiles();
+  } catch (err) {
+    throw classifySyncError(err);
+  }
+
   const files = walkDir(hqRoot, hqRoot, shouldSync);
+
+  const failures: { path: string; message: string }[] = [];
+  let lastErrorMessage: string | null = null;
+  let consecutiveIdentical = 0;
 
   for (const { absolutePath, relativePath } of files) {
     if (!isWithinSizeLimit(absolutePath)) continue;
@@ -111,26 +183,60 @@ export async function pushAll(hqRoot: string): Promise<PushResult> {
       updateEntry(journal, relativePath, hash, stat.size, "up");
       filesUploaded++;
       bytesUploaded += stat.size;
+      consecutiveIdentical = 0;
     } catch (err) {
-      console.error(
-        `  Failed: ${relativePath} — ${err instanceof Error ? err.message : err}`
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      failures.push({ path: relativePath, message });
+
+      if (message === lastErrorMessage) {
+        consecutiveIdentical++;
+      } else {
+        consecutiveIdentical = 1;
+        lastErrorMessage = message;
+      }
+
+      if (consecutiveIdentical >= MAX_CONSECUTIVE_IDENTICAL_FAILURES) {
+        writeJournal(hqRoot, journal);
+        const classified = classifySyncError(err);
+        throw new Error(
+          `${classified.message} (${filesUploaded} uploaded, ${failures.length} failed before abort)`
+        );
+      }
     }
   }
 
   writeJournal(hqRoot, journal);
+
+  if (failures.length > 0) {
+    console.error(
+      `  ${failures.length} file(s) failed to upload. First error: ${failures[0].message}`
+    );
+  }
+
   return { filesUploaded, bytesUploaded };
 }
 
 /**
- * Force pull all remote files to local
+ * Force pull all remote files to local.
+ *
+ * `listRemoteFiles` acts as its own pre-flight — if auth/network is dead, it
+ * throws before we touch the local filesystem.
  */
 export async function pullAll(hqRoot: string): Promise<PullResult> {
   const journal = readJournal(hqRoot);
   let filesDownloaded = 0;
   let bytesDownloaded = 0;
 
-  const remoteFiles = await listRemoteFiles();
+  let remoteFiles;
+  try {
+    remoteFiles = await listRemoteFiles();
+  } catch (err) {
+    throw classifySyncError(err);
+  }
+
+  const failures: { path: string; message: string }[] = [];
+  let lastErrorMessage: string | null = null;
+  let consecutiveIdentical = 0;
 
   for (const file of remoteFiles) {
     try {
@@ -141,14 +247,36 @@ export async function pullAll(hqRoot: string): Promise<PullResult> {
       updateEntry(journal, file.relativePath, hash, file.size, "down");
       filesDownloaded++;
       bytesDownloaded += file.size;
+      consecutiveIdentical = 0;
     } catch (err) {
-      console.error(
-        `  Failed: ${file.relativePath} — ${err instanceof Error ? err.message : err}`
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      failures.push({ path: file.relativePath, message });
+
+      if (message === lastErrorMessage) {
+        consecutiveIdentical++;
+      } else {
+        consecutiveIdentical = 1;
+        lastErrorMessage = message;
+      }
+
+      if (consecutiveIdentical >= MAX_CONSECUTIVE_IDENTICAL_FAILURES) {
+        writeJournal(hqRoot, journal);
+        const classified = classifySyncError(err);
+        throw new Error(
+          `${classified.message} (${filesDownloaded} downloaded, ${failures.length} failed before abort)`
+        );
+      }
     }
   }
 
   writeJournal(hqRoot, journal);
+
+  if (failures.length > 0) {
+    console.error(
+      `  ${failures.length} file(s) failed to download. First error: ${failures[0].message}`
+    );
+  }
+
   return { filesDownloaded, bytesDownloaded };
 }
 
