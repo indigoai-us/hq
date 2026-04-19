@@ -149,20 +149,10 @@ Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {product}/    # SMS/e-commerce + AI platform
-├── {company}/         # AI venture
-├── personal/       # Personal tools + social
-├── golden-thread/  # Band/music
-├── haven-slay/     # Artist site + admin
-├── holler-mgmt/    # Artist management
-├── {company}/      # PR agency
-├── {product}/     # {Product} AI
-├── estate-manager/ # Estate platform
-├── keptwork/       # Agency + tools
-├── tonal/          # Shopify store
-├── moonflow/       # Wellness mobile app
-├── dominion/       # Domain management
-└── hpo/            # GTM/growth
+├── {company-a}/   # e.g. a product company
+├── {company-b}/   # e.g. a services company
+├── personal/      # Personal tools + social
+└── {company-n}/   # Add one directory per company you manage
 ```
 
 ## Projects

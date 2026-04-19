@@ -2,17 +2,17 @@
   "outputStyle": "Explanatory",
   "permissions": {
     "deny": [
-      "Read(/Users/{your-name}/.ssh/**)",
-      "Read(/Users/{your-name}/.aws/credentials)",
-      "Read(/Users/{your-name}/.aws/config)",
-      "Read(/Users/{your-name}/.gnupg/**)",
-      "Read(/Users/{your-name}/.env)",
-      "Read(/Users/{your-name}/.netrc)",
-      "Read(/Users/{your-name}/.zshrc)",
-      "Read(/Users/{your-name}/.zprofile)",
-      "Read(/Users/{your-name}/.zshenv)",
-      "Read(/Users/{your-name}/.bashrc)",
-      "Read(/Users/{your-name}/.bash_profile)"
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.aws/config)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.env)",
+      "Read(~/.netrc)",
+      "Read(~/.zshrc)",
+      "Read(~/.zprofile)",
+      "Read(~/.zshenv)",
+      "Read(~/.bashrc)",
+      "Read(~/.bash_profile)"
     ]
   },
   "env": {
