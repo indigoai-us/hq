@@ -1,7 +1,7 @@
 ---
 name: brainstorm
 description: Explore approaches and tradeoffs before committing to a PRD. Research HQ context, compare options, surface unknowns, generate brainstorm.md with recommendation.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*)
+allowed-tools: AskUserQuestion, Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*), Bash(mkdir:*)
 ---
 
 # Brainstorm - Structured Exploration
@@ -11,6 +11,19 @@ Think through a problem before committing to a PRD. Research HQ context, compare
 **Input:** The user's argument — typically `[company] <idea description or board idea ID>`.
 
 **Pipeline:** idea capture --> **brainstorm** --> PRD --> run-project
+
+## Preflight: Plan-Mode Guard
+
+If the session is running in **Plan Mode** (the active system instructions restrict you to editing a single plan file under `~/.claude/plans/`), STOP before Step 0. Print verbatim:
+
+> `/brainstorm` writes to `companies/{co}/projects/{slug}/brainstorm.md` — a path Plan Mode forbids. Exit plan mode (Shift+Tab) and re-run `/brainstorm`, or use `/plan` inside plan mode instead.
+
+Do NOT attempt to redirect the write to the plan file. Do NOT silently degrade to text-only output. Do NOT call any further tools in this skill invocation once plan-mode is detected. The user must re-run outside plan mode.
+
+**Detection signals (any one is sufficient):**
+- The session instructions include `Plan mode is active` or "You MUST NOT make any edits (with the exception of the plan file...)"
+- A plan file path under `~/.claude/plans/` is provided as the only writable target
+- The prior turn ended with `ExitPlanMode` not yet called
 
 ## Step 0: Parse Input & Company Anchor
 
@@ -103,7 +116,18 @@ If verdict is WEAK: flag it and ask the user if they want to continue or reconsi
 
 ## Step 3: Light Interview (1 question max)
 
-Batch all missing directional info into **one** question posed directly to the user. Skip any field already clear from args, board entry, or research. Wait for the user's response before proceeding.
+Batch all missing directional info into **one** `AskUserQuestion` call. Skip any field already clear from args, board entry, or research. Wait for the user's response before proceeding.
+
+**MUST use `AskUserQuestion` (decision mode), not a markdown numbered list.** The user cannot click a markdown list, and the whole point of the light interview is a fast structured pick. Each question item:
+
+- `question`: one-sentence prompt
+- `header`: 2–3 word category label (e.g. `"Direction"`, `"Company"`, `"Wedge"`)
+- `multiSelect: false` unless explicitly multi-pick
+- `options`: 2–4 concrete choices, each with a short `label` and one-sentence `description`. AskUserQuestion automatically appends a free-text "Other" escape — do not hand-roll one
+
+If multiple directional fields are missing (e.g. both direction AND company), batch them as multiple **items within a single `AskUserQuestion` tool call** — do not issue sequential calls.
+
+**If all info is already clear** (description + company + direction obvious from context), skip the interview entirely — no tool call.
 
 ### STARTUP mode questions (include only what's missing):
 
@@ -143,11 +167,28 @@ Before searching: announce what you'll search for and why. Proceed only after im
 
 **If Layer 2 is sufficient** (internal tooling, known platforms — the common case): skip Layer 3 entirely.
 
+## Step 4.5: Resolve Company & Ensure Project Dir
+
+**Before writing any file**, confirm the write target.
+
+1. **Resolve `{co}`** in this order, stopping at the first hit:
+   1. `$ARGUMENTS` anchor (set in Step 0)
+   2. Board idea's `company` field (if `source_idea_id` set)
+   3. cwd signal (under `companies/{slug}/` or `repos/{pub|priv}/{name}` → manifest lookup)
+   4. Active thread/handoff context (`workspace/threads/handoff.json`)
+   5. `AskUserQuestion` with options sourced from `companies/manifest.yaml` top-level keys, plus a `Personal / HQ` option for top-level `projects/`. **Do NOT skip this step** — writing to the wrong company is worse than asking
+2. **Derive `{slug}`** from title: lowercase, ASCII only, hyphens for spaces, strip punctuation, max 60 chars
+3. **Compute write path:**
+   - Company-scoped: `companies/{co}/projects/{slug}/`
+   - Personal/HQ scope: `projects/{slug}/`
+4. **Refuse and abort** if the resolved path is inside `~/.claude/plans/`, a tmp dir, a git worktree owned by another run (per `workspace/orchestrator/active-runs.json`), or anywhere read-only. Surface the same message as the Preflight Plan-Mode guard
+5. **Create the project dir:** `mkdir -p <write path>` (use the `Bash` tool). This step must succeed before Step 5 writes anything
+
 ## Step 5: Generate brainstorm.md
 
-**Derive slug** from title (lowercase, hyphens, no special chars).
+**Derive slug** from title (lowercase, hyphens, no special chars) — already done in Step 4.5.
 
-**Create** `companies/{co}/projects/{slug}/brainstorm.md` (or `projects/{slug}/brainstorm.md` for personal/HQ):
+**Create** `companies/{co}/projects/{slug}/brainstorm.md` (or `projects/{slug}/brainstorm.md` for personal/HQ) in the directory created by Step 4.5:
 
 ```markdown
 ---
@@ -304,9 +345,9 @@ Do NOT wait for the pulse to complete — continue immediately to Step 7.
 
 **Skip if:** company has no knowledge directory.
 
-## Step 7: Confirm & Reindex
+## Step 7: Confirm, Reindex, and Ask Next Step
 
-Print:
+**Print summary** (short, no trailing prompt):
 ```
 Brainstorm: **{title}** ({id})
 File: companies/{co}/projects/{slug}/brainstorm.md
@@ -317,16 +358,29 @@ Approaches:
   {C. Option C name — effort, if present}
 
 Recommendation: Option {X}
-
-Next: promote to PRD, edit brainstorm.md, or park on the board.
 ```
 
-Reindex: `qmd update 2>/dev/null || true`
+**Reindex:** `qmd update 2>/dev/null || true`
+
+**Then ask via `AskUserQuestion`** (decision mode — NEVER a markdown numbered list):
+
+- `question`: "What's next for this brainstorm?"
+- `header`: `"Next step"`
+- `multiSelect: false`
+- `options`:
+  - `label: "Promote to PRD"` — `description: "Run /plan {co} {slug} now — pre-populates from brainstorm.md"`
+  - `label: "Refine brainstorm"` — `description: "Edit brainstorm.md before promoting"`
+  - `label: "Park on board"` — `description: "Leave status=exploring, revisit later"`
+  - `label: "End here"` — `description: "Done for now, no further action"`
+
+Wait for the user's selection before ending the turn. If they pick "Promote to PRD", hand off by invoking the `plan` skill with `{co} {slug}` as args.
 
 ## Rules
 
+- **Never run in Plan Mode** — Preflight refuses before Step 0. Brainstorm writes to a company project dir; plan mode only permits the plan file. No redirection, no silent degrade
+- **Decision mode only for user choices** — every user-facing choice (Step 3 interview, Step 7 next-action) MUST go through `AskUserQuestion`. A markdown numbered list is not a substitute — the user cannot click it
 - **Scan HQ before asking anything** — research phase (Step 2) happens before the first question. Never ask for info findable in qmd, board.json, or policies
-- **1 question max** — direction + constraints in one message. If everything is clear from args/context, zero questions is fine
+- **1 question max** — direction + constraints in one `AskUserQuestion` call (multiple items allowed). If everything is clear from args/context, zero questions is fine
 - **2-3 approaches, no more** — present distinct options, not variations. If only one reasonable path exists, say so and explain why
 - **State a recommendation** — "it depends" without a stated override condition is not a recommendation
 - **No execution** — brainstorm.md is the output. Do NOT write code, scaffold repos, or modify any implementation files
