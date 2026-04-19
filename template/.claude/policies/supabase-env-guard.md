@@ -13,6 +13,3 @@ When creating `@supabase/ssr` middleware in Next.js projects, always add an earl
 
 For server/client factory functions (`createClient()`), use placeholder fallbacks (`|| "http://localhost:54321"`) instead of returning `null` — null returns cause cascading TypeScript errors across all consuming server components.
 
-## Rationale
-
-Discovered during puffin-platform scaffold. `createServerClient()` throws synchronously if URL/key are empty. Middleware runs on every request, making the entire app unusable. Placeholder values let the client instantiate; auth calls simply return null user, which existing redirect logic already handles.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Normalize"
+  short_description: "Normalize design to match your design system and ensure consistency"

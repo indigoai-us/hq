@@ -1,0 +1,191 @@
+/*
+ * American Industrial — Design Tokens (CSS)
+ * Status: canonical
+ * Source: brasshands.com / Kyle Anthony Miller (@kyleanthony)
+ * Updated: 2026-04-15
+ * Aesthetic: Structural-honesty industrial design: condensed heavy display type, shared-border grids, flat accent rules, no decoration — built for authority.
+ *
+ * Naming convention:
+ *   --<category>-<role>: <value>
+ *   Categories: color, font, fs (font-size), fw (font-weight),
+ *               tracking, lh (line-height), space, radius, border, ease, duration
+ *
+ * See design-tokens.json for the DTCG format version of these same tokens.
+ */
+
+:root {
+  /* ────────────────────────────────────────────────────────── */
+  /* Color — Warm Palette ("Brass Hands Classic")               */
+  /* ────────────────────────────────────────────────────────── */
+
+  /* Primary palette — signature accent colors */
+  --color-rust:   #B8542C;   /* primary accent — commands attention; accent bars, active states, CTAs, feature left borders */
+  --color-brass:  #C9A84C;   /* secondary accent — data numerals, secondary CTAs */
+  --color-steel:  #4A4A48;   /* structural gray — grid borders, divider lines */
+
+  /* Neutrals */
+  --black:     #000000;
+  --off-black: #1A1A1A;
+  --dark:      #2C2A26;      /* nav, footer, dark sections + body text */
+  --muted:     #7A766E;      /* secondary text */
+  --mid-gray:  #808080;
+  --bg:        #F0EDE7;      /* warm cream paper — main light background */
+  --surface:   #E8E4DC;      /* elevated surfaces */
+  --cream:     #F7F4EE;      /* text on dark backgrounds */
+  --white:     #FFFFFF;
+
+  /* Utility */
+  --divider: rgba(44, 42, 38, 0.08);   /* warm-tinted divider line */
+
+  /* Semantic roles */
+  --color-bg:           var(--bg);
+  --color-bg-dark:      var(--dark);
+  --color-surface:      var(--surface);
+  --color-border:       var(--color-steel);
+  --color-text:         var(--dark);
+  --color-text-muted:   var(--muted);
+  --color-text-on-dark: var(--cream);
+  --color-accent:       var(--color-rust);
+  --color-accent-secondary: var(--color-brass);
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Color — Dark Palette ("Command Center")                    */
+  /* Use these inside a .dark or [data-theme="dark"] selector   */
+  /* ────────────────────────────────────────────────────────── */
+
+  /* Dark mode variables are listed here for reference.
+     Apply via: .dark { --bg: var(--bg-dark-mode); ... } or [data-theme="dark"] */
+  --bg-dark-mode:    #0a0e27;   /* deep navy */
+  --bg-elevated:     #121733;   /* card/surface */
+  --bg-card:         #1a1f3d;   /* nested surfaces */
+  --border-dark:     #1f2547;   /* structural lines */
+  --text-dark:       #e8ebff;   /* primary text */
+  --text-dim:        #8b92c4;   /* secondary text */
+  --accent-dark:     #6366f1;   /* indigo accent (replaces rust in dark mode) */
+  --accent-dark-hover: #818cf8; /* accent hover state */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Font Families                                  */
+  /* ────────────────────────────────────────────────────────── */
+
+  /* Display: condensed heavy type for ALL headlines — always uppercase */
+  --font-display: "Oswald", "Bebas Neue", Impact, sans-serif;
+
+  /* Body: readable at 16px, generous line-height */
+  --font-body: "Source Serif 4", "Space Grotesk", Georgia, system-ui, sans-serif;
+
+  /* Mono: data, timestamps, status labels only — NEVER for section labels */
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Fluid Type Scale                               */
+  /* ────────────────────────────────────────────────────────── */
+
+  --fs-hero:    clamp(52px, 9vw, 120px);   /* hero headline — display, uppercase, lh 0.85–0.95 */
+  --fs-h1:      clamp(36px, 4vw, 52px);    /* section title — display, uppercase, lh 1.05 */
+  --fs-h2:      clamp(20px, 2vw, 24px);    /* card heading — display, uppercase */
+  --fs-body:    16px;                       /* body text — body font, lh 1.7–1.9 */
+  --fs-label:   clamp(10px, 0.8vw, 13px);  /* labels, nav, small caps — display, uppercase */
+  --fs-caption: 11px;                       /* footnotes, data labels — display or mono */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Weights                                        */
+  /* ────────────────────────────────────────────────────────── */
+
+  --fw-light:   300;   /* labels, secondary elements */
+  --fw-regular: 400;   /* body text */
+  --fw-medium:  500;   /* buttons, UI elements */
+  --fw-bold:    700;   /* headlines, display type */
+  /* No --fw-black (900) — not used in this aesthetic */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Letter Spacing (Tracking)                      */
+  /* ────────────────────────────────────────────────────────── */
+
+  --tracking-headlines: 0.02em;    /* display headlines — slight open tracking at scale */
+  --tracking-label:     0.12em;    /* UI labels — expanded */
+  --tracking-expanded:  0.3em;     /* section heads, caps labels — always uppercase */
+  --tracking-body:      0em;       /* body text — never add tracking to body */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Line Heights                                   */
+  /* ────────────────────────────────────────────────────────── */
+
+  --lh-display: 0.9;    /* hero/display — compressed, lines nearly touch */
+  --lh-heading: 1.05;   /* section titles */
+  --lh-body:    1.8;    /* body text — generous for readability */
+  --lh-label:   1.2;    /* labels, nav */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Spacing                                                     */
+  /* ────────────────────────────────────────────────────────── */
+
+  --space-xs:  4px;     /* micro — icon gaps, tight padding */
+  --space-sm:  8px;     /* small — intra-component gaps */
+  --space-md:  16px;    /* base unit — standard padding */
+  --space-lg:  24px;    /* generous — card padding */
+  --space-xl:  40px;    /* section-level — inter-component */
+  --space-2xl: 64px;    /* section gaps */
+  --space-3xl: 100px;   /* section vertical padding (desktop) */
+
+  /* Page padding */
+  --page-padx: clamp(24px, 7vw, 120px);   /* horizontal inset — scales mobile → desktop */
+
+  /* Max widths */
+  --max-width-tight: 1100px;   /* tight layout */
+  --max-width:       1280px;   /* spacious layout */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Radius                                                      */
+  /* ────────────────────────────────────────────────────────── */
+
+  --radius-none: 0;     /* THE RULE: all interactive elements (buttons, inputs, cards) use square corners */
+  --radius-sm:   4px;   /* non-interactive only: tags, small badges */
+  --radius-md:   8px;   /* non-interactive only: image crops */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Borders                                                     */
+  /* ────────────────────────────────────────────────────────── */
+
+  --border-divider:     1px solid var(--divider);           /* within-section separators */
+  --border-structural:  2px solid var(--color-steel);       /* grid containers, section frames */
+  --border-accent:      3px solid var(--color-rust);        /* accent bars, active indicators */
+  --border-accent-left: 3px solid var(--color-rust);        /* left-border feature items, blockquotes */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Motion                                                      */
+  /* ────────────────────────────────────────────────────────── */
+
+  --ease-out:      cubic-bezier(0.25, 0.46, 0.45, 0.94);   /* scroll reveal — smooth deceleration */
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);          /* card hover, text reveal — dramatic deceleration */
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);              /* elements exiting the screen */
+
+  --duration-fast:   160ms;   /* micro-interactions, hover states */
+  --duration-base:   320ms;   /* standard transitions */
+  --duration-reveal: 600ms;   /* scroll reveal transitions */
+  --duration-text:   700ms;   /* text reveal (clip) transitions */
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* Accent Palette Rotation Modifier Classes                   */
+/* ────────────────────────────────────────────────────────── */
+/* Apply to a root container to swap the accent for a project */
+
+.accent--signal-orange  { --color-accent: #FF5200; }   /* VEKTOR, Brass Hands — high energy */
+.accent--cold-technical { --color-accent: #1A5CFF; }   /* ARC Division — tech/defense */
+.accent--warm-neutral   { --color-accent: #C4B59D; }   /* Design Ops Unit — understated */
+.accent--soft-signal    { --color-accent: #E8604C; }   /* Atlas — warm signal */
+.accent--monochrome     { --color-accent: var(--color-steel); }  /* Iris, Forra — no accent */
+
+/* ────────────────────────────────────────────────────────── */
+/* Reduced Motion                                             */
+/* ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:   0ms;
+    --duration-base:   0ms;
+    --duration-reveal: 0ms;
+    --duration-text:   0ms;
+  }
+}

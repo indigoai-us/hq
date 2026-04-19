@@ -24,6 +24,3 @@ After updating all references, run the project's typecheck (`bun check`, `tsc --
 
 For {PRODUCT} specifically: also check `libs/db/src/constants/` — union types derived from const objects flow through Supabase `.eq()` filters across many files.
 
-## Rationale
-
-Grep is text pattern matching, not AST analysis. It cannot distinguish a function call from a comment, differentiate identically-named imports from different modules, or find dynamic references. Comprehensive multi-pattern search is the only safe approach without a proper rename refactoring tool.

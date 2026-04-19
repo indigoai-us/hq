@@ -19,6 +19,3 @@ Before sending or drafting any outbound email (cold outreach, replies, follow-up
 6. **No formulaic structure.** Don't open with "I hope this email finds you well." Don't close with "I look forward to hearing from you."
 7. **First-person voice, specific examples.** Name real products, real numbers, real outcomes.
 
-## Rationale
-
-Multiple client emails sent with mojibake subject lines (em dashes rendering as `Ã¢Â€Â"`) due to encoding issues. Even after encoding fix, em dashes signal AI-generated content to recipients. Cold outreach must read as human-written.

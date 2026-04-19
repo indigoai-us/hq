@@ -1,0 +1,3 @@
+interface:
+  display_name: "Typeset"
+  short_description: "Improve typography by fixing font choices, hierarchy, sizing, weight consistency, and readability."

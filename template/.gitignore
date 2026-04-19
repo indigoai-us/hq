@@ -51,12 +51,14 @@ social-content/drafts/**/*.md
 # Checkpoints (session-specific)
 workspace/checkpoints/*.json
 
+# Context warnings (ephemeral per-session state)
+workspace/.context-warnings/
+
 # Journal entries (personal)
 data/journal/*.jsonl
 
 # Synced modules (cloned repos)
 modules/.synced/
-.claude/settings.local.json
 
 # Obsidian runtime (workspace.json IS committed as default template)
 .obsidian/workspace-mobile.json

@@ -25,6 +25,3 @@ After creating the correct project, ALWAYS disconnect old/duplicate projects fro
 
 The Vercel CLI has no `vercel project settings` subcommand — the REST API is the only way to set rootDirectory programmatically.
 
-## Rationale
-
-During {company} launch, `vercel deploy --yes` created a new project that built in 165ms (should be ~40s for Next.js). The build log showed "No framework detected" because it was looking at the repo root's package.json instead of `site/package.json`. Required API call to fix rootDirectory, then a redeploy. Also had to disconnect the old `site` project to stop duplicate builds.

@@ -96,7 +96,7 @@ async function executeInPTY(command: HQCommand, args?: string) {
     sessionStore.addSession({
       id: sessionId,
       type: 'claude',
-      cwd: '~/Documents/HQ',
+      cwd: '/Users/{your-name}epstein/Documents/HQ',
       status: 'running',
       startedAt: new Date().toISOString(),
       title: `/${command.id}`,
@@ -285,7 +285,7 @@ The context meter appears in three locations with increasing detail:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ 👤 architect  🏢 {company}  📊 Context: 72% remaining │
+│ 👤 architect  🏢 liverecover  📊 Context: 72% remaining │
 │                                   ▓▓▓▓▓▓▓▓░░░░░░░░░░░░ │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -322,16 +322,13 @@ Accessed from "Resume from Thread..." in the session launcher.
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ T-20260212-043000-{product}-deploy                       │  │
 │  │ "Fixed SST deploy config for {PRODUCT} runtime"          │  │
-│  │ 🏢 {company}  👤 backend-dev  🕐 2h ago         │  │
+│  │ 🏢 liverecover  👤 backend-dev  🕐 2h ago         │  │
 │  │ Next: Run smoke tests on staging                   │  │
 │  │                           [Resume in New Tab →]    │  │
 │  └────────────────────────────────────────────────────┘  │
 │                                                          │
 │  Recent Threads                                          │
 │  ┌────────────────────────────────────────────────────┐  │
-│  │ T-20260212-020000-{company}-report                    │  │
-│  │ "Generated Q4 marketing report for {company}"         │  │
-│  │ 🏢 {company}  👤 cmo-{company}  🕐 5h ago               │  │
 │  │ Next: Review report, publish to CMO HQ             │  │
 │  │                           [Resume in New Tab →]    │  │
 │  └────────────────────────────────────────────────────┘  │
@@ -342,7 +339,6 @@ Accessed from "Resume from Thread..." in the session launcher.
 │  │                           [Resume in New Tab →]    │  │
 │  └────────────────────────────────────────────────────┘  │
 │                                                          │
-│  Filter: [All] [{company}] [{company}] [{company}]          │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -392,7 +388,7 @@ In the empire view or terminal empty state, show a persistent "Resume Last Hando
 │  ↪ Resume Last Handoff                      │
 │                                             │
 │  "Fixed SST deploy config for {PRODUCT} runtime"  │
-│  2 hours ago · {company}                  │
+│  2 hours ago · liverecover                  │
 │                                             │
 │  Next: Run smoke tests on staging           │
 │                                             │
@@ -412,7 +408,7 @@ Add checkpoint and handoff buttons to the terminal context bar (bottom of termin
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ 👤 architect:system-design  🏢 {company}  📊 72%  [💾 Checkpoint] [↗ Handoff] │
+│ 👤 architect:system-design  🏢 liverecover  📊 72%  [💾 Checkpoint] [↗ Handoff] │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 

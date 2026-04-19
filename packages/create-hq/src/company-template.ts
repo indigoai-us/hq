@@ -23,6 +23,10 @@ export interface TeamMetadata {
   created_by: string;
   created_at: string;
   hq_version: string;
+  /** GitHub HTML URL for the team repo (set by promote flow). */
+  repo_url?: string;
+  /** HTTPS clone URL for the team repo (set by promote flow). */
+  clone_url?: string;
 }
 
 const COMPANY_SUBDIRS = [

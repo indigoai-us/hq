@@ -14,10 +14,6 @@ Removing `@clerk/nextjs` from code + env vars is NOT enough to remove Clerk auth
 
 **Fastest fix:** Create a new Vercel project without the Clerk integration, copy env vars via the Vercel API, and deploy there.
 
-## Rationale
-
-Spent significant time trying to remove Clerk from `abg-gtm-hq` Vercel project. Uninstalled npm packages, removed env vars, disabled all protection settings — Clerk headers persisted. Solution was creating `{company}-gtm-api` as a clean project.
-
 ## How to apply
 
 When migrating away from Clerk on Vercel, budget for creating a new Vercel project rather than trying to strip Clerk from the existing one.

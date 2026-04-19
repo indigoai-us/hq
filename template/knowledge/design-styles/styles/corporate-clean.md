@@ -32,7 +32,7 @@ Tagline: "Trustworthy, capable, and frictionless. The design language of softwar
 | Text primary | Dark slate | `#0F172A` |
 | Text secondary | Medium slate | `#475569` |
 | Text tertiary | Light slate | `#94A3B8` |
-| Brand / CTA | {Product} blue | `#4F46E5` |
+| Brand / CTA | {company} blue | `#4F46E5` |
 | Brand hover | Deep {company} | `#4338CA` |
 | Border | Hairline gray | `#E2E8F0` |
 | Success | Soft green | `#22C55E` |

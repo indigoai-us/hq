@@ -17,6 +17,3 @@ Affected regions:
 
 Use plain variable assignment (`var=""`) instead of `local var` in loop bodies.
 
-## Rationale
-
-Bug found 2026-03-15: `local checkout_ts_iso` at line 2831 crashed the orchestrator after Codex review completed but before state update. US-011 passed in PRD but state.json never updated, requiring manual repair + re-launch for US-012. Same bug existed in swarm mode loop at line 2605.

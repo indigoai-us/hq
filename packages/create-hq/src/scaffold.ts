@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as os from "os";
 import fs from "fs-extra";
 import { createInterface } from "readline";
 import { createRequire } from "node:module";
@@ -57,6 +58,57 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   const answer = await prompt(`${question} (${hint})`);
   if (!answer) return defaultYes;
   return answer.toLowerCase().startsWith("y");
+}
+
+// ─── Existing HQ detection ─────────────────────────────────────────────────
+
+/**
+ * Check whether a directory is an existing HQ installation.
+ * Requires CLAUDE.md + .claude/ + companies/ — three markers to avoid false positives.
+ */
+function isExistingHQ(dir: string): boolean {
+  return (
+    fs.existsSync(path.join(dir, "CLAUDE.md")) &&
+    fs.existsSync(path.join(dir, ".claude")) &&
+    fs.existsSync(path.join(dir, "companies"))
+  );
+}
+
+/** Display path with ~ for home directory. */
+function friendlyPath(absPath: string): string {
+  const home = os.homedir();
+  if (absPath === home) return "~";
+  if (absPath.startsWith(home + path.sep)) {
+    return "~/" + path.relative(home, absPath);
+  }
+  return absPath;
+}
+
+/** Resolve ~/... to an absolute path. */
+function resolveTildePath(p: string): string {
+  if (p.startsWith("~/") || p === "~") {
+    return path.join(os.homedir(), p.slice(2));
+  }
+  return path.resolve(p);
+}
+
+/**
+ * Search common locations for an existing HQ installation.
+ * Priority: explicit CLI arg > $HQ_HOME > ~/hq
+ */
+function detectExistingHQ(cliDir?: string): string | null {
+  const candidates = [
+    cliDir ? path.resolve(cliDir) : null,
+    process.env.HQ_HOME ? path.resolve(process.env.HQ_HOME) : null,
+    path.join(os.homedir(), "hq"),
+  ].filter((c): c is string => c !== null);
+
+  for (const dir of candidates) {
+    if (fs.existsSync(dir) && isExistingHQ(dir)) {
+      return dir;
+    }
+  }
+  return null;
 }
 
 /**
@@ -125,6 +177,61 @@ export async function scaffold(
         process.exit(0);
       }
       // Fall through to personal mode
+    }
+  }
+
+  // 2b. Graft detection — if we have an invite token, check for an existing HQ
+  //     before asking about directory. Grafting adds the team to the existing
+  //     HQ without re-scaffolding template, git init, etc.
+  if (inviteToken && teamsAuth) {
+    const autoDetected = detectExistingHQ(directory);
+
+    if (autoDetected) {
+      // Found an existing HQ automatically — offer to graft into it
+      const displayExisting = friendlyPath(autoDetected);
+
+      console.log();
+      info(`Detected existing HQ at ${chalk.cyan(displayExisting)}`);
+
+      const graftChoice = await prompt(
+        `Join team in existing HQ? ${chalk.dim("(Y = use existing / n = create new)")}`,
+        "Y"
+      );
+
+      if (graftChoice.toLowerCase() !== "n") {
+        return graftTeamIntoExistingHQ(autoDetected, displayExisting, teamsAuth, inviteToken);
+      }
+      // "n" — fall through to normal fresh scaffold
+    } else {
+      // No auto-detected HQ — ask the user if they already have one
+      console.log();
+      const hasExisting = await confirm(
+        chalk.bold("Do you already have an existing HQ installed?"),
+        false
+      );
+
+      if (hasExisting) {
+        const existingPath = await prompt(
+          "Where is your existing HQ?",
+          path.join(os.homedir(), "hq")
+        );
+        const resolvedPath = resolveTildePath(existingPath);
+
+        if (fs.existsSync(resolvedPath) && isExistingHQ(resolvedPath)) {
+          return graftTeamIntoExistingHQ(resolvedPath, friendlyPath(resolvedPath), teamsAuth, inviteToken);
+        }
+
+        // Directory exists but isn't an HQ, or doesn't exist
+        if (!fs.existsSync(resolvedPath)) {
+          warn(`Directory not found: ${existingPath}`);
+        } else {
+          warn(`That directory doesn't look like an HQ installation (missing CLAUDE.md or .claude/).`);
+        }
+        info("Setting up a fresh HQ instead...");
+        // Fall through to normal scaffold, pre-fill directory to their path
+        directory = existingPath;
+      }
+      // No existing HQ — fall through to normal fresh scaffold
     }
   }
 
@@ -378,5 +485,79 @@ export async function scaffold(
     });
   } else {
     nextSteps(displayDir);
+  }
+}
+
+// ─── Graft path ────────────────────────────────────────────────────────────
+
+/**
+ * Add a team to an existing HQ installation without re-scaffolding.
+ *
+ * Skips: template fetch, git init, governance bootstrap, cloud sync, qmd full-index.
+ * Runs:  teams flow (join-by-invite) → manifest registration → orientation.
+ *
+ * This is the fast path for users who already have a working HQ and just need
+ * to accept a team invite. Takes ~5 seconds instead of ~30.
+ */
+async function graftTeamIntoExistingHQ(
+  hqRoot: string,
+  displayDir: string,
+  auth: GitHubAuth,
+  inviteToken: string
+): Promise<void> {
+  console.log();
+  step("Adding team to existing HQ (skipping scaffold)...");
+
+  const teamsResult = await runTeamsFlow(
+    "existing",
+    hqRoot,
+    "", // hqVersion not needed for graft — we're not seeding a new template
+    auth,
+    inviteToken
+  );
+
+  if (!teamsResult) {
+    console.log();
+    warn("Team setup did not complete — your existing HQ is unchanged.");
+    return;
+  }
+
+  // Index only the new company directory, not the entire HQ
+  if (teamsResult.joinedByInvite) {
+    const companyDir = teamsResult.joinedByInvite.companyDir;
+    const indexLabel = `Indexing companies/${teamsResult.joinedByInvite.slug}`;
+    stepStatus(indexLabel, "running");
+    try {
+      await execAsync(`qmd index "${companyDir}"`, { cwd: hqRoot });
+      stepStatus(indexLabel, "done");
+    } catch {
+      stepStatus(indexLabel, "failed");
+    }
+  }
+
+  // Orientation
+  console.log();
+  if (teamsResult.joinedByInvite) {
+    teamOrientation({
+      mode: "member",
+      displayDir,
+      teams: [{
+        name: teamsResult.joinedByInvite.teamName,
+        slug: teamsResult.joinedByInvite.slug,
+        repoUrl: teamsResult.joinedByInvite.repoUrl,
+      }],
+    });
+  } else if (teamsResult.member && teamsResult.member.joined.length > 0) {
+    teamOrientation({
+      mode: "member",
+      displayDir,
+      teams: teamsResult.member.joined.map((t) => ({
+        name: t.name,
+        slug: t.slug,
+        repoUrl: t.repoHtmlUrl,
+      })),
+    });
+  } else {
+    info("No teams were joined. Your existing HQ is unchanged.");
   }
 }

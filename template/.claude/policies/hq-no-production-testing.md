@@ -18,6 +18,3 @@ source: session-learning
 4. **For webhook testing, use a local tunnel (ngrok, cloudflare tunnel) or a test endpoint** rather than registering production webhook URLs. Test payloads should go to disposable endpoints.
 5. **When debugging API field issues, use read-only operations (GET) against production and write operations (POST/PUT) against staging or test accounts only.**
 
-## Rationale
-
-A Post-Bridge test post was published to an actual social account and could not be deleted via API — the content was permanently live. API field debugging against a production endpoint created immutable records. In both cases, the agent treated production as a test environment because no staging guard existed. External API mutations are often irreversible, and social platforms in particular offer no undo.

@@ -8,7 +8,7 @@ relates_to: []
 
 # HQ Template Compatibility Contract
 
-> US-023: Defines the minimum HQ structure Desktop requires, feature degradation behavior for simpler instances, and version detection strategy. Enables Desktop to work with any HQ instance from fresh template clone (indigoai-us/hq) to fully evolved production setup.
+> US-023: Defines the minimum HQ structure Desktop requires, feature degradation behavior for simpler instances, and version detection strategy. Enables Desktop to work with any HQ instance from fresh template clone (indigoai-us"/hq) to fully evolved production setup.
 
 ## 1. Minimum Required Structure
 
@@ -34,7 +34,7 @@ Desktop classifies every valid HQ into one of three levels. The level determines
 
 **Definition:** Passes the 7-item validation but has little or no populated content.
 
-**Typical instance:** A fresh clone of `indigoai-us/hq` template that has not yet run `/setup`.
+**Typical instance:** A fresh clone of `indigoai-us"/hq` template that has not yet run `/setup`.
 
 **Structural fingerprint:**
 - `workers/registry.yaml` has <= 4 workers (sample + 3 codex)

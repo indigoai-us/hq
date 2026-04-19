@@ -18,6 +18,3 @@ When creating `prd.json` files:
 - `metadata` MUST include `qualityGates` array (e.g. `["bun run test", "bun run build", "bun run lint"]`)
 - `metadata` MUST include `baseBranch` string (e.g. `"main"`)
 
-## Rationale
-
-`run-project.sh` uses exact jq field names: `.userStories[]`, `.dependsOn`, `.metadata.repoPath`, `.passes`. Mismatched field names cause silent failures — empty candidate lists, skipped stories, or validation aborts. Discovered across multiple projects (Mar 2026).

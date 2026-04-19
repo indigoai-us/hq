@@ -222,7 +222,7 @@ Read the output JSON. If `{"skip": true}`, skip this session (subagent).
 
 Decode `project_dir_encoded` and inspect `cwd` + `files_edited`/`files_written`:
 
-- `cwd` contains `repos/private/{product}` → {company}
+- `cwd` contains `repos/private/{company}` → {company}
 - `cwd` contains `repos/private/{company}-` → {company}
 - `cwd` contains `repos/private/{company}-` → {company}
 - `files_touched` include `companies/{co}/` → that company
@@ -230,7 +230,7 @@ Decode `project_dir_encoded` and inspect `cwd` + `files_edited`/`files_written`:
 
 Decode project dir for display:
 - `-Users-{your-username}-Documents-HQ` → "HQ"
-- `-Users-{your-username}-Documents-HQ-repos-private-{product}` → "{PRODUCT}"
+- `-Users-{your-username}-Documents-HQ-repos-private-{company}` → "{company}"
 - etc. (replace leading path + `-` with readable name)
 
 ### 5. Generate Thread JSON
@@ -269,7 +269,7 @@ Build thread in HQ format:
 
 Use the death timestamp (not current time) for the thread ID — represents when work happened.
 
-Relativize file paths: strip `$HQ_ROOT/` prefix.
+Relativize file paths: strip `~/HQ/` prefix.
 
 If `--dry-run`, display what would be written and stop here. Do NOT write any files.
 

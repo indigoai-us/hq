@@ -20,6 +20,3 @@ Only intervene if:
 
 When monitoring: expect ~10-15 min per story. Output files (`US-XXX.output.json`) remain 0 bytes until the subprocess completes — this is normal, not an error signal.
 
-## Rationale
-
-During the `shopify-webhook-ts-rollout` project (2026-04-02), US-001 attempt 1 was killed after 334s (exit 137). The orchestrator correctly auto-retried and attempt 2 completed successfully in 638s. Manual intervention would have been wasted effort — the built-in retry mechanism handled it.

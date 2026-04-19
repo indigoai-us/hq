@@ -2,14 +2,10 @@
 
 Personal OS for orchestrating work across companies, workers, and AI.
 
-## Context Meter (mandatory)
-
-A Stop hook writes context window usage to `/tmp/.hq-context-meter`. **At the END of every response, output the contents of this file as the last line of your message.** Format: `CTX: {pct}% ({tokens}/{window})`. If it says HANDOFF SOON, warn the user. Do NOT use a tool to read it — just output the value from the system-reminder injected by the hook.
-
 ## Key Files
 
 - `INDEX.md` - Directory map (load only for HQ infra tasks or when disoriented)
-- `agents-profile.md` - {your-name}'s profile + style (load only for writing/comms tasks)
+- `agents-profile.md` - Owner profile + style (load only for writing/comms tasks)
 - `agents-companies.md` - Company contexts + roles (load only when company routing needed)
 - `USER-GUIDE.md` - Commands, workers, typical session
 - `workers/registry.yaml` - Worker index
@@ -33,7 +29,7 @@ Env vars and settings in `.claude/settings.json` control cost/style defaults:
 | `outputStyle` | `Explanatory` | Enables Insight blocks + educational explanations. Synced to starter-kit |
 | `MAX_THINKING_TOKENS` | `31999` | Full fixed-budget thinking (adaptive disabled separately) |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Disables adaptive thinking on Opus/Sonnet 4.6 — uses fixed budget instead |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Triggers mandatory handoff at 60% context (compaction can't be blocked — handoff preserves state) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `75` | Autocompact fires at 75%; a separate Stop-hook advisory warns once at ~60% |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `opus` | Subagents (Task tool) use Opus — all Claude work runs on Opus 4.6 |
 
 Toggle thinking with Option+T.
@@ -56,11 +52,11 @@ Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/p
 
 ## Structure
 
-Top-level: `.claude/commands/`, `agents.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
+Top-level: `.claude/commands/`, `agents-profile.md`, `agents-companies.md`, `companies/`, `knowledge/{public,private}/`, `projects/` (personal/HQ only), `repos/{public,private}/`, `settings/` (shared only — post-bridge, orchestrator), `workers/public/`, `workspace/{checkpoints,orchestrator,reports,social-drafts}/`. Each company is self-contained: `companies/{co}/{knowledge,settings,data,workers,repos,projects}/`. Full tree: `knowledge/public/hq-core/quick-reference.md`
 
 ## Companies
 
-{company}, {company}, personal, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}, {company}. Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
+Listed in `companies/manifest.yaml` (source of truth). Each is self-contained: `settings/` (creds), `data/` (exports), `knowledge/` (embedded git repo), `workers/` (company-scoped), `repos/` (symlinks to canonical clones), `projects/` (PRDs). Details: `knowledge/public/hq-core/quick-reference.md`
 
 ## Company Isolation
 
@@ -83,8 +79,7 @@ Credential access: policy `credential-access-protocol.md`. Hook: `warn-cross-com
 
 ## Sensitive Path Deny Lists
 
-Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`. These protect SSH keys, AWS credentials, GPG secrets, and local environment files. User can override with explicit approval when prompted. Company credential isolation is handled separately by hooks (see Company Isolation section).
-
+Sensitive system paths are blocked from Read access via `settings.json` deny rules: `~/.ssh/**`, `~/.aws/credentials`, `~/.aws/config`, `~/.gnupg/**`, `~/.env`, `~/.netrc`, `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`. These protect SSH keys, AWS credentials, GPG secrets, local environment files, and shell rc files (which may contain hardcoded API keys — see company policies for details). User can override with explicit approval when prompted. For rc-file mutations, use append-only (`printf >> file`) or pattern-delete (`sed '/pattern/d' file`) rather than Read+Edit — both avoid pulling file contents into context. Company credential isolation is handled separately by hooks (see Company Isolation section).
 
 ## Infrastructure-First
 
@@ -112,8 +107,10 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 ## Workers
 
-**Shared** (`workers/public/`): frontend-designer, qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker + dev-team (17) + content-team (5) + social-team (5) + pr-team (6) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
-**Company** (`companies/{co}/workers/`): {company} (6), {company}/PR (6), personal (3), {company} (2), {company} (1). Full list: `workers/registry.yaml`.
+**Shared** (`workers/public/`): frontend-designer, impeccable-designer (**deprecated 2026-04-15** — use dev-team/frontend-dev + design-styles knowledge), qa-tester, security-scanner, pretty-mermaid, exec-summary, accessibility-auditor, performance-benchmarker, gstack-team (26 g-* skills) + dev-team (frontend-dev: +4 design quality skills audit/polish/typeset/harden, full design-styles context; motion-designer: style-coherent animation via design-styles) + content-team (5) + social-team (5) + gardener-team (3) + gemini-team (6) + knowledge-tagger + site-builder.
+**Company** (`companies/{co}/workers/`): per-company workers listed in `workers/registry.yaml`.
+
+**Per-repo design context:** `design.md` at repo root (renamed from `.impeccable.md`). Declares `style-pack: <id>` in the Design Direction section. Workers resolve the pack via `knowledge/public/design-styles/registry.yaml` → pack directory → `context_paths.required`. Pack schema: `knowledge/public/design-styles/PACK-SCHEMA.md`. Design quality references (typography, color, spatial, etc.) live in `knowledge/public/design-quality/`.
 
 **Worker-first rule:** Before specialized tasks (design, content writing, security, data analysis, deployment), check `workers/registry.yaml` for a matching worker. Use `/run {worker} {skill}` — workers carry domain instructions + learned rules. Only work directly if no suitable worker exists.
 
@@ -138,17 +135,25 @@ Parent session should never accumulate >10 images. When reading/verifying image 
 
 Story-scoped file flags prevent concurrent edit conflicts. Config: `settings/orchestrator.yaml`. Stories declare `files: []` in prd.json. `/execute-task` acquires locks in `{repo}/.file-locks.json` + state.json `checkedOutFiles` on start, releases on completion/failure. `/run-project` skips conflicting stories during task selection (configurable: `hard_block`, `soft_block`, `read_only_fallback`). Stale locks (dead PID + timeout) auto-cleaned.
 
+**Repo Coordination (cross-session):** Repo-level active-run registry at `workspace/orchestrator/active-runs.json` prevents sibling sessions from editing a repo while `/run-project` owns it. Enforced by `scripts/repo-run-registry.sh` + SessionStart banner (`check-repo-active-runs.sh`) + PreToolUse hard block (`block-on-active-run.sh`). Blocks Edit/Write/destructive-Bash against owned repos with exit code 2; Read/Grep/Glob/`git status` always allowed. Config: `settings/orchestrator.yaml` → `repo_coordination:`. Bypass (emergency only): `HQ_IGNORE_ACTIVE_RUNS=1` — audit to `workspace/learnings/active-run-bypasses.jsonl`. Policy: `.claude/policies/repo-run-coordination.md`. Composes above story-level `.file-locks.json` without regression.
+
 ## Commands
 
-44 commands in `.claude/commands/` (and growing). Company/niche commands moved to repo-level or workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
+30 commands in `.claude/commands/` (core only). Company/niche commands live on their owning workers. Full catalog: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Bases
 
-Public: Ralph, workers, hq-core, dev-team, design-styles, projects, loom, ai-security-framework, agent-browser, curious-minds, gemini-cli. Private: linear. Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
+Public: listed in `modules/modules.yaml` (filter `access: public`). Company-level: each at `companies/{co}/knowledge/`. Full list: `knowledge/public/hq-core/quick-reference.md`
 
 ## Knowledge Repos
 
-Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/` (embedded git). Shared: `knowledge/public/` (symlinks to `repos/public/knowledge-{name}/`). Register new repos in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
+Knowledge folders use three patterns — all valid, none being migrated:
+
+1. **Embedded standalone `.git` dir** (most company knowledge): e.g. `companies/dripkit/knowledge/`, `companies/liverecover/knowledge/`, `companies/personal/knowledge/`. HQ tracks these as orphan `160000` gitlinks — the inner repo is opaque to HQ, commits happen inside. To capture advancement: commit inside the inner repo, then `git add companies/{co}/knowledge && git commit` in HQ to bump the pointer. (HQ has no `.gitmodules` file — this is intentional, not a bug.)
+2. **Symlink to `repos/private/knowledge-{co}/`** (e.g. `companies/{company}/knowledge`, `companies/{company}/knowledge`): tracked as `120000` symlink; edits land in the target repo.
+3. **Inline files tracked by HQ git** (e.g. `knowledge/public/gemini-cli/`, `knowledge/public/getting-started/`, `companies/amass/knowledge/`): simplest; no inner repo, just regular files.
+
+When adding new knowledge: pick pattern 1 for company knowledge that will grow, pattern 2 if you want a shared clone, pattern 3 for small/shared content. Register in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
 
 ## Skills
 
@@ -156,9 +161,9 @@ Every knowledge folder is its own git repo. Company: `companies/{co}/knowledge/`
 
 ## Search (qmd)
 
-HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v2.1.0).
+HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + full-text search (v1.0.0).
 
-**Collections (17):** `hq`, `{product}`, `{company}`, `{company}`, `personal`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`, `{company}`. Use `-c {collection}` to scope.
+**Collections:** `hq-infra` (commands/skills/policies), `hq-workers` (worker defs), `hq-knowledge` (shared knowledge), `hq-projects` (PRDs) + one per company (derived from `companies/manifest.yaml`). Use `-c {collection}` to scope. Omit `-c` to search all collections.
 
 **Commands:**
 - `qmd search "<query>" --json -n 10` — BM25 keyword (fast, default)
@@ -181,7 +186,7 @@ HQ and codebases indexed with [qmd](https://github.com/tobi/qmd) for semantic + 
 
 ## Learning System
 
-Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). `/remember` delegates to `/learn` with `enforcement: hard`. Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
+Learnings captured as policy files via `/learn` (scoped to company/repo/command/global). Use `/learn --hard` for hard-enforcement rules (formerly `/remember`). Event log: `workspace/learnings/*.json`. Before `/handoff` or `/checkpoint`, reflect and call `/learn` for reusable findings. Auto-triggered after infrastructure creation (see Infrastructure-First). Skip when nothing novel learned.
 
 ## Insights
 
@@ -194,13 +199,28 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - If lint-staged or git hooks cause issues during merge/rebase, disable them temporarily with `--no-verify` rather than fighting through repeated failures.
 - Never commit to local main when intending to work on a feature branch.
 
-
-
 ## Vercel Deployments
 
 - Always verify the correct Vercel org/team before deploying (check with `vercel whoami` and `vercel teams ls`).
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
+
+## Auto-Deploy
+
+When you build or create a web-servable artifact (static site, SPA, docs site, HTML dashboard), **deploy it to hq-deploy and present the link**. Don't ask — just deploy and share the URL casually: "Here's a link: https://{app}.indigo-hq.com"
+
+- **Seven-step flow:** Preferences → Build → Localhost preview → Identity check → Guardrails → Upload → Present link. Follow `.claude/skills/deploy/SKILL.md`.
+- **Identity required for web deploy.** `api.indigo-hq.com` rejects anonymous `/api/*`. Skill reads Cognito session from `~/.hq/cognito-tokens.json` (written by `@indigoai-us/hq-cloud`); falls back to `~/.hq/auth/session.json`. Expired tokens refresh via `hq-auth-refresh`. If no session, spawns `npx -y --package=@indigoai-us/hq-cli hq auth login` (macOS-safe 180s kill-timer — see SKILL.md step 4d) — Hosted UI pops in browser, user signs in, deploy continues on same turn. If that fails, localhost preview + upsell at `onboarding.indigo-hq.com`.
+- **Localhost preview always runs**, signed in or not — that's the guaranteed instant feedback.
+- **Exclusions:** skip Vercel-managed projects (`manifest.yaml` `vercel_projects[]`), backend services, broken builds, projects with `deploy: false` in prd.json.
+- **On failure:** mention briefly, move on — deploy is a bonus, never a blocker.
+- **Full rules:** `.claude/policies/auto-deploy-on-create.md`
+
+## Learned Rules
+
+- **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
+- **NEVER**: Extract shared skills that require editing 5+ existing files to wire up. When extending behavior across multiple commands/skills, prefer layered independent additions (policy + command + skill edit) over shared extraction. Accept duplicated pattern tables as simpler than shared dependencies. <!-- user-correction | 2026-04-15 -->
+- **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`/Users/{your-name}epstein/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
 
 ## Auto-Checkpoint (PostToolUse Hook)
 
@@ -219,18 +239,16 @@ PostToolUse hooks detect checkpoint-worthy events and inject `AUTO-CHECKPOINT RE
 
 Also checkpoint after worker skill completion. Schema: `knowledge/public/hq-core/thread-schema.md`. Do NOT rebuild INDEX, update `recent.md`, run `qmd update`, or write legacy checkpoint files on auto-checkpoints. When edits touch knowledge files, commit to the knowledge repo — not HQ git.
 
-## Auto-Handoff (PreCompact Hook)
+## Auto-Checkpoint (Two-Stage Advisory)
 
-A PreCompact hook fires at 60% context. Autocompact cannot be fully disabled in Claude Code — no off switch exists. The hook forces an immediate `/handoff` to preserve state before compaction destroys context.
+Context-usage advisories run in two stages. Both present the same three options (checkpoint, handoff, or continue) — neither forces action.
 
-**When you see the handoff banner: STOP immediately.**
+1. **60% advisory (Stop hook).** `.claude/hooks/context-warning-60.sh` fires after an assistant turn when the transcript size crosses ~60% of the context window. Prints once per session (gated via `workspace/.context-warnings/{session_id}`). Purely informational — runway still exists before autocompact.
+2. **75% advisory (PreCompact hook).** `.claude/hooks/auto-checkpoint-precompact.sh` fires immediately before autocompact runs (threshold set by `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=75`). Autocompact cannot be blocked in Claude Code, so the banner surfaces options right before compaction proceeds.
 
-1. Save any mid-edit file (don't leave partial edits)
-2. Run `/handoff` RIGHT NOW
-3. Do NOT continue working, do NOT "finish quickly"
-4. The next session picks up where you left off
+**When either banner appears**, present the 3 options to the user and wait for their decision. Do not auto-run `/checkpoint`; let the user pick.
 
-**Fallback (instruction-based):** If you notice context is running low (many long turns, compaction has occurred), proactively run `/handoff` without waiting for the hook.
+**Fallback (instruction-based):** If context feels heavy (many long turns, lots of file reads), proactively suggest `/checkpoint` or `/handoff`. For end-of-session wrap-up, run `/handoff` manually.
 
 ## Core Principles
 
@@ -242,6 +260,7 @@ A PreCompact hook fires at 60% context. Autocompact cannot be fully disabled in 
 6. **Completeness is near-zero cost** - AI makes the marginal cost of doing the complete thing close to zero. Always do the complete thing when achievable (a "lake"), not the shortcut. Reserve shortcuts for genuinely unbounded scope (an "ocean")
 7. **Never skip failing tests** - Always fix tests properly. Never use test.skip, never create false positives, never loosen assertions as a workaround. Investigate root cause and fix it — unit, integration, and E2E equally <!-- user-correction | 2026-04-04 -->
 8. **Bugfixes require tests** - Every bug fix must include test or E2E coverage that catches the regression. Ask user if unsure about test type/scope. A fix without a regression test is incomplete <!-- user-correction | 2026-04-05 -->
+9. **Vague → Verifiable** - When a request lacks clear success criteria ("fix the bug", "make it faster", "clean this up"), define what "done" looks like before starting. A test that passes, a metric that improves, a behavior that changes — something observable
 
 ## E2E Testing Standards
 

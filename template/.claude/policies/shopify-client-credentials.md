@@ -25,6 +25,3 @@ The `shpss_*` value is the **Client Secret** — it's used to *request* tokens, 
 
 Theme Access tokens (`shptka_*`) remain unchanged and are still used for `shopify theme push/pull`.
 
-## Rationale
-
-Shopify deprecated permanent admin tokens. The new model limits blast radius of leaked credentials (24h window vs forever). Discovered 2026-03-17 when attempting to create Shopify pages.

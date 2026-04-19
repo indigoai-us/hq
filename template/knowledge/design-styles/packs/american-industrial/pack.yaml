@@ -1,0 +1,35 @@
+id: american-industrial
+name: American Industrial
+version: "1.0.0"
+type: style
+aesthetic: "Structural-honesty industrial design: condensed heavy display type, shared-border grids, flat accent rules, no decoration — built for authority."
+origin: "Kyle Anthony Miller / Brass Hands (brasshands.com)"
+
+contents:
+  style_guide: style-guide.md
+  implementation: implementation.md
+  tokens_css: design-tokens.css
+  tokens_json: design-tokens.json
+  design_template: design-template.md
+  swipes: swipes/
+
+compatibility:
+  formulas:
+    - web
+  industries:
+    - saas
+    - fintech
+    - defense
+    - industrial
+    - enterprise
+    - robotics
+    - ai-ml
+
+context_paths:
+  required:
+    - implementation.md
+    - design-tokens.css
+  optional:
+    - style-guide.md
+    - design-tokens.json
+    - swipes/README.md

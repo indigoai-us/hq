@@ -21,6 +21,3 @@ If the Slack MCP is not loaded:
 
 Browser automation is not a valid fallback for MCP tool failures.
 
-## Rationale
-
-User correction on 2026-04-01: During the `{product}-infra-health` scheduled task, Slack MCP was unavailable. Claude attempted to use Claude in Chrome to navigate Slack and post the message, burning multiple turns navigating to the wrong workspace. The correct behavior is to note the failure inline and move on.

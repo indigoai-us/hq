@@ -24,6 +24,3 @@ source: session-learning
 4. **If the user pre-authorized the action** (e.g., "deploy to prod" as an explicit instruction), still confirm the specific target: "Deploying to [project] on [team/scope] at [domain]. Confirming." One sentence, no blocking question needed — but the target must be stated.
 5. **NEVER fall back to a different target if the intended one fails.** If the authorized account/project/environment is unavailable, stop and report — do not silently use an alternative.
 
-## Rationale
-
-A kickoff email to a $10k client was sent from a personal Gmail instead of the business account because the agent fell back silently when auth failed. A Supabase project was deleted because it was misclassified as "unused." Deploys landed on wrong Vercel projects because .vercel/project.json was not verified. Each incident involved an irreversible action where the agent did not pause to confirm the target.

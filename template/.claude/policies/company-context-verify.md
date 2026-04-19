@@ -8,7 +8,6 @@ version: 1
 created: 2026-03-05
 updated: 2026-03-05
 source: session-learning
-learned_from: "Failed to load {Product} policies before Route 53 work — missed documented DNS workflow"
 ---
 
 ## Rule
@@ -26,6 +25,3 @@ Infrastructure lookup checklist:
 - **DNS zone** → manifest `dns_zones` field → hosted zone ID
 - **Linear** → company `settings/linear/config.json` → validate workspace
 
-## Rationale
-
-Company policies contain hard-won instructions for specific services (e.g. "use Vercel API, not CLI for certain domains"). Skipping them means repeating known failures. The manifest now has infrastructure mappings to eliminate guessing.

@@ -54,7 +54,7 @@ contains() {
 #   audit-log.sh append \
 #     --event task_started \
 #     --project hq-observability \
-#     [--company indigo] \
+#     [--company {company}] \
 #     [--story-id US-001] \
 #     [--worker backend-dev] \
 #     [--model sonnet] \
@@ -325,7 +325,7 @@ APPEND FLAGS (--event and --project are required):
                  pipeline_failed | project_pr_created | project_reviewed |
                  project_merged | project_deployed | project_canary_pass |
                  project_canary_fail | gate_requested | gate_resolved
-  --company      Company slug (e.g. indigo)
+  --company      Company slug (e.g. {company})
   --project      Project slug (e.g. hq-observability)
   --story-id     Story ID (e.g. US-001)
   --worker       Worker name (e.g. backend-dev)
@@ -349,7 +349,7 @@ EXAMPLES:
   scripts/audit-log.sh append \
     --event task_started \
     --project hq-observability \
-    --company indigo \
+    --company {company} \
     --story-id US-001 \
     --worker backend-dev \
     --model sonnet

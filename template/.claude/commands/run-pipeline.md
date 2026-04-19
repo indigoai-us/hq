@@ -48,7 +48,7 @@ Display: `Loaded N policies (H hard, S soft)`
 Run triage via the bash script in dry-run mode:
 
 ```bash
-cd ${HQ_ROOT:-$HOME/hq} && bash scripts/run-pipeline.sh {company} {prd1} [prd2...] --dry-run
+cd /Users/{your-name}/Documents/HQ && bash scripts/run-pipeline.sh {company} {prd1} [prd2...] --dry-run
 ```
 
 Display the triage table output to the user. This shows: project sequence, risk levels, story counts, repo grouping, dependency order.
@@ -65,7 +65,7 @@ If `--dry-run` was in the original args: stop after showing triage (do not launc
 Run the bash script in background:
 
 ```bash
-cd ${HQ_ROOT:-$HOME/hq} && \
+cd /Users/{your-name}/Documents/HQ && \
   nohup bash scripts/run-pipeline.sh {company} {prd1} [prd2...] {passthrough_flags} \
   > workspace/orchestrator/_pipeline/{pipeline_id}/claude-session.log 2>&1 &
 echo "PID:$!"
@@ -138,7 +138,7 @@ When `pending_gate` is detected in pipeline-state.json:
 
 3. **Write resolution** to pipeline-state.json:
    ```bash
-   cd ${HQ_ROOT:-$HOME/hq} && \
+   cd /Users/{your-name}/Documents/HQ && \
    jq '.pending_gate.resolution = "{choice}"' \
      workspace/orchestrator/_pipeline/{pipeline_id}/pipeline-state.json > /tmp/ps-tmp.json && \
    mv /tmp/ps-tmp.json workspace/orchestrator/_pipeline/{pipeline_id}/pipeline-state.json
@@ -193,7 +193,7 @@ When `--resume <pipeline_id>` is provided:
    - PID alive → resume poll loop (Step 5)
    - PID dead + status `in_progress` → offer to relaunch:
      ```bash
-     cd ${HQ_ROOT:-$HOME/hq} && \
+     cd /Users/{your-name}/Documents/HQ && \
        nohup bash scripts/run-pipeline.sh --resume {pipeline_id} \
        > workspace/orchestrator/_pipeline/{pipeline_id}/claude-session.log 2>&1 &
      ```
@@ -204,7 +204,7 @@ When `--resume <pipeline_id>` is provided:
 When `--status` is provided:
 
 ```bash
-cd ${HQ_ROOT:-$HOME/hq} && bash scripts/run-pipeline.sh --status
+cd /Users/{your-name}/Documents/HQ && bash scripts/run-pipeline.sh --status
 ```
 
 Display the formatted output and stop.

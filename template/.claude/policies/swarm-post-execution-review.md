@@ -19,6 +19,3 @@ After swarm/parallel execution of 5+ stories, ALWAYS:
 
 Swarm agents work in isolation and don't test cross-feature interactions. Expect ~60-80% of features to have structural P1 bugs after swarm execution. The highest-leverage fix is usually a single shared dependency (e.g., isTauri() detection) that unblocks many downstream features.
 
-## Rationale
-
-The {company}-tauri-migration swarm executed 21 stories successfully but Codex reviews found 33 P1 issues across 18 stories. Most features existed in code but didn't work end-to-end. Config schema errors blocked app startup entirely. Without post-execution review, shipped code would have been non-functional.

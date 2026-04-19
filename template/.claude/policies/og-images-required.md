@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: user-directive
-learned_from: "wildcat-docs deployment — user requested OG images always be included"
 ---
 
 ## Rule
@@ -26,6 +25,3 @@ Every site deployed to Vercel (or any public hosting) MUST have Open Graph image
 
 **Per-page OG images** are preferred for sites with distinct sections (e.g. product pages, blog posts). At minimum, the root layout must set a default OG image that all pages inherit.
 
-## Rationale
-
-Sites without OG images display blank thumbnails when shared on social media, Slack, and messaging apps. This is a basic quality bar for any deployed site.

@@ -344,7 +344,7 @@ Notification Center
 |        tam-automation progress                     |
 |                                                    |
 | [icon] Thread created                 1 hr ago     |
-|        {company}-gtm dashboard deploy            |
+|        liverecover-gtm dashboard deploy            |
 |                                                    |
 | Yesterday                                          |
 |                                                    |

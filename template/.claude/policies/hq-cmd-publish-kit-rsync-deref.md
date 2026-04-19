@@ -16,6 +16,3 @@ ALWAYS use `rsync -avL` (with `-L` flag) when copying `knowledge/public/` to `re
 
 Also: after rsync, verify no symlinks remain in the target with `find repos/public/hq/template/knowledge/ -maxdepth 1 -type l`.
 
-## Rationale
-
-During v8.2.0 publish, default rsync copied knowledge symlinks verbatim. The target ended up with symlinks like `Ralph -> ../../repos/public/ralph-methodology/docs` which are meaningless on any other machine. Had to re-run with `-L` to dereference and copy actual content.

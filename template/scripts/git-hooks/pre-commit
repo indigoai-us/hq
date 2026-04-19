@@ -1,0 +1,50 @@
+#!/bin/bash
+# HQ pre-commit hook — rebuild policy digests when policy files are staged.
+#
+# Rationale: the policy digest files (.claude/policies/_digest.md and per-company
+# companies/*/policies/_digest.md) are generated from the underlying policy
+# markdown files by scripts/build-policy-digest.sh. When a commit modifies any
+# policy file, the corresponding digest must be regenerated and re-staged so
+# the SessionStart hook picks it up on the next Claude session.
+#
+# Install: `ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit`
+#   (or copy if symlink is inconvenient)
+
+set -euo pipefail
+
+HQ_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$HQ_ROOT"
+
+# Detect if any staged files are policy markdown (not the _digest.md files themselves)
+staged_policies=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '(^|/)policies/[^/]+\.md$' \
+  | grep -v '_digest\.md$' \
+  || true)
+
+if [ -z "$staged_policies" ]; then
+  exit 0
+fi
+
+echo "[hq-pre-commit] Policy files staged — rebuilding digests..." >&2
+
+if ! bash "$HQ_ROOT/scripts/build-policy-digest.sh" >/dev/null 2>&1; then
+  echo "[hq-pre-commit] WARNING: build-policy-digest.sh failed — commit will proceed without digest rebuild" >&2
+  exit 0
+fi
+
+# Stage every regenerated digest that changed.
+# We use `git diff --name-only` (unstaged changes) to find touched digests.
+updated_digests=$(git diff --name-only \
+  | grep -E '_digest\.md$' \
+  || true)
+
+if [ -n "$updated_digests" ]; then
+  echo "[hq-pre-commit] Re-staging updated digests:" >&2
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    echo "  $f" >&2
+    git add "$f"
+  done <<<"$updated_digests"
+fi
+
+exit 0

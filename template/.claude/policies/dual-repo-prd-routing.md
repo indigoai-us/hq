@@ -8,8 +8,5 @@ enforcement: soft
 
 ## Rule
 
-When a PRD spans two repos (`repoPath` + `secondaryRepoPath`), add a `REPO:` prefix in each story's `notes` field directing the sub-agent to the correct repo. Example: `"REPO: This story targets repos/private/{repo-a} (NOT {repo-b}). CD to that repo before working."` Also expand `qualityGates` to run typecheck in both repos using subshell: `"(cd /path/to/secondary/repo && npm run typecheck)"`.
+When a PRD spans two repos (`repoPath` + `secondaryRepoPath`), add a `REPO:` prefix in each story's `notes` field directing the sub-agent to the correct repo. Example: `"REPO: This story targets repos/private/artist-manager (NOT holler-comms). CD to that repo before working."` Also expand `qualityGates` to run typecheck in both repos using subshell: `"(cd /path/to/secondary/repo && npm run typecheck)"`.
 
-## Rationale
-
-`execute-task` resolves CWD from `metadata.repoPath` only. Stories targeting the secondary repo get the wrong working directory. Per-story `notes` are included in the worker prompt — this is zero-infrastructure routing without modifying execute-task code. Proven in a cross-repo project (Mar 2026): 3 stories in repo A + 7 stories in repo B, all routed correctly.

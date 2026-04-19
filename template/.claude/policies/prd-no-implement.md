@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-22
 updated: 2026-02-22
 source: user-correction
-learned_from: "2026-02-22: /prd session edited deck HTML directly instead of creating PRD files. User flagged violation."
 ---
 
 ## Rule
@@ -25,6 +24,3 @@ Even if plan mode approval is given, the plan MUST describe the PRD structure, N
 
 Implementation happens via `/execute-task` or `/run-project` AFTER the PRD is created.
 
-## Rationale
-
-On 2026-02-22, a `/prd` session for the {Product} fundraising deck directly edited `companies/{company}/data/pitch-deck/index.html` (14 edits across 12 slides) instead of creating the PRD project files first. This bypassed HQ's project tracking, worker assignment, handoff, and quality gate systems. The plan mode approval was misinterpreted as permission to implement rather than permission to generate the PRD.

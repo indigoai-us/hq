@@ -18,7 +18,7 @@ Skills can be defined as YAML (in worker.yaml) or as standalone .md files with Y
 
 ```yaml
 worker:
-  id: cfo-{company}
+  id: cfo-liverecover
   # ...
 
 skills:

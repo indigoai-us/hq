@@ -14,6 +14,3 @@ source: back-pressure-failure
 
 NEVER print raw API keys, tokens, or secrets to stdout in CLI setup/config commands. Use `<your-api-key>` or `<paste-your-key>` placeholders instead. CLI setup commands are designed for headless/CI environments where stdout is captured in build logs, terminal recordings, or shell history.
 
-## Rationale
-
-Caught by Codex review (P1) in {company} setup command. The fallback code path printed the actual {company}_API_KEY value when no supported AI tool was detected, leaking credentials to anyone with access to CI logs.

@@ -16,19 +16,19 @@ Extract from the user's input:
 - `query` — search text (everything except flags)
 - `--mode` — `search` (BM25), `vsearch` (semantic), `query` (hybrid). Default: `search`
 - `-n` — result count (default: 10)
-- `-c` — collection name (e.g. `hq`, `{product}`). Default: auto-detect or all collections
+- `-c` — collection name (e.g. `hq-infra`, `hq-workers`, `{product}`). Default: auto-detect or all collections
 - `--full` — show full content of top result
 
 ## Company Auto-Detection
 
 If `-c` was NOT explicitly provided, infer the active company from context:
 
-1. **cwd**: If inside `companies/{name}/` or `repos/private/` matching a company repo → use that company's collection
-2. **Recent files**: If recent file access is scoped to a single company → use that company's collection
-3. **Fallback**: No collection flag (search all)
+1. **cwd**: If inside `companies/{name}/` or `repos/private/` matching a company repo per `companies/manifest.yaml` → use that company's collection
+2. **Active worker**: If `/run {worker}` is active and worker has `company:` field → use that company's collection
+3. **Recent files**: If recent file access is scoped to a single company → use that company's collection
+4. **Fallback**: No collection flag (search all)
 
-Available company collections: `{company}`, `{company}`, `{company}`, `personal`
-Also: `hq` (all HQ), `{product}` ({PRODUCT} codebase)
+Available collections: `hq-infra` (commands/skills/policies), `hq-workers` (worker defs), `hq-knowledge` (shared knowledge), `hq-projects` (PRDs), `{product}` ({PRODUCT} codebase), + one per company. Omit `-c` to search all.
 
 When auto-detected, display: `(auto: {company})` in results header.
 
@@ -100,11 +100,11 @@ Display: "qmd unavailable, falling back to Grep"
 
 If Grep is also unavailable, run:
 ```bash
-grep -rl "$QUERY" ${HQ_ROOT:-$HOME/hq}/knowledge/ \
-  ${HQ_ROOT:-$HOME/hq}/companies/ \
-  ${HQ_ROOT:-$HOME/hq}/workers/ \
-  ${HQ_ROOT:-$HOME/hq}/.claude/commands/ \
-  ${HQ_ROOT:-$HOME/hq}/workspace/ 2>/dev/null | head -20
+grep -rl "$QUERY" ~/HQ/knowledge/ \
+  ~/HQ/companies/ \
+  ~/HQ/workers/ \
+  ~/HQ/.claude/commands/ \
+  ~/HQ/workspace/ 2>/dev/null | head -20
 ```
 
 ## Examples
@@ -114,11 +114,13 @@ search ralph                                    # BM25 keyword search (default, 
 search "how do workers execute" --mode vsearch  # Semantic across all
 search auth middleware -c {product}                   # Search {PRODUCT} codebase only
 search "webhook handler" -c {product} --mode vsearch  # Semantic search in {PRODUCT}
-search {company} brand --mode query                # Hybrid with re-ranking
+search {company} brand --mode query            # Hybrid with re-ranking
 search stripe -n 20                             # More results
 search authentication --full                    # Show top match content
-search "brand guidelines" -c {company}             # Search {company} knowledge only
+search "brand guidelines" -c {company}         # Search {company} knowledge only
 search "recovery metrics" -c {company}        # Search {Product} knowledge only
+# If cwd is companies/{company}/:
+search "case study"                             # Auto-detects → -c {company}
 ```
 
 ## Notes
@@ -126,7 +128,8 @@ search "recovery metrics" -c {company}        # Search {Product} knowledge only
 - Default `search` mode is fastest — use for exact keywords
 - Use `--mode vsearch` for conceptual/semantic queries
 - Use `--mode query` for highest quality (slower, uses LLM re-ranking)
-- Use `-c` to scope to a collection: `hq`, `{product}`, `{company}`, `{company}`, `{company}`, `personal`
+- Use `-c` to scope to a collection: `hq-infra`, `hq-workers`, `hq-knowledge`, `hq-projects`, `{product}`, + company collections (run `qmd status` for full list)
 - Without `-c`, auto-detects company from context; falls back to all collections
 - Scores 0.0–1.0; above 0.5 is a good match
+- Run `/search-reindex` after adding new content
 - For exact pattern matching in code (imports, function names), use Grep directly

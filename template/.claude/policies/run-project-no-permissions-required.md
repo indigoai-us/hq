@@ -25,6 +25,3 @@ Without `--no-permissions`, sub-agents (`claude -p`) default to restricted permi
 
 The `--no-permissions` flag passes `--dangerously-skip-permissions --permission-mode bypassPermissions` to each sub-agent invocation, allowing them to edit files, run commands, and mark stories as passed.
 
-## Rationale
-
-Session 2026-03-27: gtm-hq-v4 orchestrator launched without `--no-permissions`. All 10 stories run in the second batch failed with "passes not set after attempt 2". Sub-agent output showed `permission_denials: [{ tool_name: "ExitPlanMode" }]` — the agents were stuck in plan mode. Adding `--no-permissions` resolved the issue; subsequent 25 stories completed with 0 failures.

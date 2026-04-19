@@ -110,7 +110,7 @@ instructions: |
 
   Do NOT use gemini-coder when:
   - Task is code review (use gemini-reviewer)
-  - Task is frontend-specific (use gemini-frontend)
+  - Task is frontend-specific (use frontend-designer)
   - Task requires deep HQ context (use backend-dev/frontend-dev)
 
   ## Skills

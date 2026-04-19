@@ -13,9 +13,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 import { createInterface } from "readline";
 import chalk from "chalk";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   type GitHubAuth,
   HQ_GITHUB_APP_SLUG,
@@ -70,8 +74,9 @@ export interface MemberJoinResult {
 
 // ─── Bundled Team Commands ──────────────────────────────────────────────────
 
-/** Team-specific commands bundled with create-hq (not part of core HQ template). */
-const TEAM_COMMANDS = ["invite.md", "team-sync.md", "promote.md"];
+/** Team-specific commands bundled with create-hq (not part of core HQ template).
+ *  team-sync.md is now in the core template — not bundled here. */
+const TEAM_COMMANDS = ["invite.md", "promote.md"];
 
 /**
  * Install the bundled team management commands into .claude/commands/.

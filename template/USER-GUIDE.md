@@ -39,18 +39,45 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Content & Social
 | Command | What it does |
 |---------|--------------|
+| `/contentidea` | Build content ideas |
+| `/suggestposts` | Research post ideas |
 | `/post` | Post or schedule content to X/LinkedIn via Post-Bridge |
+| `/post-results` | Check post delivery status |
+| `/preview-post` | Preview social post drafts, select images |
+| `/social-setup` | Configure voice, accounts, queue, worker |
+
+### Communication
+| Command | What it does |
+|---------|--------------|
+| `/email` | Manage email across Gmail accounts |
+| `/checkemail` | Quick inbox cleanup and triage |
+| `/imessage` | Send iMessage to saved contact |
+
+### Design & Assets
+| Command | What it does |
+|---------|--------------|
+| `/generateimage` | Generate images via Gemini |
 
 ### Deploy & Ops
 | Command | What it does |
 |---------|--------------|
-| `/pr` | PR operations |
+| `/pr` | {company} operations |
+| `/publish-kit` | Publish kit |
 
 ### Company & Infrastructure
 | Command | What it does |
 |---------|--------------|
 | `/newcompany` | Scaffold new company with full infrastructure |
+| `/launch-brand` | Launch new DTC brand end-to-end |
+| `/pb-connect` | Connect Post-Bridge social accounts |
+| `/bootcamp-student` | Onboard AGI bootcamp student |
 | `/personal-interview` | Deep interview to populate profile/voice |
+
+### Linear
+| Command | What it does |
+|---------|--------------|
+| `/check-linear-voyage` | Interactive triage for {Product} workspace |
+| `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
 
 ### System
 | Command | What it does |
@@ -67,8 +94,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ```
 /run                    # see all
-/run frontend-designer audit
-/run qa-tester smoke-test
+/run cfo-{company} mrr
+/run x-{your-name} contentidea "AI"
 ```
 
 **Public (`workers/public/`):**
@@ -102,24 +129,41 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 **Company Workers** (`companies/{co}/workers/`):
 
-Create company-scoped workers with `/newworker`. Examples:
-
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting |
+| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
 | {company}-analyst | {company} | Data analysis |
-| cmo-{company} | {company} | Social/content |
-| x-{your-name} | personal | X/Twitter posting |
+| infobip-admin | {company} | Infobip channel management |
+| {company}-gtm | {company} | GTM operations |
+| lr-qa | {company} | QA testing |
+| {product}-deploy | {company} | Deployment automation |
+| cmo-{company} | {company} | Social/content (X, LinkedIn) |
+| x-{your-name} | Personal | X/Twitter posting |
+| invoices | Personal | Invoice generation |
+| social-council | Personal | Social strategy council |
+| {company}-site-builder | {company} | Site generation |
+| {company}-research-agent | {company} | Research automation |
 
-## Companies
+## Companies (14)
 
-Each company owns its settings, data, and knowledge. Add companies with `/newcompany`.
+Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {your-company}/  # Your first company
-├── personal/        # Personal tools + social
-└── _template/       # Template for new companies
+├── {company}/    # SMS/e-commerce + AI platform
+├── {company}/         # AI venture
+├── personal/       # Personal tools + social
+├── {company}/  # Band/music
+├── {company}/     # Artist site + admin
+├── {company}/    # Artist management
+├── {company}/      # PR agency
+├── {company}/     # {company} AI
+├── {company}/ # Estate platform
+├── {company}/       # Agency + tools
+├── {company}/          # Shopify store
+├── {company}/       # Wellness mobile app
+├── {company}/       # Domain management
+└── {company}/            # GTM/growth
 ```
 
 ## Projects
@@ -142,7 +186,7 @@ HQ/
 │   └── skills/        # Skill definitions (3)
 ├── agents-profile.md  # {your-name}'s profile
 ├── agents-companies.md # Company contexts
-├── companies/         # Company-scoped resources
+├── companies/         # Company-scoped resources (14)
 │   └── {co}/
 │       ├── knowledge/ # Embedded git repo
 │       ├── policies/  # Company rules
@@ -195,4 +239,4 @@ HQ/
 - `linear/` - Linear integration knowledge
 
 **Company-level** (in `companies/{co}/knowledge/`):
-- Each company has its own embedded git repo
+- All 14 companies have embedded git repos

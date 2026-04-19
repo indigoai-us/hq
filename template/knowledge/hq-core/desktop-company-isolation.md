@@ -31,11 +31,10 @@ Nullable fields: `knowledge` ({company} has `null`), `settings` (can be empty ar
 
 | Company | Repos | Settings Dirs | Workers | Knowledge | qmd Collections |
 |---------|-------|--------------|---------|-----------|-----------------|
-| {company} | {product}, {product}-app-2 | stripe, gusto, deel, quickbooks, linear + (on disk: gmail, google-cloud, meta) | cfo-{company}, {company}-analyst, {product}-deploy | yes | {company}, {product} |
-| {company} | {your-repo}, {your-repo} | figma, linear, google-drive, retool + (on disk: analytics, clerk) | cmo-{company}, {company}-brand-writer, {company}-copy-auditor | yes | {company} |
-| {company} | {your-repo} | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
+| liverecover | {product}, {product}-popup-builder, agent-ops-hq, {product}-cx | stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage + (on disk: attio, browser-state, gmail, google-cloud, infobip, meta, stripe-voyage) | cfo-liverecover, liverecover-analyst, {product}-deploy | yes | liverecover, {product} |
+| {company} | {company}-advisory | (on disk: linkedin, loops, meta, x) | cmo-{company} | yes | {company} |
 | personal | (none) | slack + (on disk: gmail, linkedin, x) | x-{your-name}, invoices | yes | personal |
-| {company} | {your-repo} | (none) | (none) | null | (none) |
+| {company} | {company}-portal | (none) | (none) | null | (none) |
 
 Note: The manifest `settings` list does not always match the on-disk contents of `companies/{id}/settings/`. Desktop must discover settings from the filesystem, but the manifest defines which are "declared" vs which are incidental.
 
@@ -120,7 +119,7 @@ Since HQ has no explicit schema for classifying settings sensitivity, Desktop mu
 
 1. **File name patterns (Secret)**: `*credentials*`, `*secret*`, `*token*`, `*key*`, `*auth*`, `*.pem`, `*.p12`
 2. **Content patterns (Secret)**: Files containing `apiKey`, `api_key`, `secret`, `token`, `client_secret`, `private_key`, `-----BEGIN`
-3. **Known secret dirs**: `stripe`, `gusto`, `deel`, `quickbooks`, `linear*`, `figma`, `google-drive`, `google-cloud`, `gmail`, `slack`, `meta`, `clerk`, `retool`, `loops` -- all of these contain credentials
+3. **Known secret dirs**: `stripe`, `gusto`, `deel`, `quickbooks`, `shopify-partner`, `linear*`, `figma`, `google-drive`, `google-cloud`, `gmail`, `slack`, `meta`, `infobip`, `attio`, `clerk`, `retool`, `loops` -- all of these contain credentials
 4. **Default assumption**: If uncertain, treat as Secret (fail safe)
 
 ### Implementation Approach
@@ -144,7 +143,7 @@ Desktop MUST NOT allow viewing Company A's settings when Company B is the active
 
 ### How Company Filter Maps to Knowledge Access
 
-Each company's knowledge is stored at `companies/{id}/knowledge/`, which is a symlink to an independent git repo (e.g., `repos/private/knowledge-{company}/`).
+Each company's knowledge is stored at `companies/{id}/knowledge/`, which is a symlink to an independent git repo (e.g., `repos/private/knowledge-liverecover/`).
 
 When `activeCompany` is set:
 
@@ -162,7 +161,7 @@ When searching via qmd, the active company determines the default collection:
 function getSearchCollections(activeCompany: string | null): string[] {
   if (!activeCompany) return ['hq']  // search everything
   const manifest = getManifest(activeCompany)
-  return manifest.qmd_collections  // e.g., ['{company}', '{product}'] for {Product}
+  return manifest.qmd_collections  // e.g., ['liverecover', '{product}'] for LiveRecover
 }
 ```
 
@@ -187,8 +186,7 @@ Knowledge
 ├── {activeCompany} (when filtered)
 │   └── {company knowledge files}
 └── All Companies (when no filter)
-    ├── {company}/
-    ├── {company}/
+    ├── liverecover/
     ├── {company}/
     └── personal/
 ```
@@ -197,7 +195,6 @@ Knowledge
 
 ### How Changing Company Context Affects All Views
 
-When the user switches the active company (e.g., from "{company}" to "{company}"), every view must update:
 
 | View | Effect of Company Switch |
 |------|------------------------|
@@ -217,7 +214,7 @@ The company picker should appear in the top bar (`top-bar.tsx`) or left sidebar,
 1. **"All" option** -- No company filter, show everything (default state)
 2. **Company list** -- Each company from manifest, with visual indicator (color dot or icon)
 3. **Active indicator** -- Highlight the currently selected company
-4. **Keyboard shortcut** -- Quick switch via command palette (e.g., `/company {company}`)
+4. **Keyboard shortcut** -- Quick switch via command palette (e.g., `/company liverecover`)
 5. **Persistence** -- Remember last active company across app restarts (store in Tauri's app data or localStorage)
 
 ### Visual Differentiation
@@ -226,8 +223,7 @@ Each company should have a consistent color assignment for visual identification
 
 ```typescript
 const companyColors: Record<string, string> = {
-  {company}: '#00ff88',   // green (matches brand)
-  {company}: '#ffa500',        // orange (matches brand)
+  liverecover: '#00ff88',   // green (matches brand)
   {company}: '#6366f1',        // {company} (matches brand name)
   personal: '#a855f7',      // purple
   '{company}': '#ffd700' // gold (matches brand name)

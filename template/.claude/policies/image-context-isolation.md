@@ -8,7 +8,6 @@ version: 1
 created: 2026-03-30
 updated: 2026-03-30
 source: back-pressure-failure
-learned_from: export-graphics session crash (2026-03-30)
 ---
 
 ## Rule
@@ -54,10 +53,3 @@ bash scripts/resize-screenshot.sh {path}
 ```
 This protects even the sub-agent's context from oversized images.
 
-## Rationale
-
-Claude API enforces a 2000px max dimension per image when ~20+ images accumulate in a conversation ("many-image mode"). An export-graphics session generated 19 social PNGs (1080x1080 at 2x DPR = 2160x2160 actual pixels). When the parent session tried to verify them via Read, it hit the dimension limit and crashed the session.
-
-Sub-agents have isolated context windows — each sees only the images it reads, never triggering the many-image limit. The parent session accumulates zero images, allowing unlimited image verification through delegation.
-
-This policy supersedes the narrower `qa-screenshot-isolation` policy (which only covered 5+ page QA audits). Image context isolation applies universally to all image reading.

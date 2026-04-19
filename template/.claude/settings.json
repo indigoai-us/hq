@@ -1,21 +1,11 @@
 {
   "outputStyle": "Explanatory",
   "autoMemoryEnabled": false,
-  "permissions": {
-    "defaultMode": "plan",
-    "deny": [
-      "Read(~/.ssh/**)",
-      "Read(~/.aws/credentials)",
-      "Read(~/.aws/config)",
-      "Read(~/.gnupg/**)",
-      "Read(~/.env)",
-      "Read(~/.netrc)"
-    ]
-  },
+  "model": "claude-opus-4-7",
   "env": {
     "MAX_THINKING_TOKENS": "31999",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
     "CLAUDE_CODE_NO_FLICKER": "1"
   },
@@ -58,6 +48,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh detect-secrets .claude/hooks/detect-secrets.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
+            "timeout": 5
           }
         ]
       },
@@ -73,6 +68,11 @@
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
+            "timeout": 5
           }
         ]
       },
@@ -87,6 +87,11 @@
           {
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh block-inline-story-impl .claude/hooks/block-inline-story-impl.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh block-on-active-run .claude/hooks/block-on-active-run.sh",
             "timeout": 5
           }
         ]
@@ -135,7 +140,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/hook-gate.sh auto-handoff-trigger .claude/hooks/auto-handoff-trigger.sh",
+            "command": ".claude/hooks/hook-gate.sh auto-checkpoint-precompact .claude/hooks/auto-checkpoint-precompact.sh",
             "timeout": 5
           }
         ]
@@ -153,12 +158,51 @@
           {
             "type": "command",
             "command": ".claude/hooks/hook-gate.sh cleanup-mcp-processes .claude/hooks/cleanup-mcp-processes.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh context-warning-60 .claude/hooks/context-warning-60.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh load-policies .claude/hooks/load-policies-for-session.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": ".claude/hooks/hook-gate.sh context-meter .claude/hooks/context-meter.sh",
-            "timeout": 3
+            "command": ".claude/hooks/hook-gate.sh check-repo-active-runs .claude/hooks/check-repo-active-runs.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/hook-gate.sh inject-local-context $CLAUDE_PROJECT_DIR/.claude/hooks/inject-local-context.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh check-claude-desktop-bridge-health .claude/hooks/check-claude-desktop-bridge-health.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/hook-gate.sh rewrite-resume-sentinel .claude/hooks/rewrite-resume-sentinel.sh",
+            "timeout": 5
           }
         ]
       }

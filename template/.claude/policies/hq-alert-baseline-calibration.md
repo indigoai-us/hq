@@ -18,6 +18,3 @@ source: session-learning
 4. **Include a warm-up/calibration period for new entities.** New brands, new integrations, and recently reconnected accounts should be excluded from alerts for a defined period (e.g., 7 days) until a stable baseline is established.
 5. **When an alert fires and is determined to be a false positive, immediately update the alert rule** to exclude that pattern. Do not dismiss the alert and leave the rule unchanged — it will fire again and erode trust in the monitoring system.
 
-## Rationale
-
-A health monitor fired CRIT 2 alerts claiming 20 brands were below 25% baseline — but the baseline itself was miscalibrated. 51% of checkout events having no identity data triggered anomaly alerts, but that is expected Shopify behavior. Stuck messages from disconnected brands were flagged as critical. Each false positive required investigation time and eroded trust in the alerting system, making it more likely that a real alert would be ignored.

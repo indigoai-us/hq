@@ -12,6 +12,3 @@ When debugging "table not found" errors on a Supabase-backed app, ALWAYS verify 
 
 **Fix:** `supabase migration repair --status reverted {version}` then `supabase db push --include-all`.
 
-## Rationale
-
-Encountered on agent-ops-hq (Mar 2026): migration 015 showed as applied in both local and remote columns of `supabase migration list`, but the `trainees` table didn't exist. Root cause: non-standard migration file naming. The repair + re-push workflow resolved it.

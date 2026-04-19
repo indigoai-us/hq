@@ -10,6 +10,3 @@ enforcement: soft
 
 Preview tools (preview_screenshot, preview_snapshot) render blank for apps using Clerk middleware auth. The headless browser has no Clerk session. Verify via build check + earlier screenshots if available, or use agent-browser with cookie import.
 
-## Rationale
-
-Admin dashboards and other Clerk-protected apps all blank-screen in preview. Build verification (TypeScript + Next.js static generation) catches structural issues. Visual verification requires a real browser session.

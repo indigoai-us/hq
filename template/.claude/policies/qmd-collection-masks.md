@@ -8,8 +8,24 @@ enforcement: soft
 
 ## Rule
 
-When creating or updating qmd collections, include all file types that should be searchable — not just `.md`. The `hq` collection uses `**/*.{md,json,yaml,yml}` to cover PRDs, worker configs, manifests, and thread files. If a `qmd search` returns no results for content you know exists, check the collection mask with `qmd collection list`.
+When creating or updating qmd collections, include all file types that should be searchable — not just `.md`. HQ uses 4 focused sub-collections instead of a monolithic `hq` collection:
 
-## Rationale
+| Collection | Path | Mask |
+|---|---|---|
+| `hq-infra` | `.claude/` | `**/*.{md,yaml,yml,json,sh}` |
+| `hq-workers` | `workers/` | `**/*.{md,yaml,yml,json}` |
+| `hq-knowledge` | `knowledge/` | `**/*.{md,yaml,yml}` |
+| `hq-projects` | `projects/` | `**/*.{md,json}` |
 
-The `hq` collection was originally `**/*.md` only, making 6,600+ JSON/YAML files invisible to search. This caused `qmd search "prd.json"` to return nothing despite many prd.json files existing. Fixed Mar 2026 by expanding the mask.
+Do NOT create a monolithic `hq` collection at HQ root — it double-indexes company/repo content and misses `.claude/` (qmd skips dotdirs during traversal). If a `qmd search` returns no results for content you know exists, check the collection mask with `qmd collection list`.
+
+## Rule: qmd cleanup before qmd update
+
+Run `qmd cleanup` before `qmd update` whenever tombstones accumulate. Quick check:
+
+```bash
+sqlite3 ~/.cache/qmd/index.sqlite "SELECT COUNT(*) FROM documents WHERE active=0"
+```
+
+If the count is non-zero, run `qmd cleanup` first.
+

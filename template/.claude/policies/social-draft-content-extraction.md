@@ -8,7 +8,6 @@ version: 1
 created: 2026-02-26
 updated: 2026-02-26
 source: task-completion
-learned_from: "social advisory council session — Post-Bridge submission with metadata leaking into captions"
 ---
 
 ## Rule
@@ -34,6 +33,3 @@ parts = re.split(r'\n---+\n', text, maxsplit=1)
 content = parts[1].strip() if len(parts) == 2 else text.strip()
 ```
 
-## Rationale
-
-Using `split('---', 2)` and indexing `parts[2]` silently falls back to the full file text when only one `---` exists, leaking `# Title` and `**Status:** Draft` metadata into the posted caption. This was discovered when all 15 Post-Bridge posts showed metadata headers in their content and had to be deleted and resubmitted.

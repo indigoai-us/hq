@@ -20,6 +20,3 @@ Prohibited shortcuts:
 - Loosening assertions to make tests pass without fixing the underlying issue
 - Marking tests as "known flaky" without a root cause fix
 
-## Rationale
-
-Tests are back-pressure that prevents broken code from shipping. Skipping a test removes that safety net and creates technical debt that compounds. False positives are worse than no test — they give false confidence. Every test failure is a signal worth investigating.

@@ -21,6 +21,3 @@ mkdir -p {repoPath} && cd {repoPath} && git init && git commit --allow-empty -m 
 
 Also update `companies/manifest.yaml` to register the new repo under the correct company.
 
-## Rationale
-
-Discovered during curious-minds-publish execution. The orchestrator's `ensure_worktree()` function requires an existing git repo. Without the bootstrap step, the first story fails immediately with a git error.

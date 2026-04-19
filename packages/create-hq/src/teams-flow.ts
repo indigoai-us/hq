@@ -133,12 +133,13 @@ export async function runTeamsFlow(
   preAuth?: GitHubAuth,
   joinToken?: string
 ): Promise<TeamsFlowResult | null> {
-  const auth = preAuth ?? await authenticate();
-  if (!auth) return null;
-
-  const result: TeamsFlowResult = { auth, member: null, admin: null, joinedByInvite: null };
-
   if (mode === "existing") {
+    // "existing" path requires App auth upfront for discovery + invite flows
+    const auth = preAuth ?? await authenticate();
+    if (!auth) return null;
+
+    const result: TeamsFlowResult = { auth, member: null, admin: null, joinedByInvite: null };
+
     // Check for a pre-supplied token (--join flag) or prompt for one
     let token = joinToken;
 
@@ -174,7 +175,7 @@ export async function runTeamsFlow(
     result.member = await runMemberJoin(auth, hqRoot);
 
     if (result.member === null) {
-      // No teams found at all
+      // No teams found at all — offer to create a team
       console.log();
       info("No HQ teams are linked to your GitHub account yet.");
       const create = await confirm(
@@ -182,6 +183,8 @@ export async function runTeamsFlow(
         false
       );
       if (create) {
+        // Admin onboarding handles its own auth sequence:
+        // gh CLI for org discovery → App device flow after org selection
         result.admin = await runAdminOnboarding(auth, hqRoot, hqVersion);
       }
     }
@@ -189,6 +192,18 @@ export async function runTeamsFlow(
   }
 
   // mode === "new"
-  result.admin = await runAdminOnboarding(auth, hqRoot, hqVersion);
+  // Admin onboarding handles its own auth sequence:
+  //   1. gh CLI token for org discovery (prompt gh auth login if needed)
+  //   2. User picks org
+  //   3. App device flow auth (for installations + repo management)
+  // This avoids the chicken-and-egg problem where the App token can only
+  // see orgs it's already installed on.
+  const result: TeamsFlowResult = { auth: null as unknown as GitHubAuth, member: null, admin: null, joinedByInvite: null };
+  result.admin = await runAdminOnboarding(null, hqRoot, hqVersion);
+  if (result.admin) {
+    // Admin onboarding completed — load the auth it persisted
+    const auth = loadGitHubAuth();
+    if (auth) result.auth = auth;
+  }
   return result;
 }

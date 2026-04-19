@@ -26,6 +26,3 @@ The only acceptable actions in the interactive session are:
 
 Pre-launch prep MUST NOT include writing code in the target repo. If `run-project.sh` fails or needs adjustment, fix the script — don't bypass it.
 
-## Rationale
-
-Claude bypassed `run-project.sh` in a session after the user said `/run-project`. The plan correctly called for the script, but Claude went rogue — creating files, editing `main.ts`, writing hooks and services inline. This destroyed the orchestrator's ability to track progress, retry failures, and maintain story isolation. The script runs each story as an independent `claude -p` sub-agent with its own context window, git validation, and regression gates. Inline implementation loses all of that.

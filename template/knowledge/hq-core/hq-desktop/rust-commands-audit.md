@@ -138,11 +138,11 @@ struct WorkerEntry {
 
 **Actual registry.yaml worker entry:**
 ```yaml
-- id: {company}-analyst
-  path: workers/private/{company}-analyst/
+- id: liverecover-analyst
+  path: workers/private/liverecover-analyst/
   type: ResearchWorker
   visibility: private        # NOT parsed
-  company: {company}        # NOT parsed
+  company: liverecover        # NOT parsed
   status: active
   description: "..."
 ```
@@ -227,14 +227,14 @@ struct CompanyEntry {
 
 **Actual company structure (from manifest.yaml):**
 ```yaml
-{company}:
+liverecover:
   repos: [...]
-  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-{company}]
-  workers: [cfo-{company}, {company}-analyst, {product}-deploy]
-  knowledge: companies/{company}/knowledge/
+  settings: [stripe, gusto, deel, quickbooks, shopify-partner, linear-voyage]
+  workers: [cfo-liverecover, liverecover-analyst, {product}-deploy]
+  knowledge: companies/liverecover/knowledge/
   deploy: [...]
   vercel_projects: [...]
-  qmd_collections: [{company}, {product}]
+  qmd_collections: [liverecover, {product}]
 ```
 
 **Missing data:**
@@ -336,8 +336,7 @@ All mock data lives in `src/lib/tauri.ts` and `src/hooks/use-empire-data.ts`. Us
 
 ```typescript
 // 8 workers with outdated data
-{ id: 'cfo-{company}', type: 'FinanceWorker', team: 'finance' }
-{ id: 'cmo-{company}', type: 'MarketingWorker', team: 'marketing' }
+{ id: 'cfo-liverecover', type: 'FinanceWorker', team: 'finance' }
 { id: 'dev-team', type: 'CodeWorker', team: 'engineering' }
 // ...
 ```
@@ -391,7 +390,6 @@ All mock data lives in `src/lib/tauri.ts` and `src/hooks/use-empire-data.ts`. Us
 
 ```typescript
 // 3 projects for orchestrator view
-{ name: '{your-project}', state: 'IN_PROGRESS', prdPath: '...README.md' }
 ```
 
 **Issues:**

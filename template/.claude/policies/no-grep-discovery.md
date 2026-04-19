@@ -18,6 +18,3 @@ Never use Grep to find `prd.json`, `worker.yaml`, or discover project/company/wo
 
 Grep is for exact pattern matching in code (e.g. `import.*AuthService` with `glob: "*.ts"`), not for file discovery.
 
-## Rationale
-
-Same as Glob blocking: qmd and index files (`manifest.yaml`, `registry.yaml`) are the correct discovery tools. Grep for `prd.json` or `worker.yaml` patterns teaches the wrong habit and bypasses the indexed search system.

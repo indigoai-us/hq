@@ -45,11 +45,14 @@ HQ/
 
 | Company | Workers | Key Resources |
 |---------|---------|---------------|
-| {company} | cfo, analyst, cmo | Stripe, Gusto, Deel, QB, Shopify, Linear |
-| {company} | pr-strategist, pr-writer, pr-outreach, pr-monitor | PR team |
-| personal | x-{your-name} | Slack, Gmail, LinkedIn, X |
+| liverecover | cfo, analyst, infobip-admin, gtm, qa, deploy | Stripe, Gusto, Deel, QB, Shopify, Linear (voyage) |
+| {company} | cmo | AWS (Route 53), Linear, LinkedIn, Loops |
+| personal | x-{your-name}, invoices, social-council | Slack, Gmail, LinkedIn, X |
+| {company} | site-builder, research-agent | Stripe |
+| {company} | — | Band/music |
+| {company} | — | Artist site + admin |
 | {company} | — | Artist manager monorepo |
-| {company} | — | {Product} AI |
+| brandstage | — | BrandStage AI |
 | {company} | — | Estate platform |
 | {company} | — | Shopify store |
 | {company} | — | Expo mobile app |
@@ -89,6 +92,18 @@ gemini-coder, gemini-reviewer, gemini-frontend
 **Company:** `/newcompany`, `/launch-brand`, `/pb-connect`, `/bootcamp-student`, `/personal-interview`
 **Linear:** `/check-linear-voyage`, `/{product}-prd`
 **Deploy:** `/pr`
+
+## Command ↔ Skill Shapes
+
+Every command exists as `.claude/commands/{name}.md` (the slash-command entry point) and most have a paired `.claude/skills/{name}/SKILL.md` (the Skill-tool canonical logic). Two valid shapes:
+
+**Consolidated (default for new commands)** — `.md` is a ~20-line delegator stub, `SKILL.md` holds the canonical logic. One source of truth, no drift. Converted pairs (Phase 3.1 audit): `search`, `audit-log`, `brainstorm`, `startwork`, `prd`, `handoff`, `learn`, `execute-task`.
+
+**Thin-router split (only one)** — `run-project`. The `.md` is the canonical docs/flags/examples source (622 lines). The `SKILL.md` is a ~66-line bash wrapper that execs `scripts/run-project.sh`. They stay forked because one is human-facing documentation and the other is a dispatch shim — different jobs, neither redundant.
+
+**Intentional exceptions (metadata stubs, no SKILL.md)** — `review`, `investigate`, `retro`, `document-release`, `review-plan`. These are frontmatter-only commands that dispatch prompts; no skill logic to split.
+
+**Rule for new commands:** start with the consolidated shape — write the canonical logic in `SKILL.md`, leave `.md` as a stub copying `.claude/commands/startwork.md`'s shape (frontmatter → H1 → intro → `## Steps` → `## After`). Only fork if you have a genuine thin-router reason like `run-project`.
 
 ## Knowledge Bases
 
