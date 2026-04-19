@@ -43,7 +43,7 @@ social-content/drafts/
 
 - `/contentidea {idea}` - Transform idea into full content suite
 - `/suggestposts` - Get strategic posting suggestions
-- `/scheduleposts` - Pick what to post based on context
+- `/post` - Post or schedule content (replaces `/post-now` and `/scheduleposts`)
 
 ## Voice Style Tips
 
@@ -57,4 +57,4 @@ Your voice-style.md should include:
 
 - Run `/suggestposts` to get content ideas
 - Run `/contentidea {topic}` to build out an idea
-- Run `/scheduleposts` when ready to post
+- Run `/post` when ready to post or schedule

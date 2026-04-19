@@ -1,0 +1,109 @@
+/*
+ * hq-cinematic — design tokens
+ * Version: 0.1.0
+ *
+ * Palette anchors (from PRD):
+ *   Navy:   #0A1228, #080F24, #050817 (three anchors interpolated across 000..900)
+ *   Spectrum: cyan → violet → magenta → orange → gold (5-stop dispersion)
+ *   Warm neutrals: brown #7C5B3A, yellow #E8C77A, pink #A97791 (at 20/40/60/80 tints)
+ *
+ * Consumption: @import this file in the consumer app's global CSS, then read
+ *   via var(--token-name). Do not re-declare these names elsewhere.
+ */
+
+:root {
+  /* ── Navy scale ─────────────────────────────────────────────────────────
+   * Three PRD anchors placed at --bg-navy-100 (#0A1228, lightest of the three),
+   * --bg-navy-500 (#080F24), and --bg-navy-900 (#050817, darkest).
+   * 000 is an above-anchor lift; 200/300/400/600/700/800 interpolate between.
+   */
+  --bg-navy-000: #0E1733;   /* lift above lightest anchor — hairline surface */
+  --bg-navy-100: #0A1228;   /* PRD anchor — lightest navy */
+  --bg-navy-200: #091127;
+  --bg-navy-300: #091026;
+  --bg-navy-400: #080F25;
+  --bg-navy-500: #080F24;   /* PRD anchor — mid navy (default page background) */
+  --bg-navy-600: #070D20;
+  --bg-navy-700: #060B1C;
+  --bg-navy-800: #060A19;
+  --bg-navy-900: #050817;   /* PRD anchor — deepest navy (void) */
+
+  /* ── Spectrum palette ───────────────────────────────────────────────────
+   * Five-stop prism dispersion used for refraction beams, reveal sweeps,
+   * and accent text masks. Order is physical (short-λ → long-λ).
+   */
+  --spectrum-cyan:    #7DE3F4;
+  --spectrum-violet:  #8B6DF0;
+  --spectrum-magenta: #E56AB3;
+  --spectrum-orange:  #F28A4B;
+  --spectrum-gold:    #E8C77A;
+
+  /* ── Spectrum fallback ──────────────────────────────────────────────────
+   * Solid-color fallback for text that uses `background-clip: text`. Meets
+   * WCAG AA (≥4.5:1) against --bg-navy-900 (#050817): warm-yellow #E8C77A
+   * ≈ 11.9:1 contrast. Applied via @supports not (background-clip: text)
+   * in keyframes.css so modern browsers still get the gradient; legacy
+   * browsers and reduced-motion users see the solid high-contrast color.
+   */
+  --spectrum-fallback: var(--warm-yellow);
+
+  /* ── Warm neutrals (tints) ──────────────────────────────────────────────
+   * Ship each at 20 / 40 / 60 / 80 alpha-equivalent tints (toward navy-900).
+   * Used for hairline rules, warm shadows, foreground glyphs over navy.
+   */
+  --warm-brown:    #7C5B3A;
+  --warm-brown-20: #1E1A16;
+  --warm-brown-40: #362B1F;
+  --warm-brown-60: #553F2B;
+  --warm-brown-80: #6E5133;
+
+  --warm-yellow:    #E8C77A;
+  --warm-yellow-20: #2B261A;
+  --warm-yellow-40: #564834;
+  --warm-yellow-60: #8C744E;
+  --warm-yellow-80: #BDA067;
+
+  --warm-pink:    #A97791;
+  --warm-pink-20: #22181E;
+  --warm-pink-40: #443039;
+  --warm-pink-60: #704F5F;
+  --warm-pink-80: #916678;
+
+  /* ── Gradient macros ────────────────────────────────────────────────────
+   * Predefined spectrum gradients for beams, text masks, WebGL sampling.
+   * Consumers should reference these variables, not redeclare stop colors.
+   */
+  --gradient-spectrum-linear: linear-gradient(
+    90deg,
+    var(--spectrum-cyan)    0%,
+    var(--spectrum-violet) 25%,
+    var(--spectrum-magenta) 50%,
+    var(--spectrum-orange) 75%,
+    var(--spectrum-gold)  100%
+  );
+
+  --gradient-spectrum-radial: radial-gradient(
+    circle at 50% 50%,
+    var(--spectrum-cyan)    0%,
+    var(--spectrum-violet) 30%,
+    var(--spectrum-magenta) 55%,
+    var(--spectrum-orange) 80%,
+    var(--spectrum-gold)  100%
+  );
+
+  /* ── Typography ─────────────────────────────────────────────────────────
+   * Inter 800/900 only for display — no new font dependencies.
+   */
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display-weight-bold:  800;
+  --font-display-weight-black: 900;
+
+  /* ── Motion primitives ──────────────────────────────────────────────────
+   * Timing and easing shared by the five keyframes in keyframes.css.
+   */
+  --motion-ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-drift:     cubic-bezier(0.45, 0, 0.55, 1);
+  --motion-duration-sweep:  1400ms;
+  --motion-duration-drift:  8000ms;
+  --motion-duration-bloom:   900ms;
+}

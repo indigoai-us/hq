@@ -7,7 +7,7 @@ enforcement: hard
 version: 1
 created: 2026-04-16
 updated: 2026-04-16
-source: starter-kit
+source: user-correction
 command: run-project
 ---
 
@@ -20,3 +20,4 @@ zsh: command not found: kcd
 ```
 
 (observed literal corruption: `cd '/Users/...'` → `kcd '/Users/...'`)
+

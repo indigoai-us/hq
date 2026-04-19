@@ -7,7 +7,7 @@ enforcement: hard
 version: 1
 created: 2026-04-16
 updated: 2026-04-16
-source: starter-kit
+source: back-pressure-failure
 command: run-project
 ---
 
@@ -20,3 +20,4 @@ Healing steps (in order):
 2. If `$wt_path/.git` still exists after prune → ABORT with clear remediation hint (do not force-remove a live worktree)
 3. If `$wt_path` contents are limited to regenerable artifacts (`node_modules`, `.expo`, `.next`, `.turbo`, `dist`, `build`, `.DS_Store`) → `rm -rf "$wt_path"` and proceed with create
 4. If `$wt_path` contains ANY other files → ABORT with clear remediation hint (never destroy possible user work)
+

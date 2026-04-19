@@ -1,0 +1,128 @@
+/**
+ * Moonflow Editorial V2 — Design Tokens (CSS Custom Properties)
+ * Derived from constants/colors.ts + constants/typography.ts + constants/spacing.ts
+ * Figma file: fpkOz8VuhR80oc8mp0Tov3
+ *
+ * Note: These are reference tokens for web/documentation contexts.
+ * React Native components import directly from constants/*.ts (source of truth).
+ */
+
+:root {
+  /* ── Primary Palette ─────────────────────────────────────────── */
+  --color-terra: #b95b34;
+  --color-terra-50: #fdf3ee;
+  --color-terra-100: #fae3d5;
+  --color-terra-200: #f4c4aa;
+  --color-terra-300: #ec9e75;
+  --color-terra-400: #d97a4e;
+  --color-terra-500: #b95b34;
+  --color-terra-600: #a04c2b;
+  --color-terra-700: #863d22;
+  --color-terra-800: #6d311c;
+  --color-terra-900: #572718;
+
+  /* ── Cream / Off-white ───────────────────────────────────────── */
+  --color-cream: #fbf6f2;
+  --color-cream-50: #ffffff;
+  --color-cream-100: #fefcfa;
+  --color-cream-200: #fbf6f2;
+  --color-cream-300: #f5ebe2;
+  --color-cream-400: #eddcce;
+  --color-cream-500: #e0c9b6;
+
+  /* ── Gold / Amber ────────────────────────────────────────────── */
+  --color-gold: #ffc375;
+  --color-gold-300: #ffc375;
+  --color-gold-400: #f1b97a;
+  --color-gold-500: #e5a45c;
+
+  /* ── Cycle Phase Colors ──────────────────────────────────────── */
+  --color-phase-menstrual-bg: #a84232;
+  --color-phase-menstrual-accent: #80d4ff;
+  --color-phase-follicular-bg: #b35c2a;
+  --color-phase-follicular-accent: #ffea80;
+  --color-phase-ovulation-bg: #b07040;
+  --color-phase-ovulation-accent: #bc99ff;
+  --color-phase-luteal-bg: #3a1833;
+  --color-phase-luteal-accent: #ff80aa;
+
+  /* ── Depth Colors ────────────────────────────────────────────── */
+  --color-plum: #4a2040;
+  --color-midnight: #0a0e1a;
+  --color-dusty-rose: #d9afa7;
+  --color-sage: #adc193;
+
+  /* ── Semantic ────────────────────────────────────────────────── */
+  --color-background: #b95b34;
+  --color-surface: #c0744a;
+  --color-surface-elevated: #d08a5e;
+  --color-border: rgba(255, 255, 255, 0.2);
+  --color-border-subtle: rgba(255, 255, 255, 0.1);
+  --color-text-primary: #fbf6f2;
+  --color-text-secondary: rgba(251, 246, 242, 0.8);
+  --color-text-muted: rgba(251, 246, 242, 0.5);
+
+  /* ── Glass ───────────────────────────────────────────────────── */
+  --color-glass-bg: rgba(255, 255, 255, 0.09);
+  --color-glass-bg-hover: rgba(255, 255, 255, 0.15);
+  --color-glass-border: rgba(255, 255, 255, 0.3);
+  --color-glass-border-subtle: rgba(255, 255, 255, 0.15);
+
+  /* ── Glow ────────────────────────────────────────────────────── */
+  --color-glow-gold: rgba(255, 195, 117, 0.45);
+  --color-glow-terra: rgba(185, 91, 52, 0.40);
+  --color-glow-dusty-rose: rgba(217, 175, 167, 0.40);
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-family-display: 'Fraunces', serif;
+  --font-family-body: 'Inter', sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+  --font-size-h2: 26px;
+  --font-size-h1: 32px;
+  --font-size-display: 42px;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  --letter-spacing-tight: -0.5px;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 1px;
+  --letter-spacing-wider: 2px;
+  --letter-spacing-widest: 4px;
+  --letter-spacing-display: 6px;
+
+  /* ── Spacing ─────────────────────────────────────────────────── */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-base: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 40px;
+  --spacing-4xl: 48px;
+  --spacing-5xl: 56px;
+  --spacing-6xl: 72px;
+
+  /* ── Border Radius ───────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Icon Sizes ──────────────────────────────────────────────── */
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
+}

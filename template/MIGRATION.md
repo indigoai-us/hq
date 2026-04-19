@@ -1,33 +1,34 @@
-# Migration Guide
+## Migrating to 11.2.0 — 2026-04-18
 
-Instructions for updating existing HQ installations to new versions.
+**Non-breaking for HQ consumers.** The only behavior changes land in publish-kit itself: the release walker is now a strict allowlist, and the publish target is rebuilt from scratch on every full release. No action required for anyone consuming the template.
+
+If you maintain a downstream publish-kit or a fork that mirrors HQ, read below.
+
+### Step 1 — Review the new allowlist
+
+The walker now refuses to emit anything outside `.claude/policies/publish-kit-source-is-strict-allowlist.md` (ALLOW_ROOTS, REMAPS, STARTER_SCAFFOLDS, NEVER_TRAVERSE). If your fork publishes paths that aren't on the allowlist, add them to the policy and the walker explicitly — silent drift is no longer possible.
+
+### Step 2 — Expect deletions on first 11.2.0 publish
+
+Because the target is now rebuilt from scratch (Stage R = `rm -rf template/`), the first 11.2.0 publish will register as a very large diff against the prior release: every file that was leaked by earlier permissive walks (owner-private commands, deprecated skills, company-scoped policies, private knowledge) is removed. This is expected and not a regression — it is the root-cause fix for the leak class.
+
+### Step 3 — `Stage R` semantics
+
+On every full release:
+1. **Stage R — Rebuild Target:** `rm -rf template/` then `mkdir -p template/`.
+2. **Stage E — Emit:** walk the allowlist and write each file into the empty `template/`.
+
+Incremental publishes (single-file corrections) still bypass Stage R. The assertion in Step 0.5 of `.claude/commands/publish-kit.md` is the gate.
+
+### Step 4 — `/prd` is now `/plan`
+
+The `prd/` skill was renamed to `plan/`, and the command `/prd` was removed. Update any muscle memory, CI hooks, or prompt templates: use `/plan`.
 
 ---
 
-## Migrating to v11.2.0 (from v11.1.x)
+# Migration Guide
 
-### Headline
-
-publish-kit now refuses to traverse owner-private directories, and rebuilds `template/` from scratch on each full release. Non-breaking for HQ consumers who only use the template as a downstream. Downstream authors who run their own `/publish-kit` from a fork need to re-read the new scope policy.
-
-### Step 1 — Review the new allowlist policy
-
-Read `.claude/policies/publish-kit-source-is-strict-allowlist.md`. The walker now only reads from an explicit allowlist of top-level paths. If your fork added custom sync paths outside the allowlist, they will silently fail to ship on the next release — surface them by inspecting the publish log or add them explicitly to the allowlist in your local policy copy.
-
-### Step 2 — Expect deletions on next pull
-
-Files that should never have been published are being removed from `template/` in v11.2.0:
-
-- `.obsidian/` (owner vault state)
-- `template/projects/{purist-ralph-loop,pure-ralph-branch-isolation,incorporate-workers-into-pure-ralph,ralph-test}/` (owner PRDs)
-- `template/workspace/ralph-test/`, `template/workspace/content-ideas/inbox.jsonl`
-- `template/.claude/settings.local.json`
-
-If you had modified any of these locally, back them up before pulling. The scaffold `template/projects/.gitkeep` and empty `template/workspace/{checkpoints,drafts,learnings,orchestrator,reports,scratch,threads}/` dirs remain.
-
-### Step 3 — Target rebuild semantics
-
-`/publish-kit` now `rm -rf`s `template/` before emitting files. Any consumer-specific overrides previously preserved across releases must move to a separate path (suggested: `consumer-overlays/` outside `template/`) and be reapplied post-release. Patch mode (`--item ...`) is unaffected — it still overlays individual files without the rebuild.
+Instructions for updating existing HQ installations to new versions.
 
 ---
 

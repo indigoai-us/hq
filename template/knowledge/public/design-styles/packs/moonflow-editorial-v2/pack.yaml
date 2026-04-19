@@ -1,0 +1,47 @@
+# pack.yaml — Moonflow Editorial V2 Brand Pack
+# Moonflow iOS app redesign — warm terracotta editorial palette + Fraunces/Inter typography.
+# See PACK-SCHEMA.md for full documentation.
+
+id: moonflow-editorial-v2
+name: Moonflow Editorial V2
+version: "1.0.0"
+type: brand
+extends: editorial-magazine
+
+aesthetic: "Warm terracotta editorial — earthy sunset palette, Fraunces serif display + Inter body, soft cream surfaces, luminous moon-phase photography. Embodied, cyclical, non-prescriptive."
+
+origin: "Moonflow internal brand system (Figma file fpkOz8VuhR80oc8mp0Tov3)"
+
+contents:
+  style_guide: style-guide.md
+  implementation: implementation.md
+  tokens_css: design-tokens.css
+  tokens_json: design-tokens.json
+
+compatibility:
+  formulas:
+    - app
+  industries:
+    - consumer
+    - lifestyle
+    - wellness
+    - editorial
+
+# Files workers load when this pack is active.
+# required = always loaded; optional = loaded when task-relevant.
+context_paths:
+  required:
+    - implementation.md
+    - design-tokens.css
+    - repos/private/moonflow-app/constants/colors.ts
+    - repos/private/moonflow-app/constants/typography.ts
+    - repos/private/moonflow-app/constants/spacing.ts
+  optional:
+    - style-guide.md
+    - design-tokens.json
+    - repos/private/moonflow-app/tailwind.config.js
+
+tools:
+  audit: "run frontend-dev audit"
+  polish: "run frontend-dev polish"
+  review: "run frontend-dev review"

@@ -13,14 +13,25 @@
 # Consumed by .claude/hooks/load-policies-for-session.sh on SessionStart.
 #
 # Usage:
-#   bash scripts/build-policy-digest.sh           # build all scopes
-#   bash scripts/build-policy-digest.sh --verbose # with per-file logs
+#   bash scripts/build-policy-digest.sh              # build all scopes
+#   bash scripts/build-policy-digest.sh --verbose    # with per-file logs
+#   bash scripts/build-policy-digest.sh --if-changed # skip if all digests are fresh
+#
+# --if-changed: for every policy scope, if _digest.md exists and is newer
+# than every policy .md in that scope, skip. If ANY scope is stale or missing
+# a digest, proceed with a full rebuild. Safe and cheap (mtime checks only).
 
 set -euo pipefail
 
 HQ_ROOT="${HQ_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 VERBOSE=0
-[ "${1:-}" = "--verbose" ] && VERBOSE=1
+IF_CHANGED=0
+for arg in "$@"; do
+  case "$arg" in
+    --verbose) VERBOSE=1 ;;
+    --if-changed) IF_CHANGED=1 ;;
+  esac
+done
 
 log() { [ $VERBOSE -eq 1 ] && echo "$@" >&2; return 0; }
 
@@ -77,16 +88,22 @@ build_one_digest() {
       _digest.md|example-policy.md|README.md) continue ;;
     esac
 
-    local id enforcement rule
+    local id enforcement rule applies_to
     id=$(extract_field "$f" id || true)
     enforcement=$(extract_field "$f" enforcement || true)
     rule=$(extract_rule_oneliner "$f" || true)
+    applies_to=$(extract_field "$f" applies_to || true)
 
     [ -z "$id" ] && id=$(basename "$f" .md)
     [ -z "$enforcement" ] && enforcement="soft"
     [ -z "$rule" ] && rule="(no ## Rule section)"
 
     local line="- [${enforcement}] **${id}**: ${rule}"
+    if [ -n "$applies_to" ]; then
+      # Normalize "[vercel, clerk]" or "[vercel,clerk]" -> "vercel,clerk" (no spaces, no brackets)
+      local tags="${applies_to#[}"; tags="${tags%]}"; tags="${tags// /}"
+      line="${line} <!-- applies_to: ${tags} -->"
+    fi
     count_total=$((count_total + 1))
     if [ "$enforcement" = "hard" ]; then
       printf '%s\n' "$line" >> "$tmp_hard"
@@ -125,8 +142,78 @@ build_one_digest() {
   log "wrote: $out ($count_total policies)"
 }
 
+# Returns 0 if every policy scope has a digest at least as new as all its *.md files.
+# Returns 1 if any scope is stale, missing, or has no digest.
+all_digests_fresh() {
+  local stale=0
+
+  _check_scope() {
+    local dir="$1"
+    [ -d "$dir" ] || return 0
+    local has_pol=0
+    for f in "$dir"/*.md; do
+      [ -f "$f" ] || continue
+      local base
+      base=$(basename "$f")
+      case "$base" in
+        _digest.md|example-policy.md|README.md) continue ;;
+      esac
+      has_pol=1
+      break
+    done
+    [ $has_pol -eq 0 ] && return 0
+    local out="$dir/_digest.md"
+    [ -f "$out" ] || { log "stale (no digest): $dir"; return 1; }
+    for f in "$dir"/*.md; do
+      [ -f "$f" ] || continue
+      local base
+      base=$(basename "$f")
+      case "$base" in
+        _digest.md|example-policy.md|README.md) continue ;;
+      esac
+      if [ "$f" -nt "$out" ]; then
+        log "stale ($(basename "$f") newer than digest): $dir"
+        return 1
+      fi
+    done
+    return 0
+  }
+
+  _check_scope "$HQ_ROOT/.claude/policies" || return 1
+
+  for co_dir in "$HQ_ROOT"/companies/*/; do
+    [ -d "$co_dir" ] || continue
+    local co
+    co=$(basename "$co_dir")
+    [ "$co" = "_template" ] && continue
+    local pol_dir="${co_dir}policies"
+    [ -d "$pol_dir" ] || continue
+    _check_scope "$pol_dir" || return 1
+  done
+
+  for scope in public private; do
+    for repo_dir in "$HQ_ROOT"/repos/$scope/*/; do
+      [ -d "$repo_dir" ] || continue
+      local pol_dir="${repo_dir}.claude/policies"
+      [ -d "$pol_dir" ] || continue
+      _check_scope "$pol_dir" || return 1
+    done
+  done
+
+  return 0
+}
+
 main() {
   log "HQ_ROOT=$HQ_ROOT"
+
+  if [ $IF_CHANGED -eq 1 ]; then
+    if all_digests_fresh; then
+      printf 'All digests fresh — skipping rebuild.\n' >&2
+      return 0
+    fi
+    log "at least one scope stale — rebuilding all"
+  fi
+
   local built=0
 
   build_one_digest "$HQ_ROOT/.claude/policies" "Global (.claude/policies/)"

@@ -48,7 +48,7 @@ When the user corrects factual content (pricing, session descriptions, product d
 
 ## INDEX.md System
 
-Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/public/hq-core/index-md-spec.md`. Rebuild all: `/cleanup --reindex`. Auto-updated by checkpoint/handoff/prd/run-project commands.
+Hierarchical INDEX.md files provide navigable directory maps. Spec: `knowledge/public/hq-core/index-md-spec.md`. Rebuild all: `/cleanup --reindex`. Auto-updated by checkpoint/handoff/plan/run-project commands.
 
 ## Structure
 
@@ -90,7 +90,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 | New company | `/newcompany {slug}` — creates dir, manifest, knowledge repo, qmd collection |
 | New worker needed | `/newworker` — scaffolds worker.yaml in `companies/{co}/workers/`, registers in registry + manifest |
 | New knowledge base | For company: `git init` in `companies/{co}/knowledge/`. For shared: create repo in `repos/public/knowledge-{name}` → symlink to `knowledge/public/`. Add to `modules/modules.yaml` |
-| New project | `/prd` — creates `companies/{co}/projects/{name}/` with prd.json + README |
+| New project | `/plan` — creates `companies/{co}/projects/{name}/` with prd.json + README |
 | New repo | Clone to `repos/{pub|priv}/` → add to `manifest.yaml` → add qmd collection |
 
 **Post-infrastructure checklist (mandatory after ANY creation):**
@@ -102,7 +102,7 @@ When work implies new infrastructure, scaffold it BEFORE doing the work:
 
 **Always reindex (`qmd update 2>/dev/null || true`) after:**
 - Creating/modifying workers, knowledge, commands, projects
-- Completion of `/newworker`, `/prd`, `/learn`, `/cleanup`, `/handoff`, `/execute-task`, `/run-project`
+- Completion of `/newworker`, `/plan`, `/learn`, `/cleanup`, `/handoff`, `/execute-task`, `/run-project`
 - Git commits touching `knowledge/`, `workers/`, `.claude/commands/`, `projects/`
 
 ## Workers
@@ -121,7 +121,7 @@ Rules stored as policy files (YAML frontmatter + `## Rule` + `## Rationale`). Th
 2. `repos/{repo}/.claude/policies/` — repo-scoped
 3. `.claude/policies/` — cross-cutting + command-scoped (lowest)
 
-Hard enforcement blocks on violation; soft notes deviations. Commands auto-load applicable policies (`/startwork`, `/run-project`, `/execute-task`, `/prd`, `/run`, `/learn`). Spec: `knowledge/public/hq-core/policies-spec.md`. Template: `companies/_template/policies/example-policy.md`.
+Hard enforcement blocks on violation; soft notes deviations. Commands auto-load applicable policies (`/startwork`, `/run-project`, `/execute-task`, `/plan`, `/run`, `/learn`). Spec: `knowledge/public/hq-core/policies-spec.md`. Template: `companies/_template/policies/example-policy.md`.
 
 ## Sub-Agent Rules
 
@@ -149,8 +149,8 @@ Public: listed in `modules/modules.yaml` (filter `access: public`). Company-leve
 
 Knowledge folders use three patterns — all valid, none being migrated:
 
-1. **Embedded standalone `.git` dir** (most company knowledge): e.g. `companies/dripkit/knowledge/`, `companies/liverecover/knowledge/`, `companies/personal/knowledge/`. HQ tracks these as orphan `160000` gitlinks — the inner repo is opaque to HQ, commits happen inside. To capture advancement: commit inside the inner repo, then `git add companies/{co}/knowledge && git commit` in HQ to bump the pointer. (HQ has no `.gitmodules` file — this is intentional, not a bug.)
-2. **Symlink to `repos/private/knowledge-{co}/`** (e.g. `companies/{company}/knowledge`, `companies/{company}/knowledge`): tracked as `120000` symlink; edits land in the target repo.
+1. **Embedded standalone `.git` dir** (most company knowledge): e.g. `companies/dripkit/knowledge/`, `companies/{company}/knowledge/`, `companies/personal/knowledge/`. HQ tracks these as orphan `160000` gitlinks — the inner repo is opaque to HQ, commits happen inside. To capture advancement: commit inside the inner repo, then `git add companies/{co}/knowledge && git commit` in HQ to bump the pointer. (HQ has no `.gitmodules` file — this is intentional, not a bug.)
+2. **Symlink to `repos/private/knowledge-{co}/`** (e.g. `companies/magical-moments/knowledge`, `companies/empire-os/knowledge`): tracked as `120000` symlink; edits land in the target repo.
 3. **Inline files tracked by HQ git** (e.g. `knowledge/public/gemini-cli/`, `knowledge/public/getting-started/`, `companies/amass/knowledge/`): simplest; no inner repo, just regular files.
 
 When adding new knowledge: pick pattern 1 for company knowledge that will grow, pattern 2 if you want a shared clone, pattern 3 for small/shared content. Register in `modules/modules.yaml`. Taxonomy: `knowledge/public/hq-core/knowledge-taxonomy.md`.
@@ -205,22 +205,12 @@ Educational insights persist at `workspace/insights/`. Captured via `/learn`, au
 - Confirm framework detection is correct before deploying.
 - If preview deploys are behind SSO, fall back to local testing immediately rather than debugging SSO.
 
-## Auto-Deploy
-
-When you build or create a web-servable artifact (static site, SPA, docs site, HTML dashboard), **deploy it to hq-deploy and present the link**. Don't ask — just deploy and share the URL casually: "Here's a link: https://{app}.indigo-hq.com"
-
-- **Seven-step flow:** Preferences → Build → Localhost preview → Identity check → Guardrails → Upload → Present link. Follow `.claude/skills/deploy/SKILL.md`.
-- **Identity required for web deploy.** `api.indigo-hq.com` rejects anonymous `/api/*`. Skill reads Cognito session from `~/.hq/cognito-tokens.json` (written by `@indigoai-us/hq-cloud`); falls back to `~/.hq/auth/session.json`. Expired tokens refresh via `hq-auth-refresh`. If no session, spawns `npx -y --package=@indigoai-us/hq-cli hq auth login` (macOS-safe 180s kill-timer — see SKILL.md step 4d) — Hosted UI pops in browser, user signs in, deploy continues on same turn. If that fails, localhost preview + upsell at `onboarding.indigo-hq.com`.
-- **Localhost preview always runs**, signed in or not — that's the guaranteed instant feedback.
-- **Exclusions:** skip Vercel-managed projects (`manifest.yaml` `vercel_projects[]`), backend services, broken builds, projects with `deploy: false` in prd.json.
-- **On failure:** mention briefly, move on — deploy is a bonus, never a blocker.
-- **Full rules:** `.claude/policies/auto-deploy-on-create.md`
-
 ## Learned Rules
 
 - **NEVER**: Run Playwright/Puppeteer/Chromium in a Vercel Lambda — the 250 MB unzipped cap makes it architecturally impossible. Use ingest-only endpoints that accept pre-captured payloads from client-side callers (extensions, local scripts). <!-- back-pressure-failure | 2026-04-15 -->
 - **NEVER**: Extract shared skills that require editing 5+ existing files to wire up. When extending behavior across multiple commands/skills, prefer layered independent additions (policy + command + skill edit) over shared extraction. Accept duplicated pattern tables as simpler than shared dependencies. <!-- user-correction | 2026-04-15 -->
-- **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`/Users/{your-name}epstein/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
+- **NEVER**: Use relative symlinks to access pattern-2 knowledge repos from a git worktree — `../../repos/` resolves against worktree root, not HQ root. Use the canonical absolute path (`$HOME/Documents/HQ/repos/public/knowledge-{name}/`). <!-- user-correction | 2026-04-16 -->
+- **ALWAYS**: HQ publish target is `repos/public/hq/template/` (GitHub `indigoai-us/hq`, monorepo) via `/publish-kit` / `/stage-kit`. `repos/public/hq-starter-kit/` (`{your-github}/hq-starter-kit`) is a frozen legacy repo — never sync HQ content there. Full policy: `.claude/policies/hq-publish-target-is-hq-template.md`. <!-- user-correction | 2026-04-17 -->
 
 ## Auto-Checkpoint (PostToolUse Hook)
 

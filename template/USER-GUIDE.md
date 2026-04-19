@@ -26,7 +26,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Projects
 | Command | What it does |
 |---------|--------------|
-| `/prd` | Plan new project, create PRD |
+| `/plan` | Plan new project, create PRD |
 | `/run-project` | Execute project via Ralph loop |
 | `/execute-task` | Execute single task with worker coordination |
 | `/understand-project` | Deep-dive project understanding |
@@ -76,7 +76,7 @@ Personal OS for orchestrating work across companies, workers, and AI.
 ### Linear
 | Command | What it does |
 |---------|--------------|
-| `/check-linear-voyage` | Interactive triage for {Product} workspace |
+| `/check-linear-voyage` | Interactive triage for Voyage workspace |
 | `/{product}-prd` | Research {PRODUCT} codebase, generate PRD |
 
 ### System
@@ -94,8 +94,8 @@ Personal OS for orchestrating work across companies, workers, and AI.
 
 ```
 /run                    # see all
-/run cfo-{company} mrr
-/run x-{your-name} contentidea "AI"
+/run cfo-{product} mrr
+/run x-user contentidea "AI"
 ```
 
 **Public (`workers/public/`):**
@@ -131,18 +131,18 @@ gemini-coder, gemini-reviewer, gemini-frontend
 
 | Worker | Company | Purpose |
 |--------|---------|---------|
-| cfo-{company} | {company} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
-| {company}-analyst | {company} | Data analysis |
-| infobip-admin | {company} | Infobip channel management |
-| {company}-gtm | {company} | GTM operations |
-| lr-qa | {company} | QA testing |
-| {product}-deploy | {company} | Deployment automation |
-| cmo-{company} | {company} | Social/content (X, LinkedIn) |
-| x-{your-name} | Personal | X/Twitter posting |
+| cfo-{product} | {Product} | Financial reporting (Stripe, Gusto, Deel, Shopify) |
+| {product}-analyst | {Product} | Data analysis |
+| infobip-admin | {Product} | Infobip channel management |
+| {product}-gtm | {Product} | GTM operations |
+| lr-qa | {Product} | QA testing |
+| {product}-deploy | {Product} | Deployment automation |
+| cmo-brand | {company} | Social/content (X, LinkedIn) |
+| x-user | Personal | X/Twitter posting |
 | invoices | Personal | Invoice generation |
 | social-council | Personal | Social strategy council |
-| {company}-site-builder | {company} | Site generation |
-| {company}-research-agent | {company} | Research automation |
+| keptwork-site-builder | Keptwork | Site generation |
+| keptwork-research-agent | Keptwork | Research automation |
 
 ## Companies (14)
 
@@ -150,20 +150,20 @@ Each company owns its settings, data, and knowledge.
 
 ```
 companies/
-├── {company}/    # SMS/e-commerce + AI platform
+├── {product}/    # SMS/e-commerce + AI platform
 ├── {company}/         # AI venture
 ├── personal/       # Personal tools + social
-├── {company}/  # Band/music
-├── {company}/     # Artist site + admin
-├── {company}/    # Artist management
+├── golden-thread/  # Band/music
+├── haven-slay/     # Artist site + admin
+├── holler-mgmt/    # Artist management
 ├── {company}/      # PR agency
-├── {company}/     # {company} AI
-├── {company}/ # Estate platform
-├── {company}/       # Agency + tools
-├── {company}/          # Shopify store
-├── {company}/       # Wellness mobile app
-├── {company}/       # Domain management
-└── {company}/            # GTM/growth
+├── {product}/     # {Product} AI
+├── estate-manager/ # Estate platform
+├── keptwork/       # Agency + tools
+├── tonal/          # Shopify store
+├── moonflow/       # Wellness mobile app
+├── dominion/       # Domain management
+└── hpo/            # GTM/growth
 ```
 
 ## Projects
@@ -171,7 +171,7 @@ companies/
 PRDs live at `companies/{co}/projects/{name}/prd.json` (source of truth) with `README.md` (human-readable).
 
 ```
-/prd "Build dashboard"          # creates PRD
+/plan "Build dashboard"         # creates PRD
 /run-project customer-cube      # execute via Ralph loop
 ```
 
@@ -184,7 +184,7 @@ HQ/
 │   ├── hooks/         # Lifecycle hooks (8)
 │   ├── policies/      # Cross-cutting rules (47)
 │   └── skills/        # Skill definitions (3)
-├── agents-profile.md  # {your-name}'s profile
+├── agents-profile.md  # Owner's profile
 ├── agents-companies.md # Company contexts
 ├── companies/         # Company-scoped resources (14)
 │   └── {co}/

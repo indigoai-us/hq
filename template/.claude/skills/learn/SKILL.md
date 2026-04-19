@@ -267,6 +267,7 @@ version: 1
 created: {YYYY-MM-DD}
 updated: {YYYY-MM-DD}
 source: {back-pressure-failure|user-correction|success-pattern|task-completion|hook-observation}
+# applies_to: [vercel, clerk]   # optional — stack-specific filter; see mapping below
 ---
 
 ## Rule
@@ -282,6 +283,15 @@ source: {back-pressure-failure|user-correction|success-pattern|task-completion|h
 - `source: user-correction` → `enforcement: hard`
 - `severity: critical` → `enforcement: hard`
 - Everything else → `enforcement: soft`
+
+**`applies_to:` field mapping (stack applicability filter):**
+- Include the `applies_to:` line ONLY when the rule is *wrong or useless* without a specific service. Tag vocabulary must match the `services:` enum used in `companies/manifest.yaml` plus inferred `vercel` / `aws`. Examples:
+  - Rule about Vercel env-var newlines → `applies_to: [vercel]`
+  - Rule spanning two stacks (e.g. Clerk edge runtime on Vercel) → `applies_to: [clerk, vercel]`
+  - Generic git/bash/HQ hygiene rule, or a rule that merely *mentions* Vercel as one example → omit the field entirely (loads everywhere)
+- OR semantics: `[clerk, vercel]` means "load if workspace has clerk OR vercel." Omit the field for the 89%+ cross-cutting case.
+- Lint with `bash scripts/validate-policy-tags.sh` after write (it fails on unknown tags — prevents typos that would silently filter everywhere).
+- Full spec: `knowledge/public/hq-core/policies-spec.md` → "Applicability Tagging (`applies_to`)" section.
 
 **`public:` field mapping (controls publish-kit eligibility):**
 - Default: `public: false` for every new policy regardless of scope

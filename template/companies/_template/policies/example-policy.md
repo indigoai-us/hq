@@ -7,6 +7,7 @@ enforcement: soft
 version: 1
 created: 2026-01-01
 updated: 2026-01-01
+# applies_to: [vercel, clerk]   # optional — tag only if policy is wrong/useless without the service; omit for cross-cutting
 ---
 
 ## Rule

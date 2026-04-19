@@ -1,0 +1,144 @@
+{
+  "$schema": "https://design-tokens.github.io/dtcg/format/1.0.0/schema.json",
+  "$metadata": {
+    "pack": "moonflow-editorial-v2",
+    "version": "1.0.0",
+    "figma": "fpkOz8VuhR80oc8mp0Tov3",
+    "source": "constants/colors.ts + constants/typography.ts + constants/spacing.ts"
+  },
+  "color": {
+    "terra": {
+      "DEFAULT": { "$value": "#b95b34", "$type": "color", "$description": "Primary brand color — terracotta" },
+      "50":  { "$value": "#fdf3ee", "$type": "color" },
+      "100": { "$value": "#fae3d5", "$type": "color" },
+      "200": { "$value": "#f4c4aa", "$type": "color" },
+      "300": { "$value": "#ec9e75", "$type": "color" },
+      "400": { "$value": "#d97a4e", "$type": "color" },
+      "500": { "$value": "#b95b34", "$type": "color" },
+      "600": { "$value": "#a04c2b", "$type": "color" },
+      "700": { "$value": "#863d22", "$type": "color" },
+      "800": { "$value": "#6d311c", "$type": "color" },
+      "900": { "$value": "#572718", "$type": "color" },
+      "950": { "$value": "#3a1a10", "$type": "color" }
+    },
+    "cream": {
+      "DEFAULT": { "$value": "#fbf6f2", "$type": "color", "$description": "Background / surface base" },
+      "50":  { "$value": "#ffffff", "$type": "color" },
+      "100": { "$value": "#fefcfa", "$type": "color" },
+      "200": { "$value": "#fbf6f2", "$type": "color" },
+      "300": { "$value": "#f5ebe2", "$type": "color" },
+      "400": { "$value": "#eddcce", "$type": "color" },
+      "500": { "$value": "#e0c9b6", "$type": "color" }
+    },
+    "gold": {
+      "DEFAULT": { "$value": "#ffc375", "$type": "color", "$description": "Warm accent / highlights" },
+      "300": { "$value": "#ffc375", "$type": "color" },
+      "400": { "$value": "#f1b97a", "$type": "color" },
+      "500": { "$value": "#e5a45c", "$type": "color" }
+    },
+    "phase": {
+      "menstrual": {
+        "bg":     { "$value": "#a84232", "$type": "color" },
+        "accent": { "$value": "#80d4ff", "$type": "color", "$description": "Soft blue accent" }
+      },
+      "follicular": {
+        "bg":     { "$value": "#b35c2a", "$type": "color" },
+        "accent": { "$value": "#ffea80", "$type": "color", "$description": "Warm yellow accent" }
+      },
+      "ovulation": {
+        "bg":     { "$value": "#b07040", "$type": "color" },
+        "accent": { "$value": "#bc99ff", "$type": "color", "$description": "Soft lavender accent" }
+      },
+      "luteal": {
+        "bg":     { "$value": "#3a1833", "$type": "color" },
+        "accent": { "$value": "#ff80aa", "$type": "color", "$description": "Dusty rose accent" }
+      }
+    },
+    "plum": {
+      "DEFAULT": { "$value": "#4a2040", "$type": "color", "$description": "Premium depth color" }
+    },
+    "midnight": {
+      "DEFAULT": { "$value": "#0a0e1a", "$type": "color", "$description": "Deep dark depth" }
+    },
+    "dustyRose": {
+      "DEFAULT": { "$value": "#d9afa7", "$type": "color" }
+    },
+    "sage": {
+      "DEFAULT": { "$value": "#adc193", "$type": "color" }
+    },
+    "glass": {
+      "bg":           { "$value": "rgba(255, 255, 255, 0.09)", "$type": "color" },
+      "bgHover":      { "$value": "rgba(255, 255, 255, 0.15)", "$type": "color" },
+      "border":       { "$value": "rgba(255, 255, 255, 0.3)",  "$type": "color" },
+      "borderSubtle": { "$value": "rgba(255, 255, 255, 0.15)", "$type": "color" }
+    },
+    "semantic": {
+      "background":      { "$value": "#b95b34", "$type": "color" },
+      "surface":         { "$value": "#c0744a", "$type": "color" },
+      "surfaceElevated": { "$value": "#d08a5e", "$type": "color" },
+      "border":          { "$value": "rgba(255, 255, 255, 0.2)", "$type": "color" },
+      "borderSubtle":    { "$value": "rgba(255, 255, 255, 0.1)", "$type": "color" },
+      "textPrimary":     { "$value": "#fbf6f2", "$type": "color" },
+      "textSecondary":   { "$value": "rgba(251, 246, 242, 0.8)", "$type": "color" },
+      "textMuted":       { "$value": "rgba(251, 246, 242, 0.5)", "$type": "color" }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "display": { "$value": "Fraunces", "$type": "fontFamily" },
+      "body":    { "$value": "Inter",    "$type": "fontFamily" }
+    },
+    "fontSize": {
+      "xs":      { "$value": "12px", "$type": "dimension" },
+      "sm":      { "$value": "14px", "$type": "dimension" },
+      "base":    { "$value": "16px", "$type": "dimension" },
+      "lg":      { "$value": "18px", "$type": "dimension" },
+      "xl":      { "$value": "20px", "$type": "dimension" },
+      "2xl":     { "$value": "24px", "$type": "dimension" },
+      "3xl":     { "$value": "30px", "$type": "dimension" },
+      "4xl":     { "$value": "36px", "$type": "dimension" },
+      "h2":      { "$value": "26px", "$type": "dimension" },
+      "h1":      { "$value": "32px", "$type": "dimension" },
+      "display": { "$value": "42px", "$type": "dimension" }
+    },
+    "lineHeight": {
+      "tight":   { "$value": 1.2,  "$type": "number" },
+      "normal":  { "$value": 1.5,  "$type": "number" },
+      "relaxed": { "$value": 1.75, "$type": "number" }
+    },
+    "letterSpacing": {
+      "tight":   { "$value": "-0.5px", "$type": "dimension" },
+      "normal":  { "$value": "0",      "$type": "dimension" },
+      "wide":    { "$value": "1px",    "$type": "dimension" },
+      "wider":   { "$value": "2px",    "$type": "dimension" },
+      "widest":  { "$value": "4px",    "$type": "dimension" },
+      "display": { "$value": "6px",    "$type": "dimension" }
+    }
+  },
+  "spacing": {
+    "xs":   { "$value": "4px",  "$type": "dimension" },
+    "sm":   { "$value": "8px",  "$type": "dimension" },
+    "md":   { "$value": "12px", "$type": "dimension" },
+    "base": { "$value": "16px", "$type": "dimension" },
+    "lg":   { "$value": "20px", "$type": "dimension" },
+    "xl":   { "$value": "24px", "$type": "dimension" },
+    "2xl":  { "$value": "32px", "$type": "dimension" },
+    "3xl":  { "$value": "40px", "$type": "dimension" },
+    "4xl":  { "$value": "48px", "$type": "dimension" },
+    "5xl":  { "$value": "56px", "$type": "dimension" },
+    "6xl":  { "$value": "72px", "$type": "dimension" }
+  },
+  "borderRadius": {
+    "sm":   { "$value": "8px",    "$type": "dimension" },
+    "md":   { "$value": "12px",   "$type": "dimension" },
+    "lg":   { "$value": "16px",   "$type": "dimension" },
+    "xl":   { "$value": "24px",   "$type": "dimension" },
+    "full": { "$value": "9999px", "$type": "dimension" }
+  },
+  "iconSize": {
+    "sm": { "$value": "16px", "$type": "dimension" },
+    "md": { "$value": "20px", "$type": "dimension" },
+    "lg": { "$value": "24px", "$type": "dimension" },
+    "xl": { "$value": "32px", "$type": "dimension" }
+  }
+}

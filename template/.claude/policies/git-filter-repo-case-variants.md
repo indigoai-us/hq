@@ -8,7 +8,7 @@ enforcement: hard
 
 ## Rule
 
-When using `git filter-repo --replace-text`, add explicit replacement rules for EVERY case variant of each term (lowercase, Capitalized, UPPERCASE). The tool does exact literal matching — `{team-member}` does NOT match `{team-member}` or `{TEAM-MEMBER}`.
+When using `git filter-repo --replace-text`, add explicit replacement rules for EVERY case variant of each term (lowercase, Capitalized, UPPERCASE). The tool does exact literal matching — `{team-member}` does NOT match `{team-member}` or `SHAHZAIB`.
 
 ## How to apply
 

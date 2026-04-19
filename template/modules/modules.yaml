@@ -11,7 +11,7 @@ version: "1.0"
 modules:
   # Core HQ module - official updates and improvements
   - name: hq-core
-    repo: https://github.com/indigoai-us"/hq.git
+    repo: https://github.com/indigoai-us/hq.git
     branch: main
     strategy: merge  # merge updates with local changes
     access: public
@@ -140,13 +140,13 @@ modules:
 
   # ─── Company Knowledge Repos ──────────────────────────────────────────
 
-  - name: knowledge-{company}
-    repo: https://github.com/{your-name}/knowledge-{company}.git
+  - name: knowledge-{product}
+    repo: https://github.com/{your-name}/knowledge-{product}.git
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/{product}/knowledge
 
   - name: knowledge-{company}
     repo: https://github.com/{your-name}/knowledge-{company}.git
@@ -164,29 +164,21 @@ modules:
     paths:
       .: companies/personal/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-golden-thread
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/golden-thread/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-holler-mgmt
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
-
-  - name: knowledge-{company}
-    repo: local
-    branch: main
-    strategy: embedded
-    access: team
-    paths:
-      .: companies/{company}/knowledge
+      .: companies/holler-mgmt/knowledge
 
   - name: knowledge-{company}
     repo: local
@@ -196,78 +188,86 @@ modules:
     paths:
       .: companies/{company}/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-{product}
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/{product}/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-haven-slay
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/haven-slay/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-estate-manager
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/estate-manager/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-tonal
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/tonal/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-keptwork
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/keptwork/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-moonflow
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/moonflow/knowledge
+
+  - name: knowledge-dominion
+    repo: local
+    branch: main
+    strategy: embedded
+    access: team
+    paths:
+      .: companies/dominion/knowledge
 
 
-  - name: knowledge-{company}
+  - name: knowledge-magical-moments
     repo: local
     branch: main
     strategy: link
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/magical-moments/knowledge
 
-  - name: {company}-docs-internal
+  - name: moonflow-docs-internal
     repo: local
     branch: main
     strategy: link
     access: team
     paths:
-      .: companies/{company}/repos/{company}-docs-internal
+      .: companies/moonflow/repos/moonflow-docs-internal
 
-  - name: {company}-docs-customer
+  - name: moonflow-docs-customer
     repo: local
     branch: main
     strategy: link
     access: team
     paths:
-      .: companies/{company}/repos/{company}-docs-customer
+      .: companies/moonflow/repos/moonflow-docs-customer
 
   - name: knowledge-dripkit
     repo: local
@@ -277,13 +277,13 @@ modules:
     paths:
       .: companies/dripkit/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-empire-os
     repo: local
     branch: main
     strategy: link
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/empire-os/knowledge
 
   - name: knowledge-{company}
     repo: local
@@ -293,21 +293,21 @@ modules:
     paths:
       .: companies/{company}/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-hpo
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/hpo/knowledge
 
-  - name: knowledge-{company}
+  - name: knowledge-new-american-codex
     repo: local
     branch: main
     strategy: embedded
     access: team
     paths:
-      .: companies/{company}/knowledge
+      .: companies/new-american-codex/knowledge
 
   # ─── Add-On Kits ────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
 id: company-archive-cleanup
 title: Clean up qmd + modules when archiving a company
 scope: global
+public: true
 trigger: company archival or deletion
 enforcement: hard
 ---

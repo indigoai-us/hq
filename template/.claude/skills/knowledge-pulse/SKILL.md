@@ -1,12 +1,12 @@
 ---
 name: knowledge-pulse
-description: Lightweight background gardening pass for a company's knowledge base and policies. Spawned by startwork/brainstorm/prd after company resolution. Never run directly by users.
+description: Lightweight background gardening pass for a company's knowledge base and policies. Spawned by startwork/brainstorm/plan after company resolution. Never run directly by users.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git:*), Bash(qmd:*), Bash(ls:*), Bash(date:*), Bash(scripts/build-policy-digest.sh:*), Bash(scripts/read-policy-frontmatter.sh:*)
 ---
 
 # Knowledge Pulse — Background Gardening
 
-Lightweight, idempotent gardening pass that runs as a background sub-agent spawned by `startwork`, `brainstorm`, or `prd`. Gardens both **knowledge docs** and **policies** for a single company.
+Lightweight, idempotent gardening pass that runs as a background sub-agent spawned by `startwork`, `brainstorm`, or `plan`. Gardens both **knowledge docs** and **policies** for a single company.
 
 **Never invoked directly.** Always spawned via `spawn_task` by a parent command.
 
@@ -19,15 +19,15 @@ The parent command provides these values in the spawn prompt:
 | `company_slug` | Yes | Company slug from manifest |
 | `knowledge_path` | Yes | Resolved path to `companies/{co}/knowledge/` |
 | `policies_path` | Yes | Resolved path to `companies/{co}/policies/` |
-| `caller` | Yes | `startwork`, `brainstorm`, or `prd` |
+| `caller` | Yes | `startwork`, `brainstorm`, or `plan` |
 | `qmd_collection` | No | Company's qmd collection for scoped searches |
-| `search_results_summary` | No | Condensed qmd hits from parent (brainstorm/prd only) |
-| `discovered_facts` | No | New company facts from parent's research (brainstorm/prd only) |
-| `doc_scout_gaps` | No | Post-implementation doc gaps (prd only) |
+| `search_results_summary` | No | Condensed qmd hits from parent (brainstorm/plan only) |
+| `discovered_facts` | No | New company facts from parent's research (brainstorm/plan only) |
+| `doc_scout_gaps` | No | Post-implementation doc gaps (plan only) |
 
 ## Action Matrix
 
-| Action | startwork | brainstorm | prd |
+| Action | startwork | brainstorm | plan |
 |--------|-----------|------------|-----|
 | Knowledge INDEX.md refresh | Yes | Yes | Yes |
 | Tag untagged knowledge docs | Yes | Yes | Yes |
@@ -112,7 +112,7 @@ For each `.md` file in `{knowledge_path}/` (skip `INDEX.md`):
 4. If >90 days stale: flag in report
 5. If `discovered_facts` provided by parent: note in report as "Potential updates for human review" (do NOT auto-modify company-info.md — it's high-stakes)
 
-#### 2e. Contradiction Detection (brainstorm/prd only)
+#### 2e. Contradiction Detection (brainstorm/plan only)
 
 **Skip if caller is `startwork`.**
 
@@ -151,7 +151,7 @@ For each policy file:
 5. If broken references found: log as "Policy {filename} references missing {type}: {path/name}"
 6. Track: `policies_stale_refs` count
 
-#### 3c. Cross-Scope Conflict Detection (brainstorm/prd only)
+#### 3c. Cross-Scope Conflict Detection (brainstorm/plan only)
 
 **Skip if caller is `startwork`.**
 
@@ -161,7 +161,7 @@ For each policy file:
 4. If both are `enforcement: hard` with potentially conflicting rules: log as "Potential conflict: company {title} vs global {title}"
 5. Track: `policy_conflicts` count
 
-#### 3d. Orphan Policy Detection (brainstorm/prd only)
+#### 3d. Orphan Policy Detection (brainstorm/plan only)
 
 **Skip if caller is `startwork`.**
 

@@ -1,5 +1,5 @@
 ---
-description: Upgrade HQ from the latest indigoai-us"/hq release
+description: Upgrade HQ from the latest indigoai-us/hq release
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--check | --from v{X.Y.Z} | v{target}]
 visibility: public
@@ -7,7 +7,7 @@ visibility: public
 
 # /update-hq - HQ Upgrade
 
-Upgrade your HQ installation from the latest indigoai-us"/hq release on GitHub.
+Upgrade your HQ installation from the latest indigoai-us/hq release on GitHub.
 
 **User's input:** $ARGUMENTS
 
@@ -71,12 +71,12 @@ If structural fallback was used, note: `"(detected via structural markers — no
 If `TARGET_OVERRIDE` is set, use it. Otherwise:
 
 ```bash
-gh api repos/indigoai-us"/hq/releases/latest --jq '.tag_name' 2>/dev/null
+gh api repos/indigoai-us/hq/releases/latest --jq '.tag_name' 2>/dev/null
 ```
 
 If that fails (no releases):
 ```bash
-gh api repos/indigoai-us"/hq/tags --jq '.[0].name' 2>/dev/null
+gh api repos/indigoai-us/hq/tags --jq '.[0].name' 2>/dev/null
 ```
 
 Set `TARGET_VERSION` from result (strip leading `v` for comparison, keep for display).
@@ -95,7 +95,7 @@ Stop.
 
 Fetch CHANGELOG.md from target:
 ```bash
-gh api repos/indigoai-us"/hq/contents/template/CHANGELOG.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
+gh api repos/indigoai-us/hq/contents/template/CHANGELOG.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
 ```
 
 Extract all version headings (`## v{X.Y.Z}`) between CURRENT and TARGET. Display:
@@ -109,7 +109,7 @@ Upgrade path: v{CURRENT} → v{intermediate1} → ... → v{TARGET}
 
 Fetch MIGRATION.md from target:
 ```bash
-gh api repos/indigoai-us"/hq/contents/template/MIGRATION.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
+gh api repos/indigoai-us/hq/contents/template/MIGRATION.md?ref=v{TARGET_VERSION} --jq '.content' | base64 -d
 ```
 
 ### Parse sections
@@ -214,12 +214,12 @@ For each path in `new_files`:
 3. If not exists:
    - For directories: list contents first:
      ```bash
-     gh api "repos/indigoai-us"/hq/contents/template/{dir_path}?ref=v{TARGET}" --jq '.[].path'
+     gh api "repos/indigoai-us/hq/contents/template/{dir_path}?ref=v{TARGET}" --jq '.[].path'
      ```
      Then process each file in the directory.
    - Fetch content:
      ```bash
-     gh api "repos/indigoai-us"/hq/contents/template/{path}?ref=v{TARGET}" --jq '.content' | base64 -d
+     gh api "repos/indigoai-us/hq/contents/template/{path}?ref=v{TARGET}" --jq '.content' | base64 -d
      ```
    - If `DRY_RUN`: report `"Would create: {path}"`. Do not write.
    - Otherwise: create parent dirs (`mkdir -p`), write file, increment `created`.
@@ -244,7 +244,7 @@ For each path in `updated_files`:
 7. **Three-way merge for all other files:**
    - Fetch **base** content (from CURRENT version tag):
      ```bash
-     gh api "repos/indigoai-us"/hq/contents/template/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
+     gh api "repos/indigoai-us/hq/contents/template/{path}?ref=v{CURRENT}" --jq '.content' | base64 -d
      ```
    - If base fetch fails (file didn't exist in that version): treat as conflict, go to step 7b.
    - **7a. If local == base** (user never customized): auto-update.

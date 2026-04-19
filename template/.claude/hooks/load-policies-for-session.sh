@@ -77,6 +77,103 @@ if echo "$CWD" | grep -qE 'repos/(public|private)/'; then
   fi
 fi
 
+# Resolve active service set (space-separated). Empty -> no filtering.
+# Primary: companies/manifest.yaml block for $ACTIVE_CO (services + inferred
+# vercel from vercel_team: + aws from aws_profile:).
+# Fallback: .claude/stack.yaml services: array.
+# Normalization: each service added verbatim AND its first `-`-segment, so
+# manifest "shopify-partner" matches policy tags "shopify" or "shopify-partner".
+HQ_ACTIVE_SERVICES=""
+resolve_active_services() {
+  local raw=""
+  if [ -n "$ACTIVE_CO" ]; then
+    local co_manifest="$HQ_ROOT/companies/manifest.yaml"
+    if [ -f "$co_manifest" ]; then
+      raw=$(awk -v co="$ACTIVE_CO" '
+        $0 ~ "^" co ":" { in_co = 1; next }
+        in_co && /^[a-z][a-z0-9_-]*:/ { exit }
+        in_co && /^[[:space:]]*services:[[:space:]]*\[/ {
+          line = $0
+          sub(/.*services:[[:space:]]*\[/, "", line)
+          sub(/\].*/, "", line)
+          gsub(/,/, " ", line)
+          print "SERVICES:" line
+        }
+        in_co && /^[[:space:]]*vercel_team:[[:space:]]*[^[:space:]#]/ { print "VERCEL:1" }
+        in_co && /^[[:space:]]*aws_profile:[[:space:]]*[^[:space:]#]/ { print "AWS:1" }
+      ' "$co_manifest" 2>/dev/null || true)
+    fi
+  fi
+  if [ -z "$raw" ]; then
+    local stack_yaml="$HQ_ROOT/.claude/stack.yaml"
+    if [ -f "$stack_yaml" ]; then
+      raw=$(awk '
+        /^[[:space:]]*services:[[:space:]]*\[/ {
+          line = $0
+          sub(/.*services:[[:space:]]*\[/, "", line)
+          sub(/\].*/, "", line)
+          gsub(/,/, " ", line)
+          print "SERVICES:" line
+        }
+      ' "$stack_yaml" 2>/dev/null || true)
+    fi
+  fi
+
+  local services="" has_vercel=0 has_aws=0
+  while IFS= read -r line; do
+    case "$line" in
+      SERVICES:*) services="${line#SERVICES:}" ;;
+      VERCEL:1) has_vercel=1 ;;
+      AWS:1) has_aws=1 ;;
+    esac
+  done <<< "$raw"
+
+  local set=""
+  local svc head
+  for svc in $services; do
+    [ -z "$svc" ] && continue
+    set="$set $svc"
+    head="${svc%%-*}"
+    [ "$head" != "$svc" ] && set="$set $head"
+  done
+  [ "$has_vercel" = "1" ] && set="$set vercel"
+  [ "$has_aws" = "1" ] && set="$set aws"
+
+  HQ_ACTIVE_SERVICES=$(printf '%s\n' $set | awk 'NF && !seen[$0]++' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+}
+
+# Filter digest lines by HQ_ACTIVE_SERVICES. Lines without an `<!-- applies_to: -->`
+# suffix always pass. Lines with one pass only if at least one tag is in the
+# active set. Empty active set -> fail-open (pass everything).
+filter_by_stack() {
+  if [ -z "$HQ_ACTIVE_SERVICES" ]; then
+    cat
+    return
+  fi
+  awk -v active="$HQ_ACTIVE_SERVICES" '
+    BEGIN {
+      n = split(active, parts, /[ ,]+/)
+      for (i = 1; i <= n; i++) if (parts[i] != "") act[parts[i]] = 1
+    }
+    {
+      line = $0
+      if (match(line, /<!-- applies_to:[[:space:]]*[^>]*-->/)) {
+        tagstr = substr(line, RSTART, RLENGTH)
+        sub(/.*applies_to:[[:space:]]*/, "", tagstr)
+        sub(/[[:space:]]*-->.*/, "", tagstr)
+        gsub(/[[:space:]]/, "", tagstr)
+        n2 = split(tagstr, tags, ",")
+        keep = 0
+        for (i = 1; i <= n2; i++) {
+          if (tags[i] != "" && act[tags[i]]) { keep = 1; break }
+        }
+        if (!keep) next
+      }
+      print
+    }
+  '
+}
+
 # Extract only the ## Hard-enforcement section from a digest file.
 extract_hard_section() {
   awk '
@@ -101,6 +198,9 @@ emit_block() {
   printf '<policy-digest>\n'
   printf '# Applicable Policies (auto-loaded at session start)\n\n'
   printf '> Injected by `.claude/hooks/load-policies-for-session.sh` | Rebuild digests: `bash scripts/build-policy-digest.sh`\n'
+  if [ -n "$HQ_ACTIVE_SERVICES" ]; then
+    printf '> Active stack filter: `%s` — stack-specific policies outside this set are hidden\n' "$HQ_ACTIVE_SERVICES"
+  fi
 
   # Global (hard-enforcement only)
   if [ -f "$GLOBAL_DIGEST" ]; then
@@ -109,7 +209,7 @@ emit_block() {
     total_count=$(count_total "$GLOBAL_DIGEST")
     printf '\n## Global (hard-enforcement only — %d of %d policies)\n\n' "$hard_count" "$total_count"
     printf '> Full global digest (hard + soft): `.claude/policies/_digest.md`\n\n'
-    extract_hard_section "$GLOBAL_DIGEST"
+    extract_hard_section "$GLOBAL_DIGEST" | filter_by_stack
   fi
 
   # Company digest (full)
@@ -118,7 +218,7 @@ emit_block() {
     if [ -f "$co_digest" ]; then
       printf '\n## Company: %s (full)\n\n' "$ACTIVE_CO"
       # Skip the file's own header, start from first policy section
-      awk '/^## (Hard|Soft)-enforcement/ { in_body = 1 } in_body { print }' "$co_digest"
+      awk '/^## (Hard|Soft)-enforcement/ { in_body = 1 } in_body { print }' "$co_digest" | filter_by_stack
     fi
   fi
 
@@ -127,7 +227,7 @@ emit_block() {
     local repo_digest="$HQ_ROOT/repos/$ACTIVE_REPO_SCOPE/$ACTIVE_REPO/.claude/policies/_digest.md"
     if [ -f "$repo_digest" ]; then
       printf '\n## Repo: %s/%s (full)\n\n' "$ACTIVE_REPO_SCOPE" "$ACTIVE_REPO"
-      awk '/^## (Hard|Soft)-enforcement/ { in_body = 1 } in_body { print }' "$repo_digest"
+      awk '/^## (Hard|Soft)-enforcement/ { in_body = 1 } in_body { print }' "$repo_digest" | filter_by_stack
     fi
   fi
 
@@ -147,6 +247,9 @@ emit_slim() {
   fi
   printf '\n</policy-digest>\n'
 }
+
+# Resolve active service set once before dispatch so both emit paths see it.
+resolve_active_services
 
 # Dispatch: slim on resume/compact, full on startup (and any unknown source)
 if [ "$SOURCE" = "resume" ] || [ "$SOURCE" = "compact" ]; then

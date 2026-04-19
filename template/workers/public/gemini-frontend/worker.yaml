@@ -1,0 +1,194 @@
+worker:
+  id: gemini-frontend
+  name: "Gemini Frontend"
+  description: "Frontend development (React/Next.js/CSS) via Google Gemini CLI — component building, styling, responsiveness, accessibility"
+  type: CodeWorker
+  version: "1.0"
+
+execution:
+  mode: on_demand
+  max_runtime: 20m
+  retry_attempts: 2
+  spawn_method: task_tool
+  model: sonnet
+
+context:
+  base:
+    - workers/public/gemini-frontend/skills/
+    - knowledge/public/gemini-cli/
+    - knowledge/public/design-styles/styles/
+    - knowledge/public/design-styles/formulas/web/
+  dynamic:
+    - pattern: "{target_repo}/src/components/"
+      when: always
+    - pattern: "{target_repo}/src/app/"
+      when: always
+    - pattern: "{target_repo}/package.json"
+      when: always
+    - pattern: "{target_repo}/tailwind.config.*"
+      when: exists
+    - pattern: "{target_repo}/GEMINI.md"
+      when: exists
+  exclude:
+    - node_modules/
+    - dist/
+    - .next/
+    - "*.log"
+    - api/
+    - server/
+
+skills:
+  - id: build-component
+    file: skills/build-component.md
+  - id: style-component
+    file: skills/style-component.md
+  - id: responsive-check
+    file: skills/responsive-check.md
+  - id: a11y-audit
+    file: skills/a11y-audit.md
+  - id: refactor-component
+    file: skills/refactor-component.md
+  - id: design-to-code
+    file: skills/design-to-code.md
+
+verification:
+  post_execute:
+    - check: typescript
+      command: npm run typecheck
+    - check: lint
+      command: npm run lint
+  approval_required: true
+  human_checkpoints:
+    - before_component_creation
+    - on_design_system_changes
+
+cli:
+  binary: gemini
+  install: npm install -g @google/gemini-cli
+  env:
+    - GEMINI_API_KEY
+  commands:
+    - gemini -p "{prompt}" --model pro --sandbox --output-format text
+    - cat {files} | gemini -p "{prompt}" --model pro --sandbox --output-format text
+
+state_machine:
+  enabled: true
+  max_retries: 1
+  hooks:
+    post_execute:
+      - auto_checkpoint
+      - log_metrics
+    on_error:
+      - log_error
+      - checkpoint_error_state
+
+reporting:
+  on_complete:
+    - log_generation
+    - extract_learnings
+  metrics:
+    - generation_time
+    - components_created
+    - a11y_issues_found
+    - back_pressure_pass_rate
+
+instructions: |
+  # Gemini Frontend
+
+  Frontend development using Google Gemini CLI (`gemini`).
+  Specializes in React/Next.js components, styling, responsiveness, and accessibility.
+  Uses `--model pro` for complex UI reasoning.
+
+  ## Prerequisites
+
+  - Gemini CLI installed: `npm install -g @google/gemini-cli`
+  - Auth: `GEMINI_API_KEY` env var (from `settings/gemini/credentials.env`)
+
+  ## When to Use
+
+  - **build-component**: Create React/Next.js component with types and tests
+  - **style-component**: Add/refine styling (Tailwind, CSS modules, animations)
+  - **responsive-check**: Analyze for responsive issues across breakpoints
+  - **a11y-audit**: WCAG 2.1 AA accessibility audit
+  - **refactor-component**: Restructure component (extract subcomponents, simplify props)
+  - **design-to-code**: Convert design description or Paper export to React component
+
+  Use gemini-frontend when:
+  - Component needs design system awareness (loads design-styles knowledge)
+  - Large component tree benefits from 1M context window
+  - Google Search grounding for latest React/Next.js patterns
+  - Second-model perspective on UI code
+
+  Do NOT use gemini-frontend when:
+  - Task is backend/API work (use gemini-coder)
+  - Task is code review only (use gemini-reviewer)
+  - Task needs frontend-designer's cinematic design philosophy (use frontend-designer)
+
+  ## Skills
+
+  | Skill | Description |
+  |-------|-------------|
+  | build-component | Create React/Next.js component with types, props, and tests |
+  | style-component | Add/refine styling: Tailwind, CSS modules, animations, themes |
+  | responsive-check | Analyze responsive behavior across breakpoints |
+  | a11y-audit | WCAG 2.1 AA accessibility audit with fix suggestions |
+  | refactor-component | Restructure: extract subcomponents, simplify props, composition |
+  | design-to-code | Convert design description or Paper MCP export to React component |
+
+  ## CLI Usage
+
+  ```bash
+  /run gemini-frontend build-component --name UserCard --props "name,avatar,role,onEdit" --cwd repos/private/{product}
+  /run gemini-frontend style-component --file src/components/UserCard.tsx --style tailwind --cwd repos/private/{product}
+  /run gemini-frontend responsive-check --file src/components/Dashboard.tsx --cwd repos/private/app
+  /run gemini-frontend a11y-audit --files src/components/*.tsx --cwd repos/private/{product}
+  /run gemini-frontend refactor-component --file src/components/Dashboard.tsx --cwd repos/private/{product}
+  /run gemini-frontend design-to-code --name HeroSection --description "Full-width hero with headline, subtext, CTA" --cwd repos/private/app
+  ```
+
+  ## Invocation Patterns
+
+  Component generation:
+  ```bash
+  cd {cwd} && GEMINI_API_KEY=$KEY \
+    gemini -p "Create a React component named {name} with TypeScript. Props: {props}. Follow existing patterns. Include: types, JSDoc, default export. Use {css_framework} for styling." \
+    --model pro --sandbox --output-format text 2>&1
+  ```
+
+  Style refinement (piped):
+  ```bash
+  cd {cwd} && cat {component_file} {design_tokens} | GEMINI_API_KEY=$KEY \
+    gemini -p "Refine the styling. Goals: {style_goals}. Match the design token system. Use {css_framework}." \
+    --model pro --sandbox --output-format text 2>&1
+  ```
+
+  Responsive analysis (read-only):
+  ```bash
+  cd {cwd} && cat {component_file} | GEMINI_API_KEY=$KEY \
+    gemini -p "Analyze for responsive issues. Check: mobile (320-480px), tablet (768px), desktop (1024px+). Report: layout breaks, overflow, touch targets <44px, text readability." \
+    --model pro --sandbox --output-format text 2>&1
+  ```
+
+  Accessibility audit (read-only):
+  ```bash
+  cd {cwd} && cat {files} | GEMINI_API_KEY=$KEY \
+    gemini -p "WCAG 2.1 AA audit. Check: semantic HTML, ARIA roles/labels, keyboard navigation, color contrast, focus management, screen reader compatibility. Group by severity. Suggest fixes." \
+    --model pro --sandbox --output-format text 2>&1
+  ```
+
+  ## Design System Integration
+
+  Before generating components:
+  1. Check `knowledge/public/design-styles/styles/` for project's style
+  2. Check repo for design tokens (CSS vars, Tailwind config, theme file)
+  3. Feed both as piped context for style-consistent output
+
+  ## Patterns
+
+  - Use `--model pro` for all tasks (UI reasoning needs highest quality)
+  - Use `--sandbox` for generation
+  - Pipe design tokens/theme files as context for style-consistent output
+  - responsive-check and a11y-audit are read-only (no file writes)
+  - build-component, style-component, refactor-component, and design-to-code write files, require back-pressure
+  - Always verify TypeScript + lint after generation
+  - Match existing component patterns (naming, file location, export style)

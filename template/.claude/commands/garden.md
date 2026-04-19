@@ -14,7 +14,7 @@ Multi-worker audit pipeline: Scout → Auditor → Curator. Detects stale conten
 ## Usage
 
 ```
-/garden {company}                    # Audit one company (all its dirs)
+/garden {product}                    # Audit one company (all its dirs)
 /garden companies/{company}/knowledge/    # Audit specific directory
 /garden projects/                      # Audit all projects
 /garden all                            # Full HQ sweep (chunked by company + orphan sweep)
@@ -106,7 +106,7 @@ paths = [{scope}]
 ```
 
 Run ID format:
-- Company: `garden-{company}-{YYYYMMDD}` (e.g. `garden-{company}-20260219`)
+- Company: `garden-{company}-{YYYYMMDD}` (e.g. `garden-{product}-20260219`)
 - Path: `garden-{dirname}-{YYYYMMDD}` (e.g. `garden-projects-20260219`)
 - All: `garden-all-{YYYYMMDD}`
 
