@@ -18,9 +18,11 @@ jobs:
 
       - run: npm ci
 
-      # Build in dependency order: hq-cloud first (hq-cli imports its types).
-      # npm workspaces does not topo-sort `--workspaces`, so we stage the build.
+      # Build in dependency order: hq-cloud and hq-onboarding first (hq-cli
+      # imports from both). npm workspaces does not topo-sort `--workspaces`,
+      # so we stage the build explicitly.
       - run: npm run build --workspace packages/hq-cloud --if-present
+      - run: npm run build --workspace packages/hq-onboarding --if-present
       - run: npm run build --workspaces --if-present
 
       # Publish only if the workspace version hasn't been published yet.
