@@ -70,6 +70,7 @@ export type {
   EntityInfo,
   CreateEntityInput,
   CreateEntityResult,
+  PendingInviteByEmail,
 } from "./vault-client.js";
 
 // STS child vending (VLT-8)

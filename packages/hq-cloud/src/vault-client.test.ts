@@ -387,4 +387,177 @@ describe("API surface", () => {
     const memberships = await client.listMyMemberships();
     expect(memberships).toEqual([]);
   });
+
+  it("listMyPendingInvitesByEmail hits GET /membership/pending-by-email", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        invites: [
+          {
+            membershipKey: "email:stefan@getindigo.ai#cmp_abc",
+            companyUid: "cmp_abc",
+            role: "owner",
+            invitedBy: "sub-admin",
+            invitedAt: "2026-04-20T00:00:00Z",
+          },
+        ],
+      }),
+    );
+
+    const invites = await client.listMyPendingInvitesByEmail();
+    expect(invites).toHaveLength(1);
+    expect(invites[0].companyUid).toBe("cmp_abc");
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      "https://vault.test.example.com/membership/pending-by-email",
+    );
+    expect(init.method).toBe("GET");
+  });
+
+  it("listMyPendingInvitesByEmail returns [] when server omits the key", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(200, {}));
+    const invites = await client.listMyPendingInvitesByEmail();
+    expect(invites).toEqual([]);
+  });
+
+  it("claimPendingInvitesByEmail POSTs personUid to /membership/claim-by-email", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(200, {}));
+
+    await client.claimPendingInvitesByEmail("ent_person_stefan");
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      "https://vault.test.example.com/membership/claim-by-email",
+    );
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      personUid: "ent_person_stefan",
+    });
+  });
+});
+
+describe("VaultClient identity bootstrap", () => {
+  let client: VaultClient;
+  let fetchSpy: MockInstance<typeof fetch>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValue(jsonResponse(200, {}));
+    client = new VaultClient({
+      apiUrl: "https://vault.test.example.com",
+      authToken: "test-token",
+      region: "us-east-1",
+    });
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("entity.listByType GETs /entity/by-type/{type}", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        entities: [
+          {
+            uid: "ent_person_stefan",
+            slug: "stefan-johnson",
+            type: "person",
+            status: "active",
+          },
+        ],
+      }),
+    );
+
+    const entities = await client.entity.listByType("person");
+    expect(entities).toHaveLength(1);
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(url).toBe(
+      "https://vault.test.example.com/entity/by-type/person",
+    );
+  });
+
+  it("entity.listByType returns [] when server omits the key", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(200, {}));
+    const entities = await client.entity.listByType("person");
+    expect(entities).toEqual([]);
+  });
+
+  it("ensureMyPersonEntity short-circuits when a person entity already exists", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        entities: [
+          {
+            uid: "ent_person_existing",
+            slug: "already-there",
+            type: "person",
+            status: "active",
+          },
+        ],
+      }),
+    );
+
+    const person = await client.ensureMyPersonEntity({
+      ownerSub: "sub-abc",
+      displayName: "Stefan Johnson",
+    });
+
+    expect(person.uid).toBe("ent_person_existing");
+    // Only one HTTP call — list. No POST /entity.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ensureMyPersonEntity POSTs /entity with a slug derived from displayName when none exist", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(200, { entities: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          entity: {
+            uid: "ent_person_new",
+            slug: "stefan-johnson",
+            type: "person",
+            status: "active",
+          },
+        }),
+      );
+
+    const person = await client.ensureMyPersonEntity({
+      ownerSub: "sub-abc",
+      displayName: "Stefan Johnson",
+    });
+
+    expect(person.uid).toBe("ent_person_new");
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const [url, init] = fetchSpy.mock.calls[1] as [string, RequestInit];
+    expect(url).toBe("https://vault.test.example.com/entity");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      type: "person",
+      name: "Stefan Johnson",
+      slug: "stefan-johnson",
+    });
+  });
+
+  it("ensureMyPersonEntity falls back to user-<sub-suffix> when displayName slugifies to empty", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(200, { entities: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          entity: {
+            uid: "ent_person_new",
+            slug: "user-12345678",
+            type: "person",
+            status: "active",
+          },
+        }),
+      );
+
+    await client.ensureMyPersonEntity({
+      ownerSub: "sub-abcdef12345678",
+      displayName: "!!!",
+    });
+
+    const [, init] = fetchSpy.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.slug).toBe("user-12345678");
+  });
 });
