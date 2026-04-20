@@ -16,6 +16,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      # npm 11.5+ is required for trusted-publisher OIDC token exchange.
+      # node 22 ships npm 10.9.x which signs sigstore provenance (via OIDC)
+      # but can't swap the OIDC token for a short-lived publish token, so
+      # the PUT goes out unauthed and npm returns a masked 404. Pinning
+      # npm@11 here makes the full trusted-publisher flow work.
+      - run: npm install -g npm@latest
+      - run: node --version && npm --version
+
       # Scope install to publishable workspaces only. `apps/*` workspaces
       # (docs, teams-docs, web) are private and not needed for publishing;
       # their postinstall scripts (pagefind binary fetch) can fail in CI
