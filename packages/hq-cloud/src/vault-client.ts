@@ -105,8 +105,19 @@ export interface EntityInfo {
   uid: string;
   slug: string;
   type: string;
+  /** Human-readable display name — surfaced in UIs that list companies. */
+  name?: string;
   bucketName?: string;
   status: string;
+}
+
+export interface PendingInviteByEmail {
+  membershipKey: string;
+  companyUid: string;
+  role: MembershipRole;
+  inviteToken?: string;
+  invitedBy: string;
+  invitedAt: string;
 }
 
 export interface CreateEntityInput {
@@ -238,6 +249,31 @@ export class VaultClient {
     return data.memberships;
   }
 
+  /**
+   * List the caller's email-keyed pending invites. Server reads the email
+   * from the Cognito JWT, so no parameters are needed client-side.
+   *
+   * Used on first sign-in (installer + sync-runner) to detect invites that
+   * were sent to the caller's email before they had a person entity. Pair
+   * with {@link claimPendingInvitesByEmail} to rewrite those rows once the
+   * person exists.
+   */
+  async listMyPendingInvitesByEmail(): Promise<PendingInviteByEmail[]> {
+    const data = await this.get<{ invites: PendingInviteByEmail[] }>(
+      "/membership/pending-by-email",
+    );
+    return data.invites ?? [];
+  }
+
+  /**
+   * Rewrite every email-keyed pending invite for the caller's email so it
+   * becomes personUid-keyed. Idempotent — zero-cost for returning users who
+   * have no pending invites. The caller's email is inferred from the JWT.
+   */
+  async claimPendingInvitesByEmail(personUid: string): Promise<void> {
+    await this.post("/membership/claim-by-email", { personUid });
+  }
+
   async listMembersOfCompany(companyUid: string): Promise<Membership[]> {
     const data = await this.get<{ members: Membership[] }>(
       `/membership/company/${encodeURIComponent(companyUid)}`,
@@ -279,7 +315,49 @@ export class VaultClient {
       const data = await this.post<CreateEntityResult>("/entity", input);
       return data.entity;
     },
+
+    /** Return every entity of `type` owned by the caller (scoped by JWT). */
+    listByType: async (type: string): Promise<EntityInfo[]> => {
+      const data = await this.get<{ entities: EntityInfo[] }>(
+        `/entity/by-type/${encodeURIComponent(type)}`,
+      );
+      return data.entities ?? [];
+    },
   };
+
+  // -- Identity bootstrap ---------------------------------------------------
+
+  /**
+   * Return the caller's person entity, creating it if one does not exist.
+   *
+   * Mirrors the installer's `ensurePersonEntity` bootstrap (`vault-handoff.ts`):
+   * pre-condition for {@link claimPendingInvitesByEmail}, which needs a
+   * concrete `personUid` to rewrite the email-keyed rows against.
+   *
+   * The slug is derived from `displayName`; if slugification yields an empty
+   * string, falls back to `user-<last-8-of-ownerSub>` so the POST always has
+   * a non-empty slug.
+   */
+  async ensureMyPersonEntity(hints: {
+    ownerSub: string;
+    displayName: string;
+  }): Promise<EntityInfo> {
+    const existing = await this.entity.listByType("person");
+    if (existing.length > 0) return existing[0];
+
+    const slug =
+      hints.displayName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 63) || `user-${hints.ownerSub.slice(-8).toLowerCase()}`;
+
+    return this.entity.create({
+      type: "person",
+      name: hints.displayName,
+      slug,
+    });
+  }
 
   // -- Provisioning operations (VLT-2) -----------------------------------------
 

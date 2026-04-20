@@ -38,12 +38,15 @@ import * as fs from "fs";
 import { fileURLToPath } from "url";
 import {
   getValidAccessToken,
+  loadCachedTokens,
   VaultClient,
   VaultAuthError,
   type CognitoAuthConfig,
+  type CognitoTokens,
   type VaultServiceConfig,
   type Membership,
   type EntityInfo,
+  type PendingInviteByEmail,
 } from "../index.js";
 import { sync as defaultSync } from "../cli/sync.js";
 import type {
@@ -90,7 +93,7 @@ export type RunnerEvent =
   | { type: "auth-error"; message: string }
   | {
       type: "fanout-plan";
-      companies: Array<{ uid: string; slug: string }>;
+      companies: Array<{ uid: string; slug: string; name?: string }>;
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
@@ -113,9 +116,24 @@ export type RunnerEvent =
  */
 export interface VaultClientSurface {
   listMyMemberships: () => Promise<Membership[]>;
+  listMyPendingInvitesByEmail: () => Promise<PendingInviteByEmail[]>;
+  claimPendingInvitesByEmail: (personUid: string) => Promise<void>;
+  ensureMyPersonEntity: (hints: {
+    ownerSub: string;
+    displayName: string;
+  }) => Promise<EntityInfo>;
   entity: {
     get: (uid: string) => Promise<EntityInfo>;
   };
+}
+
+/** Minimal shape of the claims we read off the Cognito idToken. */
+interface IdTokenClaims {
+  sub?: string;
+  email?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
 }
 
 export interface RunnerDeps {
@@ -126,13 +144,90 @@ export interface RunnerDeps {
   /** Resolve a valid access token. Defaults to `getValidAccessToken` non-interactive. */
   getAccessToken?: () => Promise<string>;
   /**
+   * Read the caller's identity claims (sub/email/name) off the cached Cognito
+   * idToken. Defaults to decoding `loadCachedTokens().idToken`. Returns `null`
+   * when no cached tokens exist — the runner will then skip the claim-dance
+   * and fall through to the usual listMyMemberships path.
+   */
+  getIdTokenClaims?: () => IdTokenClaims | null;
+  /**
    * Produce a VaultClient-like object. Defaults to `new VaultClient(config)`.
-   * Tests inject a stub here — only `listMyMemberships` and `entity.get` are
-   * called by the runner, so stubs only need to implement those.
+   * Tests inject a stub here — the runner only calls the methods listed in
+   * `VaultClientSurface`.
    */
   createVaultClient?: (config: VaultServiceConfig) => VaultClientSurface;
   /** Sync function. Defaults to `cli/sync.sync`. */
   sync?: (options: SyncOptions) => Promise<SyncResult>;
+}
+
+// ---------------------------------------------------------------------------
+// JWT claim decoder — inlined to avoid pulling a dep just to read an idToken.
+// We do NOT verify the signature here — Cognito already did that when it
+// issued the token, and we only read the public claims (sub/email/name) to
+// drive the claim-dance + create the person entity. If the token is tampered
+// with, the downstream vault-service call will reject it (signature-verified
+// there) long before any claimed value causes harm.
+// ---------------------------------------------------------------------------
+
+function decodeJwtClaims(jwt: string): IdTokenClaims | null {
+  const parts = jwt.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json = Buffer.from(padded, "base64").toString("utf-8");
+    return JSON.parse(json) as IdTokenClaims;
+  } catch {
+    return null;
+  }
+}
+
+function defaultGetIdTokenClaims(): IdTokenClaims | null {
+  const tokens: CognitoTokens | null = loadCachedTokens();
+  if (!tokens?.idToken) return null;
+  return decodeJwtClaims(tokens.idToken);
+}
+
+/**
+ * Best-effort: claim any email-keyed pending invites that were sent before
+ * this user had a person entity. Mirrors the installer's vault-handoff flow.
+ *
+ * Silent on the happy path — only logs to stderr on soft failures (so a
+ * transient network blip doesn't block the sync). Never throws: a caller who
+ * can't list memberships despite an unclaimed invite is no worse off than the
+ * pre-claim-dance behavior (which was to emit setup-needed).
+ */
+async function runClaimDance(
+  client: VaultClientSurface,
+  claims: IdTokenClaims,
+  stderr: { write: (chunk: string) => boolean | void },
+): Promise<void> {
+  try {
+    const pending = await client.listMyPendingInvitesByEmail();
+    if (pending.length === 0) return;
+
+    const displayName =
+      claims.name ??
+      [claims.given_name, claims.family_name].filter(Boolean).join(" ") ??
+      claims.email ??
+      "";
+    const ownerSub = claims.sub ?? "";
+    if (!ownerSub || !displayName) {
+      stderr.write(
+        "hq-sync-runner: skipping claim-dance — idToken missing sub/name\n",
+      );
+      return;
+    }
+
+    const person = await client.ensureMyPersonEntity({
+      ownerSub,
+      displayName,
+    });
+    await client.claimPendingInvitesByEmail(person.uid);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    stderr.write(`hq-sync-runner: claim-dance skipped — ${msg}\n`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -244,8 +339,20 @@ export async function runRunner(
   let memberships: Pick<Membership, "companyUid">[];
   try {
     if (parsed.companies) {
+      // Before giving up on memberships, run the claim-dance: new users signed
+      // in via the tray may have email-keyed invites waiting for them. Without
+      // this, an invited user would see "setup-needed" on every tray click.
+      const getClaims = deps.getIdTokenClaims ?? defaultGetIdTokenClaims;
+      const claims = getClaims();
+      if (claims) {
+        await runClaimDance(client, claims, stderr);
+      }
+
       memberships = await client.listMyMemberships();
       if (memberships.length === 0) {
+        // Truly empty — still a valid state (no memberships = nothing to
+        // sync). The tray will show a friendly "create your first company"
+        // CTA rather than an alarm banner.
         emit({ type: "setup-needed" });
         return 0;
       }
@@ -278,16 +385,18 @@ export async function runRunner(
   // The menubar wants "Syncing indigo" in its UI, not the raw cmp_* ULID.
   // If the entity fetch fails for some row (entity deleted, scoping issue),
   // degrade to using the UID as the slug rather than aborting the run.
-  const plan: Array<{ uid: string; slug: string }> = [];
+  const plan: Array<{ uid: string; slug: string; name?: string }> = [];
   for (const m of memberships) {
     let slug = m.companyUid;
+    let name: string | undefined;
     try {
       const info = await client.entity.get(m.companyUid);
       slug = info.slug || m.companyUid;
+      name = info.name;
     } catch {
       // Best-effort — keep UID as the display identifier.
     }
-    plan.push({ uid: m.companyUid, slug });
+    plan.push({ uid: m.companyUid, slug, ...(name ? { name } : {}) });
   }
   emit({ type: "fanout-plan", companies: plan });
 

@@ -15,7 +15,11 @@ import type {
   VaultClientSurface,
 } from "./sync-runner.js";
 import type { SyncResult, SyncOptions } from "../cli/sync.js";
-import type { Membership, EntityInfo } from "../vault-client.js";
+import type {
+  Membership,
+  EntityInfo,
+  PendingInviteByEmail,
+} from "../vault-client.js";
 import { VaultAuthError } from "../vault-client.js";
 
 // ---------------------------------------------------------------------------
@@ -70,11 +74,31 @@ function makeVaultStub(
   opts: {
     memberships?: Array<Pick<Membership, "companyUid">>;
     entityGet?: (uid: string) => Promise<EntityInfo>;
+    pendingInvites?: Array<Record<string, unknown>>;
+    ensurePerson?: (hints: {
+      ownerSub: string;
+      displayName: string;
+    }) => Promise<EntityInfo>;
+    claim?: (personUid: string) => Promise<void>;
   } = {},
 ): VaultClientSurface {
   const memberships = opts.memberships ?? [];
+  const pending = opts.pendingInvites ?? [];
   return {
     listMyMemberships: () => Promise.resolve(memberships as Membership[]),
+    listMyPendingInvitesByEmail: () =>
+      Promise.resolve(pending as unknown as PendingInviteByEmail[]),
+    claimPendingInvitesByEmail:
+      opts.claim ?? (() => Promise.resolve(undefined)),
+    ensureMyPersonEntity:
+      opts.ensurePerson ??
+      (() =>
+        Promise.resolve({
+          uid: "ent_person_default",
+          type: "person",
+          slug: "default-person",
+          status: "active",
+        } as unknown as EntityInfo)),
     entity: {
       get:
         opts.entityGet ??
@@ -181,12 +205,9 @@ describe("auth", () => {
   it("emits auth-error when VaultAuthError thrown during discovery", async () => {
     const deps = makeDeps({
       createVaultClient: () => ({
+        ...makeVaultStub(),
         listMyMemberships: () =>
           Promise.reject(new VaultAuthError("token expired")),
-        entity: {
-          get: (uid: string) =>
-            Promise.resolve({ uid, slug: uid } as unknown as EntityInfo),
-        },
       }),
     });
     const code = await runRunner(["--companies"], deps);
@@ -199,11 +220,8 @@ describe("auth", () => {
   it("emits error event and returns 1 on non-auth discovery failure", async () => {
     const deps = makeDeps({
       createVaultClient: () => ({
+        ...makeVaultStub(),
         listMyMemberships: () => Promise.reject(new Error("network down")),
-        entity: {
-          get: (uid: string) =>
-            Promise.resolve({ uid, slug: uid } as unknown as EntityInfo),
-        },
       }),
     });
     const code = await runRunner(["--companies"], deps);
@@ -214,6 +232,150 @@ describe("auth", () => {
       type: "error",
       message: "network down",
       path: "(discovery)",
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// claim-dance (first sign-in)
+// ---------------------------------------------------------------------------
+
+describe("claim-dance", () => {
+  const claims = {
+    sub: "sub-abc",
+    email: "stefan@getindigo.ai",
+    name: "Stefan Johnson",
+  };
+
+  it("claims pending invites + ensures person before listing memberships", async () => {
+    const ensureSpy = vi.fn().mockResolvedValue({
+      uid: "ent_person_stefan",
+      type: "person",
+      slug: "stefan-johnson",
+      status: "active",
+    });
+    const claimSpy = vi.fn().mockResolvedValue(undefined);
+    // First listMyMemberships returns the just-claimed row.
+    let listCalls = 0;
+    const stub = makeVaultStub({
+      pendingInvites: [
+        {
+          membershipKey: "inv_1",
+          companyUid: "cmp_indigo",
+          role: "owner",
+          invitedBy: "sub-admin",
+          invitedAt: "2026-04-20T00:00:00Z",
+        },
+      ],
+      ensurePerson: ensureSpy as unknown as VaultClientSurface["ensureMyPersonEntity"],
+      claim: claimSpy as unknown as VaultClientSurface["claimPendingInvitesByEmail"],
+    });
+    stub.listMyMemberships = () => {
+      listCalls++;
+      return Promise.resolve([{ companyUid: "cmp_indigo" }] as Membership[]);
+    };
+
+    const deps = makeDeps({
+      createVaultClient: () => stub,
+      getIdTokenClaims: () => claims,
+    });
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    expect(ensureSpy).toHaveBeenCalledWith({
+      ownerSub: "sub-abc",
+      displayName: "Stefan Johnson",
+    });
+    expect(claimSpy).toHaveBeenCalledWith("ent_person_stefan");
+    expect(listCalls).toBe(1);
+    // setup-needed must NOT fire — the user has memberships after the claim.
+    expect(deps.stdout.events().some((e) => e.type === "setup-needed")).toBe(
+      false,
+    );
+  });
+
+  it("skips ensurePerson + claim when no pending invites exist", async () => {
+    const ensureSpy = vi.fn();
+    const claimSpy = vi.fn();
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          pendingInvites: [],
+          ensurePerson:
+            ensureSpy as unknown as VaultClientSurface["ensureMyPersonEntity"],
+          claim: claimSpy as unknown as VaultClientSurface["claimPendingInvitesByEmail"],
+        }),
+      getIdTokenClaims: () => claims,
+    });
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    expect(ensureSpy).not.toHaveBeenCalled();
+    expect(claimSpy).not.toHaveBeenCalled();
+    // No memberships, no invites — truly empty → setup-needed is correct here.
+    expect(deps.stdout.events()).toEqual([{ type: "setup-needed" }]);
+  });
+
+  it("skips claim-dance entirely when no idToken claims are available", async () => {
+    const pendingSpy = vi.fn().mockResolvedValue([]);
+    const stub = makeVaultStub();
+    stub.listMyPendingInvitesByEmail =
+      pendingSpy as unknown as VaultClientSurface["listMyPendingInvitesByEmail"];
+    const deps = makeDeps({
+      createVaultClient: () => stub,
+      getIdTokenClaims: () => null,
+    });
+    await runRunner(["--companies"], deps);
+    expect(pendingSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not fail the run when claim-dance throws (best-effort)", async () => {
+    const stub = makeVaultStub({
+      memberships: [{ companyUid: "cmp_a" }],
+    });
+    stub.listMyPendingInvitesByEmail = () =>
+      Promise.reject(new Error("vault 500"));
+    const deps = makeDeps({
+      createVaultClient: () => stub,
+      getIdTokenClaims: () => claims,
+    });
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    // Sync proceeds as usual for the existing membership.
+    expect(deps.sync).toHaveBeenCalledTimes(1);
+    expect(deps.stderr.raw()).toContain("claim-dance skipped");
+  });
+
+  it("falls back to given_name + family_name when name claim is absent", async () => {
+    const ensureSpy = vi.fn().mockResolvedValue({
+      uid: "ent_person_x",
+      type: "person",
+      slug: "x",
+      status: "active",
+    });
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          pendingInvites: [
+            {
+              membershipKey: "inv_1",
+              companyUid: "cmp_x",
+              role: "owner",
+              invitedBy: "sub-admin",
+              invitedAt: "2026-04-20T00:00:00Z",
+            },
+          ],
+          ensurePerson:
+            ensureSpy as unknown as VaultClientSurface["ensureMyPersonEntity"],
+        }),
+      getIdTokenClaims: () => ({
+        sub: "sub-xyz",
+        given_name: "Ada",
+        family_name: "Lovelace",
+      }),
+    });
+    await runRunner(["--companies"], deps);
+    expect(ensureSpy).toHaveBeenCalledWith({
+      ownerSub: "sub-xyz",
+      displayName: "Ada Lovelace",
     });
   });
 });
@@ -236,11 +398,11 @@ describe("target resolution", () => {
     const listSpy = vi.fn();
     const deps = makeDeps({
       createVaultClient: () => ({
-        listMyMemberships: listSpy as unknown as () => Promise<Membership[]>,
-        entity: {
-          get: (uid: string) =>
+        ...makeVaultStub({
+          entityGet: (uid: string) =>
             Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
-        },
+        }),
+        listMyMemberships: listSpy as unknown as () => Promise<Membership[]>,
       }),
     });
     const code = await runRunner(["--company", "cmp_abc"], deps);
@@ -301,6 +463,31 @@ describe("fanout-plan", () => {
       .events()
       .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
     expect(plan.companies).toEqual([{ uid: "cmp_ghost", slug: "cmp_ghost" }]);
+  });
+
+  it("includes entity.name on plan entries when available", async () => {
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }, { companyUid: "cmp_b" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({
+              uid,
+              slug: uid === "cmp_a" ? "acme" : "beta",
+              name: uid === "cmp_a" ? "Acme Corp" : undefined,
+            } as unknown as EntityInfo),
+        }),
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    const plan = deps.stdout
+      .events()
+      .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
+    expect(plan.companies).toEqual([
+      { uid: "cmp_a", slug: "acme", name: "Acme Corp" },
+      { uid: "cmp_b", slug: "beta" },
+    ]);
   });
 
   it("degrades to UID when entity.get returns falsy slug", async () => {
