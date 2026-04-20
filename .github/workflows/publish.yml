@@ -16,14 +16,29 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      - run: npm ci
+      # Scope install to publishable workspaces only. `apps/*` workspaces
+      # (docs, teams-docs, web) are private and not needed for publishing;
+      # their postinstall scripts (pagefind binary fetch) can fail in CI
+      # and have no bearing on whether @indigoai-us/hq-cloud ships.
+      - run: |
+          npm ci \
+            --include-workspace-root \
+            --workspace packages/hq-cloud \
+            --workspace packages/hq-onboarding \
+            --workspace packages/hq-cli \
+            --workspace packages/hq-agent \
+            --workspace packages/godclaw \
+            --workspace packages/create-hq
 
-      # Build in dependency order: hq-cloud and hq-onboarding first (hq-cli
-      # imports from both). npm workspaces does not topo-sort `--workspaces`,
-      # so we stage the build explicitly.
+      # Build in dependency order. hq-cloud and hq-onboarding must exist
+      # on disk before hq-cli (which imports from both) compiles. npm
+      # workspaces does not topo-sort, so we stage explicitly.
       - run: npm run build --workspace packages/hq-cloud --if-present
       - run: npm run build --workspace packages/hq-onboarding --if-present
-      - run: npm run build --workspaces --if-present
+      - run: npm run build --workspace packages/hq-cli --if-present
+      - run: npm run build --workspace packages/hq-agent --if-present
+      - run: npm run build --workspace packages/godclaw --if-present
+      - run: npm run build --workspace packages/create-hq --if-present
 
       # Publish only if the workspace version hasn't been published yet.
       # Prevents the job from failing when a tag bumps one package but
