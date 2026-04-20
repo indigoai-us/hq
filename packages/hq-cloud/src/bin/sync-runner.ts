@@ -34,6 +34,8 @@
 
 import * as os from "os";
 import * as path from "path";
+import * as fs from "fs";
+import { fileURLToPath } from "url";
 import {
   getValidAccessToken,
   VaultClient,
@@ -354,11 +356,27 @@ export async function runRunner(
 // Entrypoint — only runs when invoked directly, not when imported for tests
 // ---------------------------------------------------------------------------
 
-const isDirectInvocation =
-  import.meta.url === `file://${process.argv[1]}` ||
-  // Handle the case where the shebang'd dist file is invoked via its
-  // realpath — e.g. a pnpm `bin` symlink resolves to a node_modules path.
-  (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1])));
+// Detect whether this module is the entry point. The obvious check
+// (`import.meta.url === file://${argv[1]}`) breaks for every real-world
+// install shape: npm-link'd binaries, global installs via Homebrew, and
+// pnpm's `node_modules/.bin` shims all leave `process.argv[1]` pointing
+// at a symlink named `hq-sync-runner` (no `.js` suffix) while
+// `import.meta.url` always resolves to the underlying `sync-runner.js`.
+//
+// Resolve both sides through realpath before comparing — that's the only
+// way to handle all symlink layouts without false negatives. If realpath
+// fails (argv[1] gone, permissions), fall through to `false` so we
+// don't run twice when imported as a library.
+const isDirectInvocation = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    const modulePath = fs.realpathSync(fileURLToPath(import.meta.url));
+    const argvPath = fs.realpathSync(process.argv[1]);
+    return modulePath === argvPath;
+  } catch {
+    return false;
+  }
+})();
 
 if (isDirectInvocation) {
   runRunner(process.argv.slice(2))
