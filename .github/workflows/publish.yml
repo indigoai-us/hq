@@ -40,24 +40,25 @@ jobs:
       - run: npm run build --workspace packages/godclaw --if-present
       - run: npm run build --workspace packages/create-hq --if-present
 
-      # Publish only if the workspace version hasn't been published yet.
-      # Prevents the job from failing when a tag bumps one package but
-      # leaves another at its current version.
+      # All three publish steps use npm trusted publishing (OIDC). No
+      # NODE_AUTH_TOKEN — auth is short-lived, minted from the GitHub OIDC
+      # identity token at runtime, and scoped to this workflow file by each
+      # package's trusted-publisher config on npmjs.com. `--provenance`
+      # generates a signed SLSA provenance statement on the tarball.
+      #
+      # Skip-if-published gate prevents the job from failing when a tag
+      # bumps one package but leaves another at its current version.
+
       - name: Publish hq-cloud (dependency of hq-cli)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NAME=$(jq -r .name packages/hq-cloud/package.json)
           VER=$(jq -r .version packages/hq-cloud/package.json)
           if npm view "$NAME@$VER" version >/dev/null 2>&1; then
             echo "$NAME@$VER already on npm — skipping"
           else
-            npm publish --workspace packages/hq-cloud --access public
+            npm publish --workspace packages/hq-cloud --access public --provenance
           fi
 
-      # Publish hq-cli via npm trusted publishing (OIDC). No NODE_AUTH_TOKEN —
-      # auth is short-lived, minted from GitHub OIDC token, and scoped to this
-      # workflow file by npm's trusted-publisher config for @indigoai-us/hq-cli.
       - name: Publish hq-cli
         run: |
           NAME=$(jq -r .name packages/hq-cli/package.json)
@@ -69,13 +70,11 @@ jobs:
           fi
 
       - name: Publish create-hq
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NAME=$(jq -r .name packages/create-hq/package.json)
           VER=$(jq -r .version packages/create-hq/package.json)
           if npm view "$NAME@$VER" version >/dev/null 2>&1; then
             echo "$NAME@$VER already on npm — skipping"
           else
-            npm publish --workspace packages/create-hq --access public
+            npm publish --workspace packages/create-hq --access public --provenance
           fi
