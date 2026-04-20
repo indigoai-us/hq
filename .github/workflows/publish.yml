@@ -13,15 +13,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 ships npm 11.x, which is required for the trusted-
+          # publisher OIDC token-exchange flow. Node 22 ships npm 10.9.x,
+          # which signs sigstore provenance via OIDC but can't swap the
+          # OIDC token for a short-lived publish token — the PUT then
+          # goes out unauthenticated and npm returns a masked 404.
+          #
+          # Self-upgrading via `npm install -g npm@latest` on top of npm
+          # 10 is not reliable: it trips a known `promise-retry` MODULE_
+          # NOT_FOUND bug during self-replacement. Upgrading the Node
+          # base instead avoids the whole class of failure.
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
-      # npm 11.5+ is required for trusted-publisher OIDC token exchange.
-      # node 22 ships npm 10.9.x which signs sigstore provenance (via OIDC)
-      # but can't swap the OIDC token for a short-lived publish token, so
-      # the PUT goes out unauthed and npm returns a masked 404. Pinning
-      # npm@11 here makes the full trusted-publisher flow work.
-      - run: npm install -g npm@latest
       - run: node --version && npm --version
 
       # Scope install to publishable workspaces only. `apps/*` workspaces
