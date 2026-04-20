@@ -9,7 +9,7 @@ import * as http from "http";
 import open from "open";
 import type { Credentials } from "./types.js";
 
-const AUTH_URL = "https://hq.indigoai.com/auth";
+const AUTH_URL = "https://example.com/auth";
 const CALLBACK_PORT = 19847;
 const CREDS_DIR = path.join(
   process.env.HOME || process.env.USERPROFILE || "~",
@@ -116,7 +116,7 @@ export async function authenticate(): Promise<Credentials> {
 export async function refreshAwsCredentials(
   creds: Credentials
 ): Promise<Credentials> {
-  const response = await fetch("https://hq.indigoai.com/api/auth/refresh", {
+  const response = await fetch("https://example.com/api/auth/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken: creds.refreshToken }),

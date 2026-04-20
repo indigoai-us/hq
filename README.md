@@ -53,7 +53,7 @@ hq sync init        # Authenticate with IndigoAI
 hq sync start       # Start background sync
 ```
 
-Access your HQ from any device at [hq.indigoai.com](https://hq.indigoai.com).
+Access your HQ from any device at [example.com](https://example.com).
 
 ## Module Management
 
@@ -76,7 +76,7 @@ indigoai-us/hq/
 ├── apps/
 │   ├── docs/          # Docs site (Astro + Starlight)
 │   ├── teams-docs/    # HQ Teams docs (Astro + Starlight)
-│   └── web/           # PWA dashboard (hq.indigoai.com)
+│   └── web/           # PWA dashboard (example.com)
 ├── infra/             # AWS infrastructure (SST)
 └── template/          # HQ template distributed to users
 ```

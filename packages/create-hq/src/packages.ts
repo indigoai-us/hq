@@ -20,7 +20,7 @@ import type { AuthToken } from "./auth.js";
 
 // ─── Registry URL ────────────────────────────────────────────────────────────
 
-const DEFAULT_REGISTRY_URL = "https://registry.hq.sh/api";
+const DEFAULT_REGISTRY_URL = "https://example.com/api";
 
 /**
  * Read the registry URL from packages/sources.yaml in the target HQ dir.

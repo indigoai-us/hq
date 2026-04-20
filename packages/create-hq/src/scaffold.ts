@@ -434,7 +434,7 @@ export async function scaffold(
   // if (!options.skipSync && !alreadySynced) {
   //   console.log();
   //   const setupSync = await confirm(
-  //     "Set up cloud sync? (enables mobile access via hq.indigoai.com)"
+  //     "Set up cloud sync? (enables mobile access via example.com)"
   //   );
   //   if (setupSync) {
   //     step("Cloud sync setup will be available after running /setup in Claude Code");

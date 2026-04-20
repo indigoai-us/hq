@@ -40,8 +40,8 @@ export function parseToken(tokenOrLink: string): string {
     return trimmed.slice("hq://accept/".length);
   }
 
-  // https://hq.indigoai.com/accept/<token> (future web route)
-  const httpsPrefix = "https://hq.indigoai.com/accept/";
+  // https://example.com/accept/<token> (future web route)
+  const httpsPrefix = "https://example.com/accept/";
   if (trimmed.startsWith(httpsPrefix)) {
     return trimmed.slice(httpsPrefix.length);
   }

@@ -134,13 +134,13 @@ interface DaemonState {
 
 ## Auth (auth.ts)
 
-Authentication uses an OAuth flow with `hq.indigoai.com`. The flow mints a refresh token locally, which is then exchanged for temporary AWS STS credentials on demand.
+Authentication uses an OAuth flow with `example.com`. The flow mints a refresh token locally, which is then exchanged for temporary AWS STS credentials on demand.
 
 ### OAuth Flow
 
 ```
 ┌──────────┐     1. Open browser      ┌───────────────────┐
-│  hq CLI  │ ─────────────────────────▶│ hq.indigoai.com/  │
+│  hq CLI  │ ─────────────────────────▶│ example.com/  │
 │          │                           │ auth?callback=...  │
 │          │                           └────────┬──────────┘
 │          │                                    │
@@ -157,7 +157,7 @@ Authentication uses an OAuth flow with `hq.indigoai.com`. The flow mints a refre
 ```
 
 1. `authenticate()` starts an HTTP server on `localhost:19847`.
-2. The user's browser opens to `https://hq.indigoai.com/auth?callback=http://localhost:19847/callback`.
+2. The user's browser opens to `https://example.com/auth?callback=http://localhost:19847/callback`.
 3. After sign-in, IndigoAI redirects to the callback URL with query parameters: `token`, `refresh_token`, `user_id`, `bucket`, and `region`.
 4. The callback handler writes credentials to `~/.hq/credentials.json` with mode `0o600`, then closes the server.
 
@@ -167,7 +167,7 @@ The flow has a 5-minute timeout. If the browser does not complete authentication
 
 ```
 ┌──────────┐     POST /api/auth/refresh     ┌──────────────────┐
-│ hq-cloud │ ──────────────────────────────▶│ hq.indigoai.com  │
+│ hq-cloud │ ──────────────────────────────▶│ example.com  │
 │          │     { refreshToken }            │                  │
 │          │                                 │  Cognito + STS   │
 │          │◀──────────────────────────────  │                  │

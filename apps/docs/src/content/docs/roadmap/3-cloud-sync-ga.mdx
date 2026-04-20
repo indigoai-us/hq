@@ -5,7 +5,7 @@ description: AWS deployment and cloud sync general availability specification fo
 
 ## Goal
 
-Users can run `hq sync init` → `hq sync start` and have their HQ files accessible from any device via the PWA at hq.indigoai.com.
+Users can run `hq sync init` → `hq sync start` and have their HQ files accessible from any device via the PWA at example.com.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ Users can run `hq sync init` → `hq sync start` and have their HQ files accessi
 
 ### Domain
 
-- [ ] `hq.indigoai.com` DNS configured
+- [ ] `example.com` DNS configured
 - [ ] Route 53 hosted zone (or external DNS)
 - [ ] SSL certificate (ACM, auto-provisioned by SST)
 
@@ -35,7 +35,7 @@ All resources created: Cognito pool, S3 bucket, API Gateway, Lambda functions, C
 ### AC-2: Auth flow E2E
 
 1. User runs `hq sync init`
-2. Browser opens to hq.indigoai.com/auth
+2. Browser opens to example.com/auth
 3. User signs up with email
 4. Callback received on localhost:19847
 5. Credentials stored at `~/.hq/credentials.json`
@@ -51,7 +51,7 @@ All resources created: Cognito pool, S3 bucket, API Gateway, Lambda functions, C
 
 ### AC-4: PWA accessible
 
-1. Navigate to hq.indigoai.com
+1. Navigate to example.com
 2. Login with Cognito credentials
 3. Browse HQ directory structure
 4. View markdown files with rendering
@@ -75,7 +75,7 @@ All resources created: Cognito pool, S3 bucket, API Gateway, Lambda functions, C
 ## Implementation Steps
 
 1. **Deploy infra** — `sst deploy --stage prod`
-2. **Configure domain** — DNS + SSL for hq.indigoai.com
+2. **Configure domain** — DNS + SSL for example.com
 3. **Deploy PWA** — Build apps/web + deploy to CloudFront
 4. **Test auth flow** — Sign up, sign in, token refresh
 5. **Test sync** — Create/modify/delete files, verify S3
@@ -107,7 +107,7 @@ All resources created: Cognito pool, S3 bucket, API Gateway, Lambda functions, C
 ## Definition of Done
 
 - [ ] `hq sync init` → `hq sync start` works on fresh install
-- [ ] PWA loads at hq.indigoai.com
+- [ ] PWA loads at example.com
 - [ ] Files sync bidirectionally within 5 seconds
 - [ ] Daemon runs reliably for 24+ hours
 - [ ] Security audit passes

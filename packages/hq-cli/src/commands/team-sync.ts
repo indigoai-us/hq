@@ -57,7 +57,7 @@ interface TeamSyncResult {
 
 // ─── API helpers ────────────────────────────────────────────────────────────
 
-const API_BASE = 'https://hq.indigoai.com/api';
+const API_BASE = 'https://example.com/api';
 
 async function apiGet<T>(urlPath: string, token: string): Promise<T> {
   const res = await fetch(`${API_BASE}${urlPath}`, {

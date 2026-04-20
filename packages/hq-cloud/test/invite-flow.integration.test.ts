@@ -57,7 +57,7 @@ describe("parseToken", () => {
   });
 
   it("extracts token from https:// URL", () => {
-    expect(parseToken("https://hq.indigoai.com/accept/tok_xyz")).toBe("tok_xyz");
+    expect(parseToken("https://example.com/accept/tok_xyz")).toBe("tok_xyz");
   });
 
   it("returns raw token unchanged", () => {
