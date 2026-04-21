@@ -286,3 +286,13 @@ For deployable projects (web, API, CLI):
 - Workers use `e2e-testing` skill for writing/running tests
 
 **Full guide:** `knowledge/public/testing/e2e-cloud.md`
+
+## Secrets
+
+Use `/hq-secrets` for the full playbook. Core rules:
+
+- **Inject via exec:** `hq secrets exec --only KEY1,KEY2 -- <command>` — values become env vars in the child process, never stdout.
+- **Get redacts by default:** `hq secrets get <NAME>` shows metadata only; `--reveal` is an explicit escape hatch.
+- **Never capture exec output:** do not wrap `exec` in `$(...)`, pipe it, or echo `process.env.SECRET` — secret values may appear in subprocess output. This is a prompt-level guardrail, not technical enforcement.
+- **Discover with list:** `hq secrets list` shows available secrets (metadata only).
+- **Human-supplied values:** `hq secrets generate-link <NAME>` produces a URL for a human to enter a value you should not see.
