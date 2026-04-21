@@ -232,8 +232,62 @@ export function registerSecretsCommand(program: Command): void {
     .command("get <name>")
     .description("Get a secret's metadata (use --reveal for value)")
     .option("--reveal", "Include the decrypted secret value")
-    .action(async (_name: string) => {
-      console.log(chalk.yellow("Not implemented yet (Step 11)"));
+    .action(async (name: string, opts: { reveal?: boolean }) => {
+      try {
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const query: Record<string, string> = {};
+        if (opts.reveal) {
+          query.reveal = "true";
+        }
+
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          query: Object.keys(query).length > 0 ? query : undefined,
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error(
+            chalk.red(`Failed to get secret: ${(body as Record<string, string>).error ?? res.statusText}`),
+          );
+          process.exit(1);
+        }
+
+        const data = (await res.json()) as {
+          secret: {
+            name: string;
+            companyUid: string;
+            type?: string;
+            lastModifiedDate?: string;
+            version?: number;
+            value?: string;
+          };
+        };
+
+        const s = data.secret;
+        console.log(chalk.bold(`Secret: ${s.name}`));
+        if (s.lastModifiedDate) {
+          console.log(`  Last Modified: ${s.lastModifiedDate}`);
+        }
+        if (s.version != null) {
+          console.log(`  Version:       ${s.version}`);
+        }
+        if (opts.reveal && s.value != null) {
+          console.log(`  Value:         ${s.value}`);
+        } else {
+          console.log(`  Value:         ${chalk.dim("[REDACTED]")}`);
+        }
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
     });
 
   secrets
@@ -267,12 +321,12 @@ export function registerSecretsCommand(program: Command): void {
           return;
         }
 
-        console.log(chalk.bold("Secrets:"));
+        const nameWidth = Math.max(4, ...data.secrets.map((s) => s.name.length));
+        const header = `${"NAME".padEnd(nameWidth)}  LAST MODIFIED`;
+        console.log(chalk.bold(header));
         for (const s of data.secrets) {
-          const modified = s.lastModifiedDate
-            ? chalk.dim(` (modified: ${s.lastModifiedDate})`)
-            : "";
-          console.log(`  ${s.name}${modified}`);
+          const modified = s.lastModifiedDate ?? "-";
+          console.log(`${s.name.padEnd(nameWidth)}  ${modified}`);
         }
       } catch (err) {
         console.error(
