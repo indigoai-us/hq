@@ -20,6 +20,7 @@ Manage secrets stored in AWS SSM Parameter Store via the `hq secrets` CLI. Secre
 | `hq secrets delete <NAME>` | Delete a secret (prompts for confirmation) |
 | `hq secrets delete <NAME> --force` | Delete without confirmation |
 | `hq secrets exec --only KEY1,KEY2 -- <cmd>` | Run a command with secrets injected as env vars |
+| `source <(hq secrets env --only KEY1,KEY2)` | Export secrets into the current shell (refuses to run on a TTY) |
 | `hq secrets generate-link <NAME>` | Generate a one-time URL for a human to submit a secret value |
 | `hq secrets generate-link <NAME> --expires 2d` | Custom expiry (default 24h, max 7d) |
 | `hq secrets cache clear` | Clear the local encrypted secrets cache |
@@ -41,6 +42,20 @@ hq secrets exec --only OPENAI_API_KEY -- node script.js
 The `--only` flag is required — there is no "inject all" mode. Name exactly the secrets the child process needs.
 
 Results are cached locally (encrypted, 5-minute TTL) so repeated `exec` calls within a short window don't re-fetch from the API.
+
+## Sourcing into a shell: `env`
+
+When secrets must persist in the current shell (e.g. an interactive debugging session, or a tool that spawns its own sub-commands and won't inherit from a single `exec`), use `hq secrets env`:
+
+```bash
+source <(hq secrets env --only DATABASE_URL,API_KEY)
+```
+
+The command writes `export KEY='value'` lines to stdout with POSIX-safe single-quote escaping. All status messages go to stderr, so nothing pollutes the sourced output.
+
+**TTY guard**: when stdout is a terminal, `hq secrets env` prints `export KEY='[REDACTED]'` instead of the real values (and a warning to stderr). Values are only emitted when stdout is a pipe or process substitution — i.e. when someone is actually sourcing them. Running `hq secrets env --only STRIPE_KEY` directly will never expose the value on screen.
+
+**Agent guidance**: prefer `exec` over `env` whenever possible. `env` mutates the caller's shell environment, which is easy to leave around in later commands (history files, subprocess logs). Only use `env` when the workload genuinely cannot be expressed as a single `exec` invocation.
 
 ## Rules for Agent Workflows
 

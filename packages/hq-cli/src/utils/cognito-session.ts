@@ -65,13 +65,13 @@ export async function ensureCognitoToken(options: {
   if (cached) {
     try {
       if (interactive) {
-        console.log(chalk.dim("  Refreshing expiring HQ session..."));
+        console.error(chalk.dim("  Refreshing expiring HQ session..."));
       }
       const refreshed = await refreshTokens(DEFAULT_COGNITO, cached.refreshToken);
       return refreshed.accessToken;
     } catch (err) {
       if (interactive) {
-        console.log(
+        console.error(
           chalk.dim(
             `  Refresh failed (${err instanceof Error ? err.message : err}), falling back to browser login`,
           ),
@@ -86,7 +86,7 @@ export async function ensureCognitoToken(options: {
     );
   }
 
-  console.log(chalk.cyan("  No cached HQ session — launching browser sign-in..."));
+  console.error(chalk.cyan("  No cached HQ session — launching browser sign-in..."));
   const tokens = await browserLogin(DEFAULT_COGNITO);
   return tokens.accessToken;
 }

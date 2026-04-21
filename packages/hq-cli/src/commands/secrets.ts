@@ -21,6 +21,10 @@ interface VaultApiOptions {
   query?: Record<string, string>;
 }
 
+function shellSingleQuote(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
   const url = new URL(opts.path, DEFAULT_VAULT_API_URL);
   if (opts.query) {
@@ -508,6 +512,79 @@ export function registerSecretsCommand(program: Command): void {
           }
           process.exit(code ?? 1);
         });
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
+    });
+
+  secrets
+    .command("env")
+    .description("Print 'export KEY=VALUE' lines suitable for: source <(hq secrets env --only K1,K2)")
+    .requiredOption("--only <keys>", "Comma-separated list of secret names to print (required)")
+    .action(async (opts: { only: string }) => {
+      try {
+        const redact = process.stdout.isTTY;
+        if (redact) {
+          console.error(
+            chalk.yellow(
+              "stdout is a terminal — values redacted. Use: source <(hq secrets env --only KEY1,KEY2)",
+            ),
+          );
+        }
+
+        const keys = opts.only.split(",").map((k) => k.trim()).filter(Boolean);
+        if (keys.length === 0) {
+          console.error(chalk.red("Error: --only requires at least one secret name."));
+          process.exit(1);
+        }
+
+        for (const key of keys) {
+          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+            process.exit(1);
+          }
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const revealed = await Promise.all(
+          keys.map(async (key) => {
+            const cached = readCache(companyUid, key);
+            if (cached !== null) {
+              return { key, value: cached };
+            }
+            const res = await vaultApiFetch({
+              token,
+              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              query: { reveal: "true" },
+            });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(
+                `Failed to fetch secret '${key}': ${(body as Record<string, string>).error ?? res.statusText}`,
+              );
+            }
+            const data = (await res.json()) as {
+              secret: { name: string; value?: string };
+            };
+            if (data.secret.value == null) {
+              throw new Error(`Secret '${key}' has no value (reveal may not be permitted).`);
+            }
+            writeCache(companyUid, key, data.secret.value);
+            return { key, value: data.secret.value };
+          }),
+        );
+
+        for (const { key, value } of revealed) {
+          const out = redact ? "[REDACTED]" : value;
+          process.stdout.write(`export ${key}=${shellSingleQuote(out)}\n`);
+        }
       } catch (err) {
         console.error(
           chalk.red("Error:"),
