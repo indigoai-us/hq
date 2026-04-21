@@ -28,23 +28,41 @@ import {
 } from '../utils/registry-client.js';
 import { verifySha256, verifyRsaSignature } from '../utils/integrity.js';
 import { addToRegistry } from '../utils/registry.js';
+import { installPack, sourceMatchesPackPattern } from './pack-install.js';
 
 export function registerPackageInstallCommand(parent: Command): void {
   parent
-    .command('install <slug>')
-    .description('Install a package from the registry')
-    .option('--company <co>', 'Scope the package to a specific company')
-    .action(async (slug: string, opts: { company?: string }) => {
-      try {
-        await installPackage(slug, opts.company);
-      } catch (error) {
-        console.error(
-          chalk.red('Install failed:'),
-          error instanceof Error ? error.message : 'Unknown error'
-        );
-        process.exit(1);
+    .command('install <source>')
+    .description(
+      'Install a package. Sources: bare slug (registry, Cognito-gated), ' +
+        '@scope/name[@ver] (npm pack), git URL[#ref], or local path.'
+    )
+    .option('--company <co>', 'Scope the package to a specific company (registry flow only)')
+    .option('--allow-hooks', 'Skip the hooks confirmation prompt (content-pack flow)')
+    .option('--branch', 'Follow a ref instead of SHA-pinning (git content-pack flow)')
+    .action(
+      async (
+        source: string,
+        opts: { company?: string; allowHooks?: boolean; branch?: boolean }
+      ) => {
+        try {
+          if (sourceMatchesPackPattern(source)) {
+            await installPack(source, {
+              allowHooks: opts.allowHooks,
+              followBranch: opts.branch,
+            });
+          } else {
+            await installPackage(source, opts.company);
+          }
+        } catch (error) {
+          console.error(
+            chalk.red('Install failed:'),
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+          process.exit(1);
+        }
       }
-    });
+    );
 }
 
 async function installPackage(

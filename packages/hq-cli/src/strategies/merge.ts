@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import type { ModuleDefinition, SyncResult, SyncState } from '../types.js';
+import type { LegacyModuleDefinition, SyncResult, SyncState } from '../types.js';
 import { readState, writeState } from '../utils/manifest.js';
 
 function hashFile(filePath: string): string {
@@ -69,7 +69,7 @@ function copyRecursive(
 }
 
 export async function mergeSync(
-  module: ModuleDefinition,
+  module: LegacyModuleDefinition,
   moduleDir: string,
   hqRoot: string
 ): Promise<SyncResult> {
