@@ -1,5 +1,9 @@
 import { Command } from "commander";
 import chalk from "chalk";
+import * as readline from "node:readline";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import {
   ensureCognitoToken,
   DEFAULT_VAULT_API_URL,
@@ -87,6 +91,29 @@ async function getCompanyUid(
     return resolveCompanyUid(token, companySlug);
   }
   return resolveCompanyFromMemberships(token);
+}
+
+function confirmPrompt(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(`${message} [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() === "y");
+    });
+  });
+}
+
+function removeCacheEntry(companyUid: string, name: string): void {
+  const cacheDir = path.join(os.homedir(), ".hq", "secrets-cache", companyUid);
+  const cachePath = path.join(cacheDir, name);
+  try {
+    fs.unlinkSync(cachePath);
+  } catch {
+    // Cache entry may not exist — that's fine
+  }
 }
 
 function readFromPipedStdin(): Promise<string> {
@@ -340,8 +367,46 @@ export function registerSecretsCommand(program: Command): void {
   secrets
     .command("delete <name>")
     .description("Delete a secret")
-    .action(async (_name: string) => {
-      console.log(chalk.yellow("Not implemented yet (Step 12)"));
+    .option("--force", "Skip confirmation prompt")
+    .action(async (name: string, opts: { force?: boolean }) => {
+      try {
+        if (!opts.force) {
+          const confirmed = await confirmPrompt(
+            `Delete secret '${name}'? This cannot be undone.`,
+          );
+          if (!confirmed) {
+            console.log(chalk.dim("Aborted."));
+            return;
+          }
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error(
+            chalk.red(`Failed to delete secret: ${(body as Record<string, string>).error ?? res.statusText}`),
+          );
+          process.exit(1);
+        }
+
+        removeCacheEntry(companyUid, name);
+        console.log(chalk.green(`Secret '${name}' deleted.`));
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
     });
 
   secrets
