@@ -4,6 +4,7 @@ import * as readline from "node:readline";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { spawn } from "node:child_process";
 import {
   ensureCognitoToken,
   DEFAULT_VAULT_API_URL,
@@ -412,8 +413,93 @@ export function registerSecretsCommand(program: Command): void {
   secrets
     .command("exec")
     .description("Run a command with secrets injected as env vars")
-    .action(async () => {
-      console.log(chalk.yellow("Not implemented yet (Step 13)"));
+    .requiredOption("--only <keys>", "Comma-separated list of secret names to inject (required)")
+    .allowUnknownOption(true)
+    .action(async (_opts: { only: string }, cmd: Command) => {
+      try {
+        const rawArgs = cmd.args;
+        const dashIndex = process.argv.indexOf("--");
+        let childArgs: string[];
+        if (dashIndex !== -1) {
+          childArgs = process.argv.slice(dashIndex + 1);
+        } else {
+          childArgs = rawArgs;
+        }
+
+        if (childArgs.length === 0) {
+          console.error(chalk.red("Error: no command specified. Usage: hq secrets exec --only KEY1,KEY2 -- <command>"));
+          process.exit(1);
+        }
+
+        const keys = _opts.only.split(",").map((k) => k.trim()).filter(Boolean);
+        if (keys.length === 0) {
+          console.error(chalk.red("Error: --only requires at least one secret name."));
+          process.exit(1);
+        }
+
+        for (const key of keys) {
+          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+            process.exit(1);
+          }
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const revealed = await Promise.all(
+          keys.map(async (key) => {
+            const res = await vaultApiFetch({
+              token,
+              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              query: { reveal: "true" },
+            });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(
+                `Failed to fetch secret '${key}': ${(body as Record<string, string>).error ?? res.statusText}`,
+              );
+            }
+            const data = (await res.json()) as {
+              secret: { name: string; value?: string };
+            };
+            if (data.secret.value == null) {
+              throw new Error(`Secret '${key}' has no value (reveal may not be permitted).`);
+            }
+            return { key, value: data.secret.value };
+          }),
+        );
+
+        const secretEnv: Record<string, string> = {};
+        for (const { key, value } of revealed) {
+          secretEnv[key] = value;
+        }
+
+        const [childCmd, ...childCmdArgs] = childArgs;
+        const child = spawn(childCmd, childCmdArgs, {
+          stdio: "inherit",
+          env: { ...process.env, ...secretEnv },
+        });
+
+        child.on("error", (err) => {
+          console.error(chalk.red(`Failed to start command '${childCmd}': ${err.message}`));
+          process.exit(1);
+        });
+
+        child.on("close", (code, signal) => {
+          if (signal) {
+            process.kill(process.pid, signal);
+          }
+          process.exit(code ?? 1);
+        });
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
     });
 
   secrets
