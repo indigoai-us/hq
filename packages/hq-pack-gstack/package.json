@@ -1,0 +1,27 @@
+{
+  "name": "@indigoai-us/hq-pack-gstack",
+  "version": "1.0.0",
+  "description": "HQ content pack: gstack-team workers (26 g-* skills) + scripts/gstack-bridge.sh",
+  "files": [
+    "workers",
+    "scripts",
+    "package.yaml",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/hq-pack-gstack"
+  },
+  "keywords": [
+    "hq",
+    "hq-pack",
+    "gstack",
+    "sprint",
+    "workers"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

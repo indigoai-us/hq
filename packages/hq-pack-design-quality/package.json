@@ -1,0 +1,26 @@
+{
+  "name": "@indigoai-us/hq-pack-design-quality",
+  "version": "1.0.0",
+  "description": "HQ content pack: typography, color, spatial, motion quality references for design-audit skills",
+  "files": [
+    "knowledge",
+    "package.yaml",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/hq-pack-design-quality"
+  },
+  "keywords": [
+    "hq",
+    "hq-pack",
+    "design",
+    "design-quality",
+    "audit"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

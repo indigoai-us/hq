@@ -1,0 +1,25 @@
+{
+  "name": "@indigoai-us/hq-pack-design-styles",
+  "version": "1.0.0",
+  "description": "HQ content pack: curated style packs (registry + pack schema + reference MDCs) for HQ design workers",
+  "files": [
+    "knowledge",
+    "package.yaml",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/hq-pack-design-styles"
+  },
+  "keywords": [
+    "hq",
+    "hq-pack",
+    "design",
+    "design-styles"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

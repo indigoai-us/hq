@@ -1,0 +1,15 @@
+name: hq-pack-design-quality
+version: 1.0.0
+publisher: '@indigoai-us'
+access: public
+description: 'Typography, color, spatial, motion quality references for design-audit skills'
+requires:
+  hqCore: '>=12.0.0'
+contributes:
+  workers: []
+  knowledge:
+    - design-quality
+  skills: []
+  hooks: []
+  policies: []
+  commands: []

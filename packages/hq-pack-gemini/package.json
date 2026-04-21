@@ -1,0 +1,26 @@
+{
+  "name": "@indigoai-us/hq-pack-gemini",
+  "version": "1.0.0",
+  "description": "HQ content pack: six Gemini CLI workers (coder, reviewer, frontend, designer, stylist, ux-auditor) + gemini-cli knowledge",
+  "files": [
+    "workers",
+    "knowledge",
+    "package.yaml",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigoai-us/hq.git",
+    "directory": "packages/hq-pack-gemini"
+  },
+  "keywords": [
+    "hq",
+    "hq-pack",
+    "gemini",
+    "workers"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

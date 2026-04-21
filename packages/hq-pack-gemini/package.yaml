@@ -1,0 +1,24 @@
+name: hq-pack-gemini
+version: 1.0.0
+publisher: '@indigoai-us'
+access: public
+description: 'Gemini CLI workers (coder, reviewer, frontend, designer, stylist, ux-auditor) + gemini-cli knowledge'
+requires:
+  hqCore: '>=12.0.0'
+  # Runtime prerequisite: `gemini` binary on PATH. The core.yaml recommended_packages
+  # entry declares `conditional: command -v gemini >/dev/null 2>&1` so create-hq skips
+  # this pack on hosts without the Gemini CLI installed.
+contributes:
+  workers:
+    - gemini-coder
+    - gemini-designer
+    - gemini-frontend
+    - gemini-reviewer
+    - gemini-stylist
+    - gemini-ux-auditor
+  knowledge:
+    - gemini-cli
+  skills: []
+  hooks: []
+  policies: []
+  commands: []
