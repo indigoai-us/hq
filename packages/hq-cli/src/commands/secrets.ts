@@ -97,6 +97,17 @@ async function getCompanyUid(
   return resolveCompanyFromMemberships(token);
 }
 
+function parseDuration(input: string): number | null {
+  const match = input.match(/^(\d+)(m|h|d)$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  if (unit === "m") return value * 60 * 1000;
+  if (unit === "h") return value * 60 * 60 * 1000;
+  if (unit === "d") return value * 24 * 60 * 60 * 1000;
+  return null;
+}
+
 function confirmPrompt(message: string): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -509,8 +520,63 @@ export function registerSecretsCommand(program: Command): void {
   secrets
     .command("generate-link <name>")
     .description("Generate a one-time link for someone to submit a secret value")
-    .action(async (_name: string) => {
-      console.log(chalk.yellow("Not implemented yet (Step 16)"));
+    .option("--expires <duration>", "Token expiry duration (e.g. 24h, 2d, 30m)", "24h")
+    .action(async (name: string, opts: { expires: string }) => {
+      try {
+        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+          process.exit(1);
+        }
+
+        const expiresInMs = parseDuration(opts.expires);
+        if (expiresInMs === null) {
+          console.error(chalk.red(`Invalid duration '${opts.expires}'. Use formats like 30m, 12h, 2d.`));
+          process.exit(1);
+        }
+
+        const MAX_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+        if (expiresInMs > MAX_EXPIRY_MS) {
+          console.error(chalk.red("Maximum expiry is 7 days (7d)."));
+          process.exit(1);
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}/generate-token`,
+          method: "POST",
+          body: { expiresInMs },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error(
+            chalk.red(`Failed to generate link: ${(body as Record<string, string>).error ?? res.statusText}`),
+          );
+          process.exit(1);
+        }
+
+        const data = (await res.json()) as {
+          url: string;
+          expiresAt: string;
+          secretName: string;
+        };
+
+        console.log(chalk.green("Secret input link generated:"));
+        console.log(`\n  ${data.url}\n`);
+        console.log(chalk.dim(`  Secret:  ${data.secretName}`));
+        console.log(chalk.dim(`  Expires: ${data.expiresAt}`));
+        console.log(chalk.dim("  One-time use — link is invalidated after first submission."));
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
     });
 
   const cache = secrets
