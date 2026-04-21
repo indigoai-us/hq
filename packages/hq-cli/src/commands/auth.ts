@@ -12,9 +12,6 @@
  * into this machine by writing ~/.hq/cognito-tokens.json; once cached, the
  * session is kept fresh by `hq auth refresh` / `hq-auth-refresh` and consumed
  * by the deploy + sync skills.
- *
- * Note: the top-level `hq login` command authenticates against the HQ package
- * registry (Clerk), not Cognito — that is a different auth stack.
  */
 
 import { Command } from "commander";

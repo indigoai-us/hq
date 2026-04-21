@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { findHqRoot } from '../utils/hq-root.js';
 import { readRegistry } from '../utils/registry.js';
-import { loadToken, isTokenExpired } from '../utils/token-store.js';
+import { loadCachedTokens, isExpiring } from '@indigoai-us/hq-cloud';
 import {
   getRegistryUrl,
   RegistryClient,
@@ -59,12 +59,12 @@ async function listPackages(): Promise<void> {
   let offline = false;
 
   try {
-    const token = await loadToken();
-    if (token && !isTokenExpired(token)) {
+    const cached = loadCachedTokens();
+    if (cached && !isExpiring(cached, 120)) {
       const registryUrl = getRegistryUrl();
       const client = new RegistryClient(
         registryUrl,
-        token.clerk_session_token
+        cached.accessToken
       );
       const result = await client.getMyEntitlements();
       entitlements = result.entitlements;

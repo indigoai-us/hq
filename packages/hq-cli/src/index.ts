@@ -64,7 +64,7 @@ registerCloudCommands(syncCmd);
 // Team commands (top-level)
 registerTeamSyncCommand(program);
 
-// Auth commands (top-level — registry auth via Clerk, separate from Cognito)
+// Auth commands (top-level — Cognito OAuth)
 registerLoginCommand(program);
 registerLogoutCommand(program);
 registerWhoamiCommand(program);

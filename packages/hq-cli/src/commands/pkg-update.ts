@@ -12,7 +12,7 @@ import * as yaml from 'js-yaml';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { getAuthToken } from '../utils/auth.js';
+import { ensureCognitoToken } from '../utils/cognito-session.js';
 import { findHqRoot } from '../utils/hq-root.js';
 import {
   getRegistryUrl,
@@ -51,9 +51,9 @@ async function updatePackages(slug?: string): Promise<void> {
     return;
   }
 
-  const token = await getAuthToken();
+  const accessToken = await ensureCognitoToken();
   const registryUrl = getRegistryUrl();
-  const client = new RegistryClient(registryUrl, token.clerk_session_token);
+  const client = new RegistryClient(registryUrl, accessToken);
 
   const toCheck = slug
     ? entries.filter((e) => e.slug === slug)

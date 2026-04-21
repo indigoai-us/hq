@@ -17,8 +17,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import simpleGit from 'simple-git';
 import { findHqRoot } from '../utils/hq-root.js';
-import { getAuthToken } from '../utils/auth.js';
-import type { AuthToken } from '../utils/token-store.js';
+import { ensureCognitoToken } from '../utils/cognito-session.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -255,7 +254,7 @@ function discoverTeamDirs(hqRoot: string): { dir: string; meta: TeamMetadata }[]
 async function syncTeam(
   teamDir: string,
   meta: TeamMetadata,
-  authToken: AuthToken
+  accessToken: string
 ): Promise<TeamSyncResult> {
   const result: TeamSyncResult = {
     slug: meta.team_slug,
@@ -286,7 +285,7 @@ async function syncTeam(
   try {
     const entitlements = await fetchTeamEntitlements(
       meta.team_id,
-      authToken.clerk_session_token
+      accessToken
     );
     const entitledPaths = entitlements.flatMap((e) => e.paths);
 
@@ -339,7 +338,7 @@ async function syncTeam(
   try {
     repoConfig = await fetchRepoConfig(
       meta.team_id,
-      authToken.clerk_session_token
+      accessToken
     );
   } catch (err) {
     result.message = `Failed to fetch repo credentials: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -467,9 +466,9 @@ export function registerTeamSyncCommand(program: Command): void {
           }
 
           // 2. Get valid auth token (handles refresh / re-auth prompt)
-          let authToken: AuthToken;
+          let authToken: string;
           try {
-            authToken = await getAuthToken();
+            authToken = await ensureCognitoToken();
           } catch (err) {
             console.error(
               chalk.red(
