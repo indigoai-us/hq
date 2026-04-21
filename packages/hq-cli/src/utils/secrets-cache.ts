@@ -116,3 +116,14 @@ export function removeCacheEntry(companyUid: string, name: string): void {
     // Cache entry may not exist
   }
 }
+
+export function clearAllCache(): { removed: number } {
+  let removed = 0;
+  try {
+    fs.rmSync(CACHE_DIR, { recursive: true, force: true });
+    removed = 1;
+  } catch {
+    // Cache dir may not exist
+  }
+  return { removed };
+}

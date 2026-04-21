@@ -10,6 +10,7 @@ import {
   readCache,
   writeCache,
   removeCacheEntry,
+  clearAllCache,
 } from "../utils/secrets-cache.js";
 
 interface VaultApiOptions {
@@ -520,6 +521,7 @@ export function registerSecretsCommand(program: Command): void {
     .command("clear")
     .description("Clear all cached secrets")
     .action(async () => {
-      console.log(chalk.yellow("Not implemented yet (Step 15)"));
+      clearAllCache();
+      console.log(chalk.green("Secrets cache cleared."));
     });
 }
