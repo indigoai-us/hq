@@ -1,9 +1,9 @@
 /**
  * Unit tests for cognito-auth.ts — focus on the `expiresAt` shape contract.
  *
- * Canonical on-disk shape is ISO 8601 (what both writers emit). The reader
- * also tolerates a raw number (ms since epoch) for forward/backward compat
- * during rollouts, and fails safe on anything unparseable.
+ * Canonical on-disk shape is epoch milliseconds (number). The reader also
+ * tolerates ISO 8601 strings for backward compatibility with pre-migration
+ * token files, and fails safe on anything unparseable.
  */
 
 import * as fs from "fs";
@@ -100,11 +100,21 @@ describe("isExpiring — expiresAt shape tolerance", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Round-trip: writers emit ISO, readers read ISO
+// Round-trip: writers emit epoch-ms, readers read epoch-ms
 // ---------------------------------------------------------------------------
 
 describe("expiresAt shape round-trip", () => {
-  it("saveCachedTokens + loadCachedTokens preserves ISO string shape", async () => {
+  it("saveCachedTokens + loadCachedTokens preserves epoch-ms number shape", async () => {
+    const { saveCachedTokens, loadCachedTokens } = await importModule();
+    const epochMs = Date.now() + 3600 * 1000;
+    saveCachedTokens({ ...baseTokens, expiresAt: epochMs });
+    const loaded = loadCachedTokens();
+    expect(loaded).not.toBeNull();
+    expect(typeof loaded?.expiresAt).toBe("number");
+    expect(loaded?.expiresAt).toBe(epochMs);
+  });
+
+  it("saveCachedTokens + loadCachedTokens tolerates legacy ISO string", async () => {
     const { saveCachedTokens, loadCachedTokens } = await importModule();
     const iso = new Date(Date.now() + 3600 * 1000).toISOString();
     saveCachedTokens({ ...baseTokens, expiresAt: iso });
@@ -112,12 +122,9 @@ describe("expiresAt shape round-trip", () => {
     expect(loaded).not.toBeNull();
     expect(typeof loaded?.expiresAt).toBe("string");
     expect(loaded?.expiresAt).toBe(iso);
-    expect(loaded?.expiresAt).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
-    );
   });
 
-  it("refreshTokens writes an ISO string to cache", async () => {
+  it("refreshTokens writes epoch milliseconds to cache", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -135,6 +142,7 @@ describe("expiresAt shape round-trip", () => {
     );
 
     const { refreshTokens, loadCachedTokens } = await importModule();
+    const before = Date.now();
     const result = await refreshTokens(
       {
         region: "us-east-1",
@@ -143,14 +151,14 @@ describe("expiresAt shape round-trip", () => {
       },
       "prior-refresh-token",
     );
+    const after = Date.now();
 
-    expect(typeof result.expiresAt).toBe("string");
-    expect(result.expiresAt).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
-    );
+    expect(typeof result.expiresAt).toBe("number");
+    expect(result.expiresAt).toBeGreaterThanOrEqual(before + 3600 * 1000);
+    expect(result.expiresAt).toBeLessThanOrEqual(after + 3600 * 1000);
 
     const onDisk = loadCachedTokens();
     expect(onDisk?.expiresAt).toBe(result.expiresAt);
-    expect(typeof onDisk?.expiresAt).toBe("string");
+    expect(typeof onDisk?.expiresAt).toBe("number");
   });
 });

@@ -44,8 +44,8 @@ export interface CognitoTokens {
   accessToken: string;
   idToken: string;
   refreshToken: string;
-  /** ISO 8601 timestamp when the access token expires. */
-  expiresAt: string;
+  /** Epoch milliseconds when the access token expires. Writers MUST emit a number. Readers accept ISO 8601 strings for backward compatibility with pre-migration token files. */
+  expiresAt: string | number;
   tokenType: "Bearer";
 }
 
@@ -78,7 +78,9 @@ export function saveCachedTokens(tokens: CognitoTokens): void {
   if (!fs.existsSync(HQ_DIR)) {
     fs.mkdirSync(HQ_DIR, { recursive: true, mode: 0o700 });
   }
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  const tmpPath = path.join(HQ_DIR, `.cognito-tokens.json.tmp.${process.pid}`);
+  fs.writeFileSync(tmpPath, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  fs.renameSync(tmpPath, TOKEN_FILE);
 }
 
 export function clearCachedTokens(): void {
@@ -86,11 +88,10 @@ export function clearCachedTokens(): void {
 }
 
 /**
- * Parse `expiresAt` to epoch-ms. Canonical on-disk shape is ISO 8601 (what
- * both writers in this file emit), but older/external writers may have left a
- * raw number. Accept both so a shape mismatch during rollout doesn't wedge
- * sign-in. Returns null for anything unparseable — callers should treat that
- * as "expired" and force a refresh.
+ * Parse `expiresAt` to epoch-ms. Canonical on-disk shape is epoch milliseconds
+ * (number). Older token files may contain ISO 8601 strings. Accept both for
+ * migration safety. Returns null for anything unparseable — callers should
+ * treat that as "expired" and force a refresh.
  */
 function parseExpiresAtMs(raw: unknown): number | null {
   if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
@@ -300,7 +301,7 @@ async function exchangeCodeForTokens(
     accessToken: data.access_token,
     idToken: data.id_token,
     refreshToken: data.refresh_token,
-    expiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    expiresAt: Date.now() + data.expires_in * 1000,
     tokenType: "Bearer",
   };
 }
@@ -336,7 +337,7 @@ export async function refreshTokens(
     accessToken: data.access_token,
     idToken: data.id_token,
     refreshToken: data.refresh_token ?? currentRefreshToken,
-    expiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    expiresAt: Date.now() + data.expires_in * 1000,
     tokenType: "Bearer",
   };
   saveCachedTokens(tokens);
