@@ -1,14 +1,16 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import * as readline from "node:readline";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
 import { spawn } from "node:child_process";
 import {
   ensureCognitoToken,
   DEFAULT_VAULT_API_URL,
 } from "../utils/cognito-session.js";
+import {
+  readCache,
+  writeCache,
+  removeCacheEntry,
+} from "../utils/secrets-cache.js";
 
 interface VaultApiOptions {
   token: string;
@@ -105,16 +107,6 @@ function confirmPrompt(message: string): Promise<boolean> {
       resolve(answer.trim().toLowerCase() === "y");
     });
   });
-}
-
-function removeCacheEntry(companyUid: string, name: string): void {
-  const cacheDir = path.join(os.homedir(), ".hq", "secrets-cache", companyUid);
-  const cachePath = path.join(cacheDir, name);
-  try {
-    fs.unlinkSync(cachePath);
-  } catch {
-    // Cache entry may not exist — that's fine
-  }
 }
 
 function readFromPipedStdin(): Promise<string> {
@@ -246,6 +238,7 @@ export function registerSecretsCommand(program: Command): void {
           process.exit(1);
         }
 
+        removeCacheEntry(companyUid, name);
         console.log(chalk.green(`Secret '${name}' saved.`));
       } catch (err) {
         console.error(
@@ -371,6 +364,11 @@ export function registerSecretsCommand(program: Command): void {
     .option("--force", "Skip confirmation prompt")
     .action(async (name: string, opts: { force?: boolean }) => {
       try {
+        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+          process.exit(1);
+        }
+
         if (!opts.force) {
           const confirmed = await confirmPrompt(
             `Delete secret '${name}'? This cannot be undone.`,
@@ -450,6 +448,10 @@ export function registerSecretsCommand(program: Command): void {
 
         const revealed = await Promise.all(
           keys.map(async (key) => {
+            const cached = readCache(companyUid, key);
+            if (cached !== null) {
+              return { key, value: cached };
+            }
             const res = await vaultApiFetch({
               token,
               path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
@@ -467,6 +469,7 @@ export function registerSecretsCommand(program: Command): void {
             if (data.secret.value == null) {
               throw new Error(`Secret '${key}' has no value (reveal may not be permitted).`);
             }
+            writeCache(companyUid, key, data.secret.value);
             return { key, value: data.secret.value };
           }),
         );
