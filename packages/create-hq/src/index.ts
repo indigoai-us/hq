@@ -26,6 +26,12 @@ program
   .option("--join <token>", "join a team with an invite token (interactive prompt)")
   .option("--invite <token>", "join a team via invite — direct, no extra prompts")
   .action(async (directory: string | undefined, options) => {
+    if (options.minimal && options.full) {
+      console.error(
+        "Error: --minimal and --full are mutually exclusive. Pick one."
+      );
+      process.exit(1);
+    }
     try {
       await scaffold(directory, options);
     } catch (err) {

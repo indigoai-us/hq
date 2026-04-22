@@ -20,7 +20,7 @@
  */
 
 import * as path from "path";
-import { execSync, spawnSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import fs from "fs-extra";
 import chalk from "chalk";
 
@@ -123,6 +123,10 @@ function stripQuotes(s: string): string {
  * Evaluate a `conditional` bash expression. Returns true when the predicate
  * exits 0 (pack applicable); false otherwise (pack should be skipped).
  * Never throws — a malformed predicate is treated as "skip".
+ *
+ * NOTE: This runs arbitrary bash from the fetched `core.yaml`. Call sites
+ * MUST gate evaluation on user approval (interactive confirm, or explicit
+ * `--full` / `--allow-hooks` trust escalation). See `installRecommendedPackage`.
  */
 export function evaluateConditional(expr: string): boolean {
   try {
@@ -167,22 +171,32 @@ export function installRecommendedPackage(
   entry: RecommendedPackage,
   opts: { allowHooks: boolean },
 ): InstallOutcome {
-  if (entry.conditional && !evaluateConditional(entry.conditional)) {
-    return {
-      source: entry.source,
-      status: "skipped",
-      reason: `conditional predicate returned non-zero: ${entry.conditional}`,
-    };
+  // Conditional evaluation is arbitrary bash — only run it under ambient
+  // trust (i.e. the caller already escalated via `--full`, which passes
+  // `allowHooks: true`). Otherwise we defer the check to hq-cli, which
+  // prompts before evaluating. This keeps `create-hq` from silently
+  // executing remote code against a user's shell.
+  if (entry.conditional && opts.allowHooks) {
+    if (!evaluateConditional(entry.conditional)) {
+      return {
+        source: entry.source,
+        status: "skipped",
+        reason: `conditional predicate returned non-zero: ${entry.conditional}`,
+      };
+    }
   }
 
   // Prefer `npx --yes @indigoai-us/hq-cli install <source>` so we don't require
   // a global install. When an older hq-cli is on PATH we still defer to npx —
   // the published hq-cli will self-bootstrap via `--yes`.
-  const hookFlag = opts.allowHooks ? " --allow-hooks" : "";
-  const cmd = `npx --yes @indigoai-us/hq-cli install "${entry.source}"${hookFlag}`;
+  //
+  // Arguments are passed as an argv array — never interpolated into a shell
+  // string — so a crafted `entry.source` cannot escape into the parent shell.
+  const args = ["--yes", "@indigoai-us/hq-cli", "install", entry.source];
+  if (opts.allowHooks) args.push("--allow-hooks");
 
   try {
-    execSync(cmd, { cwd: hqRoot, stdio: "inherit" });
+    execFileSync("npx", args, { cwd: hqRoot, stdio: "inherit" });
     return { source: entry.source, status: "installed" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

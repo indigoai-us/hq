@@ -36,7 +36,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as yaml from 'js-yaml';
-import { execSync, spawnSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import semverSatisfies from 'semver/functions/satisfies.js';
@@ -161,11 +161,14 @@ interface FetchResult {
 
 function fetchNpm(source: string, tmpDir: string): FetchResult {
   // Use `npm pack` to grab the tarball without actually installing anything.
-  // Capture output to get the produced filename.
-  const out = execSync(`npm pack --silent --pack-destination "${tmpDir}" "${source}"`, {
-    encoding: 'utf-8',
-    stdio: ['ignore', 'pipe', 'inherit'],
-  });
+  // Capture output to get the produced filename. Arguments are passed as an
+  // argv array — never interpolated into a shell string — so `source` cannot
+  // break out even if it contains metacharacters.
+  const out = execFileSync(
+    'npm',
+    ['pack', '--silent', '--pack-destination', tmpDir, source],
+    { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'inherit'] },
+  );
   const tarball = out.trim().split('\n').filter(Boolean).pop();
   if (!tarball) {
     throw new Error(`npm pack produced no tarball for "${source}"`);
@@ -173,7 +176,9 @@ function fetchNpm(source: string, tmpDir: string): FetchResult {
   const tarballPath = path.join(tmpDir, tarball);
   const extractDir = path.join(tmpDir, 'extracted');
   fs.mkdirSync(extractDir, { recursive: true });
-  execSync(`tar -xzf "${tarballPath}" -C "${extractDir}"`);
+  execFileSync('tar', ['-xzf', tarballPath, '-C', extractDir], {
+    stdio: 'inherit',
+  });
   // npm tarballs unpack into ./package/
   const payloadDir = path.join(extractDir, 'package');
   if (!fs.existsSync(payloadDir)) {
@@ -215,26 +220,45 @@ function fetchGit(
     }
   }
 
+  // Defensive: reject refs that would be ambiguous or shell-dangerous.
+  // `git` itself would tolerate most of these, but refusing them early avoids
+  // having to reason about quoting later.
+  if (ref && /[\s;&|`$<>(){}\\]/.test(ref)) {
+    throw new Error(`Invalid ref "${ref}" — contains disallowed characters.`);
+  }
+
   const cloneDir = path.join(tmpDir, 'clone');
-  // Shallow clone; deepen later if we need a specific SHA that --branch missed.
-  // Only pass --branch when ref looks like a named branch/tag, not a SHA —
-  // git clone --branch refuses raw hashes.
-  const refIsLikelySha = !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
-  const branchFlag = ref && !refIsLikelySha ? `--branch "${ref}"` : '';
-  execSync(`git clone --depth 1 ${branchFlag} "${url}" "${cloneDir}"`, {
-    stdio: 'inherit',
-  });
-  if (ref) {
+  // Disambiguate ref=branch-or-tag vs. ref=SHA authoritatively via `git
+  // ls-remote`. Hex-shaped branch names (e.g. `deadbeef`) previously got
+  // silently downgraded to the "no --branch" path by a heuristic regex;
+  // that is now fixed. Arguments are passed as argv; no shell.
+  const refIsNamedRef = !!ref && isNamedRef(url, ref);
+  const cloneArgs = ['clone', '--depth', '1'];
+  if (refIsNamedRef) cloneArgs.push('--branch', ref);
+  cloneArgs.push(url, cloneDir);
+  execFileSync('git', cloneArgs, { stdio: 'inherit' });
+  if (ref && !refIsNamedRef) {
+    // SHA (or something ls-remote didn't recognize as a ref). Try a direct
+    // checkout first — works if the SHA happens to be HEAD of the default
+    // branch — otherwise unshallow and retry.
     try {
-      execSync(`git -C "${cloneDir}" checkout "${ref}"`, { stdio: 'inherit' });
+      execFileSync('git', ['-C', cloneDir, 'checkout', ref], {
+        stdio: 'inherit',
+      });
     } catch {
-      execSync(`git -C "${cloneDir}" fetch --unshallow origin`, { stdio: 'inherit' });
-      execSync(`git -C "${cloneDir}" checkout "${ref}"`, { stdio: 'inherit' });
+      execFileSync('git', ['-C', cloneDir, 'fetch', '--unshallow', 'origin'], {
+        stdio: 'inherit',
+      });
+      execFileSync('git', ['-C', cloneDir, 'checkout', ref], {
+        stdio: 'inherit',
+      });
     }
   }
-  const resolvedSha = execSync(`git -C "${cloneDir}" rev-parse HEAD`, {
-    encoding: 'utf-8',
-  }).trim();
+  const resolvedSha = execFileSync(
+    'git',
+    ['-C', cloneDir, 'rev-parse', 'HEAD'],
+    { encoding: 'utf-8' },
+  ).trim();
 
   // If a subpath is specified, the payload is only that subdirectory.
   let payloadDir = cloneDir;
@@ -247,10 +271,7 @@ function fetchGit(
     }
     payloadDir = path.join(tmpDir, 'payload');
     fs.mkdirSync(payloadDir, { recursive: true });
-    execSync(
-      `rsync -a --exclude=.git --exclude=node_modules --exclude=.DS_Store "${subAbs}/" "${payloadDir}/"`,
-      { stdio: 'inherit' }
-    );
+    rsyncDir(subAbs, payloadDir);
   } else {
     // Drop .git — the pack should be file content, not a nested repo
     fs.rmSync(path.join(cloneDir, '.git'), { recursive: true, force: true });
@@ -275,12 +296,49 @@ function fetchLocal(source: string, tmpDir: string): FetchResult {
   }
   const payloadDir = path.join(tmpDir, 'local');
   fs.mkdirSync(payloadDir, { recursive: true });
-  // rsync -a excluding common noise
-  execSync(
-    `rsync -a --exclude=.git --exclude=node_modules --exclude=.DS_Store "${abs}/" "${payloadDir}/"`,
-    { stdio: 'inherit' }
-  );
+  rsyncDir(abs, payloadDir);
   return { payloadDir, resolvedSource: clean };
+}
+
+/**
+ * Invoke rsync with an argv array (no shell). Trailing slashes on the source
+ * path are preserved by passing the exact strings through execFileSync.
+ */
+function rsyncDir(src: string, dest: string): void {
+  const srcSlashed = src.endsWith('/') ? src : `${src}/`;
+  const destSlashed = dest.endsWith('/') ? dest : `${dest}/`;
+  execFileSync(
+    'rsync',
+    [
+      '-a',
+      '--exclude=.git',
+      '--exclude=node_modules',
+      '--exclude=.DS_Store',
+      srcSlashed,
+      destSlashed,
+    ],
+    { stdio: 'inherit' },
+  );
+}
+
+/**
+ * Ask git whether <ref> resolves as a named branch or tag on <url>. Returns
+ * true only when ls-remote prints a matching refs/heads/<ref> or
+ * refs/tags/<ref>. Anything else (including hex-shaped branch names that
+ * happen to be missing, network failures, or explicit SHAs) falls through to
+ * the SHA-checkout path. Uses argv — no shell.
+ */
+function isNamedRef(url: string, ref: string): boolean {
+  try {
+    const out = execFileSync(
+      'git',
+      ['ls-remote', '--heads', '--tags', url, ref],
+      { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+    return out.trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +474,44 @@ async function confirmHooks(
 
 // ---------------------------------------------------------------------------
 // Conditional predicate
+//
+// `package.yaml:conditional` is arbitrary bash sourced from a remote pack.
+// Evaluating it is effectively code execution — same trust surface as the
+// post-install hooks. We therefore gate it behind the same confirmation flow:
+// a pack with a `conditional` must be approved (interactively) or run under
+// `--allow-hooks` (ambient trust, e.g. `create-hq --full`).
 // ---------------------------------------------------------------------------
+
+async function confirmConditional(
+  pkg: PackManifest,
+  allowHooks: boolean,
+): Promise<boolean> {
+  if (!pkg.conditional) return true;
+  if (allowHooks) return true;
+  console.log('');
+  console.log(
+    chalk.yellow(
+      `Pack ${pkg.publisher}/${pkg.name} declares a conditional predicate:`,
+    ),
+  );
+  console.log(chalk.yellow(`  $ ${pkg.conditional}`));
+  console.log(
+    chalk.yellow(
+      'This runs as bash with your shell permissions before install proceeds.',
+    ),
+  );
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  const answer: string = await new Promise((resolve) => {
+    rl.question('Evaluate predicate? [y/N] ', (a) => {
+      rl.close();
+      resolve(a);
+    });
+  });
+  return /^(y|yes)$/i.test(answer.trim());
+}
 
 function evalConditional(expr: string): boolean {
   const r = spawnSync('bash', ['-c', expr], { stdio: 'ignore' });
@@ -438,8 +533,10 @@ function installToPackages(
   if (fs.existsSync(destDir)) {
     fs.rmSync(destDir, { recursive: true, force: true });
   }
-  // rsync preserves modes/symlinks; tar also works
-  execSync(`rsync -a "${payloadDir}/" "${destDir}/"`, { stdio: 'inherit' });
+  // rsync preserves modes/symlinks; tar also works. argv form — no shell.
+  const srcSlashed = payloadDir.endsWith('/') ? payloadDir : `${payloadDir}/`;
+  const destSlashed = destDir.endsWith('/') ? destDir : `${destDir}/`;
+  execFileSync('rsync', ['-a', srcSlashed, destSlashed], { stdio: 'inherit' });
   return destDir;
 }
 
@@ -523,6 +620,15 @@ export async function installPack(
     const pkg = validateManifest(fetched.payloadDir, hqVersion);
 
     if (pkg.conditional) {
+      const allowed = await confirmConditional(pkg, opts.allowHooks ?? false);
+      if (!allowed) {
+        console.log(
+          chalk.red(
+            'Install aborted (conditional predicate not approved).',
+          ),
+        );
+        return;
+      }
       const ok = evalConditional(pkg.conditional);
       if (!ok) {
         console.log(
