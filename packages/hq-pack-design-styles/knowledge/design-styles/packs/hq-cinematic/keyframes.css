@@ -1,0 +1,173 @@
+/*
+ * hq-cinematic — motion keyframes
+ * Version: 0.1.0
+ *
+ * Five cinematic primitives. Each has a hard-cut override under
+ * @media (prefers-reduced-motion: reduce) so assistive / low-vestibular
+ * users land on the end-state frame instantly.
+ *
+ * Animations are declared as @keyframes only — consumer components apply
+ * them with the `animation` shorthand using tokens from tokens.css for
+ * timing / easing.
+ */
+
+/* ── prism-sweep ─────────────────────────────────────────────────────────
+ * A band of refracted spectrum travels left → right across an element.
+ * Used for headline reveals and section transitions.
+ */
+@keyframes prism-sweep {
+  0% {
+    background-position: -120% 0;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 220% 0;
+    opacity: 0;
+  }
+}
+
+/* ── beam-drift ──────────────────────────────────────────────────────────
+ * Slow vertical beam translation with a subtle sway — background element.
+ */
+@keyframes beam-drift {
+  0% {
+    transform: translate3d(0, -8%, 0) rotate(-2deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(1.5%, 0, 0) rotate(0deg);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(0, 8%, 0) rotate(2deg);
+    opacity: 0.35;
+  }
+}
+
+/* ── spectrum-dispersion ─────────────────────────────────────────────────
+ * Chromatic aberration fan-out — used on hover / focus for headline words
+ * and reveal moments.
+ */
+@keyframes spectrum-dispersion {
+  0% {
+    text-shadow:
+      0 0 0 var(--spectrum-cyan),
+      0 0 0 var(--spectrum-magenta),
+      0 0 0 var(--spectrum-gold);
+  }
+  60% {
+    text-shadow:
+      -0.04em 0 0.02em var(--spectrum-cyan),
+       0      0 0.02em var(--spectrum-magenta),
+       0.04em 0 0.02em var(--spectrum-gold);
+  }
+  100% {
+    text-shadow:
+      -0.02em 0 0.02em var(--spectrum-cyan),
+       0      0 0.02em var(--spectrum-magenta),
+       0.02em 0 0.02em var(--spectrum-gold);
+  }
+}
+
+/* ── light-dust-float ────────────────────────────────────────────────────
+ * Particle-layer drift. Applied to the LightDust primitive's dust sprites.
+ */
+@keyframes light-dust-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.0;
+  }
+  15% {
+    opacity: 0.7;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(-6%, -120%, 0);
+    opacity: 0.0;
+  }
+}
+
+/* ── bloom-pulse ─────────────────────────────────────────────────────────
+ * Single-shot bloom: brief radial glow that breathes once and settles.
+ * Used for phase-machine stage transitions and CTA focus states.
+ */
+@keyframes bloom-pulse {
+  0% {
+    filter: brightness(1) blur(0);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.35) blur(0.5px);
+    transform: scale(1.02);
+  }
+  100% {
+    filter: brightness(1) blur(0);
+    transform: scale(1);
+  }
+}
+
+/* ── reduced-motion hard-cuts ────────────────────────────────────────────
+ * Each keyframe collapses to its end-state; no animation, no transform.
+ * Consumers should also skip auto-play and honor the same media query in
+ * JS (see usePrefersReducedMotion hook).
+ */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes prism-sweep {
+    0%, 100% {
+      background-position: 50% 0;
+      opacity: 1;
+    }
+  }
+
+  @keyframes beam-drift {
+    0%, 100% {
+      transform: none;
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes spectrum-dispersion {
+    0%, 100% {
+      text-shadow: none;
+    }
+  }
+
+  @keyframes light-dust-float {
+    0%, 100% {
+      transform: none;
+      opacity: 0;
+    }
+  }
+
+  @keyframes bloom-pulse {
+    0%, 100% {
+      filter: none;
+      transform: none;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SpectrumText solid-color fallback
+ *
+ * Browsers that do not support `background-clip: text` (older Firefox, some
+ * embedded webviews) would otherwise render the text as fully transparent.
+ * When that support is missing, override color + WebkitTextFillColor with the
+ * high-contrast fallback token (--spectrum-fallback → warm-yellow #E8C77A,
+ * ≈11.9:1 contrast against --bg-navy-900 per WCAG AA).
+ *
+ * SpectrumText always renders with [data-spectrum-reveal="true"|"false"], so
+ * this selector targets both the animated and static variants.
+ * ───────────────────────────────────────────────────────────────────────── */
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  [data-spectrum-reveal] {
+    color: var(--spectrum-fallback, #E8C77A) !important;
+    -webkit-text-fill-color: var(--spectrum-fallback, #E8C77A) !important;
+    background-image: none !important;
+  }
+}

@@ -25,6 +25,14 @@ import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
 import { runTeamsFlow, authenticate, type TeamsFlowResult } from "./teams-flow.js";
 import type { GitHubAuth } from "./auth.js";
+import {
+  readRecommendedPackages,
+  readInstalledPackSources,
+  installRecommendedPackages,
+  summarizeOutcomes,
+  type RecommendedPackage,
+  type InstallOutcome,
+} from "./recommended-packages.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -34,6 +42,10 @@ interface ScaffoldOptions {
   skipCli?: boolean;
   skipSync?: boolean;
   skipPackages?: boolean;
+  /** install hq-core scaffold only, no recommended content packs */
+  minimal?: boolean;
+  /** install hq-core scaffold + all recommended packs without per-pack prompts */
+  full?: boolean;
   tag?: string;
   localTemplate?: string;
   join?: string;
@@ -389,6 +401,14 @@ export async function scaffold(
     stepStatus(integrityLabel, "failed");
   }
 
+  // 6b. Recommended content packs (hq-core v12+). hq-core ships as a minimal
+  //     scaffold; the batteries-included experience comes from installing packs
+  //     declared in `core.yaml:recommended_packages`. Pack failures are warnings
+  //     (scaffolding still succeeds); `/setup --resume` or `/update-hq` retries.
+  if (!options.skipPackages && !options.minimal) {
+    await installRecommendedPacksPhase(targetDir, options.full ?? false, isInteractive);
+  }
+
   // 7. Cloud sync detection
   const alreadySynced = await detectExistingSync(targetDir);
   if (alreadySynced) {
@@ -485,6 +505,89 @@ export async function scaffold(
     });
   } else {
     nextSteps(displayDir);
+  }
+}
+
+// ─── Recommended-packages phase ────────────────────────────────────────────
+
+/**
+ * Read `core.yaml:recommended_packages`, diff against already-installed packs,
+ * prompt or auto-install per flag mode, and install the selected subset via
+ * `hq install`. Called from the main scaffold flow after template + git + core
+ * integrity bootstrap, before cloud sync.
+ *
+ * Failure semantics: this function never throws. A failed pack install is
+ * reported to stdout and left for `/setup --resume` / `/update-hq` to retry.
+ * The scaffold itself always succeeds if the core template copied.
+ */
+async function installRecommendedPacksPhase(
+  targetDir: string,
+  full: boolean,
+  isInteractive: boolean,
+): Promise<void> {
+  const entries = readRecommendedPackages(targetDir);
+  if (entries.length === 0) {
+    // hq-core with no recommended packs — silent no-op.
+    return;
+  }
+
+  const alreadyInstalled = readInstalledPackSources(targetDir);
+  const remaining = entries.filter((e) => !alreadyInstalled.has(e.source));
+  if (remaining.length === 0) {
+    info("All recommended packs already installed");
+    return;
+  }
+
+  console.log();
+  step(`Recommended content packs (${remaining.length} available)`);
+  for (const entry of remaining) {
+    const tag = entry.description ? chalk.dim(` — ${entry.description}`) : "";
+    console.log(`    ${chalk.cyan(entry.source)}${tag}`);
+  }
+
+  // Decide which packs to actually install.
+  let selected: RecommendedPackage[] = [];
+  if (full) {
+    selected = remaining;
+    info("`--full` flag set — installing all recommended packs without prompts");
+  } else if (!isInteractive) {
+    // Non-TTY + no --full → skip silently. Users in CI who want packs should
+    // pass --full explicitly.
+    info("Non-interactive environment detected — skipping recommended packs. Pass --full to install unattended.");
+    return;
+  } else {
+    const installAll = await confirm(
+      `Install recommended packs? ${chalk.dim("(y = prompt per pack / a = all / n = skip)")}`,
+      true,
+    );
+    if (!installAll) {
+      info("Skipped — install later with /setup --resume or hq install <source>");
+      return;
+    }
+    // Per-pack prompt loop. Users can accept/reject each individually.
+    for (const entry of remaining) {
+      const yes = await confirm(`  Install ${chalk.cyan(entry.source)}?`, true);
+      if (yes) selected.push(entry);
+    }
+    if (selected.length === 0) {
+      info("No packs selected");
+      return;
+    }
+  }
+
+  console.log();
+  step(`Installing ${selected.length} pack${selected.length === 1 ? "" : "s"}...`);
+  const outcomes: InstallOutcome[] = installRecommendedPackages(targetDir, selected, {
+    allowHooks: full, // non-interactive --full mode pre-accepts hooks
+  });
+
+  const { installed, skipped, failed } = summarizeOutcomes(outcomes);
+  console.log();
+  if (failed > 0) {
+    warn(`Recommended packs: ${installed} installed, ${skipped} skipped, ${failed} failed`);
+    info("Failed packs can be retried with: hq install <source>");
+  } else {
+    success(`Recommended packs: ${installed} installed${skipped > 0 ? `, ${skipped} skipped` : ""}`);
   }
 }
 

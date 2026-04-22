@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>elm street coffee</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --base: #0D0D0D;
+      --surface: #1A1A1A;
+      --accent: #C9A96E;
+      --text: #E8E0D0;
+      --secondary: #8A8478;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--base);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 15px;
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --- HAIRLINE RULE --- */
+    .rule {
+      width: 1px;
+      height: 60px;
+      background: var(--accent);
+      margin: 0 auto;
+      opacity: 0.6;
+    }
+
+    .rule--horizontal {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.3;
+      margin: 0;
+    }
+
+    /* --- NAVIGATION --- */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 28px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, var(--base) 0%, transparent 100%);
+    }
+
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 16px;
+      letter-spacing: 0.25em;
+      text-transform: lowercase;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 40px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      text-decoration: none;
+      transition: color 0.6s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent);
+    }
+
+    /* --- HERO --- */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 160px 40px 140px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(201,169,110,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 9px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.8;
+      margin-bottom: 48px;
+      animation: fadeUp 1.2s ease forwards;
+      animation-delay: 0.2s;
+      opacity: 0;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(56px, 8vw, 110px);
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      text-transform: lowercase;
+      margin-bottom: 48px;
+      animation: fadeUp 1.2s ease forwards;
+      animation-delay: 0.4s;
+      opacity: 0;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-tagline {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      margin-bottom: 80px;
+      animation: fadeUp 1.2s ease forwards;
+      animation-delay: 0.6s;
+      opacity: 0;
+    }
+
+    .hero-cta {
+      display: inline-block;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid rgba(201,169,110,0.3);
+      padding: 18px 48px;
+      transition: all 0.6s ease;
+      animation: fadeUp 1.2s ease forwards;
+      animation-delay: 0.8s;
+      opacity: 0;
+    }
+
+    .hero-cta:hover {
+      background: rgba(201,169,110,0.08);
+      border-color: var(--accent);
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* --- SECTIONS --- */
+    section {
+      padding: 140px 40px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .container--wide {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 9px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.7;
+      margin-bottom: 64px;
+      display: block;
+    }
+
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(38px, 5vw, 64px);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: 40px;
+    }
+
+    .section-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .section-body {
+      font-weight: 300;
+      font-size: 15px;
+      line-height: 2;
+      color: var(--secondary);
+    }
+
+    /* --- ABOUT --- */
+    #about {
+      background: var(--surface);
+    }
+
+    #about .container {
+      text-align: center;
+    }
+
+    .about-stat {
+      margin-top: 80px;
+      display: flex;
+      gap: 80px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 48px;
+      color: var(--accent);
+      display: block;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      margin-top: 8px;
+      display: block;
+    }
+
+    /* --- MENU --- */
+    #menu {
+      background: var(--base);
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(201,169,110,0.1);
+      margin-top: 64px;
+      border: 1px solid rgba(201,169,110,0.1);
+    }
+
+    .menu-item {
+      background: var(--base);
+      padding: 48px;
+      transition: background 0.6s ease;
+    }
+
+    .menu-item:hover {
+      background: var(--surface);
+    }
+
+    .menu-item-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 22px;
+      color: var(--text);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .menu-item-desc {
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--secondary);
+      display: block;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    .menu-item-price {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+    }
+
+    /* --- HOURS & LOCATION --- */
+    #location {
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .hours-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(201,169,110,0.1);
+      margin: 64px auto;
+      max-width: 480px;
+      border: 1px solid rgba(201,169,110,0.1);
+    }
+
+    .hours-row {
+      background: var(--surface);
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hours-day {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--secondary);
+    }
+
+    .hours-time {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      color: var(--text);
+      font-weight: 300;
+    }
+
+    .location-address {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 22px;
+      color: var(--secondary);
+      line-height: 1.8;
+    }
+
+    /* --- REVIEWS --- */
+    #reviews {
+      background: var(--base);
+      text-align: center;
+    }
+
+    .reviews-rating {
+      margin: 48px 0;
+    }
+
+    .rating-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 80px;
+      color: var(--accent);
+      line-height: 1;
+      display: block;
+    }
+
+    .rating-label {
+      font-size: 9px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      margin-top: 12px;
+      display: block;
+    }
+
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: rgba(201,169,110,0.08);
+      margin-top: 80px;
+      border: 1px solid rgba(201,169,110,0.08);
+    }
+
+    .review-card {
+      background: var(--base);
+      padding: 48px 40px;
+      text-align: left;
+    }
+
+    .review-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 18px;
+      font-style: italic;
+      line-height: 1.7;
+      color: var(--text);
+      margin-bottom: 32px;
+    }
+
+    .review-author {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--secondary);
+    }
+
+    .review-accent {
+      width: 24px;
+      height: 1px;
+      background: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    /* --- CTA --- */
+    #contact {
+      background: var(--base);
+      text-align: center;
+      padding: 200px 40px;
+    }
+
+    #contact .container {
+      max-width: 560px;
+    }
+
+    .cta-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 40px;
+    }
+
+    .cta-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .cta-body {
+      font-weight: 300;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      color: var(--secondary);
+      margin-bottom: 64px;
+      line-height: 2;
+    }
+
+    .cta-phone {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      color: var(--accent);
+      text-decoration: none;
+      display: block;
+      margin-top: 48px;
+      transition: opacity 0.4s ease;
+    }
+
+    .cta-phone:hover {
+      opacity: 0.7;
+    }
+
+    /* --- FOOTER --- */
+    footer {
+      background: var(--surface);
+      padding: 48px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 14px;
+      letter-spacing: 0.3em;
+      text-transform: lowercase;
+      color: var(--accent);
+      opacity: 0.6;
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    .footer-copy {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      opacity: 0.5;
+    }
+
+    /* --- FEATURES --- */
+    .features-list {
+      margin-top: 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      padding: 32px 0;
+      border-bottom: 1px solid rgba(201,169,110,0.08);
+    }
+
+    .feature-item:first-child {
+      border-top: 1px solid rgba(201,169,110,0.08);
+    }
+
+    .feature-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 11px;
+      color: var(--accent);
+      opacity: 0.5;
+      min-width: 40px;
+    }
+
+    .feature-text {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: var(--secondary);
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 768px) {
+      nav {
+        padding: 24px 24px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      section {
+        padding: 100px 24px;
+      }
+
+      #hero {
+        padding: 120px 24px 100px;
+      }
+
+      #contact {
+        padding: 140px 24px;
+      }
+
+      .menu-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .menu-item {
+        padding: 36px 24px;
+      }
+
+      .reviews-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .review-card {
+        padding: 36px 24px;
+      }
+
+      .hours-grid {
+        max-width: 100%;
+      }
+
+      .about-stat {
+        gap: 48px;
+      }
+
+      footer {
+        padding: 36px 24px;
+      }
+    }
+
+    /* --- SCROLL FADE --- */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.9s ease, transform 0.9s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#hero" class="nav-logo">elm street coffee</a>
+    <ul class="nav-links">
+      <li><a href="#about">story</a></li>
+      <li><a href="#menu">menu</a></li>
+      <li><a href="#location">visit</a></li>
+      <li><a href="#contact">contact</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <span class="hero-eyebrow">portland, oregon &nbsp;·&nbsp; est. 2019</span>
+    <div class="rule"></div>
+    <h1 class="hero-title" style="margin-top: 48px;">
+      elm street<br><em>coffee</em>
+    </h1>
+    <p class="hero-tagline">craft coffee, roasted in-house</p>
+    <a href="#menu" class="hero-cta">explore the menu</a>
+  </section>
+
+  <div class="rule--horizontal"></div>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="container fade-in">
+      <span class="section-label">our story</span>
+      <h2 class="section-title">a quieter kind of<br><em>obsession</em></h2>
+      <p class="section-body">
+        We opened on Elm Street in 2019 with a single conviction: that extraordinary coffee does not need to announce itself. It simply is. Every bean we source travels here for a reason — traced to the farm, roasted in small batches, and served without ceremony. Just the cup, and the moment.
+      </p>
+      <p class="section-body" style="margin-top: 24px;">
+        We partner with local bakers who share our insistence on quality. We offer a quiet workspace for those who need one. We do not rush anything.
+      </p>
+      <div class="about-stat">
+        <div class="stat-item">
+          <span class="stat-number">2019</span>
+          <span class="stat-label">founded</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">4.8</span>
+          <span class="stat-label">average rating</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">340+</span>
+          <span class="stat-label">reviews</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule--horizontal"></div>
+
+  <!-- MENU -->
+  <section id="menu">
+    <div class="container--wide fade-in">
+      <span class="section-label">the menu</span>
+      <h2 class="section-title">carefully <em>considered</em></h2>
+      <div class="menu-grid">
+        <div class="menu-item">
+          <span class="menu-item-name">Pour Over</span>
+          <span class="menu-item-desc">Single-origin beans, brewed to order.<br>Filter and vessel change with the season.</span>
+          <span class="menu-item-price">$5.00</span>
+        </div>
+        <div class="menu-item">
+          <span class="menu-item-name">Cortado</span>
+          <span class="menu-item-desc">Equal parts espresso and warm milk.<br>No foam. No artifice.</span>
+          <span class="menu-item-price">$4.50</span>
+        </div>
+        <div class="menu-item">
+          <span class="menu-item-name">Cold Brew</span>
+          <span class="menu-item-desc">Steeped 18 hours. Dark, smooth,<br>and unhurried — like it should be.</span>
+          <span class="menu-item-price">$5.50</span>
+        </div>
+        <div class="menu-item">
+          <span class="menu-item-name">Avocado Toast</span>
+          <span class="menu-item-desc">Local sourdough, house-pressed avocado,<br>finishing salt. Simple. Sufficient.</span>
+          <span class="menu-item-price">$12.00</span>
+        </div>
+        <div class="menu-item" style="grid-column: 1 / -1;">
+          <span class="menu-item-name">Seasonal Pastries</span>
+          <span class="menu-item-desc">Sourced from Portland's finest local bakers. Changes weekly with what's available and extraordinary.</span>
+          <span class="menu-item-price">$4.00</span>
+        </div>
+      </div>
+
+      <div class="features-list" style="margin-top: 80px;">
+        <div class="feature-item">
+          <span class="feature-number">01</span>
+          <span class="feature-text">Single-origin beans — traced to the source</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-number">02</span>
+          <span class="feature-text">In-house roasting — small batch, by hand</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-number">03</span>
+          <span class="feature-text">Local pastry partners — no compromises</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-number">04</span>
+          <span class="feature-text">Cozy workspace — free wifi, stay as long as you like</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule--horizontal"></div>
+
+  <!-- LOCATION -->
+  <section id="location">
+    <div class="container fade-in">
+      <span class="section-label">find us</span>
+      <h2 class="section-title">hours &amp; <em>location</em></h2>
+
+      <div class="hours-grid">
+        <div class="hours-row" style="grid-column: 1 / -1;">
+          <span class="hours-day">Monday — Friday</span>
+          <span class="hours-time">6am – 6pm</span>
+        </div>
+        <div class="hours-row" style="grid-column: 1 / -1;">
+          <span class="hours-day">Saturday – Sunday</span>
+          <span class="hours-time">7am – 5pm</span>
+        </div>
+      </div>
+
+      <p class="location-address">
+        142 Elm Street<br>
+        Portland, OR 97201
+      </p>
+
+      <p class="section-body" style="margin-top: 32px;">
+        We're a short walk from the Pearl District.<br>Street parking available on Elm and adjacent blocks.
+      </p>
+    </div>
+  </section>
+
+  <div class="rule--horizontal"></div>
+
+  <!-- REVIEWS -->
+  <section id="reviews">
+    <div class="container--wide fade-in">
+      <span class="section-label">what they say</span>
+      <h2 class="section-title">quietly <em>beloved</em></h2>
+
+      <div class="reviews-rating">
+        <span class="rating-number">4.8</span>
+        <span class="rating-label">340+ reviews &nbsp;·&nbsp; Google &nbsp;·&nbsp; Yelp</span>
+      </div>
+
+      <div class="rule--horizontal"></div>
+
+      <div class="reviews-grid" style="margin-top: 0;">
+        <div class="review-card">
+          <div class="review-accent"></div>
+          <p class="review-text">"The pour over here changed what I expected from coffee. There's a kind of clarity to it that's hard to explain."</p>
+          <span class="review-author">— Sarah M., Portland</span>
+        </div>
+        <div class="review-card">
+          <div class="review-accent"></div>
+          <p class="review-text">"I come here every morning. The cortado is perfect. The room is quiet. Nothing is rushed. It's the best part of my day."</p>
+          <span class="review-author">— James K., Portland</span>
+        </div>
+        <div class="review-card">
+          <div class="review-accent"></div>
+          <p class="review-text">"The cold brew is exceptional — dark and smooth in a way that nothing else in the city comes close to."</p>
+          <span class="review-author">— Priya L., Beaverton</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule--horizontal"></div>
+
+  <!-- CTA / CONTACT -->
+  <section id="contact">
+    <div class="container fade-in">
+      <span class="section-label">come in</span>
+      <div class="rule" style="margin-bottom: 48px;"></div>
+      <h2 class="cta-title">we'll have something<br><em>ready for you</em></h2>
+      <p class="cta-body">
+        No reservations. No pretense.<br>
+        Just good coffee and a seat by the window.
+      </p>
+      <a href="#menu" class="hero-cta">view the menu</a>
+      <a href="tel:+15035550142" class="cta-phone">(503) 555-0142</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-logo">elm street coffee</span>
+    <span class="footer-copy">© 2024 &nbsp;·&nbsp; 142 Elm Street, Portland, OR &nbsp;·&nbsp; All rights reserved</span>
+  </footer>
+
+  <script>
+    // Scroll fade-in
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>

@@ -10,6 +10,13 @@ export default tseslint.config(
       "**/node_modules/",
       "template/",
       "examples/",
+      // hq-pack-* payload directories ship content to destination HQ instances;
+      // their TS/TSX files are reference examples (MDCs, worker configs) that are
+      // not compiled by the monorepo. Exclude from monorepo lint.
+      "packages/hq-pack-*/knowledge/",
+      "packages/hq-pack-*/workers/",
+      "packages/hq-pack-*/skills/",
+      "packages/hq-pack-*/scripts/",
       "**/*.js",
       "**/*.mjs",
     ],

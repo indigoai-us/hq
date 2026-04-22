@@ -29,10 +29,29 @@ export function registerListCommand(program: Command): void {
         console.log('Modules:\n');
 
         for (const module of manifest.modules) {
+          console.log(`  ${module.name}`);
+
+          if (module.strategy === 'package') {
+            // hq-pack content pack — wired by scripts/scan-packages.sh
+            console.log(`    Strategy: package`);
+            console.log(`    Source:   ${module.source}`);
+            if (module.version) {
+              console.log(`    Version:  ${module.version}`);
+            }
+            if (module.installed_at) {
+              console.log(`    Path:     ${module.installed_at}`);
+            }
+            if (module.resolved_sha) {
+              console.log(`    SHA:      ${module.resolved_sha}`);
+            }
+            console.log();
+            continue;
+          }
+
+          // legacy git-repo module
           const moduleDir = path.join(modulesDir, module.name);
           const installed = await isRepo(moduleDir);
 
-          console.log(`  ${module.name}`);
           console.log(`    Repo:     ${module.repo}`);
           console.log(`    Branch:   ${module.branch || 'main'}`);
           console.log(`    Strategy: ${module.strategy}`);

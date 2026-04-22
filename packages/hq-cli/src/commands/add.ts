@@ -4,7 +4,7 @@
 
 import { Command } from 'commander';
 import { findHqRoot, addModule, parseRepoName, isValidRepoUrl } from '../utils/manifest.js';
-import type { ModuleDefinition, SyncStrategy } from '../types.js';
+import type { LegacyModuleDefinition, LegacyStrategy } from '../types.js';
 
 export function registerAddCommand(program: Command): void {
   program
@@ -30,9 +30,10 @@ export function registerAddCommand(program: Command): void {
         // Parse name
         const name = options.as || parseRepoName(repoUrl);
 
-        // Validate strategy
-        const validStrategies: SyncStrategy[] = ['link', 'merge', 'copy'];
-        if (!validStrategies.includes(options.strategy as SyncStrategy)) {
+        // Validate strategy (hq modules add is for legacy git-repo modules;
+        // content packs are added via `hq install`, not `hq modules add`)
+        const validStrategies: LegacyStrategy[] = ['link', 'merge', 'copy'];
+        if (!validStrategies.includes(options.strategy as LegacyStrategy)) {
           console.error(`Error: Invalid strategy "${options.strategy}". Use: ${validStrategies.join(', ')}`);
           process.exit(1);
         }
@@ -48,11 +49,11 @@ export function registerAddCommand(program: Command): void {
             })
           : [{ src: '.', dest: `workers/${name}` }]; // Default: entire repo to workers/
 
-        const module: ModuleDefinition = {
+        const module: LegacyModuleDefinition = {
           name,
           repo: repoUrl,
           branch: options.branch,
-          strategy: options.strategy as SyncStrategy,
+          strategy: options.strategy as LegacyStrategy,
           paths,
         };
 

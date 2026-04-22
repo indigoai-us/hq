@@ -23,10 +23,10 @@ import {
 } from '../utils/git.js';
 import { linkSync } from '../strategies/link.js';
 import { mergeSync } from '../strategies/merge.js';
-import type { ModuleDefinition, ModuleLock, SyncResult } from '../types.js';
+import type { LegacyModuleDefinition, ModuleLock, SyncResult } from '../types.js';
 
 async function syncModule(
-  module: ModuleDefinition,
+  module: LegacyModuleDefinition,
   moduleDir: string,
   hqRoot: string,
   locked: boolean,
@@ -101,9 +101,25 @@ export function registerSyncCommand(program: Command): void {
         const results: SyncResult[] = [];
         const newLock: ModuleLock = { version: '1', locked: {} };
 
-        console.log(`Syncing ${manifest.modules.length} module(s)...\n`);
+        // strategy: package entries are wired by scripts/scan-packages.sh, not
+        // the git-repo sync flow. Partition and report separately.
+        const legacyModules = manifest.modules.filter(
+          (m): m is LegacyModuleDefinition => m.strategy !== 'package'
+        );
+        const packModules = manifest.modules.filter(
+          (m) => m.strategy === 'package'
+        );
 
-        for (const module of manifest.modules) {
+        if (packModules.length > 0) {
+          console.log(
+            `Skipping ${packModules.length} package module(s) (wired via scan-packages.sh): ` +
+              packModules.map((m) => m.name).join(', ')
+          );
+        }
+
+        console.log(`Syncing ${legacyModules.length} module(s)...\n`);
+
+        for (const module of legacyModules) {
           console.log(`[${module.name}]`);
           const moduleDir = path.join(modulesDir, module.name);
 

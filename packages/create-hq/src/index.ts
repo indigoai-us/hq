@@ -19,11 +19,19 @@ program
   .option("--skip-cli", "don't install @indigoai-us/hq-cli globally")
   .option("--skip-sync", "don't prompt for cloud sync setup")
   .option("--skip-packages", "don't prompt for package discovery and installation")
-  .option("--tag <version>", "fetch a specific HQ version tag (e.g. v9.1.0)")
-  .option("--local-template <path>", "use a local template directory instead of fetching from GitHub")
+  .option("--minimal", "install the hq-core scaffold only — skip all recommended content packs")
+  .option("--full", "install the hq-core scaffold plus all recommended content packs without prompting")
+  .option("--tag <version>", "fetch a specific HQ version tag (e.g. v12.0.0)")
+  .option("--local-template <path>", "use a local hq-core directory instead of fetching from GitHub")
   .option("--join <token>", "join a team with an invite token (interactive prompt)")
   .option("--invite <token>", "join a team via invite — direct, no extra prompts")
   .action(async (directory: string | undefined, options) => {
+    if (options.minimal && options.full) {
+      console.error(
+        "Error: --minimal and --full are mutually exclusive. Pick one."
+      );
+      process.exit(1);
+    }
     try {
       await scaffold(directory, options);
     } catch (err) {

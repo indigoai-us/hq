@@ -1,0 +1,210 @@
+/*
+ * <Pack Display Name> — Design Tokens (CSS)
+ *
+ * CUSTOMIZE: Replace every #PLACEHOLDER, clamp(), and value below
+ * with the actual tokens for this pack. See design-tokens.json for the
+ * DTCG (Design Token Community Group) format version of these same tokens.
+ *
+ * Naming convention:
+ *   --<category>-<role>: <value>
+ *   Categories: color, font, fs (font-size), fw (font-weight),
+ *               tracking, lh (line-height), space, radius, border, ease, duration
+ *
+ * Status: draft (change to "canonical" once values are locked)
+ * Source: <link to design source — Figma file, reference site, etc.>
+ * Updated: <YYYY-MM-DD>
+ *
+ * Aesthetic: <one-line description copied from pack.yaml>
+ */
+
+:root {
+  /* ────────────────────────────────────────────────────────── */
+  /* Color — <Palette Name> (e.g., "Six-Pastel", "Warm Industrial") */
+  /* ────────────────────────────────────────────────────────── */
+
+  /* Primary palette — the signature colors that define this aesthetic.
+     Replace names and hex values to match the aesthetic's color system.
+     For a rotational palette (multiple accent options), list all options here. */
+  --color-<name-1>: #PLACEHOLDER;   /* CUSTOMIZE: e.g., --lavender: #C5BEE8 — role description */
+  --color-<name-2>: #PLACEHOLDER;   /* CUSTOMIZE: e.g., --accent:   #FF5200 — primary accent */
+  --color-<name-3>: #PLACEHOLDER;   /* CUSTOMIZE: e.g., --secondary: #C9A84C — secondary accent */
+
+  /* Neutrals — the structural colors that frame everything else.
+     Typically: black, off-black, dark-gray, mid-gray, light-gray, white, and an off-white/cream. */
+  --black:     #PLACEHOLDER;         /* CUSTOMIZE: e.g., #0f0f0f — deepest background or text */
+  --off-black: #PLACEHOLDER;         /* CUSTOMIZE: e.g., #1a1a1a — dark sections, nav */
+  --dark-gray: #PLACEHOLDER;         /* CUSTOMIZE: e.g., #333333 — structural gray */
+  --mid-gray:  #PLACEHOLDER;         /* CUSTOMIZE: e.g., #888888 — secondary text, muted elements */
+  --gray:      #PLACEHOLDER;         /* CUSTOMIZE: e.g., #C8C8C8 — borders, dividers */
+  --light-bg:  #PLACEHOLDER;         /* CUSTOMIZE: e.g., #FAFAFA — main light background */
+  --cream:     #PLACEHOLDER;         /* CUSTOMIZE: e.g., #F5F5F0 — warm off-white (delete if not needed) */
+  --white:     #FFFFFF;
+
+  /* Utility */
+  --divider: rgba(0, 0, 0, 0.08);    /* CUSTOMIZE: divider line color — adjust opacity for aesthetic */
+
+  /* Semantic roles — map the above palette to functional roles.
+     These are what components reference; never use raw palette tokens directly in components. */
+  --color-bg:           var(--light-bg);    /* CUSTOMIZE: main page background */
+  --color-bg-dark:      var(--black);       /* CUSTOMIZE: dark section background */
+  --color-surface:      #PLACEHOLDER;       /* CUSTOMIZE: card / elevated surface */
+  --color-border:       var(--gray);        /* CUSTOMIZE: structural borders */
+  --color-text:         var(--off-black);   /* CUSTOMIZE: primary text */
+  --color-text-muted:   var(--mid-gray);    /* CUSTOMIZE: secondary/muted text */
+  --color-text-on-dark: var(--white);       /* CUSTOMIZE: text on dark or accent backgrounds */
+  --color-accent:       var(--color-<name-1>); /* CUSTOMIZE: primary accent — point to palette token */
+  --color-accent-secondary: var(--color-<name-2>); /* CUSTOMIZE: secondary accent */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Font Families                                  */
+  /* ────────────────────────────────────────────────────────── */
+
+  /* Display: used for headlines, hero titles.
+     CUSTOMIZE: Replace with the display face for this aesthetic.
+     Include webfont name, then progressive fallbacks. */
+  --font-display: "<Primary Display Font>", "<Fallback Display Font>", serif;
+
+  /* Label: used for section heads, labels, nav (often condensed sans, uppercase).
+     CUSTOMIZE: Replace with the label face. */
+  --font-label: "<Primary Label Font>", "<Fallback Label Font>", sans-serif;
+
+  /* Body: used for paragraphs, UI, captions.
+     CUSTOMIZE: Replace with the body face. */
+  --font-body: "<Primary Body Font>", "<Fallback Body Font>", system-ui, sans-serif;
+
+  /* Mono (optional): used for data, timestamps, code, status labels.
+     CUSTOMIZE: Delete this token if the aesthetic doesn't use a monospace face. */
+  --font-mono: "<Primary Mono Font>", monospace;
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Fluid Type Scale                               */
+  /* ────────────────────────────────────────────────────────── */
+  /* clamp(min, preferred, max) — scales fluidly between breakpoints.
+     CUSTOMIZE: Replace min/preferred/max values for each type step.
+     Tip: use a fluid type scale generator (e.g., utopia.fyi) for clean values. */
+
+  --fs-hero:     clamp(52px, 9vw,  120px);  /* CUSTOMIZE: hero headline — largest text on page */
+  --fs-h1:       clamp(36px, 5vw,   72px);  /* CUSTOMIZE: primary section title */
+  --fs-h2:       clamp(28px, 3.5vw, 52px);  /* CUSTOMIZE: secondary heading */
+  --fs-h3:       clamp(18px, 1.8vw, 24px);  /* CUSTOMIZE: card / tertiary heading */
+  --fs-body-lg:  clamp(16px, 1.2vw, 20px);  /* CUSTOMIZE: large body / lead paragraph */
+  --fs-body:     clamp(14px, 1vw,   16px);  /* CUSTOMIZE: standard body text */
+  --fs-label:    clamp(10px, 0.8vw, 13px);  /* CUSTOMIZE: labels, nav, captions */
+  --fs-caption:  11px;                       /* CUSTOMIZE: smallest text — footnotes, data labels */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Weights                                        */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Define weights used by this aesthetic.
+     Remove unused weight tokens to keep the system lean. */
+
+  --fw-light:    300;   /* CUSTOMIZE: labels, secondary elements */
+  --fw-regular:  400;   /* CUSTOMIZE: body text, standard weight */
+  --fw-medium:   500;   /* CUSTOMIZE: UI elements, buttons */
+  --fw-semibold: 600;   /* CUSTOMIZE: emphasis */
+  --fw-bold:     700;   /* CUSTOMIZE: headlines, display type */
+  --fw-black:    900;   /* CUSTOMIZE: hero headlines (delete if not used) */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Letter Spacing (Tracking)                      */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Define the tracking tiers for this aesthetic.
+     Negative tracking = tight/editorial; positive = expanded/labeling. */
+
+  --tracking-tight:    -0.04em;  /* CUSTOMIZE: display headlines, large type */
+  --tracking-normal:    0em;     /* body text — never add tracking to body */
+  --tracking-label:     0.12em;  /* CUSTOMIZE: UI labels */
+  --tracking-expanded:  0.25em;  /* CUSTOMIZE: section heads, caps labels */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Typography — Line Heights                                   */
+  /* ────────────────────────────────────────────────────────── */
+
+  --lh-display: 1.0;    /* CUSTOMIZE: hero/display — tight, no gap between lines */
+  --lh-heading: 1.15;   /* CUSTOMIZE: section titles */
+  --lh-body:    1.7;    /* CUSTOMIZE: body text — generous for readability */
+  --lh-label:   1.2;    /* CUSTOMIZE: labels, nav */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Spacing                                                     */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Replace values with the spacing scale for this aesthetic.
+     The scale should reflect the rhythm of the aesthetic (tight vs. airy). */
+
+  --space-xs:  4px;     /* CUSTOMIZE: micro — icon gaps, tight padding */
+  --space-sm:  8px;     /* CUSTOMIZE: small — intra-component gaps */
+  --space-md:  16px;    /* CUSTOMIZE: base unit — standard padding */
+  --space-lg:  24px;    /* CUSTOMIZE: generous — card padding */
+  --space-xl:  40px;    /* CUSTOMIZE: section-level — inter-component */
+  --space-2xl: 64px;    /* CUSTOMIZE: section gaps */
+  --space-3xl: 96px;    /* CUSTOMIZE: section vertical padding (desktop) */
+
+  /* Page padding — horizontal inset at the viewport level */
+  --page-padx:        clamp(24px, 7vw, 120px); /* CUSTOMIZE: sides (mobile → desktop) */
+  --page-pady:        80px;                     /* CUSTOMIZE: top/bottom of sections */
+  --page-pady-mobile: 48px;                     /* CUSTOMIZE: top/bottom on mobile */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Radius                                                      */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Define the border-radius scale.
+     0 = hard industrial; 6–12px = standard; 20–24px = editorial rounded; 50% = pill/circle. */
+
+  --radius-none:   0;     /* CUSTOMIZE: square corners — for industrial, brutalist aesthetics */
+  --radius-sm:     4px;   /* CUSTOMIZE: small elements — tags, badges */
+  --radius-md:     8px;   /* CUSTOMIZE: standard — input fields, small cards */
+  --radius-lg:     16px;  /* CUSTOMIZE: cards, panels */
+  --radius-xl:     24px;  /* CUSTOMIZE: large cards, modals */
+  --radius-circle: 50%;   /* accent dots, avatars — never for buttons */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Borders                                                     */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Define the border system. Typically 2–4 named borders.
+     Use semantic names that describe the use case, not the visual weight. */
+
+  --border-divider:     1px solid var(--divider);           /* CUSTOMIZE: within-section separators */
+  --border-structural:  2px solid var(--color-border);      /* CUSTOMIZE: grid containers, section frames */
+  --border-accent:      3px solid var(--color-accent);      /* CUSTOMIZE: accent bars, active indicators */
+  --border-accent-left: 3px solid var(--color-accent);      /* CUSTOMIZE: left-border feature items */
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Motion                                                      */
+  /* ────────────────────────────────────────────────────────── */
+  /* CUSTOMIZE: Define the easing curves and durations.
+     Easing character should match the aesthetic's "personality":
+     - industrial/editorial: smooth, purposeful (cubic-bezier ease-out)
+     - consumer/lifestyle: springy, warm (cubic-bezier with overshoot)
+     - luxury/minimal: very slow, deliberate */
+
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);  /* CUSTOMIZE: primary easing — smooth deceleration */
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);     /* CUSTOMIZE: elements exiting the screen */
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);   /* CUSTOMIZE: elements that transition both ways */
+
+  --duration-fast: 160ms;  /* CUSTOMIZE: micro-interactions, hover states */
+  --duration-base: 320ms;  /* CUSTOMIZE: standard transitions */
+  --duration-slow: 600ms;  /* CUSTOMIZE: scroll reveals, page transitions */
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* Utility / Modifier Classes (optional)                      */
+/* ────────────────────────────────────────────────────────── */
+/* CUSTOMIZE: Add modifier classes for rotational accent systems.
+   Delete this block if the aesthetic uses a single fixed accent. */
+
+/* Example: palette rotation classes
+.accent--<name-1> { --color-accent: var(--color-<name-1>); }
+.accent--<name-2> { --color-accent: var(--color-<name-2>); }
+*/
+
+/* ────────────────────────────────────────────────────────── */
+/* Reduced Motion                                             */
+/* ────────────────────────────────────────────────────────── */
+/* ALWAYS include this block. Never remove it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

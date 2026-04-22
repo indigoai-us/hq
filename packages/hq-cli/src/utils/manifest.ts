@@ -18,8 +18,25 @@ export function findHqRoot(): string {
   return process.cwd();
 }
 
+/**
+ * Resolve the manifest path for a given HQ root.
+ *
+ * The canonical layout is nested: `{hqRoot}/modules/modules.yaml` (catalog)
+ * alongside `{hqRoot}/modules/<module-name>/` (clone targets).
+ *
+ * Legacy fixtures and very old HQ instances may have the flat layout
+ * (`{hqRoot}/modules.yaml`); we honor that if — and only if — the flat file
+ * already exists. On fresh HQs we default to the nested form so we never
+ * silently create a second shadow manifest at the root.
+ *
+ * Exported for tests.
+ */
 export function getManifestPath(hqRoot: string): string {
-  return path.join(hqRoot, MANIFEST_FILE);
+  const nested = path.join(hqRoot, 'modules', MANIFEST_FILE);
+  const flat = path.join(hqRoot, MANIFEST_FILE);
+  if (fs.existsSync(nested)) return nested;
+  if (fs.existsSync(flat)) return flat;
+  return nested; // default for fresh HQs — see getModulesDir()
 }
 
 export function getLockPath(hqRoot: string): string {
@@ -45,6 +62,10 @@ export function readManifest(hqRoot: string): ModulesManifest | null {
 
 export function writeManifest(hqRoot: string, manifest: ModulesManifest): void {
   const manifestPath = getManifestPath(hqRoot);
+  // Ensure the parent directory exists — on a fresh HQ the nested
+  // `modules/` dir may not yet be present, and fs.writeFileSync does not
+  // auto-mkdir. Safe no-op when the dir already exists.
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   const content = yaml.dump(manifest, { lineWidth: -1 });
   fs.writeFileSync(manifestPath, content);
 }

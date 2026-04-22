@@ -5,10 +5,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ModuleDefinition, SyncResult } from '../types.js';
+import type { LegacyModuleDefinition, SyncResult } from '../types.js';
 
 export async function linkSync(
-  module: ModuleDefinition,
+  module: LegacyModuleDefinition,
   moduleDir: string,
   hqRoot: string
 ): Promise<SyncResult> {

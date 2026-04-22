@@ -6,7 +6,12 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-const REPO = "indigoai-us/hq";
+// Scaffold source: the hq-core repo IS the scaffold (its entire tree is the
+// starter content). This replaced the older `indigoai-us/hq` + `template/`
+// subdirectory pattern when the monorepo was split (hq-core v12+). Old tags
+// still on the `indigoai-us/hq` side will not resolve via this client — users
+// on those must use the matching create-hq pre-v12 release.
+const REPO = "indigoai-us/hq-core";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -98,8 +103,9 @@ async function extractTemplateDirFromTar(
   targetDir: string,
   onProgress?: (phase: string) => void,
 ): Promise<void> {
-  // The tarball contains a top-level directory like `indigoai-us-hq-<sha>/`
-  // We need to find the `template/` subdirectory within that and extract it.
+  // The tarball contains a top-level directory like `indigoai-us-hq-core-<sha>/`.
+  // The hq-core repo IS the scaffold — every file in it becomes part of the
+  // new HQ instance. Copy the entire root directory's contents (not a subdir).
   const tmpExtract = await fs.mkdtemp(path.join(os.tmpdir(), "create-hq-extract-"));
 
   try {
@@ -112,16 +118,19 @@ async function extractTemplateDirFromTar(
       throw new Error("Tarball was empty");
     }
     const rootDir = path.join(tmpExtract, entries[0]);
-    const templateSrc = path.join(rootDir, "template");
 
-    if (!await fs.pathExists(templateSrc)) {
-      throw new Error("template/ directory not found in HQ tarball");
+    // Sanity check — hq-core must carry core.yaml at its root.
+    const coreYaml = path.join(rootDir, "core.yaml");
+    if (!await fs.pathExists(coreYaml)) {
+      throw new Error(
+        "core.yaml not found at tarball root — this does not look like an hq-core scaffold",
+      );
     }
 
-    // Copy template contents to targetDir
-    onProgress?.("Copying template files...");
+    // Copy the entire hq-core tree to targetDir
+    onProgress?.("Copying scaffold files...");
     await fs.ensureDir(targetDir);
-    await fs.copy(templateSrc, targetDir, { overwrite: true });
+    await fs.copy(rootDir, targetDir, { overwrite: true });
   } finally {
     await fs.remove(tmpExtract);
   }
@@ -149,11 +158,16 @@ async function extractTemplateDirViaGhCli(
 }
 
 /**
- * Fetch the HQ template from GitHub and extract it into targetDir.
+ * Fetch the hq-core scaffold from GitHub and extract it into targetDir.
+ *
+ * hq-core is the standalone scaffold seed (formerly the `template/` subdir of
+ * `indigoai-us/hq`). Its entire repository tree is the fresh-install content.
+ * Rich add-ons ship separately as `@indigoai-us/hq-pack-*` content packs
+ * installed by the next phase of create-hq via `hq install`.
  *
  * Strategy:
  * 1. GitHub REST API → download tarball_url
- * 2. Fallback: gh CLI (`gh api repos/indigoai-us/hq/tarball/{ref}`)
+ * 2. Fallback: gh CLI (`gh api repos/indigoai-us/hq-core/tarball/{ref}`)
  * 3. If both fail: throw with manual clone instructions
  *
  * Returns the version tag that was fetched.
@@ -194,13 +208,13 @@ export async function fetchTemplate(
     const apiMsg = apiError instanceof Error ? apiError.message : String(apiError);
     const ghMsg = ghErr instanceof Error ? ghErr.message : String(ghErr);
     throw new Error(
-      `Failed to fetch HQ template from GitHub.\n\n` +
+      `Failed to fetch hq-core scaffold from GitHub.\n\n` +
         `  GitHub API error: ${apiMsg}\n` +
         `  gh CLI error:     ${ghMsg}\n\n` +
         `You appear to be offline or rate-limited.\n` +
-        `To set up HQ manually, clone the repo and copy the template directory:\n\n` +
-        `  git clone https://github.com/indigoai-us/hq.git\n` +
-        `  cp -R hq/template ${targetDir}\n`
+        `To set up HQ manually, clone the scaffold repo:\n\n` +
+        `  git clone https://github.com/indigoai-us/hq-core.git ${targetDir}\n` +
+        `  rm -rf ${targetDir}/.git\n`
     );
   }
 }

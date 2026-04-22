@@ -1,0 +1,15 @@
+name: hq-pack-design-styles
+version: 1.0.0
+publisher: '@indigoai-us'
+access: public
+description: 'Curated style packs (registry + pack schema + reference MDCs)'
+requires:
+  hqCore: '>=12.0.0'
+contributes:
+  workers: []
+  knowledge:
+    - design-styles
+  skills: []
+  hooks: []
+  policies: []
+  commands: []
