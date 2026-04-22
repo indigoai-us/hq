@@ -25,6 +25,17 @@ function shellSingleQuote(value: string): string {
   return "'" + value.replace(/'/g, "'\\''") + "'";
 }
 
+// API Gateway v2 URL-decodes `%2F` before route matching, so a full-name
+// `encodeURIComponent` would collapse structural `/` separators into a single
+// segment the `/name/{proxy+}` route can't match.
+function buildSecretNamePath(companyUid: string, name: string): string {
+  const encodedName = name
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `/secrets/${encodeURIComponent(companyUid)}/name/${encodedName}`;
+}
+
 async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
   const url = new URL(opts.path, DEFAULT_VAULT_API_URL);
   if (opts.query) {
@@ -282,7 +293,7 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          path: buildSecretNamePath(companyUid, name),
           query: Object.keys(query).length > 0 ? query : undefined,
         });
 
@@ -401,7 +412,7 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          path: buildSecretNamePath(companyUid, name),
           method: "DELETE",
         });
 
@@ -470,7 +481,7 @@ export function registerSecretsCommand(program: Command): void {
             }
             const res = await vaultApiFetch({
               token,
-              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              path: buildSecretNamePath(companyUid, key),
               query: { reveal: "true" },
             });
             if (!res.ok) {
@@ -561,7 +572,7 @@ export function registerSecretsCommand(program: Command): void {
             }
             const res = await vaultApiFetch({
               token,
-              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              path: buildSecretNamePath(companyUid, key),
               query: { reveal: "true" },
             });
             if (!res.ok) {
@@ -623,9 +634,10 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}/generate-token`,
+          path: buildSecretNamePath(companyUid, name),
           method: "POST",
           body: { expiresInMs },
+          query: { action: "generate-token" },
         });
 
         if (!res.ok) {
