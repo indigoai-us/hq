@@ -4,7 +4,17 @@
  * Source patterns and transports:
  *   @scope/name[@version]          → npm (default pin = latest, frozen on install)
  *   https://... | git@... | *.git  → git (SHA-pinned by default; --branch to follow)
+ *   github:owner/repo[#...]        → git (sugar — expands to https://github.com/owner/repo.git)
  *   ./path | ../path | /path | file:... → local (path recorded as-is)
+ *
+ * Git fragment grammar (after '#'):
+ *   '#<ref>'                → whole repo at ref (tag / branch / SHA)
+ *   '#<subpath>'            → subdirectory of repo at default branch
+ *   '#<subpath>@<ref>'      → subdirectory at ref
+ * Fragment disambiguation: if the token after '#' contains '/' it's a subpath;
+ * otherwise it's a ref. Subpath enables monorepo-hosted packs (e.g.
+ * 'github:indigoai-us/hq#packages/hq-pack-gstack@abc1234') without a separate
+ * registry or release tarball.
  *
  * Distinct from pkg-install.ts (entitlement-gated registry flow against the
  * proprietary HQ registry — that still runs for plain slugs). Spec:
@@ -57,9 +67,16 @@ function classify(source: string): Transport {
     source.startsWith('https://') ||
     source.startsWith('git@') ||
     source.startsWith('git://') ||
+    source.startsWith('github:') ||
     source.endsWith('.git') ||
     /\.git#/.test(source)
   ) {
+    return 'git';
+  }
+  // A '#' fragment is only meaningful to git (ref / subpath). If we see one
+  // on a file: or path source, the caller means "clone this local git repo"
+  // — route to git. Local transport does not consume fragments.
+  if (source.includes('#')) {
     return 'git';
   }
   if (
@@ -75,6 +92,47 @@ function classify(source: string): Transport {
     `Cannot classify source "${source}" as pack (npm @scope/name, git URL, or path). ` +
       `Bare slugs go through the registry (Cognito) flow.`
   );
+}
+
+/**
+ * Expand 'github:owner/repo' shorthand to a cloneable URL. Passes anything
+ * else through unchanged. Separate from classify() so the transport-dispatch
+ * stays readable.
+ */
+function expandGithubShorthand(url: string): string {
+  if (!url.startsWith('github:')) return url;
+  const slug = url.slice('github:'.length);
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(slug)) {
+    throw new Error(
+      `github: shorthand must be 'github:owner/repo' (got 'github:${slug}')`
+    );
+  }
+  return `https://github.com/${slug}.git`;
+}
+
+/**
+ * Parse a git source's '#<...>' fragment into { url, subpath, ref }.
+ * Disambiguation: fragment containing '/' is a subpath (optionally with
+ * '@<ref>' suffix); fragment without '/' is a ref.
+ */
+function parseGitFragment(source: string): {
+  url: string;
+  subpath?: string;
+  ref?: string;
+} {
+  const hashAt = source.indexOf('#');
+  if (hashAt < 0) return { url: source };
+  const url = source.slice(0, hashAt);
+  const frag = source.slice(hashAt + 1);
+  if (frag.includes('/')) {
+    // subpath[@ref]
+    const atAt = frag.lastIndexOf('@');
+    if (atAt > 0) {
+      return { url, subpath: frag.slice(0, atAt), ref: frag.slice(atAt + 1) };
+    }
+    return { url, subpath: frag };
+  }
+  return { url, ref: frag || undefined };
 }
 
 /**
@@ -141,22 +199,32 @@ function fetchGit(
   tmpDir: string,
   followBranch: boolean
 ): FetchResult {
-  // Split '<url>#<ref>' if present
-  let url = source;
-  let ref: string | undefined;
-  const hashAt = source.indexOf('#');
-  if (hashAt >= 0) {
-    url = source.slice(0, hashAt);
-    ref = source.slice(hashAt + 1);
+  const parsed = parseGitFragment(source);
+  const url = expandGithubShorthand(parsed.url);
+  const { subpath, ref } = parsed;
+
+  // Defensive: subpath must not escape the clone root.
+  if (subpath) {
+    if (
+      subpath.startsWith('/') ||
+      subpath.split('/').some((seg) => seg === '..' || seg === '')
+    ) {
+      throw new Error(
+        `Invalid subpath "${subpath}" — must be a relative path within the repo.`
+      );
+    }
   }
+
   const cloneDir = path.join(tmpDir, 'clone');
-  // Shallow clone; deepen if we need a specific ref
-  execSync(`git clone --depth 1 ${ref ? `--branch "${ref}"` : ''} "${url}" "${cloneDir}"`, {
+  // Shallow clone; deepen later if we need a specific SHA that --branch missed.
+  // Only pass --branch when ref looks like a named branch/tag, not a SHA —
+  // git clone --branch refuses raw hashes.
+  const refIsLikelySha = !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
+  const branchFlag = ref && !refIsLikelySha ? `--branch "${ref}"` : '';
+  execSync(`git clone --depth 1 ${branchFlag} "${url}" "${cloneDir}"`, {
     stdio: 'inherit',
   });
   if (ref) {
-    // Ensure we're actually at that ref (branch clone already is; for SHAs
-    // we may need --no-single-branch + fetch)
     try {
       execSync(`git -C "${cloneDir}" checkout "${ref}"`, { stdio: 'inherit' });
     } catch {
@@ -167,14 +235,36 @@ function fetchGit(
   const resolvedSha = execSync(`git -C "${cloneDir}" rev-parse HEAD`, {
     encoding: 'utf-8',
   }).trim();
-  // Drop .git — the pack should be file content, not a nested repo
-  fs.rmSync(path.join(cloneDir, '.git'), { recursive: true, force: true });
 
-  // --branch opt-in follows the ref (recorded as ref); default SHA-pins.
-  const resolvedSource = followBranch && ref
-    ? `${url}#${ref}`
-    : `${url}#${resolvedSha}`;
-  return { payloadDir: cloneDir, resolvedSource, resolvedSha };
+  // If a subpath is specified, the payload is only that subdirectory.
+  let payloadDir = cloneDir;
+  if (subpath) {
+    const subAbs = path.join(cloneDir, subpath);
+    if (!fs.existsSync(subAbs) || !fs.statSync(subAbs).isDirectory()) {
+      throw new Error(
+        `subpath "${subpath}" not found in ${url}@${resolvedSha.slice(0, 7)}`
+      );
+    }
+    payloadDir = path.join(tmpDir, 'payload');
+    fs.mkdirSync(payloadDir, { recursive: true });
+    execSync(
+      `rsync -a --exclude=.git --exclude=node_modules --exclude=.DS_Store "${subAbs}/" "${payloadDir}/"`,
+      { stdio: 'inherit' }
+    );
+  } else {
+    // Drop .git — the pack should be file content, not a nested repo
+    fs.rmSync(path.join(cloneDir, '.git'), { recursive: true, force: true });
+  }
+
+  // Recorded source shape:
+  //   with subpath:    url#subpath@<sha|ref>
+  //   without subpath: url#<sha|ref>
+  // --branch opt-in follows the ref by name; default SHA-pins.
+  const recordedRef = followBranch && ref ? ref : resolvedSha;
+  const resolvedSource = subpath
+    ? `${parsed.url}#${subpath}@${recordedRef}`
+    : `${parsed.url}#${recordedRef}`;
+  return { payloadDir, resolvedSource, resolvedSha };
 }
 
 function fetchLocal(source: string, tmpDir: string): FetchResult {
