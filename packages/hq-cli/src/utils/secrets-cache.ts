@@ -17,7 +17,7 @@ function ensureCacheDir(companyUid: string): void {
 
 function validateInputs(companyUid: string, name: string): boolean {
   if (!companyUid || companyUid.includes("/") || companyUid.includes("..")) return false;
-  if (!/^[A-Z][A-Z0-9_]*$/.test(name)) return false;
+  if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(name)) return false;
   return true;
 }
 
@@ -99,6 +99,7 @@ export function writeCache(companyUid: string, name: string, value: string): voi
 
     const out = Buffer.concat([timestamp, iv, authTag, encrypted]);
     const filePath = path.join(CACHE_DIR, companyUid, name);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
     const tmpPath = `${filePath}.tmp.${process.pid}`;
     fs.writeFileSync(tmpPath, out, { mode: 0o600 });
     fs.renameSync(tmpPath, filePath);

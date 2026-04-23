@@ -216,8 +216,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--from-stdin", "Read secret value from piped stdin")
     .action(async (name: string, opts: { fromStdin?: boolean }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
@@ -391,8 +391,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--force", "Skip confirmation prompt")
     .action(async (name: string, opts: { force?: boolean }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
@@ -463,8 +463,8 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         for (const key of keys) {
-          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+          if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$`));
             process.exit(1);
           }
         }
@@ -554,8 +554,8 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         for (const key of keys) {
-          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+          if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$`));
             process.exit(1);
           }
         }
@@ -611,8 +611,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--expires <duration>", "Token expiry duration (e.g. 24h, 2d, 30m)", "24h")
     .action(async (name: string, opts: { expires: string }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
