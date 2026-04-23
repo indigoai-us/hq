@@ -390,7 +390,7 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const data = (await res.json()) as {
-          secrets: { name: string; lastModifiedDate?: string; version?: number }[];
+          secrets: { name: string; lastModifiedDate?: string; version?: number; permission?: "admin" | "write" | "read" }[];
         };
 
         if (data.secrets.length === 0) {
@@ -399,11 +399,23 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const nameWidth = Math.max(4, ...data.secrets.map((s) => s.name.length));
-        const header = `${"NAME".padEnd(nameWidth)}  LAST MODIFIED`;
-        console.log(chalk.bold(header));
-        for (const s of data.secrets) {
-          const modified = s.lastModifiedDate ?? "-";
-          console.log(`${s.name.padEnd(nameWidth)}  ${modified}`);
+        const hasPermission = data.secrets.some((s) => s.permission !== undefined);
+        if (hasPermission) {
+          const accessWidth = Math.max(6, ...data.secrets.map((s) => (s.permission ?? "-").length));
+          const header = `${"NAME".padEnd(nameWidth)}  ${"ACCESS".padEnd(accessWidth)}  LAST MODIFIED`;
+          console.log(chalk.bold(header));
+          for (const s of data.secrets) {
+            const access = s.permission ?? "-";
+            const modified = s.lastModifiedDate ?? "-";
+            console.log(`${s.name.padEnd(nameWidth)}  ${access.padEnd(accessWidth)}  ${modified}`);
+          }
+        } else {
+          const header = `${"NAME".padEnd(nameWidth)}  LAST MODIFIED`;
+          console.log(chalk.bold(header));
+          for (const s of data.secrets) {
+            const modified = s.lastModifiedDate ?? "-";
+            console.log(`${s.name.padEnd(nameWidth)}  ${modified}`);
+          }
         }
       } catch (err) {
         console.error(
