@@ -12,11 +12,9 @@ import {
   removeCacheEntry,
   clearAllCache,
 } from "../utils/secrets-cache.js";
+import { SECRET_NAME_PATTERN, GROUP_ID_PATTERN } from "./_patterns.js";
 
-const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/;
-const GROUP_ID_PATTERN = /^grp_[A-Za-z0-9_-]+$/;
-
-interface VaultApiOptions {
+export interface VaultApiOptions {
   token: string;
   path: string;
   method?: string;
@@ -39,7 +37,7 @@ function buildSecretNamePath(companyUid: string, name: string): string {
   return `/secrets/${encodeURIComponent(companyUid)}/name/${encodedName}`;
 }
 
-async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
+export async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
   const url = new URL(opts.path, DEFAULT_VAULT_API_URL);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
@@ -105,7 +103,7 @@ async function resolveCompanyFromMemberships(
   );
 }
 
-async function getCompanyUid(
+export async function getCompanyUid(
   token: string,
   companySlug: string | undefined,
 ): Promise<string> {

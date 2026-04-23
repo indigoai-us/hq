@@ -21,6 +21,7 @@ import { registerPackageListCommand } from "./commands/pkg-list.js";
 import { registerTeamSyncCommand } from "./commands/team-sync.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerSecretsCommand } from "./commands/secrets.js";
+import { registerGroupsCommand } from "./commands/groups.js";
 
 const program = new Command();
 
@@ -73,6 +74,9 @@ registerAuthCommands(program);
 
 // Secrets management (subcommand group — hq secrets set|get|list|delete|exec|generate-link|cache)
 registerSecretsCommand(program);
+
+// Groups management (subcommand group — hq groups create|delete|add|remove|list|members)
+registerGroupsCommand(program);
 
 // Onboarding (top-level — Cognito + vault-service provisioning)
 registerOnboardCommand(program);
