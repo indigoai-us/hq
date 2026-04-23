@@ -820,6 +820,112 @@ export function registerSecretsCommand(program: Command): void {
       }
     });
 
+  secrets
+    .command("acl <path>")
+    .description("Show the ACL (access control list) for a secret path")
+    .action(async (path: string) => {
+      try {
+        if (!SECRET_NAME_PATTERN.test(path)) {
+          console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
+          process.exit(1);
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const secretPath = path;
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/acl`,
+          query: { path: secretPath },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as Record<string, string>;
+          if (res.status === 401) {
+            console.error(chalk.red("Not authenticated — please run `hq login`"));
+          } else if (res.status === 403) {
+            console.error(chalk.red("Not authorized to view this secret's ACL"));
+          } else if (res.status === 404) {
+            console.error(chalk.red(`No ACL record exists for '${path}'`));
+          } else if (res.status >= 500) {
+            console.error(chalk.red(`Server error: ${body.error ?? res.statusText}`));
+          } else {
+            console.error(chalk.red(body.message ?? body.error ?? "Invalid request"));
+          }
+          process.exit(1);
+        }
+
+        const data = (await res.json()) as {
+          acl: {
+            itemType: "ACL";
+            companyUid: string;
+            path: string;
+            creatorUid: string;
+            open?: boolean;
+            entries: Array<{
+              granteeType: string;
+              granteeId: string;
+              permission: string;
+              grantedBy: string;
+              grantedAt: string;
+            }>;
+            createdAt: string;
+            updatedAt: string;
+            schemaVersion: number;
+          };
+        };
+
+        const acl = data.acl;
+        const aclStatus = acl.open ? "open" : "restricted";
+
+        console.log(chalk.green(`ACL for ${acl.path} (${aclStatus})`));
+        console.log(`Creator: ${acl.creatorUid}`);
+
+        if (acl.entries.length === 0) {
+          if (acl.open) {
+            console.log(chalk.gray("Open ACL — all active members have read access."));
+          } else {
+            console.log(chalk.gray("No explicit grants — only creator has access."));
+          }
+          return;
+        }
+
+        console.log("Entries:");
+        const TYPE_W = Math.max(4, ...acl.entries.map((e) => e.granteeType.length));
+        const GRANTEE_W = Math.max(7, ...acl.entries.map((e) => e.granteeId.length));
+        const PERM_W = Math.max(10, ...acl.entries.map((e) => e.permission.length));
+        const BY_W = Math.max(10, ...acl.entries.map((e) => e.grantedBy.length));
+        const tableHeader = [
+          "TYPE".padEnd(TYPE_W),
+          "GRANTEE".padEnd(GRANTEE_W),
+          "PERMISSION".padEnd(PERM_W),
+          "GRANTED_BY".padEnd(BY_W),
+          "GRANTED_AT",
+        ].join("  ");
+        console.log(chalk.bold(tableHeader));
+        for (const e of acl.entries) {
+          const grantedAt = e.grantedAt.slice(0, 10);
+          console.log(
+            [
+              e.granteeType.padEnd(TYPE_W),
+              e.granteeId.padEnd(GRANTEE_W),
+              e.permission.padEnd(PERM_W),
+              e.grantedBy.padEnd(BY_W),
+              grantedAt,
+            ].join("  "),
+          );
+        }
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
+    });
+
   const cache = secrets
     .command("cache")
     .description("Manage the local secrets cache");
