@@ -340,16 +340,45 @@ export function registerSecretsCommand(program: Command): void {
 
   secrets
     .command("list")
-    .description("List all secrets for the company")
-    .action(async () => {
+    .description("List all secrets for the company (including nested path-based names)")
+    .option(
+      "--prefix <path>",
+      "Filter by path prefix (e.g. DEV or DEV/SUB); omit or pass empty string for all secrets",
+    )
+    .action(async (opts: { prefix?: string }) => {
       try {
+        // TODO: lift to shared utility alongside SECRET_NAME_PATTERN
+        // MUST match SECRET_PREFIX_PATTERN in hq-pro/src/vault-service/handlers/secrets.ts
+        let normalizedPrefix: string | undefined;
+        if (opts.prefix) {
+          const normalized = opts.prefix.replace(/^\/+|\/+$/g, "");
+          if (
+            normalized.length === 0 ||
+            !/^[A-Z][A-Z0-9_]*(?:\/[A-Z][A-Z0-9_]+)*$/.test(normalized)
+          ) {
+            console.error(
+              chalk.red(
+                `Invalid prefix '${opts.prefix}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. DEV or DEV/SUB)`,
+              ),
+            );
+            process.exit(1);
+          }
+          normalizedPrefix = normalized;
+        }
+
         const token = await ensureCognitoToken();
         const companySlug = secrets.opts().company as string | undefined;
         const companyUid = await getCompanyUid(token, companySlug);
 
+        const query: Record<string, string> = {};
+        if (normalizedPrefix) {
+          query.prefix = normalizedPrefix;
+        }
+
         const res = await vaultApiFetch({
           token,
           path: `/secrets/${encodeURIComponent(companyUid)}`,
+          query: Object.keys(query).length > 0 ? query : undefined,
         });
 
         if (!res.ok) {
