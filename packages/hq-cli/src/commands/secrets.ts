@@ -12,8 +12,9 @@ import {
   removeCacheEntry,
   clearAllCache,
 } from "../utils/secrets-cache.js";
+import { SECRET_NAME_PATTERN, GROUP_ID_PATTERN } from "./_patterns.js";
 
-interface VaultApiOptions {
+export interface VaultApiOptions {
   token: string;
   path: string;
   method?: string;
@@ -25,7 +26,18 @@ function shellSingleQuote(value: string): string {
   return "'" + value.replace(/'/g, "'\\''") + "'";
 }
 
-async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
+// API Gateway v2 URL-decodes `%2F` before route matching, so a full-name
+// `encodeURIComponent` would collapse structural `/` separators into a single
+// segment the `/name/{proxy+}` route can't match.
+function buildSecretNamePath(companyUid: string, name: string): string {
+  const encodedName = name
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `/secrets/${encodeURIComponent(companyUid)}/name/${encodedName}`;
+}
+
+export async function vaultApiFetch(opts: VaultApiOptions): Promise<Response> {
   const url = new URL(opts.path, DEFAULT_VAULT_API_URL);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
@@ -91,7 +103,7 @@ async function resolveCompanyFromMemberships(
   );
 }
 
-async function getCompanyUid(
+export async function getCompanyUid(
   token: string,
   companySlug: string | undefined,
 ): Promise<string> {
@@ -205,8 +217,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--from-stdin", "Read secret value from piped stdin")
     .action(async (name: string, opts: { fromStdin?: boolean }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!SECRET_NAME_PATTERN.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
@@ -282,7 +294,7 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          path: buildSecretNamePath(companyUid, name),
           query: Object.keys(query).length > 0 ? query : undefined,
         });
 
@@ -329,16 +341,44 @@ export function registerSecretsCommand(program: Command): void {
 
   secrets
     .command("list")
-    .description("List all secrets for the company")
-    .action(async () => {
+    .description("List all secrets for the company (including nested path-based names)")
+    .option(
+      "--prefix <path>",
+      "Filter by path prefix (e.g. DEV or DEV/SUB); omit or pass empty string for all secrets",
+    )
+    .action(async (opts: { prefix?: string }) => {
       try {
+        // MUST match SECRET_PREFIX_PATTERN in hq-pro/src/vault-service/handlers/secrets.ts
+        let normalizedPrefix: string | undefined;
+        if (opts.prefix) {
+          const normalized = opts.prefix.replace(/^\/+|\/+$/g, "");
+          if (
+            normalized.length === 0 ||
+            !SECRET_NAME_PATTERN.test(normalized)
+          ) {
+            console.error(
+              chalk.red(
+                `Invalid prefix '${opts.prefix}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. DEV or DEV/SUB)`,
+              ),
+            );
+            process.exit(1);
+          }
+          normalizedPrefix = normalized;
+        }
+
         const token = await ensureCognitoToken();
         const companySlug = secrets.opts().company as string | undefined;
         const companyUid = await getCompanyUid(token, companySlug);
 
+        const query: Record<string, string> = {};
+        if (normalizedPrefix) {
+          query.prefix = normalizedPrefix;
+        }
+
         const res = await vaultApiFetch({
           token,
           path: `/secrets/${encodeURIComponent(companyUid)}`,
+          query: Object.keys(query).length > 0 ? query : undefined,
         });
 
         if (!res.ok) {
@@ -350,7 +390,7 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const data = (await res.json()) as {
-          secrets: { name: string; lastModifiedDate?: string; version?: number }[];
+          secrets: { name: string; lastModifiedDate?: string; version?: number; permission?: "admin" | "write" | "read" }[];
         };
 
         if (data.secrets.length === 0) {
@@ -359,11 +399,23 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const nameWidth = Math.max(4, ...data.secrets.map((s) => s.name.length));
-        const header = `${"NAME".padEnd(nameWidth)}  LAST MODIFIED`;
-        console.log(chalk.bold(header));
-        for (const s of data.secrets) {
-          const modified = s.lastModifiedDate ?? "-";
-          console.log(`${s.name.padEnd(nameWidth)}  ${modified}`);
+        const hasPermission = data.secrets.some((s) => s.permission !== undefined);
+        if (hasPermission) {
+          const accessWidth = Math.max(6, ...data.secrets.map((s) => (s.permission ?? "-").length));
+          const header = `${"NAME".padEnd(nameWidth)}  ${"ACCESS".padEnd(accessWidth)}  LAST MODIFIED`;
+          console.log(chalk.bold(header));
+          for (const s of data.secrets) {
+            const access = s.permission ?? "-";
+            const modified = s.lastModifiedDate ?? "-";
+            console.log(`${s.name.padEnd(nameWidth)}  ${access.padEnd(accessWidth)}  ${modified}`);
+          }
+        } else {
+          const header = `${"NAME".padEnd(nameWidth)}  LAST MODIFIED`;
+          console.log(chalk.bold(header));
+          for (const s of data.secrets) {
+            const modified = s.lastModifiedDate ?? "-";
+            console.log(`${s.name.padEnd(nameWidth)}  ${modified}`);
+          }
         }
       } catch (err) {
         console.error(
@@ -380,8 +432,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--force", "Skip confirmation prompt")
     .action(async (name: string, opts: { force?: boolean }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!SECRET_NAME_PATTERN.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
@@ -401,7 +453,7 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}`,
+          path: buildSecretNamePath(companyUid, name),
           method: "DELETE",
         });
 
@@ -452,8 +504,8 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         for (const key of keys) {
-          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+          if (!SECRET_NAME_PATTERN.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$`));
             process.exit(1);
           }
         }
@@ -470,7 +522,7 @@ export function registerSecretsCommand(program: Command): void {
             }
             const res = await vaultApiFetch({
               token,
-              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              path: buildSecretNamePath(companyUid, key),
               query: { reveal: "true" },
             });
             if (!res.ok) {
@@ -543,8 +595,8 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         for (const key of keys) {
-          if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*$`));
+          if (!SECRET_NAME_PATTERN.test(key)) {
+            console.error(chalk.red(`Invalid secret name '${key}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$`));
             process.exit(1);
           }
         }
@@ -561,7 +613,7 @@ export function registerSecretsCommand(program: Command): void {
             }
             const res = await vaultApiFetch({
               token,
-              path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(key)}`,
+              path: buildSecretNamePath(companyUid, key),
               query: { reveal: "true" },
             });
             if (!res.ok) {
@@ -600,8 +652,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--expires <duration>", "Token expiry duration (e.g. 24h, 2d, 30m)", "24h")
     .action(async (name: string, opts: { expires: string }) => {
       try {
-        if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*$ (e.g. MY_API_KEY)`));
+        if (!SECRET_NAME_PATTERN.test(name)) {
+          console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
         }
 
@@ -623,9 +675,10 @@ export function registerSecretsCommand(program: Command): void {
 
         const res = await vaultApiFetch({
           token,
-          path: `/secrets/${encodeURIComponent(companyUid)}/${encodeURIComponent(name)}/generate-token`,
+          path: buildSecretNamePath(companyUid, name),
           method: "POST",
           body: { expiresInMs },
+          query: { action: "generate-token" },
         });
 
         if (!res.ok) {
@@ -647,6 +700,233 @@ export function registerSecretsCommand(program: Command): void {
         console.log(chalk.dim(`  Secret:  ${data.secretName}`));
         console.log(chalk.dim(`  Expires: ${data.expiresAt}`));
         console.log(chalk.dim("  One-time use — link is invalidated after first submission."));
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
+    });
+
+  secrets
+    .command("share <path>")
+    .description("Share a secret with a person or group")
+    .requiredOption("--with <principal>", "Email address or group id to share with")
+    .requiredOption("--permission <level>", "Permission level: read | write | admin")
+    .action(async (path: string, opts: { with: string; permission: string }) => {
+      try {
+        if (!SECRET_NAME_PATTERN.test(path)) {
+          console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
+          process.exit(1);
+        }
+
+        if (!["read", "write", "admin"].includes(opts.permission)) {
+          console.error(chalk.red(`Invalid permission '${opts.permission}': must be one of read, write, admin`));
+          process.exit(1);
+        }
+
+        const isEmail = /^[^\s]+@[^\s]+$/.test(opts.with);
+        if (!isEmail && !GROUP_ID_PATTERN.test(opts.with)) {
+          console.error(chalk.red(`Invalid principal '${opts.with}': must be an email address or a group id matching grp_<alphanumeric>`));
+          process.exit(1);
+        }
+        const granteeType = isEmail ? "email" : "group";
+        const granteeId = opts.with;
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/acl/grant`,
+          method: "POST",
+          body: { path, granteeType, granteeId, permission: opts.permission },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as Record<string, string>;
+          if (res.status === 401) {
+            console.error(chalk.red("Not authenticated — please run `hq login`"));
+          } else if (res.status === 403) {
+            console.error(chalk.red("Not authorized to share this secret"));
+          } else if (res.status === 404) {
+            console.error(chalk.red("ACL record not found for this path — has the secret been created?"));
+          } else if (res.status === 409) {
+            console.error(chalk.red("Concurrent modification — please retry"));
+          } else if (res.status >= 500) {
+            console.error(chalk.red(`Server error: ${body.error ?? res.statusText}`));
+          } else {
+            console.error(chalk.red(body.message ?? body.error ?? "Invalid request"));
+          }
+          process.exit(1);
+        }
+
+        console.log(chalk.green(`Shared '${path}' with ${opts.with} (${opts.permission})`));
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
+    });
+
+  secrets
+    .command("unshare <path>")
+    .description("Remove a grant from a secret")
+    .requiredOption("--from <principal>", "Email address or group id to remove")
+    .action(async (path: string, opts: { from: string }) => {
+      try {
+        if (!SECRET_NAME_PATTERN.test(path)) {
+          console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
+          process.exit(1);
+        }
+
+        const isEmailFrom = /^[^\s]+@[^\s]+$/.test(opts.from);
+        if (!isEmailFrom && !GROUP_ID_PATTERN.test(opts.from)) {
+          console.error(chalk.red(`Invalid principal '${opts.from}': must be an email address or a group id matching grp_<alphanumeric>`));
+          process.exit(1);
+        }
+        const granteeType = isEmailFrom ? "email" : "group";
+        const granteeId = opts.from;
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/acl/revoke`,
+          method: "POST",
+          body: { path, granteeType, granteeId },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as Record<string, string>;
+          if (res.status === 401) {
+            console.error(chalk.red("Not authenticated — please run `hq login`"));
+          } else if (res.status === 403) {
+            console.error(chalk.red("Not authorized to modify this secret's ACL"));
+          } else if (res.status === 404) {
+            console.log(chalk.green(`Grant already absent for '${path}' / ${opts.from}`));
+            return;
+          } else if (res.status >= 500) {
+            console.error(chalk.red(`Server error: ${body.error ?? res.statusText}`));
+          } else {
+            console.error(chalk.red(body.message ?? body.error ?? "Invalid request"));
+          }
+          process.exit(1);
+        }
+
+        console.log(chalk.green(`Removed grant for ${opts.from} on '${path}'`));
+      } catch (err) {
+        console.error(
+          chalk.red("Error:"),
+          err instanceof Error ? err.message : String(err),
+        );
+        process.exit(1);
+      }
+    });
+
+  secrets
+    .command("acl <path>")
+    .description("Show the ACL (access control list) for a secret path")
+    .action(async (path: string) => {
+      try {
+        if (!SECRET_NAME_PATTERN.test(path)) {
+          console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
+          process.exit(1);
+        }
+
+        const token = await ensureCognitoToken();
+        const companySlug = secrets.opts().company as string | undefined;
+        const companyUid = await getCompanyUid(token, companySlug);
+
+        const secretPath = path;
+        const res = await vaultApiFetch({
+          token,
+          path: `/secrets/${encodeURIComponent(companyUid)}/acl`,
+          query: { path: secretPath },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as Record<string, string>;
+          if (res.status === 401) {
+            console.error(chalk.red("Not authenticated — please run `hq login`"));
+          } else if (res.status === 403) {
+            console.error(chalk.red("Not authorized to view this secret's ACL"));
+          } else if (res.status === 404) {
+            console.error(chalk.red(`No ACL record exists for '${path}'`));
+          } else if (res.status >= 500) {
+            console.error(chalk.red(`Server error: ${body.error ?? res.statusText}`));
+          } else {
+            console.error(chalk.red(body.message ?? body.error ?? "Invalid request"));
+          }
+          process.exit(1);
+        }
+
+        const data = (await res.json()) as {
+          acl: {
+            itemType: "ACL";
+            companyUid: string;
+            path: string;
+            creatorUid: string;
+            open?: boolean;
+            entries: Array<{
+              granteeType: string;
+              granteeId: string;
+              permission: string;
+              grantedBy: string;
+              grantedAt: string;
+            }>;
+            createdAt: string;
+            updatedAt: string;
+            schemaVersion: number;
+          };
+        };
+
+        const acl = data.acl;
+        const aclStatus = acl.open ? "open" : "restricted";
+
+        console.log(chalk.green(`ACL for ${acl.path} (${aclStatus})`));
+        console.log(`Creator: ${acl.creatorUid}`);
+
+        if (acl.entries.length === 0) {
+          if (acl.open) {
+            console.log(chalk.gray("Open ACL — all active members have read access."));
+          } else {
+            console.log(chalk.gray("No explicit grants — only creator has access."));
+          }
+          return;
+        }
+
+        console.log("Entries:");
+        const TYPE_W = Math.max(4, ...acl.entries.map((e) => e.granteeType.length));
+        const GRANTEE_W = Math.max(7, ...acl.entries.map((e) => e.granteeId.length));
+        const PERM_W = Math.max(10, ...acl.entries.map((e) => e.permission.length));
+        const BY_W = Math.max(10, ...acl.entries.map((e) => e.grantedBy.length));
+        const tableHeader = [
+          "TYPE".padEnd(TYPE_W),
+          "GRANTEE".padEnd(GRANTEE_W),
+          "PERMISSION".padEnd(PERM_W),
+          "GRANTED_BY".padEnd(BY_W),
+          "GRANTED_AT",
+        ].join("  ");
+        console.log(chalk.bold(tableHeader));
+        for (const e of acl.entries) {
+          const grantedAt = e.grantedAt.slice(0, 10);
+          console.log(
+            [
+              e.granteeType.padEnd(TYPE_W),
+              e.granteeId.padEnd(GRANTEE_W),
+              e.permission.padEnd(PERM_W),
+              e.grantedBy.padEnd(BY_W),
+              grantedAt,
+            ].join("  "),
+          );
+        }
       } catch (err) {
         console.error(
           chalk.red("Error:"),
