@@ -41,12 +41,15 @@ import {
   loadCachedTokens,
   VaultClient,
   VaultAuthError,
+  listAllCompanies as defaultListAllCompanies,
   type CognitoAuthConfig,
   type CognitoTokens,
   type VaultServiceConfig,
   type Membership,
   type EntityInfo,
   type PendingInviteByEmail,
+  type CompanyEntry,
+  type ListAllCompaniesOptions,
 } from "../index.js";
 import { sync as defaultSync } from "../cli/sync.js";
 import type {
@@ -93,7 +96,12 @@ export type RunnerEvent =
   | { type: "auth-error"; message: string }
   | {
       type: "fanout-plan";
-      companies: Array<{ uid: string; slug: string; name?: string }>;
+      companies: Array<{
+        uid?: string;
+        slug: string;
+        name?: string;
+        source: "aws" | "local" | "both";
+      }>;
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
@@ -158,6 +166,14 @@ export interface RunnerDeps {
   createVaultClient?: (config: VaultServiceConfig) => VaultClientSurface;
   /** Sync function. Defaults to `cli/sync.sync`. */
   sync?: (options: SyncOptions) => Promise<SyncResult>;
+  /**
+   * Enumerate local + AWS companies. Defaults to `listAllCompanies`.
+   * Injectable so tests can assert on the merge behavior without touching
+   * disk — company-discovery owns its own tests.
+   */
+  listAllCompanies?: (
+    options: ListAllCompaniesOptions,
+  ) => Promise<CompanyEntry[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,31 +352,73 @@ export async function runRunner(
     deps.createVaultClient?.(vaultConfig) ?? new VaultClient(vaultConfig);
 
   // ---- resolve targets --------------------------------------------------
-  let memberships: Pick<Membership, "companyUid">[];
+  // US-003 layering:
+  //   --companies  → union of local on-disk + AWS-known companies, each
+  //                  tagged with source ('aws' | 'local' | 'both')
+  //   --company    → caller named a uid; we treat it as AWS-targeted since
+  //                  the runner can't promote a pure-local company on its
+  //                  own (that's US-004a's `--promote`)
+  const plan: Array<{
+    uid?: string;
+    slug: string;
+    name?: string;
+    source: "aws" | "local" | "both";
+  }> = [];
   try {
     if (parsed.companies) {
-      // Before giving up on memberships, run the claim-dance: new users signed
-      // in via the tray may have email-keyed invites waiting for them. Without
-      // this, an invited user would see "setup-needed" on every tray click.
+      // Claim-dance BEFORE discovery so invited users see their new
+      // memberships in the union. Without this, an invited user would see
+      // "setup-needed" on every tray click.
       const getClaims = deps.getIdTokenClaims ?? defaultGetIdTokenClaims;
       const claims = getClaims();
       if (claims) {
         await runClaimDance(client, claims, stderr);
       }
 
-      memberships = await client.listMyMemberships();
-      if (memberships.length === 0) {
-        // Truly empty — still a valid state (no memberships = nothing to
-        // sync). The tray will show a friendly "create your first company"
-        // CTA rather than an alarm banner.
+      const discover = deps.listAllCompanies ?? defaultListAllCompanies;
+      const entries = await discover({
+        hqRoot: parsed.hqRoot,
+        vaultClient: client,
+        stderr,
+      });
+
+      if (entries.length === 0) {
+        // Truly empty on both sides — valid state (no memberships AND no
+        // on-disk companies). The tray will show a friendly "create your
+        // first company" CTA rather than an alarm banner.
         emit({ type: "setup-needed" });
         return 0;
       }
+
+      for (const entry of entries) {
+        plan.push({
+          ...(entry.uid ? { uid: entry.uid } : {}),
+          slug: entry.slug,
+          ...(entry.name ? { name: entry.name } : {}),
+          source: entry.source,
+        });
+      }
     } else {
-      // Single-company mode: fabricate a minimal membership so the fanout
-      // loop below treats it uniformly. We don't need to hit
-      // /membership/me — the caller already told us which company.
-      memberships = [{ companyUid: parsed.company! }];
+      // Single-company mode: caller named a uid (or slug; treated as uid by
+      // the sync layer). Fabricate a minimal plan row so the fanout loop
+      // below treats it uniformly. Resolve slug + name via entity.get for
+      // nicer UI labeling, matching the pre-US-003 behavior.
+      const uid = parsed.company!;
+      let slug = uid;
+      let name: string | undefined;
+      try {
+        const info = await client.entity.get(uid);
+        slug = info.slug || uid;
+        name = info.name;
+      } catch {
+        // Best-effort — keep UID as the display identifier.
+      }
+      plan.push({
+        uid,
+        slug,
+        ...(name ? { name } : {}),
+        source: "aws",
+      });
     }
   } catch (err) {
     if (err instanceof VaultAuthError) {
@@ -381,23 +439,6 @@ export async function runRunner(
     return 1;
   }
 
-  // ---- resolve slugs for the fanout plan --------------------------------
-  // The menubar wants "Syncing indigo" in its UI, not the raw cmp_* ULID.
-  // If the entity fetch fails for some row (entity deleted, scoping issue),
-  // degrade to using the UID as the slug rather than aborting the run.
-  const plan: Array<{ uid: string; slug: string; name?: string }> = [];
-  for (const m of memberships) {
-    let slug = m.companyUid;
-    let name: string | undefined;
-    try {
-      const info = await client.entity.get(m.companyUid);
-      slug = info.slug || m.companyUid;
-      name = info.name;
-    } catch {
-      // Best-effort — keep UID as the display identifier.
-    }
-    plan.push({ uid: m.companyUid, slug, ...(name ? { name } : {}) });
-  }
   emit({ type: "fanout-plan", companies: plan });
 
   // ---- fanout -----------------------------------------------------------
@@ -408,9 +449,15 @@ export async function runRunner(
 
   for (const target of plan) {
     const companyLabel = target.slug;
+    // Pure-local entries have no uid → no S3 bucket to sync against. Still
+    // announced in fanout-plan so UIs can render them (and offer a Promote
+    // affordance — see US-004a), but skipped here to avoid passing `undefined`
+    // into the sync layer.
+    if (!target.uid) continue;
+    const companyUid = target.uid;
     try {
       const result = await syncFn({
-        company: target.uid,
+        company: companyUid,
         vaultConfig,
         hqRoot: parsed.hqRoot,
         onConflict: parsed.onConflict,

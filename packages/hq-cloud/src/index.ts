@@ -50,6 +50,14 @@ export {
 } from "./cognito-auth.js";
 export type { CognitoAuthConfig, CognitoTokens } from "./cognito-auth.js";
 
+// Company discovery (US-003) — local + AWS union view
+export { listAllCompanies } from "./lib/company-discovery.js";
+export type {
+  CompanyEntry,
+  ListAllCompaniesOptions,
+  CompanyDiscoveryVaultClient,
+} from "./lib/company-discovery.js";
+
 // VaultClient SDK (VLT-7)
 export { VaultClient } from "./vault-client.js";
 export {

@@ -21,6 +21,7 @@ import type {
   PendingInviteByEmail,
 } from "../vault-client.js";
 import { VaultAuthError } from "../vault-client.js";
+import type { CompanyEntry } from "../lib/company-discovery.js";
 
 // ---------------------------------------------------------------------------
 // Capturing writer — collects writes so we can assert on the ndjson stream
@@ -119,6 +120,39 @@ interface TestDeps extends RunnerDeps {
   stderr: CapturingWriter;
 }
 
+/**
+ * Test-default `listAllCompanies`: ignore `hqRoot` (tests don't seed on-disk
+ * companies), drive everything off the vault stub so pre-US-003 assertions
+ * about AWS-only fanout still hold. Mirrors the real function's AWS branch.
+ */
+async function testListAllCompaniesFromVault(
+  vault: VaultClientSurface,
+): Promise<CompanyEntry[]> {
+  const memberships = await vault.listMyMemberships();
+  const rows: CompanyEntry[] = [];
+  for (const m of memberships) {
+    let slug = m.companyUid;
+    let name: string | undefined;
+    try {
+      const info = await vault.entity.get(m.companyUid);
+      slug = info.slug || m.companyUid;
+      name = info.name;
+    } catch {
+      // Best-effort — keep UID.
+    }
+    // CompanyEntry requires `name` to be a string — fall back to slug when
+    // the entity didn't supply one, matching the real company-discovery
+    // behavior for AWS-only rows that can't find a matching local yaml.
+    rows.push({
+      uid: m.companyUid,
+      slug,
+      name: name ?? slug,
+      source: "aws",
+    });
+  }
+  return rows;
+}
+
 function makeDeps(overrides: Partial<RunnerDeps> = {}): TestDeps {
   const stdout = makeWriter();
   const stderr = makeWriter();
@@ -127,11 +161,35 @@ function makeDeps(overrides: Partial<RunnerDeps> = {}): TestDeps {
   // is the whole point of the helper. vi.fn() wraps defaults so tests can
   // still call .toHaveBeenCalled() / .toHaveBeenCalledTimes() on the returned
   // deps without each override re-wrapping.
+  //
+  // `listAllCompanies` default talks to whichever vault stub
+  // `createVaultClient` produced — matches the pre-US-003 behavior where
+  // the runner called `listMyMemberships` + `entity.get` directly. Tests
+  // that want to assert on local-vs-aws tagging override this explicitly.
+  let cachedClient: VaultClientSurface | null = null;
+  const baseCreateVault =
+    overrides.createVaultClient ?? (() => makeVaultStub());
+  const wrappedCreateVault = vi.fn().mockImplementation((...args: unknown[]) => {
+    cachedClient = (baseCreateVault as (...a: unknown[]) => VaultClientSurface)(
+      ...args,
+    );
+    return cachedClient;
+  });
+  // Pull overrides apart so we can wrap the vault factory without the later
+  // `...overrides` spread clobbering our wrapper.
+  const { createVaultClient: _omit1, listAllCompanies: overrideListAll, ...restOverrides } =
+    overrides;
   return {
     getAccessToken: vi.fn().mockResolvedValue("test-access-token"),
-    createVaultClient: vi.fn().mockImplementation(() => makeVaultStub()),
     sync: vi.fn().mockResolvedValue(defaultSyncResult()),
-    ...overrides,
+    ...restOverrides,
+    createVaultClient: wrappedCreateVault,
+    listAllCompanies:
+      overrideListAll ??
+      vi.fn().mockImplementation(async () => {
+        if (!cachedClient) cachedClient = makeVaultStub();
+        return testListAllCompaniesFromVault(cachedClient);
+      }),
     stdout,
     stderr,
   };
@@ -443,8 +501,8 @@ describe("fanout-plan", () => {
       .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
     expect(plan).toBeDefined();
     expect(plan.companies).toEqual([
-      { uid: "cmp_a", slug: "acme" },
-      { uid: "cmp_b", slug: "beta" },
+      { uid: "cmp_a", slug: "acme", name: "acme", source: "aws" },
+      { uid: "cmp_b", slug: "beta", name: "beta", source: "aws" },
     ]);
   });
 
@@ -462,7 +520,14 @@ describe("fanout-plan", () => {
     const plan = deps.stdout
       .events()
       .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
-    expect(plan.companies).toEqual([{ uid: "cmp_ghost", slug: "cmp_ghost" }]);
+    expect(plan.companies).toEqual([
+      {
+        uid: "cmp_ghost",
+        slug: "cmp_ghost",
+        name: "cmp_ghost",
+        source: "aws",
+      },
+    ]);
   });
 
   it("includes entity.name on plan entries when available", async () => {
@@ -485,8 +550,8 @@ describe("fanout-plan", () => {
       .events()
       .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
     expect(plan.companies).toEqual([
-      { uid: "cmp_a", slug: "acme", name: "Acme Corp" },
-      { uid: "cmp_b", slug: "beta" },
+      { uid: "cmp_a", slug: "acme", name: "Acme Corp", source: "aws" },
+      { uid: "cmp_b", slug: "beta", name: "beta", source: "aws" },
     ]);
   });
 
@@ -505,7 +570,14 @@ describe("fanout-plan", () => {
     const plan = deps.stdout
       .events()
       .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
-    expect(plan.companies).toEqual([{ uid: "cmp_empty", slug: "cmp_empty" }]);
+    expect(plan.companies).toEqual([
+      {
+        uid: "cmp_empty",
+        slug: "cmp_empty",
+        name: "cmp_empty",
+        source: "aws",
+      },
+    ]);
   });
 });
 
