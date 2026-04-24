@@ -20,7 +20,7 @@ import ignore from "ignore";
 
 // Patterns that must never sync regardless of project type.
 // Grouped by ecosystem so new stacks are easy to add.
-const DEFAULT_IGNORES = [
+export const DEFAULT_IGNORES = [
   // VCS + OS
   ".git/",
   ".git",
