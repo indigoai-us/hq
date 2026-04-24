@@ -620,4 +620,29 @@ describe("VaultClient identity bootstrap", () => {
     expect(person.uid).toBe("prs_a");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("vendSelf_roundtrip", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        credentials: {
+          accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+          secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+          sessionToken: "FwoGZXIvYXdzEBY...",
+        },
+        expiresAt: "2026-01-01T01:00:00.000Z",
+      }),
+    );
+
+    const result = await client.sts.vendSelf({ personUid: "prs_x" });
+
+    expect(result.credentials.accessKeyId).toBe("AKIAIOSFODNN7EXAMPLE");
+    expect(result.credentials.secretAccessKey).toBe("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+    expect(result.credentials.sessionToken).toBe("FwoGZXIvYXdzEBY...");
+    expect(typeof result.expiresAt).toBe("string");
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://vault.test.example.com/sts/vend-self");
+    expect((init.method as string).toUpperCase()).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ personUid: "prs_x" });
+  });
 });

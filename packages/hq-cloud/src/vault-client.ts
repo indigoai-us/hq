@@ -396,6 +396,12 @@ export class VaultClient {
       const data = await this.post<VendChildResult>("/sts/vend-child", input);
       return data;
     },
+    vendSelf: async (input: { personUid: string; durationSeconds?: number }): Promise<{
+      credentials: { accessKeyId: string; secretAccessKey: string; sessionToken: string };
+      expiresAt: string;
+    }> => {
+      return this.post("/sts/vend-self", input);
+    },
   };
 
   // -- HTTP primitives with retry -------------------------------------------
