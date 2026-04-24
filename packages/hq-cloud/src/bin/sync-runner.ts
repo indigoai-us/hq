@@ -416,10 +416,19 @@ export async function runRunner(
       (() => getValidAccessToken(DEFAULT_COGNITO, { interactive: false }));
     accessToken = await getAccessToken();
   } catch (err) {
-    emit({
-      type: "auth-error",
-      message: err instanceof Error ? err.message : String(err),
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    // `--list-all-companies` is a one-shot, non-streaming mode consumed by a
+    // Tauri command that expects either a single JSON array on stdout OR a
+    // non-zero exit with stderr diagnostics. Emitting an ndjson `auth-error`
+    // on stdout here would poison that contract with invalid JSON exactly
+    // when the caller needs deterministic error handling. Route auth
+    // failures for this mode through stderr + exit 1 instead. All other
+    // modes preserve the legacy ndjson streaming contract.
+    if (parsed.listAllCompanies) {
+      stderr.write(`hq-sync-runner: auth failed — ${message}\n`);
+      return 1;
+    }
+    emit({ type: "auth-error", message });
     return 0;
   }
 

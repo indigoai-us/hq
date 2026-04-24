@@ -292,6 +292,44 @@ describe("auth", () => {
       path: "(discovery)",
     });
   });
+
+  // Regression: --list-all-companies is a one-shot JSON-on-stdout contract
+  // consumed by a Tauri command. Auth failures must NOT leak as an ndjson
+  // auth-error event on stdout (which would be invalid JSON for the caller)
+  // — they must route to stderr + exit 1. See Codex P1 on PR #92.
+  it("routes auth errors to stderr + exit 1 for --list-all-companies", async () => {
+    const deps = makeDeps({
+      getAccessToken: vi
+        .fn()
+        .mockRejectedValue(new Error("no cached tokens")),
+    });
+    const code = await runRunner(["--list-all-companies"], deps);
+    expect(code).toBe(1);
+    // stdout must be empty — no JSON array, no ndjson event
+    expect(deps.stdout.raw()).toBe("");
+    expect(deps.stdout.events()).toEqual([]);
+    // stderr carries the diagnostic, mentioning auth and the underlying msg
+    const err = deps.stderr.raw();
+    expect(err).toMatch(/auth/i);
+    expect(err).toContain("no cached tokens");
+  });
+
+  // Regression companion: ensure the --companies / legacy streaming contract
+  // still emits ndjson auth-error on stdout + exit 0. The list-all short-
+  // circuit above must NOT regress other modes.
+  it("preserves ndjson auth-error + exit 0 for --companies", async () => {
+    const deps = makeDeps({
+      getAccessToken: vi
+        .fn()
+        .mockRejectedValue(new Error("no cached tokens")),
+    });
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    expect(deps.stdout.events()).toEqual([
+      { type: "auth-error", message: "no cached tokens" },
+    ]);
+    expect(deps.stderr.raw()).toBe("");
+  });
 });
 
 // ---------------------------------------------------------------------------
