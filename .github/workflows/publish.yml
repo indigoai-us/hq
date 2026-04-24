@@ -48,6 +48,8 @@ jobs:
       - run: npm run build --workspace packages/hq-cloud --if-present
       - run: npm run build --workspace packages/hq-onboarding --if-present
       - run: npm run build --workspace packages/hq-cli --if-present
+        env:
+          HQ_CLI_PUBLISH_SENTRY_DSN: ${{ secrets.HQ_CLI_PUBLISH_SENTRY_DSN }}
       - run: npm run build --workspace packages/hq-agent --if-present
       - run: npm run build --workspace packages/godclaw --if-present
       - run: npm run build --workspace packages/create-hq --if-present
@@ -72,6 +74,7 @@ jobs:
           fi
 
       - name: Publish hq-cli
+        id: publish_hq_cli
         run: |
           NAME=$(jq -r .name packages/hq-cli/package.json)
           VER=$(jq -r .version packages/hq-cli/package.json)
@@ -79,6 +82,7 @@ jobs:
             echo "$NAME@$VER already on npm — skipping"
           else
             npm publish --workspace packages/hq-cli --access public --provenance
+            echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish create-hq
