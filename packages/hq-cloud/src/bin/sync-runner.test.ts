@@ -868,6 +868,75 @@ describe("ndjson stream shape", () => {
 });
 
 // ---------------------------------------------------------------------------
+// --list-all-companies (US-004b) — one-shot JSON, NOT ndjson
+// ---------------------------------------------------------------------------
+
+describe("--list-all-companies", () => {
+  it("prints a single JSON array and exits 0", async () => {
+    const entries: CompanyEntry[] = [
+      { slug: "acme", name: "Acme", source: "local" },
+      { slug: "beta", name: "Beta", uid: "U-1", source: "aws" },
+    ];
+    const deps = makeDeps({
+      listAllCompanies: vi.fn().mockResolvedValue(entries),
+    });
+    const code = await runRunner(["--list-all-companies"], deps);
+    expect(code).toBe(0);
+    const raw = deps.stdout.raw().trim();
+    // Exactly one line of output — the JSON array.
+    expect(raw.split("\n")).toHaveLength(1);
+    expect(JSON.parse(raw)).toEqual(entries);
+  });
+
+  it("emits an empty array when discovery returns nothing", async () => {
+    const deps = makeDeps({
+      listAllCompanies: vi.fn().mockResolvedValue([]),
+    });
+    const code = await runRunner(["--list-all-companies"], deps);
+    expect(code).toBe(0);
+    expect(JSON.parse(deps.stdout.raw().trim())).toEqual([]);
+  });
+
+  it("returns exit code 1 and logs to stderr on discovery failure", async () => {
+    const deps = makeDeps({
+      listAllCompanies: vi
+        .fn()
+        .mockRejectedValue(new Error("vault unreachable")),
+    });
+    const code = await runRunner(["--list-all-companies"], deps);
+    expect(code).toBe(1);
+    expect(deps.stderr.raw()).toContain(
+      "list-all-companies failed — vault unreachable",
+    );
+    expect(deps.stdout.raw()).toBe("");
+  });
+
+  it("is mutually exclusive with --companies", async () => {
+    const deps = makeDeps();
+    const code = await runRunner(
+      ["--companies", "--list-all-companies"],
+      deps,
+    );
+    expect(code).toBe(1);
+    expect(deps.stderr.raw()).toContain(
+      "exactly one of --companies, --company <slug>, --promote <slug>, --list-all-companies",
+    );
+  });
+
+  it("is mutually exclusive with --promote", async () => {
+    const deps = makeDeps();
+    const code = await runRunner(
+      ["--promote", "acme", "--list-all-companies"],
+      deps,
+    );
+    expect(code).toBe(1);
+    expect(deps.stderr.raw()).toContain(
+      "exactly one of --companies, --company <slug>, --promote <slug>, --list-all-companies",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Re-initialize for each test (mock state hygiene)
 // ---------------------------------------------------------------------------
 

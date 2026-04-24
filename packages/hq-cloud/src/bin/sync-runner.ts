@@ -299,6 +299,13 @@ interface ParsedArgs {
   company?: string;
   /** US-004a: slug of a local-only company to promote to cloud. */
   promote?: string;
+  /**
+   * US-004b: one-shot discovery mode. When true, the runner prints a single
+   * JSON array of `CompanyEntry` rows on stdout (NOT ndjson — it's consumed
+   * by a non-streaming Tauri command) and exits 0. Mutually exclusive with
+   * the other modes.
+   */
+  listAllCompanies: boolean;
   onConflict: ConflictStrategy;
   hqRoot: string;
 }
@@ -307,6 +314,7 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   let companies = false;
   let company: string | undefined;
   let promote: string | undefined;
+  let listAllCompaniesFlag = false;
   let onConflict: ConflictStrategy = "abort";
   let hqRoot = DEFAULT_HQ_ROOT;
 
@@ -323,6 +331,9 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
       case "--promote":
         promote = argv[++i];
         if (!promote) return { error: "--promote requires a value" };
+        break;
+      case "--list-all-companies":
+        listAllCompaniesFlag = true;
         break;
       case "--on-conflict": {
         const val = argv[++i];
@@ -346,23 +357,33 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
     }
   }
 
-  // Mode exclusivity — --promote is its own mode, can't be combined with the
-  // sync modes. We only error if more than one of {companies, company, promote}
-  // is set, or none are.
-  const modes = [companies, !!company, !!promote].filter(Boolean).length;
+  // Mode exclusivity — each mode is its own top-level action. We only error
+  // if more than one of {companies, company, promote, listAllCompanies} is
+  // set, or none are.
+  const modes = [companies, !!company, !!promote, listAllCompaniesFlag].filter(
+    Boolean,
+  ).length;
   if (modes > 1) {
     if (companies && company) {
       return { error: "Pass --companies OR --company <slug>, not both" };
     }
     return {
-      error: "Pass exactly one of --companies, --company <slug>, --promote <slug>",
+      error:
+        "Pass exactly one of --companies, --company <slug>, --promote <slug>, --list-all-companies",
     };
   }
   if (modes === 0) {
     return { error: "Pass --companies or --company <slug>" };
   }
 
-  return { companies, company, promote, onConflict, hqRoot };
+  return {
+    companies,
+    company,
+    promote,
+    listAllCompanies: listAllCompaniesFlag,
+    onConflict,
+    hqRoot,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -410,6 +431,30 @@ export async function runRunner(
   };
   const client =
     deps.createVaultClient?.(vaultConfig) ?? new VaultClient(vaultConfig);
+
+  // ---- list-all-companies branch (US-004b) ------------------------------
+  // One-shot discovery: prints a single JSON array of `CompanyEntry` rows on
+  // stdout and exits 0. Consumed by the hq-sync menubar's `list_all_companies`
+  // Tauri command, which runs this as a non-streaming subprocess — so the
+  // output is a single JSON document, NOT ndjson. Errors go to stderr and
+  // exit code 1 so the caller can distinguish "runner crashed" from
+  // "legitimately empty list".
+  if (parsed.listAllCompanies) {
+    const discover = deps.listAllCompanies ?? defaultListAllCompanies;
+    try {
+      const entries = await discover({
+        hqRoot: parsed.hqRoot,
+        vaultClient: client,
+        stderr,
+      });
+      stdout.write(`${JSON.stringify(entries)}\n`);
+      return 0;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      stderr.write(`hq-sync-runner: list-all-companies failed — ${message}\n`);
+      return 1;
+    }
+  }
 
   // ---- promote branch (US-004a) ----------------------------------------
   // `--promote <slug>` runs its own event sequence and returns — it does NOT
