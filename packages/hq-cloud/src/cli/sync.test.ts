@@ -61,7 +61,7 @@ const mockVendResponse = {
 function setupFetchMock() {
   const fetchMock = vi.fn().mockImplementation(async (url: string) => {
     const urlStr = String(url);
-    if (urlStr.includes("/entity/by-slug/")) {
+    if (urlStr.includes("/entity/by-slug/") || /\/entity\/cmp_/.test(urlStr)) {
       return { ok: true, status: 200, json: async () => ({ entity: mockEntity }), text: async () => "" };
     }
     if (urlStr.includes("/sts/vend")) {
@@ -98,7 +98,7 @@ describe("sync", () => {
     delete process.env.HQ_STATE_DIR;
   });
 
-  it("downloads remote files that don't exist locally", async () => {
+  it("downloads remote files under companies/{slug}/ so two companies don't collide", async () => {
     const result = await sync({
       company: "acme",
       vaultConfig: mockConfig,
@@ -107,8 +107,26 @@ describe("sync", () => {
 
     expect(result.filesDownloaded).toBe(2);
     expect(result.aborted).toBe(false);
-    expect(fs.existsSync(path.join(tmpDir, "docs", "handoff.md"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, "knowledge", "readme.md"))).toBe(true);
+    // Scoped under companies/{slug}/
+    expect(fs.existsSync(path.join(tmpDir, "companies", "acme", "docs", "handoff.md"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "companies", "acme", "knowledge", "readme.md"))).toBe(true);
+    // NOT at hqRoot (pre-fix behavior would have written here and clobbered across companies)
+    expect(fs.existsSync(path.join(tmpDir, "docs", "handoff.md"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, "knowledge", "readme.md"))).toBe(false);
+  });
+
+  it("scopes by resolved ctx.slug even when caller passes a UID", async () => {
+    // mockEntity.slug is "acme" regardless of the ref used; verify resolved
+    // slug drives the local path, not the caller's ref.
+    const result = await sync({
+      company: "cmp_01ABCDEF",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    expect(result.filesDownloaded).toBe(2);
+    expect(fs.existsSync(path.join(tmpDir, "companies", "acme", "docs", "handoff.md"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "companies", "cmp_01ABCDEF", "docs", "handoff.md"))).toBe(false);
   });
 
   it("throws when no company specified and no active company", async () => {
@@ -129,8 +147,9 @@ describe("sync", () => {
   });
 
   it("detects conflicts with local changes and keeps local on --on-conflict keep", async () => {
-    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local version");
 
     fs.writeFileSync(
       journalPath,
@@ -157,12 +176,13 @@ describe("sync", () => {
 
     expect(result.conflicts).toBe(1);
     expect(result.filesSkipped).toBeGreaterThanOrEqual(1);
-    expect(fs.readFileSync(path.join(tmpDir, "docs", "handoff.md"), "utf-8")).toBe("local version");
+    expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("local version");
   });
 
   it("aborts on --on-conflict abort", async () => {
-    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local version");
 
     fs.writeFileSync(
       journalPath,
@@ -191,8 +211,9 @@ describe("sync", () => {
   });
 
   it("overwrites local on --on-conflict overwrite", async () => {
-    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, "docs", "handoff.md"), "local version");
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local version");
 
     fs.writeFileSync(
       journalPath,
@@ -220,6 +241,6 @@ describe("sync", () => {
     expect(result.conflicts).toBe(1);
     expect(result.filesDownloaded).toBeGreaterThanOrEqual(1);
     // File should be overwritten with mock content
-    expect(fs.readFileSync(path.join(tmpDir, "docs", "handoff.md"), "utf-8")).toBe("mock file content");
+    expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("mock file content");
   });
 });

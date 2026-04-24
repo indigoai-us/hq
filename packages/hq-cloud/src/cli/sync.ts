@@ -74,6 +74,11 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
   // Resolve entity context
   let ctx = await resolveEntityContext(companyRef, vaultConfig);
+  // Every company's files land under companies/{slug}/ so fanning out multiple
+  // companies into the same hqRoot doesn't cross-clobber files with overlapping
+  // S3 keys (e.g. every company has a .hq/manifest.json). Remote keys stay
+  // company-relative; the prefix lives only on disk.
+  const companyRoot = path.join(hqRoot, "companies", ctx.slug);
   const shouldSync = createIgnoreFilter(hqRoot);
   const journal = readJournal(ctx.slug);
 
@@ -86,7 +91,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   const remoteFiles = await listRemoteFiles(ctx);
 
   for (const remoteFile of remoteFiles) {
-    const localPath = path.join(hqRoot, remoteFile.key);
+    const localPath = path.join(companyRoot, remoteFile.key);
 
     // Apply ignore rules
     if (!shouldSync(localPath)) {

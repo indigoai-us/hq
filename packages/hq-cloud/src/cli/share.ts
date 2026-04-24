@@ -54,6 +54,10 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
   // Resolve entity context (handles STS vending + caching)
   let ctx = await resolveEntityContext(companyRef, vaultConfig);
+  // Remote keys are company-relative; the on-disk scoping prefix is
+  // companies/{slug}/. Anything outside this folder gets skipped to avoid
+  // leaking cross-company state into the vault.
+  const syncRoot = path.join(hqRoot, "companies", ctx.slug);
   const shouldSync = createIgnoreFilter(hqRoot);
   const journal = readJournal(ctx.slug);
 
@@ -62,7 +66,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   let filesSkipped = 0;
 
   // Collect all files to share
-  const filesToShare = collectFiles(paths, hqRoot, shouldSync);
+  const filesToShare = collectFiles(paths, hqRoot, syncRoot, shouldSync);
 
   for (const { absolutePath, relativePath } of filesToShare) {
     if (!isWithinSizeLimit(absolutePath)) {
@@ -155,10 +159,15 @@ function resolveActiveCompany(hqRoot: string): string | undefined {
 
 /**
  * Collect files from paths (expanding directories recursively).
+ *
+ * Remote S3 keys are computed relative to `syncRoot` (companies/{slug}/), not
+ * `hqRoot`. Files outside `syncRoot` are skipped with a warning — sharing
+ * anything outside a company's folder would leak state into the wrong vault.
  */
 function collectFiles(
   paths: string[],
   hqRoot: string,
+  syncRoot: string,
   filter: (p: string) => boolean,
 ): { absolutePath: string; relativePath: string }[] {
   const results: { absolutePath: string; relativePath: string }[] = [];
@@ -171,11 +180,16 @@ function collectFiles(
       continue;
     }
 
+    if (!isWithin(syncRoot, absolutePath)) {
+      console.error(`  Warning: ${p} is outside company folder, skipping.`);
+      continue;
+    }
+
     const stat = fs.statSync(absolutePath);
     if (stat.isDirectory()) {
-      results.push(...walkDir(absolutePath, hqRoot, filter));
+      results.push(...walkDir(absolutePath, syncRoot, filter));
     } else if (stat.isFile()) {
-      const relativePath = path.relative(hqRoot, absolutePath);
+      const relativePath = path.relative(syncRoot, absolutePath);
       if (filter(absolutePath)) {
         results.push({ absolutePath, relativePath });
       }
@@ -187,7 +201,7 @@ function collectFiles(
 
 function walkDir(
   dir: string,
-  root: string,
+  syncRoot: string,
   filter: (p: string) => boolean,
 ): { absolutePath: string; relativePath: string }[] {
   const results: { absolutePath: string; relativePath: string }[] = [];
@@ -199,14 +213,19 @@ function walkDir(
     if (!filter(absolutePath)) continue;
 
     if (entry.isDirectory()) {
-      results.push(...walkDir(absolutePath, root, filter));
+      results.push(...walkDir(absolutePath, syncRoot, filter));
     } else if (entry.isFile()) {
       results.push({
         absolutePath,
-        relativePath: path.relative(root, absolutePath),
+        relativePath: path.relative(syncRoot, absolutePath),
       });
     }
   }
 
   return results;
+}
+
+function isWithin(parent: string, child: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }

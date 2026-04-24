@@ -19,7 +19,7 @@ vi.mock("../s3.js", () => ({
 }));
 
 import { share } from "./share.js";
-import { headRemoteFile } from "../s3.js";
+import { headRemoteFile, uploadFile } from "../s3.js";
 
 const mockConfig: VaultServiceConfig = {
   apiUrl: "https://vault-api.test",
@@ -82,8 +82,10 @@ describe("share", () => {
     delete process.env.HQ_STATE_DIR;
   });
 
-  it("shares a single file", async () => {
-    const testFile = path.join(tmpDir, "test.md");
+  it("shares a single file keyed relative to the company root", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "test.md");
     fs.writeFileSync(testFile, "# Hello World");
 
     const result = await share({
@@ -95,15 +97,18 @@ describe("share", () => {
 
     expect(result.filesUploaded).toBe(1);
     expect(result.aborted).toBe(false);
+    // Remote key must be company-relative, not hqRoot-relative
+    expect(uploadFile).toHaveBeenCalledWith(expect.anything(), testFile, "test.md");
   });
 
   it("respects ignore rules", async () => {
-    fs.mkdirSync(path.join(tmpDir, ".git"));
-    fs.writeFileSync(path.join(tmpDir, ".git", "config"), "git config");
-    fs.writeFileSync(path.join(tmpDir, "readme.md"), "readme");
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(path.join(companyRoot, ".git"), { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, ".git", "config"), "git config");
+    fs.writeFileSync(path.join(companyRoot, "readme.md"), "readme");
 
     const result = await share({
-      paths: [tmpDir],
+      paths: [companyRoot],
       company: "acme",
       vaultConfig: mockConfig,
       hqRoot: tmpDir,
@@ -113,18 +118,57 @@ describe("share", () => {
   });
 
   it("shares a directory of files", async () => {
-    fs.mkdirSync(path.join(tmpDir, "docs"));
-    fs.writeFileSync(path.join(tmpDir, "docs", "a.md"), "doc a");
-    fs.writeFileSync(path.join(tmpDir, "docs", "b.md"), "doc b");
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(path.join(companyRoot, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "docs", "a.md"), "doc a");
+    fs.writeFileSync(path.join(companyRoot, "docs", "b.md"), "doc b");
 
     const result = await share({
-      paths: [path.join(tmpDir, "docs")],
+      paths: [path.join(companyRoot, "docs")],
       company: "acme",
       vaultConfig: mockConfig,
       hqRoot: tmpDir,
     });
 
     expect(result.filesUploaded).toBe(2);
+  });
+
+  it("keys nested paths relative to the company root, not hqRoot", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(path.join(companyRoot, "knowledge"), { recursive: true });
+    const nested = path.join(companyRoot, "knowledge", "crawl.json");
+    fs.writeFileSync(nested, "{}");
+
+    await share({
+      paths: [nested],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    // Key is "knowledge/crawl.json", not "companies/acme/knowledge/crawl.json"
+    expect(uploadFile).toHaveBeenCalledWith(expect.anything(), nested, "knowledge/crawl.json");
+  });
+
+  it("skips files outside the company folder with a warning", async () => {
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // File at hqRoot, outside companies/acme/
+    const outsideFile = path.join(tmpDir, "stray.md");
+    fs.writeFileSync(outsideFile, "stray");
+
+    const result = await share({
+      paths: [outsideFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    expect(result.filesUploaded).toBe(0);
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/outside company folder/i),
+    );
+    warnSpy.mockRestore();
   });
 
   it("throws when no company specified and no active company", async () => {
@@ -140,12 +184,14 @@ describe("share", () => {
   });
 
   it("resolves active company from .hq/config.json", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".hq"), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, ".hq", "config.json"), JSON.stringify({ activeCompany: "acme" }));
-    fs.writeFileSync(path.join(tmpDir, "test.md"), "test");
+    fs.writeFileSync(path.join(companyRoot, "test.md"), "test");
 
     const result = await share({
-      paths: [path.join(tmpDir, "test.md")],
+      paths: [path.join(companyRoot, "test.md")],
       vaultConfig: mockConfig,
       hqRoot: tmpDir,
     });
