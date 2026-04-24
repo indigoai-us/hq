@@ -14,7 +14,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@indigoai-us/hq-cloud": "workspace:*"
+    "@indigoai-us/hq-cloud": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
