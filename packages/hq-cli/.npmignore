@@ -1,0 +1,5 @@
+# The generated source file is not committed (in .gitignore).
+# When .npmignore exists, npm uses it instead of .gitignore, so we must
+# explicitly exclude the source file here — but NOT dist/sentry-dsn.generated.js,
+# which must be included in the tarball (built at CI time with the bundled DSN).
+src/sentry-dsn.generated.ts
