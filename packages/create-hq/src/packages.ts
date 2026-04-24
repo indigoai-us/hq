@@ -16,7 +16,6 @@ import * as path from "path";
 import * as os from "os";
 import { execSync } from "child_process";
 import chalk from "chalk";
-import type { AuthToken } from "./auth.js";
 
 // ─── Registry URL ────────────────────────────────────────────────────────────
 

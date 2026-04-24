@@ -1,5 +1,4 @@
 import * as path from "path";
-import * as os from "os";
 import fs from "fs-extra";
 import { createInterface } from "readline";
 import { createRequire } from "node:module";
@@ -13,7 +12,6 @@ import {
   nextSteps,
   stepStatus,
   updateSpinnerText,
-  teamOrientation,
 } from "./ui.js";
 import { checkDeps } from "./deps.js";
 import { initGit, hasGit, hasGitUser, configureGitUser, gitCommit } from "./git.js";
@@ -23,8 +21,6 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 import { fetchTemplate } from "./fetch-template.js";
 import { detectExistingSync } from "./cloud-sync.js";
-import { runTeamsFlow, authenticate, type TeamsFlowResult } from "./teams-flow.js";
-import type { GitHubAuth } from "./auth.js";
 import {
   readRecommendedPackages,
   readInstalledPackSources,
@@ -48,11 +44,7 @@ interface ScaffoldOptions {
   full?: boolean;
   tag?: string;
   localTemplate?: string;
-  join?: string;
-  invite?: string;
 }
-
-type EntryMode = "personal" | "teams-existing" | "teams-new" | "exit";
 
 async function prompt(question: string, defaultVal?: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -72,85 +64,23 @@ async function confirm(question: string, defaultYes = true): Promise<boolean> {
   return answer.toLowerCase().startsWith("y");
 }
 
-// ─── Existing HQ detection ─────────────────────────────────────────────────
-
 /**
- * Check whether a directory is an existing HQ installation.
- * Requires CLAUDE.md + .claude/ + companies/ — three markers to avoid false positives.
+ * Prompt for one of multiple labelled choices. Returns the matched key.
+ * Matching is first-letter, case-insensitive. Empty input returns `defaultKey`.
  */
-function isExistingHQ(dir: string): boolean {
-  return (
-    fs.existsSync(path.join(dir, "CLAUDE.md")) &&
-    fs.existsSync(path.join(dir, ".claude")) &&
-    fs.existsSync(path.join(dir, "companies"))
-  );
-}
-
-/** Display path with ~ for home directory. */
-function friendlyPath(absPath: string): string {
-  const home = os.homedir();
-  if (absPath === home) return "~";
-  if (absPath.startsWith(home + path.sep)) {
-    return "~/" + path.relative(home, absPath);
+async function choice<K extends string>(
+  question: string,
+  keys: readonly K[],
+  defaultKey: K,
+): Promise<K> {
+  const hint = keys.map((k) => (k === defaultKey ? k.toUpperCase() : k)).join("/");
+  for (;;) {
+    const answer = await prompt(`${question} (${hint})`);
+    if (!answer) return defaultKey;
+    const first = answer[0].toLowerCase();
+    const match = keys.find((k) => k.toLowerCase() === first);
+    if (match) return match;
   }
-  return absPath;
-}
-
-/** Resolve ~/... to an absolute path. */
-function resolveTildePath(p: string): string {
-  if (p.startsWith("~/") || p === "~") {
-    return path.join(os.homedir(), p.slice(2));
-  }
-  return path.resolve(p);
-}
-
-/**
- * Search common locations for an existing HQ installation.
- * Priority: explicit CLI arg > $HQ_HOME > ~/hq
- */
-function detectExistingHQ(cliDir?: string): string | null {
-  const candidates = [
-    cliDir ? path.resolve(cliDir) : null,
-    process.env.HQ_HOME ? path.resolve(process.env.HQ_HOME) : null,
-    path.join(os.homedir(), "hq"),
-  ].filter((c): c is string => c !== null);
-
-  for (const dir of candidates) {
-    if (fs.existsSync(dir) && isExistingHQ(dir)) {
-      return dir;
-    }
-  }
-  return null;
-}
-
-/**
- * Cascading entry-mode selection:
- *   1. HQ Teams account?      yes → teams-existing
- *   2. Create one?             yes → teams-new
- *   3. Personal HQ instead?    yes → personal
- *                              no  → exit
- */
-async function chooseEntryMode(): Promise<EntryMode> {
-  console.log();
-  const hasTeamsAccount = await confirm(
-    `${chalk.bold("Do you have an HQ Teams account?")}`,
-    false
-  );
-  if (hasTeamsAccount) return "teams-existing";
-
-  const wantsTeam = await confirm(
-    `${chalk.bold("Would you like to create an HQ Teams account?")}`,
-    true
-  );
-  if (wantsTeam) return "teams-new";
-
-  const wantsPersonal = await confirm(
-    `${chalk.bold("Set up a personal HQ instead?")}`,
-    true
-  );
-  if (wantsPersonal) return "personal";
-
-  return "exit";
 }
 
 export async function scaffold(
@@ -159,95 +89,10 @@ export async function scaffold(
 ): Promise<void> {
   banner(pkg.version);
 
-  // 1. Entry mode — if --invite or --join is provided, force teams-existing.
-  //    If stdin is not a TTY (headless CI, piped /dev/null), skip prompts → personal.
-  const inviteToken = options.invite || options.join;
+  // Non-TTY (headless CI, piped /dev/null) skips interactive prompts.
   const isInteractive = process.stdin.isTTY ?? false;
-  const mode = inviteToken
-    ? "teams-existing" as EntryMode
-    : isInteractive
-      ? await chooseEntryMode()
-      : "personal" as EntryMode;
-  if (mode === "exit") {
-    console.log();
-    info("No problem — come back any time with: npx create-hq");
-    process.exit(0);
-  }
 
-  // 2. Authenticate immediately for "existing" teams path (need App token for discovery).
-  //    For "new" teams path, defer auth — admin onboarding uses `gh` CLI for org
-  //    discovery first, then triggers App auth after org selection.
-  let teamsAuth: GitHubAuth | null = null;
-  if (mode === "teams-existing") {
-    teamsAuth = await authenticate();
-    if (!teamsAuth) {
-      console.log();
-      warn("GitHub sign-in is required for HQ Teams.");
-      const fallback = await confirm("Set up a personal HQ instead?", true);
-      if (!fallback) {
-        info("No problem — come back any time with: npx create-hq");
-        process.exit(0);
-      }
-      // Fall through to personal mode
-    }
-  }
-
-  // 2b. Graft detection — if we have an invite token, check for an existing HQ
-  //     before asking about directory. Grafting adds the team to the existing
-  //     HQ without re-scaffolding template, git init, etc.
-  if (inviteToken && teamsAuth) {
-    const autoDetected = detectExistingHQ(directory);
-
-    if (autoDetected) {
-      // Found an existing HQ automatically — offer to graft into it
-      const displayExisting = friendlyPath(autoDetected);
-
-      console.log();
-      info(`Detected existing HQ at ${chalk.cyan(displayExisting)}`);
-
-      const graftChoice = await prompt(
-        `Join team in existing HQ? ${chalk.dim("(Y = use existing / n = create new)")}`,
-        "Y"
-      );
-
-      if (graftChoice.toLowerCase() !== "n") {
-        return graftTeamIntoExistingHQ(autoDetected, displayExisting, teamsAuth, inviteToken);
-      }
-      // "n" — fall through to normal fresh scaffold
-    } else {
-      // No auto-detected HQ — ask the user if they already have one
-      console.log();
-      const hasExisting = await confirm(
-        chalk.bold("Do you already have an existing HQ installed?"),
-        false
-      );
-
-      if (hasExisting) {
-        const existingPath = await prompt(
-          "Where is your existing HQ?",
-          path.join(os.homedir(), "hq")
-        );
-        const resolvedPath = resolveTildePath(existingPath);
-
-        if (fs.existsSync(resolvedPath) && isExistingHQ(resolvedPath)) {
-          return graftTeamIntoExistingHQ(resolvedPath, friendlyPath(resolvedPath), teamsAuth, inviteToken);
-        }
-
-        // Directory exists but isn't an HQ, or doesn't exist
-        if (!fs.existsSync(resolvedPath)) {
-          warn(`Directory not found: ${existingPath}`);
-        } else {
-          warn(`That directory doesn't look like an HQ installation (missing CLAUDE.md or .claude/).`);
-        }
-        info("Setting up a fresh HQ instead...");
-        // Fall through to normal scaffold, pre-fill directory to their path
-        directory = existingPath;
-      }
-      // No existing HQ — fall through to normal fresh scaffold
-    }
-  }
-
-  // 3. Resolve target directory (prompt if not provided)
+  // 1. Resolve target directory (prompt if not provided)
   let dir = directory;
   if (!dir) {
     console.log();
@@ -272,7 +117,7 @@ export async function scaffold(
     }
   }
 
-  // 4. Dependency check (no spinner — checkDeps is interactive with prompts)
+  // 2. Dependency check (no spinner — checkDeps is interactive with prompts)
   if (!options.skipDeps) {
     const { allRequired } = await checkDeps();
     if (!allRequired) {
@@ -283,7 +128,7 @@ export async function scaffold(
     }
   }
 
-  // 4. Fetch core HQ template (every user gets this — personal or team)
+  // 3. Fetch core HQ template
   let hqVersion = "";
   if (options.localTemplate) {
     const localLabel = "Copying local HQ template...";
@@ -336,7 +181,7 @@ export async function scaffold(
     }
   }
 
-  // 5. Git init the root HQ (no remote — root HQ is always local-only)
+  // 4. Git init the root HQ (no remote — root HQ is always local-only)
   const gitLabel = "Initializing git repository";
   stepStatus(gitLabel, "running");
   if (hasGit()) {
@@ -379,7 +224,7 @@ export async function scaffold(
     warn("git not found — skipping git init");
   }
 
-  // 6. Governance bootstrap — checksums + integrity verification
+  // 5. Governance bootstrap — checksums + integrity verification
   const integrityLabel = "Verifying kernel integrity";
   stepStatus(integrityLabel, "running");
   try {
@@ -401,7 +246,7 @@ export async function scaffold(
     stepStatus(integrityLabel, "failed");
   }
 
-  // 6b. Recommended content packs (hq-core v12+). hq-core ships as a minimal
+  // 6. Recommended content packs (hq-core v12+). hq-core ships as a minimal
   //     scaffold; the batteries-included experience comes from installing packs
   //     declared in `core.yaml:recommended_packages`. Pack failures are warnings
   //     (scaffolding still succeeds); `/setup --resume` or `/update-hq` retries.
@@ -409,29 +254,13 @@ export async function scaffold(
     await installRecommendedPacksPhase(targetDir, options.full ?? false, isInteractive);
   }
 
-  // 7. Cloud sync detection
+  // 7. Cloud sync detection (no-op if already configured)
   const alreadySynced = await detectExistingSync(targetDir);
   if (alreadySynced) {
     success("Cloud sync already configured — skipping setup");
   }
 
-  // 8. Teams flow (existing: only if auth succeeded; new: auth happens inside)
-  let teamsResult: TeamsFlowResult | null = null;
-  if ((mode === "teams-existing" && teamsAuth) || mode === "teams-new") {
-    teamsResult = await runTeamsFlow(
-      mode === "teams-existing" ? "existing" : "new",
-      targetDir,
-      hqVersion,
-      teamsAuth ?? undefined,
-      inviteToken
-    );
-    if (!teamsResult) {
-      console.log();
-      warn("Team setup did not complete — your personal HQ is still set up correctly.");
-    }
-  }
-
-  // 9. Optional: install hq-cli globally (disabled for now)
+  // (disabled) Optional: install hq-cli globally
   // if (!options.skipCli) {
   //   console.log();
   //   const installCli = await confirm(
@@ -450,7 +279,7 @@ export async function scaffold(
   //   }
   // }
 
-  // 10. Cloud sync setup (disabled for now)
+  // (disabled) Cloud sync setup
   // if (!options.skipSync && !alreadySynced) {
   //   console.log();
   //   const setupSync = await confirm(
@@ -462,50 +291,45 @@ export async function scaffold(
   //   }
   // }
 
-  // 11. qmd index
+  // 8. qmd index. Register the scaffolded HQ as a qmd collection and trigger a
+  //    first index. qmd has no single-shot "index this dir" command — the
+  //    canonical flow is `collection add <name> <path>` + `update`. Silently
+  //    skipped when qmd isn't on PATH (optional dep); users can install later
+  //    and run `qmd update` themselves.
   const indexLabel = "Indexing HQ for search";
-  stepStatus(indexLabel, "running");
+  let qmdAvailable = true;
   try {
-    await execAsync("qmd index .", { cwd: targetDir });
-    stepStatus(indexLabel, "done");
+    await execAsync("command -v qmd", { shell: "/bin/bash" });
   } catch {
-    stepStatus(indexLabel, "failed");
+    qmdAvailable = false;
   }
 
-  // 12. Orientation
-  console.log();
-  if (teamsResult?.admin) {
-    teamOrientation({
-      mode: "admin",
-      displayDir,
-      teamName: teamsResult.admin.team.team_name,
-      teamSlug: teamsResult.admin.team.team_slug,
-      orgLogin: teamsResult.admin.team.org_login,
-      repoUrl: teamsResult.admin.repoHtmlUrl,
-    });
-  } else if (teamsResult?.joinedByInvite) {
-    teamOrientation({
-      mode: "member",
-      displayDir,
-      teams: [{
-        name: teamsResult.joinedByInvite.teamName,
-        slug: teamsResult.joinedByInvite.slug,
-        repoUrl: teamsResult.joinedByInvite.repoUrl,
-      }],
-    });
-  } else if (teamsResult?.member && teamsResult.member.joined.length > 0) {
-    teamOrientation({
-      mode: "member",
-      displayDir,
-      teams: teamsResult.member.joined.map((t) => ({
-        name: t.name,
-        slug: t.slug,
-        repoUrl: t.repoHtmlUrl,
-      })),
-    });
+  if (!qmdAvailable) {
+    stepStatus(indexLabel, "running");
+    stepStatus(indexLabel, "done");
+    info(chalk.dim("  (qmd not installed — skipped; install qmd and run `qmd update` later)"));
   } else {
-    nextSteps(displayDir);
+    stepStatus(indexLabel, "running");
+    try {
+      const collectionName = path.basename(targetDir);
+      try {
+        await execAsync(
+          `qmd collection add ${JSON.stringify(collectionName)} ${JSON.stringify(targetDir)}`,
+        );
+      } catch {
+        // Already registered — fine, just update.
+      }
+      await execAsync("qmd update", { cwd: targetDir });
+      stepStatus(indexLabel, "done");
+    } catch {
+      stepStatus(indexLabel, "failed");
+      info(chalk.dim("  (run `qmd update` later to retry)"));
+    }
   }
+
+  // 9. Orientation
+  console.log();
+  nextSteps(displayDir);
 }
 
 // ─── Recommended-packages phase ────────────────────────────────────────────
@@ -556,22 +380,27 @@ async function installRecommendedPacksPhase(
     info("Non-interactive environment detected — skipping recommended packs. Pass --full to install unattended.");
     return;
   } else {
-    const installAll = await confirm(
-      `Install recommended packs? ${chalk.dim("(y = prompt per pack / a = all / n = skip)")}`,
-      true,
+    const decision = await choice(
+      `Install recommended packs? ${chalk.dim("(a = all / y = prompt per pack / n = skip)")}`,
+      ["a", "y", "n"] as const,
+      "a",
     );
-    if (!installAll) {
+    if (decision === "n") {
       info("Skipped — install later with /setup --resume or hq install <source>");
       return;
     }
-    // Per-pack prompt loop. Users can accept/reject each individually.
-    for (const entry of remaining) {
-      const yes = await confirm(`  Install ${chalk.cyan(entry.source)}?`, true);
-      if (yes) selected.push(entry);
-    }
-    if (selected.length === 0) {
-      info("No packs selected");
-      return;
+    if (decision === "a") {
+      selected = remaining;
+    } else {
+      // Per-pack prompt loop. Users can accept/reject each individually.
+      for (const entry of remaining) {
+        const yes = await confirm(`  Install ${chalk.cyan(entry.source)}?`, true);
+        if (yes) selected.push(entry);
+      }
+      if (selected.length === 0) {
+        info("No packs selected");
+        return;
+      }
     }
   }
 
@@ -591,76 +420,3 @@ async function installRecommendedPacksPhase(
   }
 }
 
-// ─── Graft path ────────────────────────────────────────────────────────────
-
-/**
- * Add a team to an existing HQ installation without re-scaffolding.
- *
- * Skips: template fetch, git init, governance bootstrap, cloud sync, qmd full-index.
- * Runs:  teams flow (join-by-invite) → manifest registration → orientation.
- *
- * This is the fast path for users who already have a working HQ and just need
- * to accept a team invite. Takes ~5 seconds instead of ~30.
- */
-async function graftTeamIntoExistingHQ(
-  hqRoot: string,
-  displayDir: string,
-  auth: GitHubAuth,
-  inviteToken: string
-): Promise<void> {
-  console.log();
-  step("Adding team to existing HQ (skipping scaffold)...");
-
-  const teamsResult = await runTeamsFlow(
-    "existing",
-    hqRoot,
-    "", // hqVersion not needed for graft — we're not seeding a new template
-    auth,
-    inviteToken
-  );
-
-  if (!teamsResult) {
-    console.log();
-    warn("Team setup did not complete — your existing HQ is unchanged.");
-    return;
-  }
-
-  // Index only the new company directory, not the entire HQ
-  if (teamsResult.joinedByInvite) {
-    const companyDir = teamsResult.joinedByInvite.companyDir;
-    const indexLabel = `Indexing companies/${teamsResult.joinedByInvite.slug}`;
-    stepStatus(indexLabel, "running");
-    try {
-      await execAsync(`qmd index "${companyDir}"`, { cwd: hqRoot });
-      stepStatus(indexLabel, "done");
-    } catch {
-      stepStatus(indexLabel, "failed");
-    }
-  }
-
-  // Orientation
-  console.log();
-  if (teamsResult.joinedByInvite) {
-    teamOrientation({
-      mode: "member",
-      displayDir,
-      teams: [{
-        name: teamsResult.joinedByInvite.teamName,
-        slug: teamsResult.joinedByInvite.slug,
-        repoUrl: teamsResult.joinedByInvite.repoUrl,
-      }],
-    });
-  } else if (teamsResult.member && teamsResult.member.joined.length > 0) {
-    teamOrientation({
-      mode: "member",
-      displayDir,
-      teams: teamsResult.member.joined.map((t) => ({
-        name: t.name,
-        slug: t.slug,
-        repoUrl: t.repoHtmlUrl,
-      })),
-    });
-  } else {
-    info("No teams were joined. Your existing HQ is unchanged.");
-  }
-}
