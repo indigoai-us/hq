@@ -560,4 +560,64 @@ describe("VaultClient identity bootstrap", () => {
     const body = JSON.parse(init.body as string);
     expect(body.slug).toBe("user-12345678");
   });
+
+  it("listByType_roundtrips_createdAt", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        entities: [
+          {
+            uid: "prs_x",
+            slug: "alice",
+            type: "person",
+            status: "active",
+            createdAt: "2026-01-01T00:00:00Z",
+          },
+        ],
+      }),
+    );
+
+    const entities = await client.entity.listByType("person");
+    expect(entities).toHaveLength(1);
+    expect(entities[0].createdAt).toBe("2026-01-01T00:00:00Z");
+  });
+
+  it("ensureMyPersonEntity_picks_oldest_when_multiple", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        entities: [
+          { uid: "prs_b", slug: "b", type: "person", status: "active", createdAt: "2026-03-01T00:00:00Z" },
+          { uid: "prs_a", slug: "a", type: "person", status: "active", createdAt: "2026-01-01T00:00:00Z" },
+          { uid: "prs_c", slug: "c", type: "person", status: "active", createdAt: "2026-06-01T00:00:00Z" },
+        ],
+      }),
+    );
+
+    const person = await client.ensureMyPersonEntity({
+      ownerSub: "sub-multi",
+      displayName: "Multi User",
+    });
+
+    expect(person.uid).toBe("prs_a");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ensureMyPersonEntity_handles_missing_createdAt_deterministically", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(200, {
+        entities: [
+          { uid: "prs_z", slug: "z", type: "person", status: "active" },
+          { uid: "prs_a", slug: "a", type: "person", status: "active" },
+        ],
+      }),
+    );
+
+    const person = await client.ensureMyPersonEntity({
+      ownerSub: "sub-nodates",
+      displayName: "No Dates User",
+    });
+
+    // Both missing createdAt → "" tie, uid tiebreak selects prs_a
+    expect(person.uid).toBe("prs_a");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });

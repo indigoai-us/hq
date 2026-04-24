@@ -109,6 +109,7 @@ export interface EntityInfo {
   name?: string;
   bucketName?: string;
   status: string;
+  createdAt: string;
 }
 
 export interface PendingInviteByEmail {
@@ -343,7 +344,13 @@ export class VaultClient {
     displayName: string;
   }): Promise<EntityInfo> {
     const existing = await this.entity.listByType("person");
-    if (existing.length > 0) return existing[0];
+    const sorted = [...existing].sort((a, b) => {
+      const ac = (a.createdAt as string | undefined) ?? "";
+      const bc = (b.createdAt as string | undefined) ?? "";
+      if (ac !== bc) return ac < bc ? -1 : 1;
+      return a.uid < b.uid ? -1 : 1;
+    });
+    if (sorted.length > 0) return sorted[0];
 
     const slug =
       hints.displayName
