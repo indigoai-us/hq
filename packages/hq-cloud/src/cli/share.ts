@@ -14,6 +14,7 @@ import { readJournal, writeJournal, hashFile, updateEntry } from "../journal.js"
 import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
+import type { SyncProgressEvent } from "./sync.js";
 
 export interface ShareOptions {
   /** Path(s) to share (files or directories) */
@@ -28,6 +29,23 @@ export interface ShareOptions {
   vaultConfig: VaultServiceConfig;
   /** HQ root directory */
   hqRoot: string;
+  /**
+   * Per-file event callback. When present, suppresses the default
+   * `console.log`/`console.error` human output — same contract as `sync()`.
+   * This is the seam `hq-sync-runner` uses to stream ndjson for push events.
+   */
+  onEvent?: (event: SyncProgressEvent) => void;
+  /**
+   * When true, files whose local hash matches the journal entry from the
+   * last sync are skipped (no remote HEAD, no upload). This is the gate
+   * that makes "push everything that changed" efficient — without it, a
+   * bidirectional Sync Now would re-upload every file each tick.
+   *
+   * Default false to preserve `hq share <file>` semantics: when a user
+   * explicitly names a file, they expect it to be sent even if the local
+   * hash matches the last-sync state (e.g. to re-heal a bucket).
+   */
+  skipUnchanged?: boolean;
 }
 
 export interface ShareResult {
@@ -41,7 +59,8 @@ export interface ShareResult {
  * Share local file(s) to the entity vault.
  */
 export async function share(options: ShareOptions): Promise<ShareResult> {
-  const { paths, company, message, onConflict, vaultConfig, hqRoot } = options;
+  const { paths, company, message, onConflict, vaultConfig, hqRoot, skipUnchanged } = options;
+  const emit = options.onEvent ?? defaultConsoleLogger;
 
   // Resolve company — slug, UID, or from active config
   const companyRef = company ?? resolveActiveCompany(hqRoot);
@@ -70,9 +89,26 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
   for (const { absolutePath, relativePath } of filesToShare) {
     if (!isWithinSizeLimit(absolutePath)) {
-      console.error(`  Skipped (too large): ${relativePath}`);
+      emit({
+        type: "error",
+        path: relativePath,
+        message: "file exceeds size limit",
+      });
       filesSkipped++;
       continue;
+    }
+
+    // Skip-if-unchanged gate: the hot path for bidirectional Sync Now. When
+    // walking an entire company folder, this is what keeps us from re-uploading
+    // every file every tick. Off by default so `hq share <file>` keeps its
+    // explicit-intent semantics (user named it, user wants it sent).
+    const localHash = hashFile(absolutePath);
+    if (skipUnchanged) {
+      const existing = journal.files[relativePath];
+      if (existing && existing.hash === localHash) {
+        filesSkipped++;
+        continue;
+      }
     }
 
     // Auto-refresh context if credentials expiring
@@ -84,7 +120,6 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     const remoteMeta = await headRemoteFile(ctx, relativePath);
     if (remoteMeta) {
       const journalEntry = journal.files[relativePath];
-      const localHash = hashFile(absolutePath);
 
       // If remote has changed since our last sync, it's a conflict
       if (journalEntry && journalEntry.hash !== localHash) {
@@ -113,12 +148,11 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     // Upload
     try {
       const stat = fs.statSync(absolutePath);
-      const hash = hashFile(absolutePath);
 
       await uploadFile(ctx, absolutePath, relativePath);
 
       // Update journal with optional message
-      updateEntry(journal, relativePath, hash, stat.size, "up");
+      updateEntry(journal, relativePath, localHash, stat.size, "up");
       if (message) {
         journal.files[relativePath] = {
           ...journal.files[relativePath],
@@ -128,17 +162,40 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
       filesUploaded++;
       bytesUploaded += stat.size;
-      console.log(`  ✓ ${relativePath}`);
+      emit({
+        type: "progress",
+        path: relativePath,
+        bytes: stat.size,
+        ...(message ? { message } : {}),
+      });
     } catch (err) {
-      console.error(
-        `  ✗ ${relativePath} — ${err instanceof Error ? err.message : err}`,
-      );
+      emit({
+        type: "error",
+        path: relativePath,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   writeJournal(ctx.slug, journal);
 
   return { filesUploaded, bytesUploaded, filesSkipped, aborted: false };
+}
+
+/**
+ * Default human-readable share output. Preserves the exact format the CLI
+ * emitted before `onEvent` was added — tty users see no change.
+ */
+function defaultConsoleLogger(event: SyncProgressEvent): void {
+  if (event.type === "progress") {
+    if (event.message) {
+      console.log(`  ✓ ${event.path} — "${event.message}"`);
+    } else {
+      console.log(`  ✓ ${event.path}`);
+    }
+  } else {
+    console.error(`  ✗ ${event.path} — ${event.message}`);
+  }
 }
 
 /**

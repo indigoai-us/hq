@@ -54,7 +54,23 @@ import type {
   SyncResult,
   SyncProgressEvent,
 } from "../cli/sync.js";
+import { share as defaultShare } from "../cli/share.js";
+import type { ShareOptions, ShareResult } from "../cli/share.js";
 import type { ConflictStrategy } from "../cli/conflict.js";
+
+/**
+ * Sync direction for a run.
+ *
+ * - `pull`: download-only (legacy `hq sync` behaviour, and the default for
+ *   back-compat with pre-5.1.11 callers of the runner).
+ * - `push`: upload-only. Walks the company folder and sends every file whose
+ *   local hash differs from the journal (skipUnchanged).
+ * - `both`: push first, then pull. "Sync Now" in the menubar app targets this.
+ *   Push runs first so the subsequent pull doesn't redownload files we were
+ *   about to replace; if a company aborts on push conflict, pull is skipped
+ *   for that company but the fanout continues.
+ */
+export type Direction = "pull" | "push" | "both";
 
 // ---------------------------------------------------------------------------
 // Defaults — mirror `hq-cli/src/utils/cognito-session.ts`. Inlined (not
@@ -97,12 +113,27 @@ export type RunnerEvent =
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
-  | ({ type: "complete"; company: string } & SyncResult)
+  | ({
+      type: "complete";
+      company: string;
+      /**
+       * Upload counters. Always emitted (0 when the run was pull-only) so
+       * downstream consumers don't need to conditionally read the field.
+       * Tauri's `SyncCompleteEvent` ignores extra fields today; adding them
+       * to the Rust struct is a follow-up when the UI needs to surface push
+       * totals.
+       */
+      filesUploaded: number;
+      bytesUploaded: number;
+    } & SyncResult)
   | {
       type: "all-complete";
       companiesAttempted: number;
       filesDownloaded: number;
       bytesDownloaded: number;
+      /** Always emitted; 0 when no push phase ran. */
+      filesUploaded: number;
+      bytesUploaded: number;
       errors: Array<{ company: string; message: string }>;
     };
 
@@ -158,6 +189,8 @@ export interface RunnerDeps {
   createVaultClient?: (config: VaultServiceConfig) => VaultClientSurface;
   /** Sync function. Defaults to `cli/sync.sync`. */
   sync?: (options: SyncOptions) => Promise<SyncResult>;
+  /** Share function (push phase). Defaults to `cli/share.share`. */
+  share?: (options: ShareOptions) => Promise<ShareResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +272,7 @@ interface ParsedArgs {
   company?: string;
   onConflict: ConflictStrategy;
   hqRoot: string;
+  direction: Direction;
 }
 
 function parseArgs(argv: string[]): ParsedArgs | { error: string } {
@@ -246,6 +280,7 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   let company: string | undefined;
   let onConflict: ConflictStrategy = "abort";
   let hqRoot = DEFAULT_HQ_ROOT;
+  let direction: Direction = "pull";
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -267,6 +302,16 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
         onConflict = val;
         break;
       }
+      case "--direction": {
+        const val = argv[++i];
+        if (val !== "pull" && val !== "push" && val !== "both") {
+          return {
+            error: `--direction must be one of pull|push|both, got: ${val ?? "(missing)"}`,
+          };
+        }
+        direction = val;
+        break;
+      }
       case "--hq-root":
         hqRoot = argv[++i];
         if (!hqRoot) return { error: "--hq-root requires a value" };
@@ -286,7 +331,7 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
     return { error: "Pass --companies or --company <slug>" };
   }
 
-  return { companies, company, onConflict, hqRoot };
+  return { companies, company, onConflict, hqRoot, direction };
 }
 
 // ---------------------------------------------------------------------------
@@ -402,42 +447,99 @@ export async function runRunner(
 
   // ---- fanout -----------------------------------------------------------
   const syncFn = deps.sync ?? defaultSync;
-  let totalFiles = 0;
-  let totalBytes = 0;
+  const shareFn = deps.share ?? defaultShare;
+  const doPush = parsed.direction === "push" || parsed.direction === "both";
+  const doPull = parsed.direction === "pull" || parsed.direction === "both";
+  let totalDownloaded = 0;
+  let totalDownloadedBytes = 0;
+  let totalUploaded = 0;
+  let totalUploadedBytes = 0;
   const errors: Array<{ company: string; message: string }> = [];
 
   for (const target of plan) {
     const companyLabel = target.slug;
+    // Per-company event tagger — shared by push and pull phases so progress
+    // rows land on the right company regardless of which phase emitted them.
+    const tagAndEmit = (event: SyncProgressEvent): void => {
+      if (event.type === "progress") {
+        emit({
+          type: "progress",
+          company: companyLabel,
+          path: event.path,
+          bytes: event.bytes,
+          ...(event.message ? { message: event.message } : {}),
+        });
+      } else {
+        emit({
+          type: "error",
+          company: companyLabel,
+          path: event.path,
+          message: event.message,
+        });
+      }
+    };
+
     try {
-      const result = await syncFn({
-        company: target.uid,
-        vaultConfig,
-        hqRoot: parsed.hqRoot,
-        onConflict: parsed.onConflict,
-        onEvent: (event) => {
-          // Tag per-file events with the company they belong to so the
-          // menubar can route them to the right company's progress bar.
-          if (event.type === "progress") {
-            emit({
-              type: "progress",
-              company: companyLabel,
-              path: event.path,
-              bytes: event.bytes,
-              ...(event.message ? { message: event.message } : {}),
-            });
-          } else {
-            emit({
-              type: "error",
-              company: companyLabel,
-              path: event.path,
-              message: event.message,
-            });
-          }
-        },
+      let pushResult: ShareResult = {
+        filesUploaded: 0,
+        bytesUploaded: 0,
+        filesSkipped: 0,
+        aborted: false,
+      };
+      let pullResult: SyncResult = {
+        filesDownloaded: 0,
+        bytesDownloaded: 0,
+        filesSkipped: 0,
+        conflicts: 0,
+        aborted: false,
+      };
+
+      // Push first so a subsequent pull doesn't overwrite files we were about
+      // to broadcast. Uses the walk-everything-under-companies/{slug}/ entry
+      // point with `skipUnchanged` so we don't re-upload files that haven't
+      // changed since the last sync.
+      if (doPush) {
+        pushResult = await shareFn({
+          paths: [path.join(parsed.hqRoot, "companies", target.slug)],
+          company: target.uid,
+          vaultConfig,
+          hqRoot: parsed.hqRoot,
+          onConflict: parsed.onConflict,
+          skipUnchanged: true,
+          onEvent: tagAndEmit,
+        });
+      }
+
+      // Pull runs unless the push phase aborted on conflict — aborted means
+      // the user has local edits + remote drift; blindly pulling would erase
+      // whichever side `--on-conflict abort` just protected.
+      if (doPull && !pushResult.aborted) {
+        pullResult = await syncFn({
+          company: target.uid,
+          vaultConfig,
+          hqRoot: parsed.hqRoot,
+          onConflict: parsed.onConflict,
+          onEvent: tagAndEmit,
+        });
+      }
+
+      emit({
+        type: "complete",
+        company: companyLabel,
+        filesDownloaded: pullResult.filesDownloaded,
+        bytesDownloaded: pullResult.bytesDownloaded,
+        filesUploaded: pushResult.filesUploaded,
+        bytesUploaded: pushResult.bytesUploaded,
+        filesSkipped: pullResult.filesSkipped + pushResult.filesSkipped,
+        conflicts: pullResult.conflicts,
+        // Either phase aborting marks the company aborted — the UI treats
+        // `aborted: true` as "sync didn't complete cleanly for this company".
+        aborted: pullResult.aborted || pushResult.aborted,
       });
-      emit({ type: "complete", company: companyLabel, ...result });
-      totalFiles += result.filesDownloaded;
-      totalBytes += result.bytesDownloaded;
+      totalDownloaded += pullResult.filesDownloaded;
+      totalDownloadedBytes += pullResult.bytesDownloaded;
+      totalUploaded += pushResult.filesUploaded;
+      totalUploadedBytes += pushResult.bytesUploaded;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       errors.push({ company: companyLabel, message });
@@ -454,8 +556,10 @@ export async function runRunner(
   emit({
     type: "all-complete",
     companiesAttempted: plan.length,
-    filesDownloaded: totalFiles,
-    bytesDownloaded: totalBytes,
+    filesDownloaded: totalDownloaded,
+    bytesDownloaded: totalDownloadedBytes,
+    filesUploaded: totalUploaded,
+    bytesUploaded: totalUploadedBytes,
     errors,
   });
   return 0;

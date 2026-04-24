@@ -198,4 +198,146 @@ describe("share", () => {
 
     expect(result.filesUploaded).toBe(1);
   });
+
+  it("skipUnchanged=true skips files whose local hash matches the journal", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "unchanged.md");
+    fs.writeFileSync(testFile, "stable content");
+
+    // Precompute the hash of the file so the journal matches exactly.
+    const { hashFile } = await import("../journal.js");
+    const hash = hashFile(testFile);
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "unchanged.md": {
+            hash,
+            size: 15,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+    });
+
+    expect(result.filesUploaded).toBe(0);
+    expect(result.filesSkipped).toBe(1);
+    expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it("skipUnchanged=true still uploads files whose hash differs from the journal", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "changed.md");
+    fs.writeFileSync(testFile, "new content");
+
+    // Journal has a stale hash for this path — simulating "local has been
+    // edited since the last push".
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "changed.md": {
+            hash: "stale-hash-from-previous-sync",
+            size: 10,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+    });
+
+    expect(result.filesUploaded).toBe(1);
+    expect(uploadFile).toHaveBeenCalledWith(expect.anything(), testFile, "changed.md");
+  });
+
+  it("skipUnchanged=false (default) uploads even when hash matches", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "unchanged.md");
+    fs.writeFileSync(testFile, "stable content");
+
+    const { hashFile } = await import("../journal.js");
+    const hash = hashFile(testFile);
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "unchanged.md": {
+            hash,
+            size: 15,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      // skipUnchanged omitted — preserves `hq share <file>` semantics
+    });
+
+    expect(result.filesUploaded).toBe(1);
+    expect(uploadFile).toHaveBeenCalled();
+  });
+
+  it("onEvent receives progress events instead of console output", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "a.md"), "aaa");
+    fs.writeFileSync(path.join(companyRoot, "b.md"), "bbb");
+
+    const events: Array<{ type: string; path: string; bytes?: number }> = [];
+    const result = await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        events.push({
+          type: e.type,
+          path: e.path,
+          ...(e.type === "progress" ? { bytes: e.bytes } : {}),
+        });
+      },
+    });
+
+    expect(result.filesUploaded).toBe(2);
+    expect(events).toHaveLength(2);
+    expect(events.every((e) => e.type === "progress")).toBe(true);
+    expect(events.map((e) => e.path).sort()).toEqual(["a.md", "b.md"]);
+  });
 });

@@ -15,6 +15,7 @@ import type {
   VaultClientSurface,
 } from "./sync-runner.js";
 import type { SyncResult, SyncOptions } from "../cli/sync.js";
+import type { ShareResult, ShareOptions } from "../cli/share.js";
 import type {
   Membership,
   EntityInfo,
@@ -60,6 +61,16 @@ function defaultSyncResult(overrides: Partial<SyncResult> = {}): SyncResult {
     bytesDownloaded: 0,
     filesSkipped: 0,
     conflicts: 0,
+    aborted: false,
+    ...overrides,
+  };
+}
+
+function defaultShareResult(overrides: Partial<ShareResult> = {}): ShareResult {
+  return {
+    filesUploaded: 0,
+    bytesUploaded: 0,
+    filesSkipped: 0,
     aborted: false,
     ...overrides,
   };
@@ -611,10 +622,17 @@ describe("per-company fanout", () => {
     const complete = deps.stdout
       .events()
       .find((e) => e.type === "complete") as Extract<RunnerEvent, { type: "complete" }>;
+    // Pull-only run: upload counters are 0.
     expect(complete).toEqual({
       type: "complete",
       company: "acme",
-      ...result,
+      filesDownloaded: result.filesDownloaded,
+      bytesDownloaded: result.bytesDownloaded,
+      filesSkipped: result.filesSkipped,
+      conflicts: result.conflicts,
+      aborted: result.aborted,
+      filesUploaded: 0,
+      bytesUploaded: 0,
     });
   });
 
@@ -725,6 +743,8 @@ describe("all-complete aggregate", () => {
       companiesAttempted: 2,
       filesDownloaded: 7,
       bytesDownloaded: 350,
+      filesUploaded: 0,
+      bytesUploaded: 0,
       errors: [],
     });
   });
@@ -791,6 +811,241 @@ describe("ndjson stream shape", () => {
       "progress",
       "complete",
       "all-complete",
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// --direction flag
+// ---------------------------------------------------------------------------
+
+describe("--direction", () => {
+  it("rejects invalid --direction value", async () => {
+    const deps = makeDeps();
+    const code = await runRunner(
+      ["--companies", "--direction", "sideways"],
+      deps,
+    );
+    expect(code).toBe(1);
+    expect(deps.stderr.raw()).toContain("pull|push|both");
+  });
+
+  it("defaults to pull: share is not called, sync is", async () => {
+    const shareSpy = vi.fn();
+    const syncSpy = vi.fn().mockResolvedValue(defaultSyncResult());
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: syncSpy,
+      share: shareSpy,
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    expect(shareSpy).not.toHaveBeenCalled();
+  });
+
+  it("direction=push: share is called, sync is not", async () => {
+    const shareSpy = vi.fn().mockResolvedValue(defaultShareResult());
+    const syncSpy = vi.fn();
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: syncSpy,
+      share: shareSpy,
+    });
+
+    const code = await runRunner(
+      ["--companies", "--direction", "push"],
+      deps,
+    );
+    expect(code).toBe(0);
+    expect(shareSpy).toHaveBeenCalledTimes(1);
+    expect(syncSpy).not.toHaveBeenCalled();
+  });
+
+  it("direction=both: push runs first, then pull", async () => {
+    const callOrder: string[] = [];
+    const shareSpy = vi.fn().mockImplementation(async () => {
+      callOrder.push("share");
+      return defaultShareResult({ filesUploaded: 2, bytesUploaded: 200 });
+    });
+    const syncSpy = vi.fn().mockImplementation(async () => {
+      callOrder.push("sync");
+      return defaultSyncResult({ filesDownloaded: 3, bytesDownloaded: 300 });
+    });
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: syncSpy,
+      share: shareSpy,
+    });
+
+    const code = await runRunner(
+      ["--companies", "--direction", "both"],
+      deps,
+    );
+    expect(code).toBe(0);
+    expect(callOrder).toEqual(["share", "sync"]);
+
+    const complete = deps.stdout
+      .events()
+      .find((e) => e.type === "complete") as Extract<RunnerEvent, { type: "complete" }>;
+    expect(complete).toMatchObject({
+      company: "acme",
+      filesUploaded: 2,
+      bytesUploaded: 200,
+      filesDownloaded: 3,
+      bytesDownloaded: 300,
+    });
+  });
+
+  it("direction=both: pull is skipped when push aborts on conflict", async () => {
+    const shareSpy = vi
+      .fn()
+      .mockResolvedValue(defaultShareResult({ aborted: true }));
+    const syncSpy = vi.fn();
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: syncSpy,
+      share: shareSpy,
+    });
+
+    const code = await runRunner(
+      ["--companies", "--direction", "both"],
+      deps,
+    );
+    expect(code).toBe(0);
+    expect(shareSpy).toHaveBeenCalledTimes(1);
+    expect(syncSpy).not.toHaveBeenCalled();
+
+    const complete = deps.stdout
+      .events()
+      .find((e) => e.type === "complete") as Extract<RunnerEvent, { type: "complete" }>;
+    expect(complete.aborted).toBe(true);
+  });
+
+  it("direction=push: passes skipUnchanged and company root path to share()", async () => {
+    const shareSpy = vi.fn().mockResolvedValue(defaultShareResult());
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: vi.fn(),
+      share: shareSpy,
+    });
+
+    await runRunner(
+      [
+        "--companies",
+        "--direction",
+        "push",
+        "--hq-root",
+        "/tmp/fake-hq",
+      ],
+      deps,
+    );
+    const opts = (shareSpy.mock.calls[0] as [ShareOptions])[0];
+    expect(opts.skipUnchanged).toBe(true);
+    expect(opts.paths).toEqual(["/tmp/fake-hq/companies/acme"]);
+    expect(opts.company).toBe("cmp_a");
+    expect(opts.hqRoot).toBe("/tmp/fake-hq");
+  });
+
+  it("direction=both: all-complete sums uploaded and downloaded across companies", async () => {
+    const slugs: Record<string, string> = { cmp_a: "acme", cmp_b: "beta" };
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }, { companyUid: "cmp_b" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: slugs[uid] ?? uid } as unknown as EntityInfo),
+        }),
+      sync: vi
+        .fn<(opts: SyncOptions) => Promise<SyncResult>>()
+        .mockResolvedValueOnce(
+          defaultSyncResult({ filesDownloaded: 3, bytesDownloaded: 100 }),
+        )
+        .mockResolvedValueOnce(
+          defaultSyncResult({ filesDownloaded: 4, bytesDownloaded: 250 }),
+        ),
+      share: vi
+        .fn<(opts: ShareOptions) => Promise<ShareResult>>()
+        .mockResolvedValueOnce(
+          defaultShareResult({ filesUploaded: 1, bytesUploaded: 50 }),
+        )
+        .mockResolvedValueOnce(
+          defaultShareResult({ filesUploaded: 2, bytesUploaded: 75 }),
+        ),
+    });
+
+    const code = await runRunner(
+      ["--companies", "--direction", "both"],
+      deps,
+    );
+    expect(code).toBe(0);
+    const all = deps.stdout
+      .events()
+      .find((e) => e.type === "all-complete") as Extract<RunnerEvent, { type: "all-complete" }>;
+    expect(all).toEqual({
+      type: "all-complete",
+      companiesAttempted: 2,
+      filesDownloaded: 7,
+      bytesDownloaded: 350,
+      filesUploaded: 3,
+      bytesUploaded: 125,
+      errors: [],
+    });
+  });
+
+  it("direction=push: share progress events are tagged with the company slug", async () => {
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: vi.fn(),
+      share: vi.fn().mockImplementation(async (opts: ShareOptions) => {
+        opts.onEvent?.({
+          type: "progress",
+          path: "docs/a.md",
+          bytes: 100,
+        });
+        return defaultShareResult({ filesUploaded: 1, bytesUploaded: 100 });
+      }),
+    });
+
+    await runRunner(["--companies", "--direction", "push"], deps);
+    const progress = deps.stdout
+      .events()
+      .filter((e): e is Extract<RunnerEvent, { type: "progress" }> =>
+        e.type === "progress",
+      );
+    expect(progress).toEqual([
+      { type: "progress", company: "acme", path: "docs/a.md", bytes: 100 },
     ]);
   });
 });
