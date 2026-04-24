@@ -54,6 +54,13 @@ jobs:
       - run: npm run build --workspace packages/godclaw --if-present
       - run: npm run build --workspace packages/create-hq --if-present
 
+      # Inject Sentry debug IDs into hq-cli's compiled JS + map files.
+      # Must run after tsc and BEFORE npm publish so the installed binary
+      # carries the same debugId as the artifacts uploaded to Sentry, enabling
+      # debugId-based source-map resolution for globally-installed CLI users.
+      - name: Inject hq-cli source map debug IDs
+        run: npx -y @sentry/cli@^2 sourcemaps inject packages/hq-cli/dist/
+
       # All three publish steps use npm trusted publishing (OIDC). No
       # NODE_AUTH_TOKEN — auth is short-lived, minted from the GitHub OIDC
       # identity token at runtime, and scoped to this workflow file by each
@@ -95,7 +102,7 @@ jobs:
         if: steps.publish_hq_cli.outputs.published == 'true'
         run: |
           VER=$(jq -r .version packages/hq-cli/package.json)
-          npx @sentry/cli sourcemaps upload --release "hq-cli@$VER" packages/hq-cli/dist/
+          npx -y @sentry/cli@^2 sourcemaps upload --release "hq-cli@$VER" packages/hq-cli/dist/
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: indigo-d0

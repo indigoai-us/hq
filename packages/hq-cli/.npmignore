@@ -3,3 +3,8 @@
 # explicitly exclude the source file here — but NOT dist/sentry-dsn.generated.js,
 # which must be included in the tarball (built at CI time with the bundled DSN).
 src/sentry-dsn.generated.ts
+
+# Source maps are uploaded to Sentry separately (publish.yml inject + upload steps).
+# Do not bundle them into the npm tarball — they inflate tarball size and expose
+# the full TypeScript source to every installer.
+dist/**/*.map
