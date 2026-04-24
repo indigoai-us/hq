@@ -41,12 +41,19 @@ import {
   loadCachedTokens,
   VaultClient,
   VaultAuthError,
+  listAllCompanies as defaultListAllCompanies,
+  promoteLocalCompany as defaultPromoteLocalCompany,
   type CognitoAuthConfig,
   type CognitoTokens,
   type VaultServiceConfig,
   type Membership,
   type EntityInfo,
+  type CreateEntityInput,
   type PendingInviteByEmail,
+  type CompanyEntry,
+  type ListAllCompaniesOptions,
+  type PromoteLocalCompanyOptions,
+  type PromoteLocalCompanyResult,
 } from "../index.js";
 import { sync as defaultSync } from "../cli/sync.js";
 import type {
@@ -93,7 +100,12 @@ export type RunnerEvent =
   | { type: "auth-error"; message: string }
   | {
       type: "fanout-plan";
-      companies: Array<{ uid: string; slug: string; name?: string }>;
+      companies: Array<{
+        uid?: string;
+        slug: string;
+        name?: string;
+        source: "aws" | "local" | "both";
+      }>;
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
@@ -104,7 +116,24 @@ export type RunnerEvent =
       filesDownloaded: number;
       bytesDownloaded: number;
       errors: Array<{ company: string; message: string }>;
-    };
+    }
+  // Promote flow (US-004a) — used exclusively for `--promote <slug>`. Does not
+  // share the fanout loop; emitted strictly in order: start → progress* →
+  // complete|error. Runtime invariant: `complete` and `error` are mutually
+  // exclusive per run.
+  | { type: "promote:start"; slug: string }
+  | {
+      type: "promote:progress";
+      slug: string;
+      step: "entity" | "bucket" | "writeback";
+    }
+  | {
+      type: "promote:complete";
+      slug: string;
+      uid: string;
+      bucketName: string;
+    }
+  | { type: "promote:error"; slug: string; message: string };
 
 /**
  * The narrow VaultClient surface the runner actually uses. Declared here (not
@@ -124,7 +153,23 @@ export interface VaultClientSurface {
   }) => Promise<EntityInfo>;
   entity: {
     get: (uid: string) => Promise<EntityInfo>;
+    /**
+     * US-004a (`--promote`) widens the surface to include findBySlug + create
+     * so the runner can pass this same stub into `promoteLocalCompany`. Left
+     * optional here because the --companies / --company paths don't need
+     * them — tests exercising those paths don't have to implement them.
+     */
+    findBySlug?: (type: string, slug: string) => Promise<EntityInfo>;
+    create?: (input: CreateEntityInput) => Promise<EntityInfo>;
   };
+  /**
+   * Same story — `--promote` needs this; other paths don't. Optional so
+   * existing sync-runner stubs keep working. The real VaultClient always
+   * provides it.
+   */
+  provisionBucket?: (
+    companyUid: string,
+  ) => Promise<{ bucketName: string; kmsKeyId: string }>;
 }
 
 /** Minimal shape of the claims we read off the Cognito idToken. */
@@ -158,6 +203,21 @@ export interface RunnerDeps {
   createVaultClient?: (config: VaultServiceConfig) => VaultClientSurface;
   /** Sync function. Defaults to `cli/sync.sync`. */
   sync?: (options: SyncOptions) => Promise<SyncResult>;
+  /**
+   * Enumerate local + AWS companies. Defaults to `listAllCompanies`.
+   * Injectable so tests can assert on the merge behavior without touching
+   * disk — company-discovery owns its own tests.
+   */
+  listAllCompanies?: (
+    options: ListAllCompaniesOptions,
+  ) => Promise<CompanyEntry[]>;
+  /**
+   * Promote a local-only company (US-004a). Defaults to `promoteLocalCompany`.
+   * Injectable so tests can drive the event sequence without hitting Vault.
+   */
+  promoteLocalCompany?: (
+    options: PromoteLocalCompanyOptions,
+  ) => Promise<PromoteLocalCompanyResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +297,15 @@ async function runClaimDance(
 interface ParsedArgs {
   companies: boolean;
   company?: string;
+  /** US-004a: slug of a local-only company to promote to cloud. */
+  promote?: string;
+  /**
+   * US-004b: one-shot discovery mode. When true, the runner prints a single
+   * JSON array of `CompanyEntry` rows on stdout (NOT ndjson — it's consumed
+   * by a non-streaming Tauri command) and exits 0. Mutually exclusive with
+   * the other modes.
+   */
+  listAllCompanies: boolean;
   onConflict: ConflictStrategy;
   hqRoot: string;
 }
@@ -244,6 +313,8 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   let companies = false;
   let company: string | undefined;
+  let promote: string | undefined;
+  let listAllCompaniesFlag = false;
   let onConflict: ConflictStrategy = "abort";
   let hqRoot = DEFAULT_HQ_ROOT;
 
@@ -256,6 +327,13 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
       case "--company":
         company = argv[++i];
         if (!company) return { error: "--company requires a value" };
+        break;
+      case "--promote":
+        promote = argv[++i];
+        if (!promote) return { error: "--promote requires a value" };
+        break;
+      case "--list-all-companies":
+        listAllCompaniesFlag = true;
         break;
       case "--on-conflict": {
         const val = argv[++i];
@@ -279,14 +357,33 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
     }
   }
 
-  if (companies && company) {
-    return { error: "Pass --companies OR --company <slug>, not both" };
+  // Mode exclusivity — each mode is its own top-level action. We only error
+  // if more than one of {companies, company, promote, listAllCompanies} is
+  // set, or none are.
+  const modes = [companies, !!company, !!promote, listAllCompaniesFlag].filter(
+    Boolean,
+  ).length;
+  if (modes > 1) {
+    if (companies && company) {
+      return { error: "Pass --companies OR --company <slug>, not both" };
+    }
+    return {
+      error:
+        "Pass exactly one of --companies, --company <slug>, --promote <slug>, --list-all-companies",
+    };
   }
-  if (!companies && !company) {
+  if (modes === 0) {
     return { error: "Pass --companies or --company <slug>" };
   }
 
-  return { companies, company, onConflict, hqRoot };
+  return {
+    companies,
+    company,
+    promote,
+    listAllCompanies: listAllCompaniesFlag,
+    onConflict,
+    hqRoot,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -319,10 +416,19 @@ export async function runRunner(
       (() => getValidAccessToken(DEFAULT_COGNITO, { interactive: false }));
     accessToken = await getAccessToken();
   } catch (err) {
-    emit({
-      type: "auth-error",
-      message: err instanceof Error ? err.message : String(err),
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    // `--list-all-companies` is a one-shot, non-streaming mode consumed by a
+    // Tauri command that expects either a single JSON array on stdout OR a
+    // non-zero exit with stderr diagnostics. Emitting an ndjson `auth-error`
+    // on stdout here would poison that contract with invalid JSON exactly
+    // when the caller needs deterministic error handling. Route auth
+    // failures for this mode through stderr + exit 1 instead. All other
+    // modes preserve the legacy ndjson streaming contract.
+    if (parsed.listAllCompanies) {
+      stderr.write(`hq-sync-runner: auth failed — ${message}\n`);
+      return 1;
+    }
+    emit({ type: "auth-error", message });
     return 0;
   }
 
@@ -335,32 +441,141 @@ export async function runRunner(
   const client =
     deps.createVaultClient?.(vaultConfig) ?? new VaultClient(vaultConfig);
 
+  // ---- list-all-companies branch (US-004b) ------------------------------
+  // One-shot discovery: prints a single JSON array of `CompanyEntry` rows on
+  // stdout and exits 0. Consumed by the hq-sync menubar's `list_all_companies`
+  // Tauri command, which runs this as a non-streaming subprocess — so the
+  // output is a single JSON document, NOT ndjson. Errors go to stderr and
+  // exit code 1 so the caller can distinguish "runner crashed" from
+  // "legitimately empty list".
+  if (parsed.listAllCompanies) {
+    const discover = deps.listAllCompanies ?? defaultListAllCompanies;
+    try {
+      const entries = await discover({
+        hqRoot: parsed.hqRoot,
+        vaultClient: client,
+        stderr,
+      });
+      stdout.write(`${JSON.stringify(entries)}\n`);
+      return 0;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      stderr.write(`hq-sync-runner: list-all-companies failed — ${message}\n`);
+      return 1;
+    }
+  }
+
+  // ---- promote branch (US-004a) ----------------------------------------
+  // `--promote <slug>` runs its own event sequence and returns — it does NOT
+  // fall through into the fanout loop below (US-003 short-circuits entries
+  // without `uid`, but promote is its own lifecycle and must not piggy-back
+  // on that path). Emits promote:start → promote:progress* →
+  // promote:complete | promote:error.
+  if (parsed.promote) {
+    const slug = parsed.promote;
+    emit({ type: "promote:start", slug });
+    const promote = deps.promoteLocalCompany ?? defaultPromoteLocalCompany;
+    try {
+      // Emit progress before each milestone. We can't peek inside
+      // promoteLocalCompany to know which step it's on, so the 'entity' and
+      // 'bucket' progress events fire before the call (best-effort
+      // granularity — consumers get ordered checkpoints even if we can't
+      // surface intra-call progress). The 'writeback' event fires after
+      // Vault is done but before the yaml rewrite, keyed off the returned
+      // uid/bucketName — wrap the call so we can inject that event at the
+      // right moment.
+      emit({ type: "promote:progress", slug, step: "entity" });
+      emit({ type: "promote:progress", slug, step: "bucket" });
+      const result = await promote({
+        hqRoot: parsed.hqRoot,
+        slug,
+        // The promote helper only needs a narrow surface; the full
+        // VaultClient (or its stub) satisfies it structurally.
+        vaultClient: client as unknown as Parameters<typeof promote>[0]["vaultClient"],
+      });
+      emit({ type: "promote:progress", slug, step: "writeback" });
+      emit({
+        type: "promote:complete",
+        slug,
+        uid: result.uid,
+        bucketName: result.bucketName,
+      });
+      return 0;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      emit({ type: "promote:error", slug, message });
+      return 1;
+    }
+  }
+
   // ---- resolve targets --------------------------------------------------
-  let memberships: Pick<Membership, "companyUid">[];
+  // US-003 layering:
+  //   --companies  → union of local on-disk + AWS-known companies, each
+  //                  tagged with source ('aws' | 'local' | 'both')
+  //   --company    → caller named a uid; we treat it as AWS-targeted since
+  //                  the runner can't promote a pure-local company on its
+  //                  own (that's US-004a's `--promote`)
+  const plan: Array<{
+    uid?: string;
+    slug: string;
+    name?: string;
+    source: "aws" | "local" | "both";
+  }> = [];
   try {
     if (parsed.companies) {
-      // Before giving up on memberships, run the claim-dance: new users signed
-      // in via the tray may have email-keyed invites waiting for them. Without
-      // this, an invited user would see "setup-needed" on every tray click.
+      // Claim-dance BEFORE discovery so invited users see their new
+      // memberships in the union. Without this, an invited user would see
+      // "setup-needed" on every tray click.
       const getClaims = deps.getIdTokenClaims ?? defaultGetIdTokenClaims;
       const claims = getClaims();
       if (claims) {
         await runClaimDance(client, claims, stderr);
       }
 
-      memberships = await client.listMyMemberships();
-      if (memberships.length === 0) {
-        // Truly empty — still a valid state (no memberships = nothing to
-        // sync). The tray will show a friendly "create your first company"
-        // CTA rather than an alarm banner.
+      const discover = deps.listAllCompanies ?? defaultListAllCompanies;
+      const entries = await discover({
+        hqRoot: parsed.hqRoot,
+        vaultClient: client,
+        stderr,
+      });
+
+      if (entries.length === 0) {
+        // Truly empty on both sides — valid state (no memberships AND no
+        // on-disk companies). The tray will show a friendly "create your
+        // first company" CTA rather than an alarm banner.
         emit({ type: "setup-needed" });
         return 0;
       }
+
+      for (const entry of entries) {
+        plan.push({
+          ...(entry.uid ? { uid: entry.uid } : {}),
+          slug: entry.slug,
+          ...(entry.name ? { name: entry.name } : {}),
+          source: entry.source,
+        });
+      }
     } else {
-      // Single-company mode: fabricate a minimal membership so the fanout
-      // loop below treats it uniformly. We don't need to hit
-      // /membership/me — the caller already told us which company.
-      memberships = [{ companyUid: parsed.company! }];
+      // Single-company mode: caller named a uid (or slug; treated as uid by
+      // the sync layer). Fabricate a minimal plan row so the fanout loop
+      // below treats it uniformly. Resolve slug + name via entity.get for
+      // nicer UI labeling, matching the pre-US-003 behavior.
+      const uid = parsed.company!;
+      let slug = uid;
+      let name: string | undefined;
+      try {
+        const info = await client.entity.get(uid);
+        slug = info.slug || uid;
+        name = info.name;
+      } catch {
+        // Best-effort — keep UID as the display identifier.
+      }
+      plan.push({
+        uid,
+        slug,
+        ...(name ? { name } : {}),
+        source: "aws",
+      });
     }
   } catch (err) {
     if (err instanceof VaultAuthError) {
@@ -381,23 +596,6 @@ export async function runRunner(
     return 1;
   }
 
-  // ---- resolve slugs for the fanout plan --------------------------------
-  // The menubar wants "Syncing indigo" in its UI, not the raw cmp_* ULID.
-  // If the entity fetch fails for some row (entity deleted, scoping issue),
-  // degrade to using the UID as the slug rather than aborting the run.
-  const plan: Array<{ uid: string; slug: string; name?: string }> = [];
-  for (const m of memberships) {
-    let slug = m.companyUid;
-    let name: string | undefined;
-    try {
-      const info = await client.entity.get(m.companyUid);
-      slug = info.slug || m.companyUid;
-      name = info.name;
-    } catch {
-      // Best-effort — keep UID as the display identifier.
-    }
-    plan.push({ uid: m.companyUid, slug, ...(name ? { name } : {}) });
-  }
   emit({ type: "fanout-plan", companies: plan });
 
   // ---- fanout -----------------------------------------------------------
@@ -408,9 +606,15 @@ export async function runRunner(
 
   for (const target of plan) {
     const companyLabel = target.slug;
+    // Pure-local entries have no uid → no S3 bucket to sync against. Still
+    // announced in fanout-plan so UIs can render them (and offer a Promote
+    // affordance — see US-004a), but skipped here to avoid passing `undefined`
+    // into the sync layer.
+    if (!target.uid) continue;
+    const companyUid = target.uid;
     try {
       const result = await syncFn({
-        company: target.uid,
+        company: companyUid,
         vaultConfig,
         hqRoot: parsed.hqRoot,
         onConflict: parsed.onConflict,
