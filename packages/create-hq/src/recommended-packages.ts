@@ -186,13 +186,15 @@ export function installRecommendedPackage(
     }
   }
 
-  // Prefer `npx --yes @indigoai-us/hq-cli install <source>` so we don't require
-  // a global install. When an older hq-cli is on PATH we still defer to npx —
-  // the published hq-cli will self-bootstrap via `--yes`.
+  // Invoke via `npx --yes --package=@indigoai-us/hq-cli hq install <source>`.
+  // The published hq-cli declares two bins (`hq`, `hq-auth-refresh`) and
+  // neither matches the scoped package name, so the bare form
+  // `npx @indigoai-us/hq-cli ...` fails with "could not determine executable
+  // to run". The explicit `--package` + bin form resolves the right binary.
   //
   // Arguments are passed as an argv array — never interpolated into a shell
   // string — so a crafted `entry.source` cannot escape into the parent shell.
-  const args = ["--yes", "@indigoai-us/hq-cli", "install", entry.source];
+  const args = ["--yes", "--package=@indigoai-us/hq-cli", "hq", "install", entry.source];
   if (opts.allowHooks) args.push("--allow-hooks");
 
   try {

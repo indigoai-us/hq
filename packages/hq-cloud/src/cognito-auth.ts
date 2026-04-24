@@ -38,6 +38,17 @@ export interface CognitoAuthConfig {
   port?: number;
   /** OAuth scopes. Defaults to ["openid", "email", "profile"]. */
   scopes?: string[];
+  /**
+   * Force a federated IdP (e.g. "Google"). When set, the Hosted UI IdP picker
+   * is bypassed and Cognito redirects straight to the provider. When omitted,
+   * Cognito shows its default picker.
+   */
+  identityProvider?: string;
+  /**
+   * OAuth `prompt` param (e.g. "select_account"). Only meaningful when the IdP
+   * honors it — Google uses it to force account re-selection.
+   */
+  prompt?: string;
 }
 
 export interface CognitoTokens {
@@ -159,7 +170,9 @@ export async function browserLogin(
   const { verifier, challenge } = generatePkce();
   const state = base64UrlEncode(crypto.randomBytes(16));
 
-  const authUrl = new URL(`${authBaseUrl(config)}/login`);
+  // Use `/oauth2/authorize` (not `/login`) so `identity_provider` + `prompt`
+  // are honored. `/login` ignores those params and always shows the IdP picker.
+  const authUrl = new URL(`${authBaseUrl(config)}/oauth2/authorize`);
   authUrl.searchParams.set("client_id", config.clientId);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", scopes);
@@ -167,6 +180,12 @@ export async function browserLogin(
   authUrl.searchParams.set("code_challenge", challenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
   authUrl.searchParams.set("state", state);
+  if (config.identityProvider) {
+    authUrl.searchParams.set("identity_provider", config.identityProvider);
+  }
+  if (config.prompt) {
+    authUrl.searchParams.set("prompt", config.prompt);
+  }
 
   const code = await waitForAuthCode(port, state);
   const tokens = await exchangeCodeForTokens(config, code, verifier, port);
