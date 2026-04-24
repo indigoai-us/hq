@@ -81,7 +81,13 @@ jobs:
           if npm view "$NAME@$VER" version >/dev/null 2>&1; then
             echo "$NAME@$VER already on npm — skipping"
           else
-            npm publish --workspace packages/hq-cli --access public --provenance
+            # Pre-release versions (containing '-') require an explicit --tag
+            # to prevent npm from bumping the 'latest' dist-tag.
+            if echo "$VER" | grep -q '-'; then
+              npm publish --workspace packages/hq-cli --access public --provenance --tag rc
+            else
+              npm publish --workspace packages/hq-cli --access public --provenance
+            fi
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
