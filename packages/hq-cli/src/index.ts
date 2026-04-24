@@ -5,6 +5,7 @@
  */
 
 import { Command } from "commander";
+import { initSentry, Sentry } from "./sentry.js";
 import { registerAddCommand } from "./commands/add.js";
 import { registerSyncCommand } from "./commands/sync.js";
 import { registerListCommand } from "./commands/list.js";
@@ -22,6 +23,8 @@ import { registerTeamSyncCommand } from "./commands/team-sync.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerSecretsCommand } from "./commands/secrets.js";
 import { registerGroupsCommand } from "./commands/groups.js";
+
+initSentry();
 
 const program = new Command();
 
@@ -81,4 +84,13 @@ registerGroupsCommand(program);
 // Onboarding (top-level — Cognito + vault-service provisioning)
 registerOnboardCommand(program);
 
-program.parse();
+(async () => {
+  try {
+    await program.parseAsync();
+  } catch (err) {
+    Sentry.captureException(err);
+    process.exitCode = 1;
+  } finally {
+    await Sentry.flush(2000);
+  }
+})();

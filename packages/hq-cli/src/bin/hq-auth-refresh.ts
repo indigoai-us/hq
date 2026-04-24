@@ -11,22 +11,29 @@
  * Writes the refreshed tokens to ~/.hq/cognito-tokens.json.
  */
 
+import { initSentry, Sentry } from "../sentry.js";
 import { refreshCachedSession } from "../utils/cognito-session.js";
 
-async function main(): Promise<void> {
-  const result = await refreshCachedSession();
-  if (result.refreshed) {
-    process.exit(0);
-  }
-  if (result.reason) {
-    process.stderr.write(`hq-auth-refresh: ${result.reason}\n`);
-  }
-  process.exit(1);
-}
+initSentry();
 
-main().catch((err) => {
-  process.stderr.write(
-    `hq-auth-refresh: ${err instanceof Error ? err.message : String(err)}\n`,
-  );
-  process.exit(1);
-});
+(async () => {
+  let exitCode = 1;
+  try {
+    const result = await refreshCachedSession();
+    if (result.refreshed) {
+      exitCode = 0;
+    } else {
+      if (result.reason) {
+        process.stderr.write(`hq-auth-refresh: ${result.reason}\n`);
+      }
+    }
+  } catch (err) {
+    Sentry.captureException(err);
+    process.stderr.write(
+      `hq-auth-refresh: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+  } finally {
+    await Sentry.flush(2000);
+    process.exit(exitCode);
+  }
+})();
