@@ -91,6 +91,16 @@ jobs:
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Upload hq-cli source maps to Sentry
+        if: steps.publish_hq_cli.outputs.published == 'true'
+        run: |
+          VER=$(jq -r .version packages/hq-cli/package.json)
+          npx @sentry/cli sourcemaps upload --release "hq-cli@$VER" packages/hq-cli/dist/
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: indigo-d0
+          SENTRY_PROJECT: hq
+
       - name: Publish create-hq
         run: |
           NAME=$(jq -r .name packages/create-hq/package.json)
