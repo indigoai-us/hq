@@ -58,6 +58,14 @@ export type {
   CompanyDiscoveryVaultClient,
 } from "./lib/company-discovery.js";
 
+// Company promotion (US-004a) — turn a local-only company into a cloud one
+export { promoteLocalCompany } from "./lib/company-promote.js";
+export type {
+  CompanyPromoteVaultClient,
+  PromoteLocalCompanyOptions,
+  PromoteLocalCompanyResult,
+} from "./lib/company-promote.js";
+
 // VaultClient SDK (VLT-7)
 export { VaultClient } from "./vault-client.js";
 export {

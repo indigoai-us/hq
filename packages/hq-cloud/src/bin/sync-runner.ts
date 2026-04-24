@@ -42,14 +42,18 @@ import {
   VaultClient,
   VaultAuthError,
   listAllCompanies as defaultListAllCompanies,
+  promoteLocalCompany as defaultPromoteLocalCompany,
   type CognitoAuthConfig,
   type CognitoTokens,
   type VaultServiceConfig,
   type Membership,
   type EntityInfo,
+  type CreateEntityInput,
   type PendingInviteByEmail,
   type CompanyEntry,
   type ListAllCompaniesOptions,
+  type PromoteLocalCompanyOptions,
+  type PromoteLocalCompanyResult,
 } from "../index.js";
 import { sync as defaultSync } from "../cli/sync.js";
 import type {
@@ -112,7 +116,24 @@ export type RunnerEvent =
       filesDownloaded: number;
       bytesDownloaded: number;
       errors: Array<{ company: string; message: string }>;
-    };
+    }
+  // Promote flow (US-004a) — used exclusively for `--promote <slug>`. Does not
+  // share the fanout loop; emitted strictly in order: start → progress* →
+  // complete|error. Runtime invariant: `complete` and `error` are mutually
+  // exclusive per run.
+  | { type: "promote:start"; slug: string }
+  | {
+      type: "promote:progress";
+      slug: string;
+      step: "entity" | "bucket" | "writeback";
+    }
+  | {
+      type: "promote:complete";
+      slug: string;
+      uid: string;
+      bucketName: string;
+    }
+  | { type: "promote:error"; slug: string; message: string };
 
 /**
  * The narrow VaultClient surface the runner actually uses. Declared here (not
@@ -132,7 +153,23 @@ export interface VaultClientSurface {
   }) => Promise<EntityInfo>;
   entity: {
     get: (uid: string) => Promise<EntityInfo>;
+    /**
+     * US-004a (`--promote`) widens the surface to include findBySlug + create
+     * so the runner can pass this same stub into `promoteLocalCompany`. Left
+     * optional here because the --companies / --company paths don't need
+     * them — tests exercising those paths don't have to implement them.
+     */
+    findBySlug?: (type: string, slug: string) => Promise<EntityInfo>;
+    create?: (input: CreateEntityInput) => Promise<EntityInfo>;
   };
+  /**
+   * Same story — `--promote` needs this; other paths don't. Optional so
+   * existing sync-runner stubs keep working. The real VaultClient always
+   * provides it.
+   */
+  provisionBucket?: (
+    companyUid: string,
+  ) => Promise<{ bucketName: string; kmsKeyId: string }>;
 }
 
 /** Minimal shape of the claims we read off the Cognito idToken. */
@@ -174,6 +211,13 @@ export interface RunnerDeps {
   listAllCompanies?: (
     options: ListAllCompaniesOptions,
   ) => Promise<CompanyEntry[]>;
+  /**
+   * Promote a local-only company (US-004a). Defaults to `promoteLocalCompany`.
+   * Injectable so tests can drive the event sequence without hitting Vault.
+   */
+  promoteLocalCompany?: (
+    options: PromoteLocalCompanyOptions,
+  ) => Promise<PromoteLocalCompanyResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +297,8 @@ async function runClaimDance(
 interface ParsedArgs {
   companies: boolean;
   company?: string;
+  /** US-004a: slug of a local-only company to promote to cloud. */
+  promote?: string;
   onConflict: ConflictStrategy;
   hqRoot: string;
 }
@@ -260,6 +306,7 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   let companies = false;
   let company: string | undefined;
+  let promote: string | undefined;
   let onConflict: ConflictStrategy = "abort";
   let hqRoot = DEFAULT_HQ_ROOT;
 
@@ -272,6 +319,10 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
       case "--company":
         company = argv[++i];
         if (!company) return { error: "--company requires a value" };
+        break;
+      case "--promote":
+        promote = argv[++i];
+        if (!promote) return { error: "--promote requires a value" };
         break;
       case "--on-conflict": {
         const val = argv[++i];
@@ -295,14 +346,23 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
     }
   }
 
-  if (companies && company) {
-    return { error: "Pass --companies OR --company <slug>, not both" };
+  // Mode exclusivity — --promote is its own mode, can't be combined with the
+  // sync modes. We only error if more than one of {companies, company, promote}
+  // is set, or none are.
+  const modes = [companies, !!company, !!promote].filter(Boolean).length;
+  if (modes > 1) {
+    if (companies && company) {
+      return { error: "Pass --companies OR --company <slug>, not both" };
+    }
+    return {
+      error: "Pass exactly one of --companies, --company <slug>, --promote <slug>",
+    };
   }
-  if (!companies && !company) {
+  if (modes === 0) {
     return { error: "Pass --companies or --company <slug>" };
   }
 
-  return { companies, company, onConflict, hqRoot };
+  return { companies, company, promote, onConflict, hqRoot };
 }
 
 // ---------------------------------------------------------------------------
@@ -350,6 +410,49 @@ export async function runRunner(
   };
   const client =
     deps.createVaultClient?.(vaultConfig) ?? new VaultClient(vaultConfig);
+
+  // ---- promote branch (US-004a) ----------------------------------------
+  // `--promote <slug>` runs its own event sequence and returns — it does NOT
+  // fall through into the fanout loop below (US-003 short-circuits entries
+  // without `uid`, but promote is its own lifecycle and must not piggy-back
+  // on that path). Emits promote:start → promote:progress* →
+  // promote:complete | promote:error.
+  if (parsed.promote) {
+    const slug = parsed.promote;
+    emit({ type: "promote:start", slug });
+    const promote = deps.promoteLocalCompany ?? defaultPromoteLocalCompany;
+    try {
+      // Emit progress before each milestone. We can't peek inside
+      // promoteLocalCompany to know which step it's on, so the 'entity' and
+      // 'bucket' progress events fire before the call (best-effort
+      // granularity — consumers get ordered checkpoints even if we can't
+      // surface intra-call progress). The 'writeback' event fires after
+      // Vault is done but before the yaml rewrite, keyed off the returned
+      // uid/bucketName — wrap the call so we can inject that event at the
+      // right moment.
+      emit({ type: "promote:progress", slug, step: "entity" });
+      emit({ type: "promote:progress", slug, step: "bucket" });
+      const result = await promote({
+        hqRoot: parsed.hqRoot,
+        slug,
+        // The promote helper only needs a narrow surface; the full
+        // VaultClient (or its stub) satisfies it structurally.
+        vaultClient: client as unknown as Parameters<typeof promote>[0]["vaultClient"],
+      });
+      emit({ type: "promote:progress", slug, step: "writeback" });
+      emit({
+        type: "promote:complete",
+        slug,
+        uid: result.uid,
+        bucketName: result.bucketName,
+      });
+      return 0;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      emit({ type: "promote:error", slug, message });
+      return 1;
+    }
+  }
 
   // ---- resolve targets --------------------------------------------------
   // US-003 layering:
