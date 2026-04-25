@@ -1,6 +1,6 @@
 {
   "name": "@indigoai-us/hq-cli",
-  "version": "5.5.4",
+  "version": "5.5.5",
   "description": "HQ by Indigo management CLI — modules and cloud sync",
   "main": "dist/index.js",
   "bin": {
