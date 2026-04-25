@@ -81,8 +81,8 @@ export type Direction = "pull" | "push" | "both";
 
 const DEFAULT_COGNITO: CognitoAuthConfig = {
   region: process.env.AWS_REGION ?? "us-east-1",
-  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "vault-indigo-hq-dev",
-  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "7r7an9keh0u6hlsvepl74tvqb0",
+  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "vault-indigo-hq-prod",
+  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "7acei2c8v870enheptb1j5foln",
   port: process.env.HQ_COGNITO_CALLBACK_PORT
     ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
     : 8765,
@@ -90,7 +90,7 @@ const DEFAULT_COGNITO: CognitoAuthConfig = {
 
 const DEFAULT_VAULT_API_URL =
   process.env.HQ_VAULT_API_URL ??
-  "https://ky8cgbl4yh.execute-api.us-east-1.amazonaws.com";
+  "https://4nfy67z28h.execute-api.us-east-1.amazonaws.com";
 
 const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
 
