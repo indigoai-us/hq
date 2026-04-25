@@ -112,6 +112,23 @@ export interface EntityInfo {
   createdAt: string;
 }
 
+export function pickCanonicalPersonEntity(
+  list: EntityInfo[],
+): EntityInfo | null {
+  // Defensive filter — callers today pass `entity.listByType("person")` so this is
+  // a no-op, but a future caller passing a mixed list would otherwise silently get
+  // back a non-person entity.
+  const persons = list.filter((e) => e.type === "person");
+  if (persons.length === 0) return null;
+  const sorted = [...persons].sort((a, b) => {
+    const ac = (a.createdAt as string | undefined) ?? "";
+    const bc = (b.createdAt as string | undefined) ?? "";
+    if (ac !== bc) return ac < bc ? -1 : 1;
+    return a.uid < b.uid ? -1 : 1;
+  });
+  return sorted[0];
+}
+
 export interface PendingInviteByEmail {
   membershipKey: string;
   companyUid: string;
@@ -344,13 +361,8 @@ export class VaultClient {
     displayName: string;
   }): Promise<EntityInfo> {
     const existing = await this.entity.listByType("person");
-    const sorted = [...existing].sort((a, b) => {
-      const ac = (a.createdAt as string | undefined) ?? "";
-      const bc = (b.createdAt as string | undefined) ?? "";
-      if (ac !== bc) return ac < bc ? -1 : 1;
-      return a.uid < b.uid ? -1 : 1;
-    });
-    if (sorted.length > 0) return sorted[0];
+    const pick = pickCanonicalPersonEntity(existing);
+    if (pick !== null) return pick;
 
     const slug =
       hints.displayName

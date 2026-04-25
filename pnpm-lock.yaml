@@ -99,6 +99,9 @@ importers:
 
   packages/create-hq:
     dependencies:
+      '@indigoai-us/hq-cloud':
+        specifier: ^5.1.9
+        version: link:../hq-cloud
       chalk:
         specifier: ^5.3.0
         version: 5.6.2
@@ -131,7 +134,7 @@ importers:
   packages/godclaw:
     dependencies:
       '@indigoai-us/hq-cloud':
-        specifier: workspace:*
+        specifier: ^5.1.0
         version: link:../hq-cloud
     devDependencies:
       '@types/node':
@@ -190,10 +193,10 @@ importers:
   packages/hq-cli:
     dependencies:
       '@indigoai-us/hq-cloud':
-        specifier: workspace:*
+        specifier: ^5.1.0
         version: link:../hq-cloud
       '@indigoai-us/hq-onboarding':
-        specifier: workspace:*
+        specifier: ^0.1.0
         version: link:../hq-onboarding
       '@sentry/node':
         specifier: ^10.49.0
@@ -261,7 +264,7 @@ importers:
   packages/hq-onboarding:
     dependencies:
       '@indigoai-us/hq-cloud':
-        specifier: workspace:*
+        specifier: ^5.1.0
         version: link:../hq-cloud
     devDependencies:
       '@types/node':

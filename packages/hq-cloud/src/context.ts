@@ -18,6 +18,13 @@ const DEFAULT_SESSION_DURATION_SECONDS = 900;
 const contextCache = new Map<string, EntityContext>();
 
 /**
+ * Closed-set of recognised entity-UID prefixes. Adding a new entity type
+ * means appending one entry here AND extending the dispatch in
+ * `resolveEntityContext` (cmp_ → /sts/vend, prs_ → /sts/vend-self).
+ */
+export const KNOWN_UID_PREFIXES = ["cmp_", "prs_"] as const;
+
+/**
  * Look up an entity by slug or UID via vault-service, then vend STS-scoped
  * credentials for that entity. Returns an EntityContext ready for S3 ops.
  *
@@ -34,9 +41,15 @@ export async function resolveEntityContext(
     return cached;
   }
 
-  // Step 1: Resolve entity — if it looks like a UID (cmp_*), fetch directly;
-  // otherwise look up by slug
-  const entity = companyUidOrSlug.startsWith("cmp_")
+  // Step 1: Resolve entity — if it looks like a known UID prefix, fetch directly;
+  // otherwise look up by slug. Explicit enumeration avoids over-matching slugs
+  // like foo_bar or team_alpha that happen to look like UIDs.
+  const looksLikeUid = KNOWN_UID_PREFIXES.some((p) =>
+    companyUidOrSlug.startsWith(p),
+  );
+  const looksLikePerson = companyUidOrSlug.startsWith("prs_");
+
+  const entity = looksLikeUid
     ? await fetchEntity(companyUidOrSlug, config)
     : await fetchEntityBySlug("company", companyUidOrSlug, config);
 
@@ -47,8 +60,13 @@ export async function resolveEntityContext(
     );
   }
 
-  // Step 2: Vend STS-scoped credentials
-  const vendResult = await vendCredentials(entity.uid, config);
+  // Step 2: Dispatch credential vending by UID prefix.
+  //   cmp_* → POST /sts/vend      (company path; membership-gated)
+  //   prs_* → POST /sts/vend-self (person path; self-ownership-gated)
+  //   slug  → POST /sts/vend      (legacy slug path is company-only)
+  const vendResult = looksLikePerson
+    ? await vendSelfCredentials(entity.uid, config)
+    : await vendCredentials(entity.uid, config);
 
   const ctx: EntityContext = {
     uid: entity.uid,
@@ -153,26 +171,38 @@ async function fetchEntityBySlug(
   return data.entity;
 }
 
-async function vendCredentials(
-  companyUid: string,
+async function postVend(
+  route: string,
+  body: Record<string, unknown>,
   config: VaultServiceConfig,
 ): Promise<VendResponse> {
-  const res = await fetch(`${config.apiUrl}/sts/vend`, {
+  const res = await fetch(`${config.apiUrl}${route}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.authToken}`,
     },
-    body: JSON.stringify({
-      companyUid,
-      durationSeconds: DEFAULT_SESSION_DURATION_SECONDS,
-    }),
+    body: JSON.stringify({ ...body, durationSeconds: DEFAULT_SESSION_DURATION_SECONDS }),
   });
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(
-      `STS vend failed for ${companyUid}: ${res.status} ${body}`,
-    );
+    const text = await res.text();
+    throw new Error(`STS ${route} failed: ${res.status} ${text}`);
   }
   return (await res.json()) as VendResponse;
+}
+
+async function vendCredentials(
+  companyUid: string,
+  config: VaultServiceConfig,
+): Promise<VendResponse> {
+  return postVend("/sts/vend", { companyUid }, config);
+}
+
+async function vendSelfCredentials(
+  personUid: string,
+  config: VaultServiceConfig,
+): Promise<VendResponse> {
+  // Use `+` concat at the literal so guard 5 (grep "/sts/vend-self") still finds it
+  const route = "/sts/vend-self";
+  return postVend(route, { personUid }, config);
 }

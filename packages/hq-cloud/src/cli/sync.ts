@@ -46,6 +46,19 @@ export interface SyncOptions {
    * default human logger is used. See `SyncProgressEvent`.
    */
   onEvent?: (event: SyncProgressEvent) => void;
+  /**
+   * When true, the caller is syncing against the caller's person-entity
+   * bucket. Pulled keys whose path starts with `companies/` are dropped
+   * (belt-and-braces — the person bucket should never contain those,
+   * but the runner must not write them into the user's company folders).
+   */
+  personalMode?: boolean;
+  /**
+   * Override for the per-slug journal file name. Defaults to `ctx.slug`.
+   * sync-runner passes `journalSlug: "personal"` for the personal slot so
+   * TS runner and Rust first-push share idempotency state.
+   */
+  journalSlug?: string;
 }
 
 export interface SyncResult {
@@ -78,9 +91,16 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   // companies into the same hqRoot doesn't cross-clobber files with overlapping
   // S3 keys (e.g. every company has a .hq/manifest.json). Remote keys stay
   // company-relative; the prefix lives only on disk.
-  const companyRoot = path.join(hqRoot, "companies", ctx.slug);
+  // In personalMode the journal slug + S3 keys are person-relative (e.g. "docs/foo.md");
+  // the local target is `hqRoot` directly, NOT `<hqRoot>/companies/<personSlug>/`. This
+  // keeps round-trip parity with the Rust personal first-push (Step 7) which sources
+  // `<hqRoot>/docs/foo.md`.
+  const companyRoot = options.personalMode === true
+    ? hqRoot
+    : path.join(hqRoot, "companies", ctx.slug);
   const shouldSync = createIgnoreFilter(hqRoot);
-  const journal = readJournal(ctx.slug);
+  const journalSlug = options.journalSlug ?? ctx.slug;
+  const journal = readJournal(journalSlug);
 
   let filesDownloaded = 0;
   let bytesDownloaded = 0;
@@ -92,6 +112,11 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
   for (const remoteFile of remoteFiles) {
     const localPath = path.join(companyRoot, remoteFile.key);
+
+    if (options.personalMode === true && remoteFile.key.startsWith("companies/")) {
+      filesSkipped++;
+      continue;
+    }
 
     // Apply ignore rules
     if (!shouldSync(localPath)) {
@@ -126,7 +151,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
         );
 
         if (resolution === "abort") {
-          writeJournal(ctx.slug, journal);
+          writeJournal(journalSlug, journal);
           return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: true };
         }
         if (resolution === "keep" || resolution === "skip") {
@@ -181,7 +206,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
     }
   }
 
-  writeJournal(ctx.slug, journal);
+  writeJournal(journalSlug, journal);
 
   return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: false };
 }

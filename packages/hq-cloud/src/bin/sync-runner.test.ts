@@ -85,6 +85,7 @@ function makeVaultStub(
   opts: {
     memberships?: Array<Pick<Membership, "companyUid">>;
     entityGet?: (uid: string) => Promise<EntityInfo>;
+    listPersons?: () => Promise<EntityInfo[]>;
     pendingInvites?: Array<Record<string, unknown>>;
     ensurePerson?: (hints: {
       ownerSub: string;
@@ -121,6 +122,9 @@ function makeVaultStub(
             bucketName: `bucket-${uid}`,
             status: "active",
           } as unknown as EntityInfo)),
+      listByType:
+        opts.listPersons ??
+        (() => Promise.resolve([])),
     },
   };
 }
@@ -1047,6 +1051,110 @@ describe("--direction", () => {
     expect(progress).toEqual([
       { type: "progress", company: "acme", path: "docs/a.md", bytes: 100 },
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Personal slot fanout (A/B/C)
+// ---------------------------------------------------------------------------
+
+describe("personal slot fanout", () => {
+  const olderPerson: EntityInfo = {
+    uid: "prs_older",
+    slug: "older-person",
+    type: "person",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00Z",
+    bucketName: "hq-vault-prs-older",
+  } as unknown as EntityInfo;
+
+  const newerPerson: EntityInfo = {
+    uid: "prs_newer",
+    slug: "newer-person",
+    type: "person",
+    status: "active",
+    createdAt: "2026-06-01T00:00:00Z",
+    bucketName: "hq-vault-prs-newer",
+  } as unknown as EntityInfo;
+
+  it("A: fanout-plan ends with personal slot using canonical-sort-selected person (older createdAt wins)", async () => {
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+          // Return persons in reversed order (newer first) to test canonical sort
+          listPersons: () => Promise.resolve([newerPerson, olderPerson]),
+        }),
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+
+    const planEvent = deps.stdout
+      .events()
+      .find((e) => e.type === "fanout-plan") as Extract<RunnerEvent, { type: "fanout-plan" }>;
+    expect(planEvent).toBeDefined();
+
+    const lastEntry = planEvent.companies[planEvent.companies.length - 1];
+    expect(lastEntry.slug).toBe("personal");
+    expect(lastEntry.uid).toBe("prs_older");
+    expect((lastEntry as Record<string, unknown>).bucketName).toBe("hq-vault-prs-older");
+    expect((lastEntry as Record<string, unknown>).personalMode).toBe(true);
+    expect((lastEntry as Record<string, unknown>).journalSlug).toBe("personal");
+  });
+
+  it("B: syncFn invoked with personalMode: true + journalSlug: 'personal' for personal slot", async () => {
+    const syncSpy = vi.fn().mockResolvedValue(defaultSyncResult());
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+          listPersons: () => Promise.resolve([newerPerson, olderPerson]),
+        }),
+      sync: syncSpy,
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+
+    const personalCall = (syncSpy.mock.calls as Array<[SyncOptions]>).find(
+      (c) => c[0].company?.startsWith("prs_"),
+    );
+    expect(personalCall).toBeDefined();
+    const personalArgs = personalCall![0];
+    expect(personalArgs.personalMode).toBe(true);
+    expect(personalArgs.journalSlug).toBe("personal");
+  });
+
+  it("C: company slots' syncFn args do NOT contain personalMode or journalSlug", async () => {
+    const syncSpy = vi.fn().mockResolvedValue(defaultSyncResult());
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+          listPersons: () => Promise.resolve([olderPerson]),
+        }),
+      sync: syncSpy,
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+
+    const companyCalls = (syncSpy.mock.calls as Array<[SyncOptions]>).filter(
+      (c) => c[0].company?.startsWith("cmp_"),
+    );
+    expect(companyCalls.length).toBeGreaterThan(0);
+    for (const [args] of companyCalls) {
+      const keys = Object.keys(args);
+      expect(keys).not.toContain("personalMode");
+      expect(keys).not.toContain("journalSlug");
+    }
   });
 });
 

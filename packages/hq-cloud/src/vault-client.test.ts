@@ -12,6 +12,8 @@ import {
   VaultNotFoundError,
   VaultConflictError,
   VaultClientError,
+  pickCanonicalPersonEntity,
+  type EntityInfo,
 } from "./vault-client.js";
 
 // ---------------------------------------------------------------------------
@@ -619,6 +621,51 @@ describe("VaultClient identity bootstrap", () => {
     // Both missing createdAt → "" tie, uid tiebreak selects prs_a
     expect(person.uid).toBe("prs_a");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("pickCanonicalPersonEntity_picks_oldest_tiebreak_uid", () => {
+    const list: EntityInfo[] = [
+      { uid: "prs_b", slug: "b", type: "person", status: "active", createdAt: "2026-01-02T00:00:00Z" } as EntityInfo,
+      { uid: "prs_a", slug: "a", type: "person", status: "active", createdAt: "2026-01-01T00:00:00Z" } as EntityInfo,
+    ];
+    // Older createdAt wins
+    expect(pickCanonicalPersonEntity(list)?.uid).toBe("prs_a");
+
+    // Same createdAt: uid tiebreak (lexicographic ascending)
+    const tieList: EntityInfo[] = [
+      { uid: "prs_z", slug: "z", type: "person", status: "active", createdAt: "2026-01-01T00:00:00Z" } as EntityInfo,
+      { uid: "prs_a", slug: "a", type: "person", status: "active", createdAt: "2026-01-01T00:00:00Z" } as EntityInfo,
+    ];
+    expect(pickCanonicalPersonEntity(tieList)?.uid).toBe("prs_a");
+  });
+
+  it("pickCanonicalPersonEntity_handles_missing_createdAt_deterministically", () => {
+    // undefined createdAt coalesces to "" which sorts before any ISO date string.
+    // So the entity with undefined createdAt wins on the createdAt comparison.
+    // When two entities both lack createdAt, uid tiebreak applies.
+    const list: EntityInfo[] = [
+      { uid: "prs_b", slug: "b", type: "person", status: "active", createdAt: "2026-01-01T00:00:00Z" } as EntityInfo,
+      { uid: "prs_a", slug: "a", type: "person", status: "active" } as EntityInfo, // no createdAt
+    ];
+    // "" < "2026-..." so prs_a (undefined→"") wins
+    expect(pickCanonicalPersonEntity(list)?.uid).toBe("prs_a");
+
+    // Both undefined: uid tiebreak
+    const bothUndefined: EntityInfo[] = [
+      { uid: "prs_z", slug: "z", type: "person", status: "active" } as EntityInfo,
+      { uid: "prs_a", slug: "a", type: "person", status: "active" } as EntityInfo,
+    ];
+    expect(pickCanonicalPersonEntity(bothUndefined)?.uid).toBe("prs_a");
+  });
+
+  it("pickCanonicalPersonEntity_filters_out_non_person_types", () => {
+    const mixed: EntityInfo[] = [
+      { uid: "cmp_x", slug: "x", type: "company", status: "active", createdAt: "2025-01-01T00:00:00Z" } as EntityInfo,
+      { uid: "prs_b", slug: "b", type: "person", status: "active", createdAt: "2026-01-02T00:00:00Z" } as EntityInfo,
+    ];
+    const result = pickCanonicalPersonEntity(mixed);
+    expect(result?.uid).toBe("prs_b");
+    expect(result?.type).toBe("person");
   });
 
   it("vendSelf_roundtrip", async () => {

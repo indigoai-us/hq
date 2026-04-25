@@ -34,6 +34,7 @@ vi.mock("../s3.js", async () => {
 });
 
 import { sync } from "./sync.js";
+import * as s3Module from "../s3.js";
 
 const mockConfig: VaultServiceConfig = {
   apiUrl: "https://vault-api.test",
@@ -208,6 +209,48 @@ describe("sync", () => {
     });
 
     expect(result.aborted).toBe(true);
+  });
+
+  it("journalSlug: 'personal' routes journal I/O to sync-journal.personal.json", async () => {
+    const result = await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      journalSlug: "personal",
+    });
+
+    expect(result.filesDownloaded).toBe(2);
+    // Journal written to personal slug, not ctx.slug ("acme")
+    const personalJournalPath = path.join(stateDir, "sync-journal.personal.json");
+    expect(fs.existsSync(personalJournalPath)).toBe(true);
+    // The acme journal must NOT have been written
+    expect(fs.existsSync(journalPath)).toBe(false);
+  });
+
+  it("personalMode: true skips companies/* keys and downloads root keys to hqRoot", async () => {
+    vi.mocked(s3Module.listRemoteFiles).mockResolvedValueOnce([
+      { key: "companies/foo/bar.md", size: 50, lastModified: new Date(), etag: '"xyz789"' },
+      { key: "docs/readme.md",       size: 30, lastModified: new Date(), etag: '"abc000"' },
+    ]);
+
+    const result = await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      personalMode: true,
+    });
+
+    // Exact counts (regression-tight)
+    expect(result.filesSkipped).toBe(1);
+    expect(result.filesDownloaded).toBe(1);
+
+    // companies/* must NOT land anywhere
+    expect(fs.existsSync(path.join(tmpDir, "companies", "acme", "companies", "foo", "bar.md"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, "companies", "foo", "bar.md"))).toBe(false);
+
+    // docs/readme.md MUST land at <hqRoot>/docs/readme.md (NOT <hqRoot>/companies/<slug>/docs/readme.md)
+    expect(fs.existsSync(path.join(tmpDir, "docs", "readme.md"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "companies", "acme", "docs", "readme.md"))).toBe(false);
   });
 
   it("overwrites local on --on-conflict overwrite", async () => {

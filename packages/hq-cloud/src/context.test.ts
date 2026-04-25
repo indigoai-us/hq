@@ -162,8 +162,111 @@ describe("resolveEntityContext", () => {
     setupFetchMock({ vendStatus: 403 });
 
     await expect(resolveEntityContext("acme", mockConfig)).rejects.toThrow(
-      /STS vend failed/,
+      /STS.*vend.*failed/,
     );
+  });
+});
+
+describe("routing by UID prefix and vend-self dispatch", () => {
+  beforeEach(() => {
+    clearContextCache();
+    vi.restoreAllMocks();
+  });
+
+  it("prs_* UID: entity resolved via /entity/{uid} and credentials via /sts/vend-self", async () => {
+    const prsEntity = {
+      uid: "prs_01PERSON",
+      slug: "test-person",
+      bucketName: "hq-vault-prs-01person",
+      status: "active",
+    };
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("/entity/prs_")) {
+        return { ok: true, status: 200, json: async () => ({ entity: prsEntity }), text: async () => "" };
+      }
+      if (u.includes("/sts/vend-self")) {
+        return { ok: true, status: 200, json: async () => mockVendResponse, text: async () => "" };
+      }
+      return { ok: false, status: 404, text: async () => "Not found" };
+    }));
+
+    await resolveEntityContext("prs_01PERSON", mockConfig);
+
+    expect(calls.some((u) => u.includes("/entity/prs_01PERSON"))).toBe(true);
+    const vendCalls = calls.filter((u) => u.includes("/sts/vend"));
+    expect(vendCalls).toHaveLength(1);
+    expect(vendCalls[0]).toContain("/sts/vend-self");
+  });
+
+  it("foo_bar slug: entity resolved via /entity/by-slug/company/foo_bar and credentials via /sts/vend", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("/entity/by-slug/")) {
+        return { ok: true, status: 200, json: async () => ({ entity: mockEntity }), text: async () => "" };
+      }
+      if (u.includes("/sts/vend")) {
+        return { ok: true, status: 200, json: async () => mockVendResponse, text: async () => "" };
+      }
+      return { ok: false, status: 404, text: async () => "Not found" };
+    }));
+
+    await resolveEntityContext("foo_bar", mockConfig);
+
+    expect(calls.some((u) => u.includes("/entity/by-slug/company/foo_bar"))).toBe(true);
+    const vendCalls = calls.filter((u) => u.includes("/sts/vend"));
+    expect(vendCalls).toHaveLength(1);
+    expect(vendCalls[0]).not.toContain("/sts/vend-self");
+    expect(vendCalls[0]).toContain("/sts/vend");
+  });
+
+  it("team_alpha slug: entity resolved via /entity/by-slug/company/team_alpha and credentials via /sts/vend", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("/entity/by-slug/")) {
+        return { ok: true, status: 200, json: async () => ({ entity: mockEntity }), text: async () => "" };
+      }
+      if (u.includes("/sts/vend")) {
+        return { ok: true, status: 200, json: async () => mockVendResponse, text: async () => "" };
+      }
+      return { ok: false, status: 404, text: async () => "Not found" };
+    }));
+
+    await resolveEntityContext("team_alpha", mockConfig);
+
+    expect(calls.some((u) => u.includes("/entity/by-slug/company/team_alpha"))).toBe(true);
+    const vendCalls = calls.filter((u) => u.includes("/sts/vend"));
+    expect(vendCalls).toHaveLength(1);
+    expect(vendCalls[0]).not.toContain("/sts/vend-self");
+  });
+
+  it("cmp_* UID: entity resolved via /entity/{uid} and credentials via /sts/vend", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("/entity/cmp_")) {
+        return { ok: true, status: 200, json: async () => ({ entity: mockEntity }), text: async () => "" };
+      }
+      if (u.includes("/sts/vend")) {
+        return { ok: true, status: 200, json: async () => mockVendResponse, text: async () => "" };
+      }
+      return { ok: false, status: 404, text: async () => "Not found" };
+    }));
+
+    await resolveEntityContext("cmp_01ABCDEF", mockConfig);
+
+    expect(calls.some((u) => u.includes("/entity/cmp_01ABCDEF"))).toBe(true);
+    const vendCalls = calls.filter((u) => u.includes("/sts/vend"));
+    expect(vendCalls).toHaveLength(1);
+    expect(vendCalls[0]).not.toContain("/sts/vend-self");
+    expect(vendCalls[0]).toContain("/sts/vend");
   });
 });
 

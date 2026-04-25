@@ -48,6 +48,7 @@ import {
   type EntityInfo,
   type PendingInviteByEmail,
 } from "../index.js";
+import { pickCanonicalPersonEntity } from "../vault-client.js";
 import { sync as defaultSync } from "../cli/sync.js";
 import type {
   SyncOptions,
@@ -155,6 +156,7 @@ export interface VaultClientSurface {
   }) => Promise<EntityInfo>;
   entity: {
     get: (uid: string) => Promise<EntityInfo>;
+    listByType: (type: string) => Promise<EntityInfo[]>;
   };
 }
 
@@ -430,7 +432,14 @@ export async function runRunner(
   // The menubar wants "Syncing indigo" in its UI, not the raw cmp_* ULID.
   // If the entity fetch fails for some row (entity deleted, scoping issue),
   // degrade to using the UID as the slug rather than aborting the run.
-  const plan: Array<{ uid: string; slug: string; name?: string }> = [];
+  const plan: Array<{
+    uid: string;
+    slug: string;
+    name?: string;
+    bucketName?: string;
+    personalMode?: boolean;
+    journalSlug?: string;
+  }> = [];
   for (const m of memberships) {
     let slug = m.companyUid;
     let name: string | undefined;
@@ -443,6 +452,21 @@ export async function runRunner(
     }
     plan.push({ uid: m.companyUid, slug, ...(name ? { name } : {}) });
   }
+
+  if (parsed.companies) {
+    const persons = await client.entity.listByType("person");
+    const pick = pickCanonicalPersonEntity(persons);
+    if (pick?.bucketName) {
+      plan.push({
+        slug: "personal",
+        uid: pick.uid,
+        bucketName: pick.bucketName,
+        personalMode: true,
+        journalSlug: "personal",
+      });
+    }
+  }
+
   emit({ type: "fanout-plan", companies: plan });
 
   // ---- fanout -----------------------------------------------------------
@@ -519,6 +543,8 @@ export async function runRunner(
           vaultConfig,
           hqRoot: parsed.hqRoot,
           onConflict: parsed.onConflict,
+          ...(target.personalMode !== undefined ? { personalMode: target.personalMode } : {}),
+          ...(target.journalSlug !== undefined ? { journalSlug: target.journalSlug } : {}),
           onEvent: tagAndEmit,
         });
       }
