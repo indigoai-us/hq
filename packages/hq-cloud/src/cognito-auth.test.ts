@@ -146,7 +146,7 @@ describe("expiresAt shape round-trip", () => {
     const result = await refreshTokens(
       {
         region: "us-east-1",
-        userPoolDomain: "hq-vault-dev",
+        userPoolDomain: "vault-indigo-hq-dev",
         clientId: "test-client",
       },
       "prior-refresh-token",

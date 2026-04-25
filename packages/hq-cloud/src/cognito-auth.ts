@@ -30,9 +30,9 @@ import open from "open";
 export interface CognitoAuthConfig {
   /** AWS region the User Pool lives in (e.g. "us-east-1"). */
   region: string;
-  /** Cognito User Pool Domain prefix (e.g. "vault-indigo-stefanjohnson"). */
+  /** Cognito User Pool Domain prefix (e.g. "vault-indigo-hq-dev"). */
   userPoolDomain: string;
-  /** App Client ID (e.g. "4mmujmjq3srakdueg656b9m0mp"). */
+  /** App Client ID (e.g. "7r7an9keh0u6hlsvepl74tvqb0"). */
   clientId: string;
   /** Loopback callback port. Defaults to 3000. */
   port?: number;

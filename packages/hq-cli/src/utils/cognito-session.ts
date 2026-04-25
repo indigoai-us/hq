@@ -6,7 +6,7 @@
  *   - `hq auth refresh` and the standalone `hq-auth-refresh` bin invoked by
  *     the deploy skill (.claude/skills/deploy/SKILL.md step 4)
  *
- * Defaults point at the shared hq-vault-dev Cognito pool. They mirror
+ * Defaults point at the shared vault-indigo-hq-dev Cognito pool. They mirror
  * tools/vlt-e2e/e2e-create-company-smoke.ts so the CLI and the in-tree demo script
  * stay drift-free. Override any of them via env:
  *
@@ -31,8 +31,8 @@ import {
 
 export const DEFAULT_COGNITO: CognitoAuthConfig = {
   region: process.env.AWS_REGION ?? "us-east-1",
-  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "hq-vault-dev",
-  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "4mmujmjq3srakdueg656b9m0mp",
+  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "vault-indigo-hq-dev",
+  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "7r7an9keh0u6hlsvepl74tvqb0",
   port: process.env.HQ_COGNITO_CALLBACK_PORT
     ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
     : 8765,
@@ -40,7 +40,7 @@ export const DEFAULT_COGNITO: CognitoAuthConfig = {
 
 export const DEFAULT_VAULT_API_URL =
   process.env.HQ_VAULT_API_URL ??
-  "https://tqdwdqxv75.execute-api.us-east-1.amazonaws.com";
+  "https://ky8cgbl4yh.execute-api.us-east-1.amazonaws.com";
 
 export const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
 
