@@ -1,17 +1,23 @@
 /**
  * Ignore-file parser for cloud sync.
  *
- * Three layers, evaluated in order (later patterns override earlier ones):
- *   1. Built-in defaults — things that should *never* sync (VCS, node_modules,
- *      build artifacts, caches, env files). Cover the common stacks so that a
- *      first-time sync over a random project folder doesn't try to push
- *      `target/`, `node_modules/`, or `.next/` to S3.
- *   2. Repo `.gitignore` at hqRoot — reuses the user's existing exclusions so
- *      we don't re-list every build directory ourselves. Root-level only; we
- *      do not recurse like real git.
- *   3. `.hqignore` (preferred) or `.hqsyncignore` (legacy name) at hqRoot —
- *      sync-specific overrides. Use `!pattern` to re-include something an
- *      earlier layer excluded.
+ * Two modes:
+ *   - **Permissive (default)**: everything syncs except what ignore layers
+ *     subtract. Three layers stack (later overrides earlier):
+ *       1. Built-in defaults — VCS, node_modules, build artifacts, caches,
+ *          env files. Covers the common stacks so a first-time sync over a
+ *          random project folder doesn't push `target/` or `.next/` to S3.
+ *       2. Repo `.gitignore` at hqRoot — reuses existing exclusions so we
+ *          don't re-list every build directory. Root-level only.
+ *       3. `.hqignore` (preferred) or `.hqsyncignore` (legacy) — sync-specific
+ *          overrides. Use `!pattern` to re-include something earlier layers
+ *          excluded.
+ *
+ *   - **Allowlist**: triggered when `.hqinclude` exists at hqRoot. Nothing
+ *     syncs unless its path matches at least one pattern in `.hqinclude`. The
+ *     three exclusion layers still subtract on top — so even allowlisted
+ *     subtrees won't push `node_modules/` or `.env`. Privacy-by-default for
+ *     HQ trees that contain mixed personal + shareable data.
  */
 
 import * as fs from "fs";
@@ -102,10 +108,21 @@ export function createIgnoreFilter(hqRoot: string): (filePath: string) => boolea
     readIgnoreFile(path.join(hqRoot, ".hqsyncignore"));
   if (hqignore) ig.add(hqignore);
 
+  // Allowlist mode: when `.hqinclude` exists, sync is opt-in. The matcher
+  // here treats include patterns as ignore patterns and inverts the verdict —
+  // a path is "allowed" iff its relative path matches at least one entry.
+  // Exclusion layers above still subtract, so build artifacts inside an
+  // allowlisted subtree (e.g. node_modules/ inside companies/x/repos/y/) are
+  // still skipped.
+  const hqinclude = readIgnoreFile(path.join(hqRoot, ".hqinclude"));
+  const includeMatcher = hqinclude ? ignore().add(hqinclude) : null;
+
   return (filePath: string): boolean => {
     const relative = path.relative(hqRoot, filePath);
     if (!relative || relative.startsWith("..")) return true; // outside HQ root
-    return !ig.ignores(relative);
+    if (ig.ignores(relative)) return false;
+    if (includeMatcher && !includeMatcher.ignores(relative)) return false;
+    return true;
   };
 }
 
