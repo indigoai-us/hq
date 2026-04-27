@@ -38,6 +38,22 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "companies/indigo/notes.md"))).toBe(true);
   });
 
+  it("permissive mode: .hq-* internal state is ignored, .hqignore family + .hq/ still sync", () => {
+    const shouldSync = createIgnoreFilter(hqRoot);
+    // Internal state files that must never round-trip through the bucket.
+    expect(shouldSync(path.join(hqRoot, ".hq-sync.pid"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, ".hq-sync-journal.json"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, ".hq-sync-state.json"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, ".hq-embeddings-pending.json"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/.hq-foo.json"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, ".hq-cache/blob.bin"))).toBe(false);
+    // Sync-config files and the .hq/ directory still sync.
+    expect(shouldSync(path.join(hqRoot, ".hqignore"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, ".hqsyncignore"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, ".hqinclude"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/.hq/config.json"))).toBe(true);
+  });
+
   it("allowlist mode: presence of .hqinclude switches to opt-in", () => {
     fs.writeFileSync(
       path.join(hqRoot, ".hqinclude"),

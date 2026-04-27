@@ -67,11 +67,13 @@ export const DEFAULT_IGNORES = [
   "tmp/",
   ".tmp/",
 
-  // HQ sync internal state (never round-trip these)
+  // HQ sync internal state (never round-trip these). The `.hq-*` wildcard
+  // covers `.hq-sync.pid`, `.hq-sync-journal.json`, `.hq-sync-state.json`,
+  // `.hq-embeddings-pending.json`, and any future internal-state file. The
+  // `.hqignore` / `.hqsyncignore` / `.hqinclude` config files don't match
+  // (no hyphen) and the `.hq/` directory is unaffected.
   "*.pid",
-  ".hq-sync.pid",
-  ".hq-sync-journal.json",
-  ".hq-sync-state.json",
+  ".hq-*",
   "modules.lock",
 
   // HQ repos directory (managed separately, not synced)
