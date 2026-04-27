@@ -330,4 +330,58 @@ describe("sync", () => {
     // File should be overwritten with mock content
     expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("mock file content");
   });
+
+  it("does NOT flag a pull conflict when only local changed since last sync", async () => {
+    // Regression: previously, any local edit to a file that also existed on
+    // S3 produced a pull conflict because the predicate only checked
+    // `journalEntry.hash !== localHash`. With `--on-conflict keep` this
+    // silently dropped local edits during the round-trip. With remoteEtag
+    // matching the journal, the remote is known unchanged and the pull
+    // phase should leave the local edit alone for the push phase to upload.
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local edit");
+
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "docs/handoff.md": {
+            hash: "stale-hash-from-pre-edit",
+            size: 20,
+            syncedAt: new Date(Date.now() - 3600000).toISOString(),
+            direction: "down",
+            // Matches the listRemoteFiles mock's etag for handoff.md.
+            remoteEtag: "abc123",
+          },
+        },
+      }),
+    );
+
+    const result = await sync({
+      company: "acme",
+      onConflict: "keep",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    expect(result.conflicts).toBe(0);
+    expect(result.conflictPaths).toEqual([]);
+    // Local edit must be preserved (not clobbered by download)
+    expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("local edit");
+  });
+
+  it("records remoteEtag from listRemoteFiles on the journal entry after download", async () => {
+    await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["docs/handoff.md"].remoteEtag).toBe("abc123");
+    expect(journal.files["knowledge/readme.md"].remoteEtag).toBe("def456");
+  });
 });

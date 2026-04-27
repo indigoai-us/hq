@@ -80,14 +80,29 @@ export function updateEntry(
   hash: string,
   size: number,
   direction: "up" | "down",
+  remoteEtag?: string,
 ): void {
-  journal.files[relativePath] = {
+  const entry: JournalEntry = {
     hash,
     size,
     syncedAt: new Date().toISOString(),
     direction,
   };
+  if (remoteEtag !== undefined && remoteEtag !== "") {
+    entry.remoteEtag = normalizeEtag(remoteEtag);
+  }
+  journal.files[relativePath] = entry;
   journal.lastSync = new Date().toISOString();
+}
+
+/**
+ * S3 returns ETags wrapped in literal double-quotes (e.g. `"d41d8cd9..."`).
+ * Strip them so equality comparisons across HEAD / GET / PUT responses are
+ * stable regardless of which AWS SDK call surfaced the value.
+ */
+export function normalizeEtag(etag: string): string {
+  if (!etag) return "";
+  return etag.replace(/^"|"$/g, "");
 }
 
 export function getEntry(

@@ -38,11 +38,11 @@ export async function uploadFile(
   ctx: EntityContext,
   localPath: string,
   key: string,
-): Promise<void> {
+): Promise<{ etag: string }> {
   const client = buildClient(ctx);
   const body = fs.readFileSync(localPath);
 
-  await client.send(
+  const response = await client.send(
     new PutObjectCommand({
       Bucket: ctx.bucketName,
       Key: key,
@@ -50,6 +50,8 @@ export async function uploadFile(
       ContentType: getMimeType(key),
     }),
   );
+
+  return { etag: response.ETag || "" };
 }
 
 export async function downloadFile(
