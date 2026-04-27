@@ -11,15 +11,21 @@ import type { VaultServiceConfig } from "../types.js";
 
 // Mock s3 module at the top level
 vi.mock("../s3.js", () => ({
-  uploadFile: vi.fn().mockResolvedValue(undefined),
-  downloadFile: vi.fn().mockResolvedValue(undefined),
+  uploadFile: vi.fn().mockResolvedValue({ versionId: "vMOCK" }),
+  downloadFile: vi.fn().mockResolvedValue({ versionId: "vMOCK" }),
+  downloadFileBytes: vi.fn().mockResolvedValue({
+    bytes: Buffer.from("mock cloud content"),
+    versionId: "vMOCK",
+  }),
   listRemoteFiles: vi.fn().mockResolvedValue([]),
+  listObjectVersions: vi.fn().mockResolvedValue([]),
   deleteRemoteFile: vi.fn().mockResolvedValue(undefined),
   headRemoteFile: vi.fn().mockResolvedValue(null),
+  isPreconditionFailed: vi.fn().mockReturnValue(false),
 }));
 
 import { share } from "./share.js";
-import { headRemoteFile, uploadFile } from "../s3.js";
+import { headRemoteFile, uploadFile, downloadFileBytes, isPreconditionFailed } from "../s3.js";
 
 const mockConfig: VaultServiceConfig = {
   apiUrl: "https://vault-api.test",
@@ -339,5 +345,95 @@ describe("share", () => {
     expect(events).toHaveLength(2);
     expect(events.every((e) => e.type === "progress")).toBe(true);
     expect(events.map((e) => e.path).sort()).toEqual(["a.md", "b.md"]);
+  });
+
+  it("lineage push 412 writes conflict file + index entry, leaves local untouched", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const localPath = path.join(companyRoot, "notes.md");
+    const localContent = "local edits the user just made";
+    fs.writeFileSync(localPath, localContent);
+
+    // Seed a lineage-active journal entry — different hash than current
+    // local content, with an s3VersionId pointer to the parent we *think*
+    // is in the cloud.
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date(Date.now() - 60_000).toISOString(),
+        files: {
+          "notes.md": {
+            hash: "old-hash-from-last-sync",
+            size: 10,
+            syncedAt: new Date(Date.now() - 60_000).toISOString(),
+            direction: "up",
+            s3VersionId: "vPARENT",
+          },
+        },
+      }),
+    );
+
+    // Make the upload look like a 412 from S3 — the cloud advanced past our
+    // parent. The conflict path should fire.
+    const preconditionErr = Object.assign(new Error("PreconditionFailed"), {
+      name: "PreconditionFailed",
+    });
+    vi.mocked(uploadFile).mockRejectedValueOnce(preconditionErr);
+    vi.mocked(isPreconditionFailed).mockReturnValueOnce(true);
+    vi.mocked(downloadFileBytes).mockResolvedValueOnce({
+      bytes: Buffer.from("CLOUD VERSION the other machine pushed"),
+      versionId: "vCLOUD",
+    });
+
+    const events: Array<{ type: string; path?: string; conflictPath?: string }> = [];
+    const result = await share({
+      paths: [localPath],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        events.push(
+          e.type === "conflict-detected"
+            ? { type: e.type, path: e.path, conflictPath: e.conflictPath }
+            : { type: e.type, path: e.path },
+        );
+      },
+    });
+
+    expect(result.filesUploaded).toBe(0);
+    expect(result.filesSkipped).toBe(1);
+
+    // Local file is unchanged — user's edits never touched.
+    expect(fs.readFileSync(localPath, "utf-8")).toBe(localContent);
+
+    // Conflict event emitted with both paths.
+    const conflictEvent = events.find((e) => e.type === "conflict-detected");
+    expect(conflictEvent).toBeDefined();
+    expect(conflictEvent!.path).toBe("notes.md");
+
+    // Conflict file written next to the original (HQ-relative path).
+    const conflictAbs = path.join(tmpDir, conflictEvent!.conflictPath!);
+    expect(fs.existsSync(conflictAbs)).toBe(true);
+    expect(fs.readFileSync(conflictAbs, "utf-8")).toBe(
+      "CLOUD VERSION the other machine pushed",
+    );
+
+    // Index entry appended.
+    const indexPath = path.join(tmpDir, ".hq-conflicts", "index.json");
+    expect(fs.existsSync(indexPath)).toBe(true);
+    const idx = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
+    expect(idx.conflicts).toHaveLength(1);
+    expect(idx.conflicts[0].side).toBe("push");
+    expect(idx.conflicts[0].lastKnownVersionId).toBe("vPARENT");
+    expect(idx.conflicts[0].remoteVersionId).toBe("vCLOUD");
+
+    // Journal NOT updated for this file — entry stays at the old hash so a
+    // subsequent sync re-evaluates against the same parent. (See spec: we
+    // never silently bump s3VersionId without resolution.)
+    const journalAfter = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journalAfter.files["notes.md"].hash).toBe("old-hash-from-last-sync");
+    expect(journalAfter.files["notes.md"].s3VersionId).toBe("vPARENT");
   });
 });

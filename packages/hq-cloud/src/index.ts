@@ -15,12 +15,30 @@ export {
 export {
   uploadFile,
   downloadFile,
+  downloadFileBytes,
   listRemoteFiles,
+  listObjectVersions,
   deleteRemoteFile,
   headRemoteFile,
+  isPreconditionFailed,
 } from "./s3.js";
 
-export type { RemoteFile } from "./s3.js";
+export type { RemoteFile, UploadOptions, UploadResult, DownloadResult } from "./s3.js";
+
+// Conflict-tracking primitives (lineage v5.3)
+export {
+  buildConflictPath,
+  buildConflictId,
+  readShortMachineId,
+  writeConflictFile,
+} from "./lib/conflict-file.js";
+export {
+  appendConflictEntry,
+  getConflictIndexPath,
+  readConflictIndex,
+  removeConflictEntry,
+  writeConflictIndex,
+} from "./lib/conflict-index.js";
 
 export {
   readJournal,
@@ -108,4 +126,6 @@ export type {
   PushResult,
   PullResult,
   DaemonState,
+  ConflictIndex,
+  ConflictIndexEntry,
 } from "./types.js";

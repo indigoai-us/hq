@@ -21,20 +21,32 @@ vi.mock("../s3.js", async () => {
   ];
 
   return {
-    uploadFile: innerVi.fn().mockResolvedValue(undefined),
+    uploadFile: innerVi.fn().mockResolvedValue({ versionId: "vMOCK" }),
     downloadFile: innerVi.fn().mockImplementation(async (_ctx: unknown, _key: string, localPath: string) => {
       const dir = innerPath.dirname(localPath);
       if (!innerFs.existsSync(dir)) innerFs.mkdirSync(dir, { recursive: true });
       innerFs.writeFileSync(localPath, "mock file content");
+      return { versionId: "vMOCK" };
+    }),
+    downloadFileBytes: innerVi.fn().mockResolvedValue({
+      bytes: Buffer.from("mock cloud content"),
+      versionId: "vMOCK",
     }),
     listRemoteFiles: innerVi.fn().mockResolvedValue(remoteFiles),
+    listObjectVersions: innerVi.fn().mockResolvedValue([]),
     deleteRemoteFile: innerVi.fn().mockResolvedValue(undefined),
     headRemoteFile: innerVi.fn().mockResolvedValue(null),
+    isPreconditionFailed: innerVi.fn().mockReturnValue(false),
   };
 });
 
 import { sync } from "./sync.js";
 import * as s3Module from "../s3.js";
+import {
+  downloadFileBytes,
+  headRemoteFile,
+  listObjectVersions,
+} from "../s3.js";
 
 const mockConfig: VaultServiceConfig = {
   apiUrl: "https://vault-api.test",
@@ -285,5 +297,148 @@ describe("sync", () => {
     expect(result.filesDownloaded).toBeGreaterThanOrEqual(1);
     // File should be overwritten with mock content
     expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("mock file content");
+  });
+
+  it("lineage pull divergence writes conflict file, leaves local untouched", async () => {
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    const localPath = path.join(companyDocs, "handoff.md");
+    const localContent = "LOCAL — what was here before sync ran";
+    fs.writeFileSync(localPath, localContent);
+
+    const { hashFile } = await import("../journal.js");
+    const localHash = hashFile(localPath);
+
+    // Lineage-active journal entry — local hash matches journal hash (no
+    // local edits), parent pointer is "vPARENT".
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date(Date.now() - 60_000).toISOString(),
+        files: {
+          "docs/handoff.md": {
+            hash: localHash,
+            size: localContent.length,
+            syncedAt: new Date(Date.now() - 60_000).toISOString(),
+            direction: "down",
+            s3VersionId: "vPARENT",
+          },
+        },
+      }),
+    );
+
+    // Cloud has advanced past our parent, AND our parent is NOT in the
+    // recent version chain → divergence.
+    vi.mocked(headRemoteFile).mockResolvedValueOnce({
+      lastModified: new Date(Date.now()),
+      etag: '"cloud-etag"',
+      size: 99,
+      versionId: "vCLOUD",
+    });
+    vi.mocked(listObjectVersions).mockResolvedValueOnce([
+      "vCLOUD",
+      "vSOMEONE_ELSE",
+      // vPARENT is missing — diverged
+    ]);
+    vi.mocked(downloadFileBytes).mockResolvedValueOnce({
+      bytes: Buffer.from("CLOUD — different lineage from another machine"),
+      versionId: "vCLOUD",
+    });
+
+    const events: Array<{ type: string; path?: string; conflictPath?: string }> = [];
+    const result = await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        events.push(
+          e.type === "conflict-detected"
+            ? { type: e.type, path: e.path, conflictPath: e.conflictPath }
+            : { type: e.type, path: e.path },
+        );
+      },
+    });
+
+    // Only one of the two mock remote files conflicts — handoff.md.
+    // The other (knowledge/readme.md) has no journal entry → fast-path
+    // download.
+    expect(result.conflicts).toBe(1);
+
+    // Local handoff.md is preserved exactly — never overwritten.
+    expect(fs.readFileSync(localPath, "utf-8")).toBe(localContent);
+
+    // Cloud's bytes landed in a `.conflict-` file.
+    const conflictEvent = events.find((e) => e.type === "conflict-detected");
+    expect(conflictEvent).toBeDefined();
+    const conflictAbs = path.join(tmpDir, conflictEvent!.conflictPath!);
+    expect(fs.existsSync(conflictAbs)).toBe(true);
+    expect(fs.readFileSync(conflictAbs, "utf-8")).toBe(
+      "CLOUD — different lineage from another machine",
+    );
+
+    // Index entry recorded.
+    const indexPath = path.join(tmpDir, ".hq-conflicts", "index.json");
+    const idx = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
+    expect(idx.conflicts).toHaveLength(1);
+    expect(idx.conflicts[0].side).toBe("pull");
+    expect(idx.conflicts[0].lastKnownVersionId).toBe("vPARENT");
+    expect(idx.conflicts[0].remoteVersionId).toBe("vCLOUD");
+  });
+
+  it("lineage pull fast-forward downloads cleanly when parent is in chain", async () => {
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    const localPath = path.join(companyDocs, "handoff.md");
+    const oldLocal = "OLD CONTENT — superseded by cloud";
+    fs.writeFileSync(localPath, oldLocal);
+
+    const { hashFile } = await import("../journal.js");
+    const localHash = hashFile(localPath);
+
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date(Date.now() - 60_000).toISOString(),
+        files: {
+          "docs/handoff.md": {
+            hash: localHash,
+            size: oldLocal.length,
+            syncedAt: new Date(Date.now() - 60_000).toISOString(),
+            direction: "down",
+            s3VersionId: "vPARENT",
+          },
+        },
+      }),
+    );
+
+    // Cloud advanced, but our parent IS in the version chain → fast-forward.
+    vi.mocked(headRemoteFile).mockResolvedValueOnce({
+      lastModified: new Date(Date.now()),
+      etag: '"cloud-etag"',
+      size: 99,
+      versionId: "vCLOUD",
+    });
+    vi.mocked(listObjectVersions).mockResolvedValueOnce([
+      "vCLOUD",
+      "vPARENT", // our parent is in the chain — fast-forward, not divergence
+    ]);
+
+    const result = await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    // Local was overwritten with the cloud's content (mock writes "mock file content").
+    expect(fs.readFileSync(localPath, "utf-8")).toBe("mock file content");
+    expect(result.conflicts).toBe(0);
+    // No .hq-conflicts dir created on a clean fast-forward.
+    expect(fs.existsSync(path.join(tmpDir, ".hq-conflicts"))).toBe(false);
+
+    // Journal stamped with the new VersionId.
+    const journalAfter = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journalAfter.files["docs/handoff.md"].s3VersionId).toBe("vMOCK");
   });
 });

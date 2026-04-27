@@ -114,6 +114,13 @@ export type RunnerEvent =
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
+  /**
+   * Lineage divergence detected — `share`/`sync` wrote a `.conflict-` file
+   * next to the original and recorded an entry in `<hq_root>/.hq-conflicts/index.json`.
+   * The menubar UI uses these to surface a "N conflicts pending" badge; the
+   * `/resolve-conflicts` HQ skill is the resolution path.
+   */
+  | ({ type: "conflict-detected"; company: string } & Omit<Extract<SyncProgressEvent, { type: "conflict-detected" }>, "type">)
   | ({
       type: "complete";
       company: string;
@@ -492,6 +499,15 @@ export async function runRunner(
           path: event.path,
           bytes: event.bytes,
           ...(event.message ? { message: event.message } : {}),
+        });
+      } else if (event.type === "conflict-detected") {
+        emit({
+          type: "conflict-detected",
+          company: companyLabel,
+          path: event.path,
+          conflictPath: event.conflictPath,
+          side: event.side,
+          remoteVersionId: event.remoteVersionId,
         });
       } else {
         emit({

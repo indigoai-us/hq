@@ -5,16 +5,29 @@
  * Refuses to overwrite a newer remote version without prompting.
  */
 
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import type { VaultServiceConfig } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
-import { uploadFile, headRemoteFile } from "../s3.js";
-import { readJournal, writeJournal, hashFile, updateEntry } from "../journal.js";
+import {
+  uploadFile,
+  headRemoteFile,
+  downloadFileBytes,
+  isPreconditionFailed,
+} from "../s3.js";
+import { readJournal, writeJournal, hashFile } from "../journal.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
 import type { SyncProgressEvent } from "./sync.js";
+import {
+  buildConflictPath,
+  buildConflictId,
+  readShortMachineId,
+  writeConflictFile,
+} from "../lib/conflict-file.js";
+import { appendConflictEntry } from "../lib/conflict-index.js";
 
 export interface ShareOptions {
   /** Path(s) to share (files or directories) */
@@ -116,14 +129,79 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
       ctx = await refreshEntityContext(companyRef, vaultConfig);
     }
 
-    // Check for remote conflict — refuse to overwrite newer remote version
+    const journalEntry = journal.files[relativePath];
+    const lineageActive =
+      journalEntry !== undefined &&
+      journalEntry.s3VersionId !== undefined &&
+      journalEntry.s3VersionId !== null;
+
+    // Lineage-active path: optimistic concurrency via If-Match. The bucket's
+    // VersionId chain is the parent pointer; if S3 rejects with 412, someone
+    // else's push landed between our last sync and now. We never overwrite —
+    // we record both versions and surface them to the user.
+    if (lineageActive) {
+      try {
+        const stat = fs.statSync(absolutePath);
+        const result = await uploadFile(ctx, absolutePath, relativePath, {
+          ifMatch: journalEntry!.s3VersionId!,
+        });
+
+        // Successful push — stamp the new VersionId as our parent pointer.
+        journal.files[relativePath] = {
+          hash: localHash,
+          size: stat.size,
+          syncedAt: new Date().toISOString(),
+          direction: "up",
+          s3VersionId: result.versionId,
+          ...(message ? { message } : {}),
+        } as typeof journal.files[string];
+        journal.lastSync = new Date().toISOString();
+
+        filesUploaded++;
+        bytesUploaded += stat.size;
+        emit({
+          type: "progress",
+          path: relativePath,
+          bytes: stat.size,
+          ...(message ? { message } : {}),
+        });
+      } catch (err) {
+        if (isPreconditionFailed(err)) {
+          // Cloud has advanced past our last-known parent. Don't overwrite —
+          // fetch the cloud version and write it as a `.conflict-` file
+          // alongside the original. The user resolves later via the
+          // /resolve-conflicts skill; the next sync re-tries with the
+          // resolved hash.
+          await recordPushConflict({
+            ctx,
+            hqRoot,
+            relativePath,
+            localHash,
+            companySlug: ctx.slug,
+            lastKnownVersionId: journalEntry!.s3VersionId!,
+            emit,
+          });
+          filesSkipped++;
+          continue;
+        }
+        emit({
+          type: "error",
+          path: relativePath,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+      continue;
+    }
+
+    // Degraded / first-push path: no parent pointer yet (pre-lineage journal,
+    // or the file was never synced). Falls back to the legacy "HEAD then
+    // prompt" flow for hash-based conflict detection — same behavior as
+    // before. The first successful push stamps s3VersionId, and every
+    // subsequent push goes through the lineage-active branch above.
     const remoteMeta = await headRemoteFile(ctx, relativePath);
     if (remoteMeta) {
-      const journalEntry = journal.files[relativePath];
-
       // If remote has changed since our last sync, it's a conflict
       if (journalEntry && journalEntry.hash !== localHash) {
-        // Local has changes — check if remote also changed
         const resolution = await resolveConflict(
           {
             path: relativePath,
@@ -145,20 +223,21 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
       }
     }
 
-    // Upload
     try {
       const stat = fs.statSync(absolutePath);
 
-      await uploadFile(ctx, absolutePath, relativePath);
+      const result = await uploadFile(ctx, absolutePath, relativePath);
 
-      // Update journal with optional message
-      updateEntry(journal, relativePath, localHash, stat.size, "up");
-      if (message) {
-        journal.files[relativePath] = {
-          ...journal.files[relativePath],
-          message,
-        } as typeof journal.files[string] & { message: string };
-      }
+      // Stamp s3VersionId on first sync — activates lineage from now on.
+      journal.files[relativePath] = {
+        hash: localHash,
+        size: stat.size,
+        syncedAt: new Date().toISOString(),
+        direction: "up",
+        s3VersionId: result.versionId,
+        ...(message ? { message } : {}),
+      } as typeof journal.files[string];
+      journal.lastSync = new Date().toISOString();
 
       filesUploaded++;
       bytesUploaded += stat.size;
@@ -183,6 +262,77 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 }
 
 /**
+ * Push detected divergence (412 from If-Match). Fetch the cloud's current
+ * bytes, write them to a `.conflict-` file next to the original, append an
+ * entry to the conflict index, and emit the event so the runner can update
+ * its UI counter.
+ *
+ * Local file is left untouched. The user's edits are still safely on disk
+ * at the original path; the cloud's version is what landed in the conflict
+ * file.
+ */
+async function recordPushConflict(args: {
+  ctx: import("../types.js").EntityContext;
+  hqRoot: string;
+  relativePath: string;
+  localHash: string;
+  companySlug: string;
+  lastKnownVersionId: string;
+  emit: (event: SyncProgressEvent) => void;
+}): Promise<void> {
+  const { ctx, hqRoot, relativePath, localHash, companySlug, lastKnownVersionId, emit } = args;
+
+  // S3 keys are company-relative; the on-disk path is HQ-relative under
+  // companies/<slug>/. Conflict files always live next to the original.
+  const hqRelativeOriginal = path.join("companies", companySlug, relativePath);
+  const detectedAt = new Date().toISOString();
+  const machineId = readShortMachineId();
+
+  let cloudBytes: Buffer;
+  let cloudVersionId: string | null;
+  try {
+    const fetched = await downloadFileBytes(ctx, relativePath);
+    cloudBytes = fetched.bytes;
+    cloudVersionId = fetched.versionId;
+  } catch (err) {
+    // Couldn't fetch cloud bytes — emit error and bail. The journal entry
+    // is left untouched so next sync re-tries (and re-conflicts cleanly).
+    emit({
+      type: "error",
+      path: relativePath,
+      message: `conflict detected but cloud fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+    });
+    return;
+  }
+
+  const conflictRelative = buildConflictPath(hqRelativeOriginal, detectedAt, machineId);
+  writeConflictFile(hqRoot, conflictRelative, cloudBytes);
+
+  const remoteHash = crypto.createHash("sha256").update(cloudBytes).digest("hex");
+
+  appendConflictEntry(hqRoot, {
+    id: buildConflictId(hqRelativeOriginal, detectedAt),
+    originalPath: hqRelativeOriginal,
+    conflictPath: conflictRelative,
+    detectedAt,
+    side: "push",
+    machineId,
+    localHash,
+    remoteHash,
+    remoteVersionId: cloudVersionId ?? "",
+    lastKnownVersionId,
+  });
+
+  emit({
+    type: "conflict-detected",
+    path: relativePath,
+    conflictPath: conflictRelative,
+    side: "push",
+    remoteVersionId: cloudVersionId ?? "",
+  });
+}
+
+/**
  * Default human-readable share output. Preserves the exact format the CLI
  * emitted before `onEvent` was added — tty users see no change.
  */
@@ -193,6 +343,12 @@ function defaultConsoleLogger(event: SyncProgressEvent): void {
     } else {
       console.log(`  ✓ ${event.path}`);
     }
+  } else if (event.type === "conflict-detected") {
+    // Surface conflicts visibly in tty output too — same pattern as the
+    // runner's UI badge, but for direct CLI users.
+    console.error(
+      `  ! conflict: ${event.path} — cloud version saved as ${event.conflictPath}`,
+    );
   } else {
     console.error(`  ✗ ${event.path} — ${event.message}`);
   }

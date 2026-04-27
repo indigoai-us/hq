@@ -68,6 +68,18 @@ export const DEFAULT_IGNORES = [
   ".hq-sync-state.json",
   "modules.lock",
 
+  // Conflict files — local-only by design. Each machine resolves its own
+  // queue; uploading a `.conflict-` file to the cloud would just create
+  // more conflicts on the other side. Pattern matches:
+  //   knowledge/notes.md.conflict-2026-04-27T22-05-14Z-abc123.md
+  //   projects/foo/prd.json.conflict-2026-04-27T22-05-14Z-abc123.json
+  "*.conflict-*-*.*",
+  // Files with no extension still get the suffix (no trailing `.<ext>`):
+  //   secrets.conflict-2026-04-27T22-05-14Z-abc123
+  "*.conflict-*-*",
+  // The conflict index dir itself — pending-conflict metadata, not user content.
+  ".hq-conflicts/",
+
   // HQ repos directory (managed separately, not synced)
   "repos/",
 

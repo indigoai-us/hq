@@ -74,18 +74,32 @@ export function hashFile(filePath: string): string {
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
+/**
+ * Update or insert a journal entry.
+ *
+ * `s3VersionId` is optional — when not provided, the field is omitted from
+ * the entry (preserves the pre-lineage behavior for any caller that hasn't
+ * been migrated). New code paths explicitly pass the VersionId returned by
+ * S3 on upload/download so divergence detection has a parent pointer to
+ * compare against on the next sync.
+ *
+ * Pass `null` (vs. undefined) to record "the bucket has versioning disabled"
+ * — distinct from "we don't know" — see the JournalEntry doc on s3VersionId.
+ */
 export function updateEntry(
   journal: SyncJournal,
   relativePath: string,
   hash: string,
   size: number,
   direction: "up" | "down",
+  s3VersionId?: string | null,
 ): void {
   journal.files[relativePath] = {
     hash,
     size,
     syncedAt: new Date().toISOString(),
     direction,
+    ...(s3VersionId !== undefined ? { s3VersionId } : {}),
   };
   journal.lastSync = new Date().toISOString();
 }
