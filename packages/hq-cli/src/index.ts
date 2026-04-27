@@ -11,6 +11,7 @@ import { registerSyncCommand } from "./commands/sync.js";
 import { registerListCommand } from "./commands/list.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
+import { registerCloudProvisionCommands } from "./commands/cloud-provision.js";
 import { registerLoginCommand } from "./commands/login.js";
 import { registerLogoutCommand } from "./commands/logout.js";
 import { registerWhoamiCommand } from "./commands/whoami.js";
@@ -65,6 +66,16 @@ const syncCmd = program
   .description("Cloud sync commands — sync HQ to S3 for mobile access");
 
 registerCloudCommands(syncCmd);
+
+// Cloud provisioning subcommand group (entity + bucket + initial sync)
+// Distinct from `hq sync` which assumes provisioning has already happened.
+const cloudCmd = program
+  .command("cloud")
+  .description(
+    "Cloud commands — provision entities and manage cloud-backed companies",
+  );
+
+registerCloudProvisionCommands(cloudCmd);
 
 // Team commands (top-level)
 registerTeamSyncCommand(program);
