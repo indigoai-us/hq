@@ -4,10 +4,10 @@
  * (ADR-0001).
  *
  * The AppBar Sync menubar (Tauri + Rust) spawns this binary as a subprocess
- * and reads ndjson events from stdout. The protocol is intentionally narrow
- * and versioned-by-shape, not by tooling — no chalk, no colors, no human
- * prose. If you want to invoke sync as a human, use `hq sync` in
- * `@indigoai-us/hq-cli`.
+ * and reads ndjson events from BOTH stdout and stderr (see "Channels"
+ * below). The protocol is intentionally narrow and versioned-by-shape, not
+ * by tooling — no chalk, no colors, no human prose. If you want to invoke
+ * sync as a human, use `hq sync` in `@indigoai-us/hq-cli`.
  *
  * Flags:
  *   --companies               Fan out across every membership the caller has
@@ -18,14 +18,23 @@
  *                             only output mode. Accepted for symmetry with the
  *                             AppBar's argv in case someone passes it.
  *
- * Event protocol (one JSON object per line on stdout):
- *   setup-needed   — caller signed in but has no person entity yet
- *   auth-error     — no valid token available (interactive login disabled)
- *   fanout-plan    — list of companies we're about to sync
- *   progress       — per-file download
- *   error          — per-file or per-company error
- *   complete       — per-company summary
- *   all-complete   — aggregate summary after fanout
+ * Channels (one JSON object per line):
+ *   stdout — protocol stream:
+ *     setup-needed   caller signed in but has no person entity yet
+ *     fanout-plan    list of companies we're about to sync
+ *     progress       per-file download
+ *     complete       per-company summary
+ *     all-complete   aggregate summary after fanout
+ *   stderr — diagnostic stream:
+ *     error          per-file or per-company error
+ *     auth-error     no valid token available (interactive login disabled)
+ *
+ * Why the split: error-class events go to stderr so the menubar's Sentry
+ * breadcrumb pipeline picks them up automatically (see hq-sync
+ * src-tauri/src/commands/sync.rs `ProcessEvent::Stderr` handler). The
+ * single Sentry capture at runner-exit then ships one #hq-alerts issue
+ * with the full per-file → company → exit error trail attached, instead
+ * of requiring per-event capture calls in the menubar.
  *
  * Exit code:
  *   0 — event stream describes the outcome (including setup-needed)
@@ -100,10 +109,14 @@ const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
 // ---------------------------------------------------------------------------
 
 /**
- * Every event emitted on stdout. The `company` field is present on every
- * event except `setup-needed` / `auth-error` / `fanout-plan` / `all-complete`
- * (which describe the whole run) — consumers should treat its absence as
- * "meta-event, not tied to a specific company".
+ * Every event the runner emits. Channel routing (stdout vs stderr) is
+ * decided inside `runRunner`'s `emit` helper based on the event's `type`
+ * — see the doc-block on the file header for the split.
+ *
+ * The `company` field is present on every event except `setup-needed` /
+ * `auth-error` / `fanout-plan` / `all-complete` (which describe the whole
+ * run) — consumers should treat its absence as "meta-event, not tied to a
+ * specific company".
  */
 export type RunnerEvent =
   | { type: "setup-needed" }
@@ -347,8 +360,35 @@ export async function runRunner(
   const stdout = deps.stdout ?? process.stdout;
   const stderr = deps.stderr ?? process.stderr;
 
+  // ---- emit ---------------------------------------------------------------
+  // Error-class events go to stderr; everything else to stdout.
+  //
+  // Why split: the AppBar Sync menubar (Tauri + Rust) feeds runner stderr
+  // into Sentry as breadcrumbs and captures one Sentry event when the
+  // runner exits non-zero. Routing `error` / `auth-error` events through
+  // stderr makes them part of that breadcrumb trail automatically — the
+  // menubar doesn't need a per-event capture call, and operators get the
+  // full context (per-file errors → company error → exit) in a single
+  // Sentry issue alerted to #hq-alerts.
+  //
+  // Non-error events (progress, complete, fanout-plan, all-complete,
+  // setup-needed) stay on stdout. They're the protocol stream the menubar
+  // parses for UI updates; mixing them with error events on the same
+  // channel was the original design (single ndjson stream, simpler to
+  // tee), but error context belongs in the diagnostic channel.
+  //
+  // Backward compat: older menubar releases (pre-PR-#34) parse only
+  // stdout for ndjson; with this change they will NOT receive error
+  // events. The menubar's `HQ_CLOUD_VERSION` pin gates which runner
+  // they spawn, so old menubars stay on the previous runner version
+  // even after this one is published.
+  const ERROR_TYPES: ReadonlySet<RunnerEvent["type"]> = new Set([
+    "error",
+    "auth-error",
+  ]);
   const emit = (event: RunnerEvent): void => {
-    stdout.write(`${JSON.stringify(event)}\n`);
+    const stream = ERROR_TYPES.has(event.type) ? stderr : stdout;
+    stream.write(`${JSON.stringify(event)}\n`);
   };
 
   // ---- argv -------------------------------------------------------------

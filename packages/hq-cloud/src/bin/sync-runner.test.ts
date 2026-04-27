@@ -206,18 +206,20 @@ describe("argv parsing", () => {
 // ---------------------------------------------------------------------------
 
 describe("auth", () => {
-  it("emits auth-error and returns 0 when token fetch fails", async () => {
+  it("emits auth-error on stderr and returns 0 when token fetch fails", async () => {
     const deps = makeDeps({
       getAccessToken: vi.fn().mockRejectedValue(new Error("no cached tokens")),
     });
     const code = await runRunner(["--companies"], deps);
     expect(code).toBe(0);
-    expect(deps.stdout.events()).toEqual([
+    // auth-error is an error-class event → stderr, not stdout
+    expect(deps.stderr.events()).toEqual([
       { type: "auth-error", message: "no cached tokens" },
     ]);
+    expect(deps.stdout.events()).toEqual([]);
   });
 
-  it("emits auth-error when VaultAuthError thrown during discovery", async () => {
+  it("emits auth-error on stderr when VaultAuthError thrown during discovery", async () => {
     const deps = makeDeps({
       createVaultClient: () => ({
         ...makeVaultStub(),
@@ -227,12 +229,13 @@ describe("auth", () => {
     });
     const code = await runRunner(["--companies"], deps);
     expect(code).toBe(0);
-    expect(deps.stdout.events()).toEqual([
+    expect(deps.stderr.events()).toEqual([
       { type: "auth-error", message: "token expired" },
     ]);
+    expect(deps.stdout.events()).toEqual([]);
   });
 
-  it("emits error event and returns 1 on non-auth discovery failure", async () => {
+  it("emits error event on stderr and returns 1 on non-auth discovery failure", async () => {
     const deps = makeDeps({
       createVaultClient: () => ({
         ...makeVaultStub(),
@@ -241,13 +244,15 @@ describe("auth", () => {
     });
     const code = await runRunner(["--companies"], deps);
     expect(code).toBe(1);
-    const events = deps.stdout.events();
+    // error events go to stderr, not stdout
+    const events = deps.stderr.events();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: "error",
       message: "network down",
       path: "(discovery)",
     });
+    expect(deps.stdout.events()).toEqual([]);
   });
 });
 
@@ -588,7 +593,8 @@ describe("per-company fanout", () => {
 
     const code = await runRunner(["--companies"], deps);
     expect(code).toBe(0);
-    const errs = deps.stdout
+    // Per-file errors are routed to stderr (error-class events).
+    const errs = deps.stderr
       .events()
       .filter((e): e is Extract<RunnerEvent, { type: "error" }> =>
         e.type === "error",
@@ -691,23 +697,27 @@ describe("per-company fanout", () => {
     const code = await runRunner(["--companies"], deps);
     expect(code).toBe(0); // whole fanout still returns 0
 
-    const events = deps.stdout.events();
     // Error event for acme (company-level) with path sentinel "(company)"
-    const companyErr = events.find(
-      (e): e is Extract<RunnerEvent, { type: "error" }> =>
-        e.type === "error" && e.company === "acme",
-    );
+    // — error-class events route to stderr.
+    const companyErr = deps.stderr
+      .events()
+      .find(
+        (e): e is Extract<RunnerEvent, { type: "error" }> =>
+          e.type === "error" && e.company === "acme",
+      );
     expect(companyErr).toMatchObject({
       type: "error",
       company: "acme",
       path: "(company)",
       message: "acme blew up",
     });
-    // But beta still completed
-    const betaComplete = events.find(
-      (e): e is Extract<RunnerEvent, { type: "complete" }> =>
-        e.type === "complete" && e.company === "beta",
-    );
+    // But beta still completed — non-error events stay on stdout.
+    const betaComplete = deps.stdout
+      .events()
+      .find(
+        (e): e is Extract<RunnerEvent, { type: "complete" }> =>
+          e.type === "complete" && e.company === "beta",
+      );
     expect(betaComplete).toBeDefined();
     expect(betaComplete?.filesDownloaded).toBe(1);
   });
