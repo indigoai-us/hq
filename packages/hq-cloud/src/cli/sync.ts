@@ -10,7 +10,7 @@ import * as path from "path";
 import type { VaultServiceConfig } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { downloadFile, listRemoteFiles } from "../s3.js";
-import { readJournal, writeJournal, hashFile, updateEntry, getEntry } from "../journal.js";
+import { readJournal, writeJournal, hashFile, updateEntry, getEntry, normalizeEtag } from "../journal.js";
 import { createIgnoreFilter } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy, ConflictResolution } from "./conflict.js";
@@ -147,9 +147,14 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
     if (fs.existsSync(localPath)) {
       const localHash = hashFile(localPath);
+      const localChanged = !!journalEntry && journalEntry.hash !== localHash;
+      const remoteChanged = !!journalEntry && hasRemoteChanged(remoteFile, journalEntry);
 
-      // If local file has changed since last sync, it's a conflict
-      if (journalEntry && journalEntry.hash !== localHash) {
+      // A real conflict requires BOTH sides to have moved since the last
+      // sync. If only local changed, push will handle it; pulling here would
+      // clobber the local edit. If only remote changed, fall through to
+      // download. If neither moved, skip.
+      if (localChanged && remoteChanged) {
         conflicts++;
         conflictPaths.push(remoteFile.key);
 
@@ -187,17 +192,18 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
           continue;
         }
         // "overwrite" falls through to download
-      } else if (journalEntry && journalEntry.hash === localHash) {
-        // Local unchanged since last sync — check if remote changed
-        // by comparing etag/timestamp
-        const lastSyncTime = new Date(journalEntry.syncedAt).getTime();
-        const remoteModTime = remoteFile.lastModified.getTime();
-        if (remoteModTime <= lastSyncTime) {
-          // Remote hasn't changed either — skip
-          filesSkipped++;
-          continue;
-        }
+      } else if (journalEntry && localChanged && !remoteChanged) {
+        // Local-only edit: leave it for the push phase to upload. Pulling
+        // would silently overwrite the user's work.
+        filesSkipped++;
+        continue;
+      } else if (journalEntry && !localChanged && !remoteChanged) {
+        // Neither side moved — nothing to do.
+        filesSkipped++;
+        continue;
       }
+      // Otherwise (no journal entry, or remote-only changed) fall through
+      // to download.
     }
 
     // Download
@@ -206,7 +212,9 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
       const hash = hashFile(localPath);
       const stat = fs.statSync(localPath);
-      updateEntry(journal, remoteFile.key, hash, stat.size, "down");
+      // Capture the listing's ETag so subsequent syncs can detect remote
+      // drift independently of mtime drift.
+      updateEntry(journal, remoteFile.key, hash, stat.size, "down", remoteFile.etag);
 
       // Attach message from journal entry if present
       const remoteJournalMessage = (journalEntry as { message?: string } | undefined)?.message;
@@ -260,6 +268,23 @@ function resolveActiveCompany(hqRoot: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Returns true when the remote object appears to have moved since the
+ * journal entry's last-recorded sync. Prefers ETag equality; falls back to
+ * `lastModified > syncedAt` for legacy entries written before remoteEtag
+ * was tracked. Conservative on tie (`<=` skews "remote unchanged").
+ */
+function hasRemoteChanged(
+  remote: { lastModified: Date; etag: string },
+  entry: { syncedAt: string; remoteEtag?: string },
+): boolean {
+  if (entry.remoteEtag) {
+    return normalizeEtag(remote.etag) !== entry.remoteEtag;
+  }
+  const syncedAt = new Date(entry.syncedAt).getTime();
+  return remote.lastModified.getTime() > syncedAt;
 }
 
 /**

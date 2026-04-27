@@ -26,6 +26,14 @@ export interface JournalEntry {
   size: number;
   syncedAt: string;
   direction: "up" | "down";
+  /**
+   * S3 ETag of the remote object as of last successful sync, normalized (no
+   * surrounding quotes). Optional for backwards compatibility: entries
+   * written before this field existed won't have it, in which case
+   * conflict detection falls back to comparing remote `lastModified`
+   * against `syncedAt`.
+   */
+  remoteEtag?: string;
 }
 
 export interface SyncJournal {

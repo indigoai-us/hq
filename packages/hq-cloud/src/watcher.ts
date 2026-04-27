@@ -113,8 +113,8 @@ export class SyncWatcher {
           const existing = journal.files[relativePath];
           if (existing && existing.hash === hash) continue;
 
-          await uploadFile(this.ctx, change.absolutePath, relativePath);
-          updateEntry(journal, relativePath, hash, stat.size, "up");
+          const { etag } = await uploadFile(this.ctx, change.absolutePath, relativePath);
+          updateEntry(journal, relativePath, hash, stat.size, "up", etag);
         }
       } catch (err) {
         console.error(

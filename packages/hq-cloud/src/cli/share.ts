@@ -10,7 +10,7 @@ import * as path from "path";
 import type { VaultServiceConfig } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { uploadFile, headRemoteFile } from "../s3.js";
-import { readJournal, writeJournal, hashFile, updateEntry } from "../journal.js";
+import { readJournal, writeJournal, hashFile, updateEntry, normalizeEtag } from "../journal.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
@@ -123,16 +123,24 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
       ctx = await refreshEntityContext(companyRef, vaultConfig);
     }
 
-    // Check for remote conflict — refuse to overwrite newer remote version
+    // Check for remote conflict — refuse to overwrite newer remote version.
+    //
+    // A real conflict requires BOTH sides to have moved since the last sync.
+    // The previous predicate only checked `journalEntry.hash !== localHash`,
+    // which mislabelled every local edit as a conflict and (combined with
+    // `--on-conflict keep`) silently dropped the user's edit. We now compare
+    // the current remote ETag against the one captured at last sync; when
+    // missing (legacy entries), we fall back to the same `lastModified >
+    // syncedAt` heuristic the pull side uses.
     const remoteMeta = await headRemoteFile(ctx, relativePath);
     if (remoteMeta) {
       const journalEntry = journal.files[relativePath];
+      const localChanged = !!journalEntry && journalEntry.hash !== localHash;
+      const remoteChanged = !!journalEntry && hasRemoteChanged(remoteMeta, journalEntry);
 
-      // If remote has changed since our last sync, it's a conflict
-      if (journalEntry && journalEntry.hash !== localHash) {
+      if (localChanged && remoteChanged) {
         conflictPaths.push(relativePath);
 
-        // Local has changes — check if remote also changed
         const resolution = await resolveConflict(
           {
             path: relativePath,
@@ -171,10 +179,12 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     try {
       const stat = fs.statSync(absolutePath);
 
-      await uploadFile(ctx, absolutePath, relativePath);
+      const { etag } = await uploadFile(ctx, absolutePath, relativePath);
 
-      // Update journal with optional message
-      updateEntry(journal, relativePath, localHash, stat.size, "up");
+      // Update journal with optional message; capture the post-upload ETag
+      // so the next sync can distinguish "remote moved since we last wrote"
+      // from "user edited locally" without conflating the two.
+      updateEntry(journal, relativePath, localHash, stat.size, "up", etag);
       if (message) {
         journal.files[relativePath] = {
           ...journal.files[relativePath],
@@ -317,4 +327,22 @@ function walkDir(
 function isWithin(parent: string, child: string): boolean {
   const rel = path.relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/**
+ * Returns true when the remote object appears to have moved since the
+ * journal entry's last-recorded sync. Prefers ETag equality; falls back to
+ * `lastModified > syncedAt` for legacy entries written before remoteEtag
+ * was tracked. Conservative on tie (`<=` skews "remote unchanged") so an
+ * S3-side mtime that exactly equals our syncedAt is not treated as drift.
+ */
+function hasRemoteChanged(
+  remote: { lastModified: Date; etag: string },
+  entry: { syncedAt: string; remoteEtag?: string },
+): boolean {
+  if (entry.remoteEtag) {
+    return normalizeEtag(remote.etag) !== entry.remoteEtag;
+  }
+  const syncedAt = new Date(entry.syncedAt).getTime();
+  return remote.lastModified.getTime() > syncedAt;
 }

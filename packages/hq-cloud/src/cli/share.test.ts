@@ -9,9 +9,11 @@ import * as os from "os";
 import { clearContextCache } from "../context.js";
 import type { VaultServiceConfig } from "../types.js";
 
-// Mock s3 module at the top level
+// Mock s3 module at the top level. uploadFile resolves to a synthetic ETag
+// so share() can record it on the journal entry — the real PutObject
+// response shape is `{ ETag: '"<hex>"' }`.
 vi.mock("../s3.js", () => ({
-  uploadFile: vi.fn().mockResolvedValue(undefined),
+  uploadFile: vi.fn().mockResolvedValue({ etag: '"upload-etag"' }),
   downloadFile: vi.fn().mockResolvedValue(undefined),
   listRemoteFiles: vi.fn().mockResolvedValue([]),
   deleteRemoteFile: vi.fn().mockResolvedValue(undefined),
@@ -77,6 +79,10 @@ describe("share", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+    // clearAllMocks wipes the default ETag impl set in vi.mock(), so
+    // re-prime it for the next test.
+    vi.mocked(uploadFile).mockResolvedValue({ etag: '"upload-etag"' });
+    vi.mocked(headRemoteFile).mockResolvedValue(null);
     fs.rmSync(tmpDir, { recursive: true, force: true });
     fs.rmSync(stateDir, { recursive: true, force: true });
     delete process.env.HQ_STATE_DIR;
@@ -276,18 +282,18 @@ describe("share", () => {
     expect(uploadFile).toHaveBeenCalledWith(expect.anything(), testFile, "changed.md");
   });
 
-  it("populates conflictPaths and emits a conflict event when remote drifted from journal", async () => {
+  it("populates conflictPaths and emits a conflict event when both local and remote drifted from journal", async () => {
     const companyRoot = path.join(tmpDir, "companies", "acme");
     fs.mkdirSync(companyRoot, { recursive: true });
     const testFile = path.join(companyRoot, "drifted.md");
     fs.writeFileSync(testFile, "local edit");
 
-    // Journal has a stale hash → local diverged. headRemoteFile returning
-    // non-null tells share() the remote also exists; combined with the
-    // hash mismatch this trips the conflict branch.
+    // Stale hash → local diverged. Remote ETag in head response differs
+    // from the one stored in the journal → remote also moved. Both sides
+    // changed since last sync = real conflict.
     vi.mocked(headRemoteFile).mockResolvedValueOnce({
       lastModified: new Date(),
-      etag: '"remote-changed"',
+      etag: '"remote-new-etag"',
       size: 99,
     });
 
@@ -303,6 +309,7 @@ describe("share", () => {
             size: 10,
             syncedAt: new Date().toISOString(),
             direction: "up",
+            remoteEtag: "remote-old-etag",
           },
         },
       }),
@@ -330,6 +337,124 @@ describe("share", () => {
       direction: "push",
       resolution: "keep",
     });
+  });
+
+  it("uploads (no conflict) when only the local side changed since last sync", async () => {
+    // Regression for hq-cloud#<conflict-detection>: a local edit to a file
+    // that exists on S3 used to trigger a push conflict because the
+    // detector compared `journalEntry.hash !== localHash` without checking
+    // the remote. Combined with `--on-conflict keep`, this silently dropped
+    // every edit to any pre-existing file.
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "edited.md");
+    fs.writeFileSync(testFile, "edited locally");
+
+    const syncedAt = new Date(Date.now() - 60_000).toISOString();
+    vi.mocked(headRemoteFile).mockResolvedValueOnce({
+      lastModified: new Date(Date.parse(syncedAt) - 30_000),
+      etag: '"unchanged-remote"',
+      size: 5,
+    });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: syncedAt,
+        files: {
+          "edited.md": {
+            hash: "stale-hash-for-old-content",
+            size: 5,
+            syncedAt,
+            direction: "down",
+            remoteEtag: "unchanged-remote",
+          },
+        },
+      }),
+    );
+
+    const events: unknown[] = [];
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onConflict: "keep",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(result.conflictPaths).toEqual([]);
+    expect(result.filesUploaded).toBe(1);
+    expect(events.some((e): e is { type: string } =>
+      typeof e === "object" && e !== null && (e as { type?: string }).type === "conflict",
+    )).toBe(false);
+  });
+
+  it("falls back to lastModified vs syncedAt when journal entry has no remoteEtag (legacy)", async () => {
+    // Legacy entries from before the remoteEtag field existed should be
+    // treated as "remote unchanged" iff lastModified <= syncedAt.
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "legacy.md");
+    fs.writeFileSync(testFile, "edited locally");
+
+    const syncedAt = new Date().toISOString();
+    vi.mocked(headRemoteFile).mockResolvedValueOnce({
+      lastModified: new Date(Date.parse(syncedAt) - 5_000),
+      etag: '"some-etag"',
+      size: 5,
+    });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: syncedAt,
+        files: {
+          "legacy.md": {
+            hash: "stale-hash",
+            size: 5,
+            syncedAt,
+            direction: "down",
+            // no remoteEtag — pre-fix journal
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onConflict: "keep",
+    });
+
+    expect(result.conflictPaths).toEqual([]);
+    expect(result.filesUploaded).toBe(1);
+  });
+
+  it("records the upload's ETag on the journal entry", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "fresh.md");
+    fs.writeFileSync(testFile, "new file");
+
+    vi.mocked(uploadFile).mockResolvedValueOnce({ etag: '"new-upload-etag"' });
+
+    await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["fresh.md"].remoteEtag).toBe("new-upload-etag");
   });
 
   it("skipUnchanged=false (default) uploads even when hash matches", async () => {
