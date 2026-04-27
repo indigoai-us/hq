@@ -61,6 +61,7 @@ function defaultSyncResult(overrides: Partial<SyncResult> = {}): SyncResult {
     bytesDownloaded: 0,
     filesSkipped: 0,
     conflicts: 0,
+    conflictPaths: [],
     aborted: false,
     ...overrides,
   };
@@ -71,6 +72,7 @@ function defaultShareResult(overrides: Partial<ShareResult> = {}): ShareResult {
     filesUploaded: 0,
     bytesUploaded: 0,
     filesSkipped: 0,
+    conflictPaths: [],
     aborted: false,
     ...overrides,
   };
@@ -640,10 +642,59 @@ describe("per-company fanout", () => {
       bytesDownloaded: result.bytesDownloaded,
       filesSkipped: result.filesSkipped,
       conflicts: result.conflicts,
+      conflictPaths: [],
       aborted: result.aborted,
       filesUploaded: 0,
       bytesUploaded: 0,
     });
+  });
+
+  it("surfaces conflictPaths from both push and pull in per-company complete and aggregated all-complete", async () => {
+    // Non-aborting conflict on each side so the runner runs both phases:
+    // when push aborts, pull is skipped (separate `pull is skipped when push
+    // aborts` test covers that branch). Here we want to verify path merging
+    // when both phases produced paths.
+    const pullResult = defaultSyncResult({
+      conflicts: 1,
+      conflictPaths: ["docs/handoff.md"],
+      aborted: false,
+    });
+    const pushResult = defaultShareResult({
+      conflictPaths: ["notes/scratch.md"],
+      aborted: false,
+    });
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: vi.fn().mockResolvedValue(pullResult),
+      share: vi.fn().mockResolvedValue(pushResult),
+    });
+
+    const code = await runRunner(
+      ["--companies", "--direction", "both"],
+      deps,
+    );
+    expect(code).toBe(0);
+
+    const complete = deps.stdout
+      .events()
+      .find((e) => e.type === "complete") as Extract<RunnerEvent, { type: "complete" }>;
+    expect(complete.conflictPaths).toEqual([
+      "docs/handoff.md",
+      "notes/scratch.md",
+    ]);
+
+    const allComplete = deps.stdout
+      .events()
+      .find((e) => e.type === "all-complete") as Extract<RunnerEvent, { type: "all-complete" }>;
+    expect(allComplete.conflictPaths).toEqual([
+      { company: "acme", path: "docs/handoff.md", direction: "pull" },
+      { company: "acme", path: "notes/scratch.md", direction: "push" },
+    ]);
   });
 
   it("passes --on-conflict and --hq-root through to sync()", async () => {
@@ -759,6 +810,7 @@ describe("all-complete aggregate", () => {
       bytesDownloaded: 350,
       filesUploaded: 0,
       bytesUploaded: 0,
+      conflictPaths: [],
       errors: [],
     });
   });
@@ -1029,6 +1081,7 @@ describe("--direction", () => {
       bytesDownloaded: 350,
       filesUploaded: 3,
       bytesUploaded: 125,
+      conflictPaths: [],
       errors: [],
     });
   });

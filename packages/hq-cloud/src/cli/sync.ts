@@ -13,7 +13,7 @@ import { downloadFile, listRemoteFiles } from "../s3.js";
 import { readJournal, writeJournal, hashFile, updateEntry, getEntry } from "../journal.js";
 import { createIgnoreFilter } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
-import type { ConflictStrategy } from "./conflict.js";
+import type { ConflictStrategy, ConflictResolution } from "./conflict.js";
 
 /**
  * Per-file events emitted by `sync()` as it progresses.
@@ -28,7 +28,13 @@ import type { ConflictStrategy } from "./conflict.js";
  */
 export type SyncProgressEvent =
   | { type: "progress"; path: string; bytes: number; message?: string }
-  | { type: "error"; path: string; message: string };
+  | { type: "error"; path: string; message: string }
+  | {
+      type: "conflict";
+      path: string;
+      direction: "pull" | "push";
+      resolution: ConflictResolution;
+    };
 
 export interface SyncOptions {
   /** Company slug or UID (defaults to active company from config) */
@@ -66,6 +72,12 @@ export interface SyncResult {
   bytesDownloaded: number;
   filesSkipped: number;
   conflicts: number;
+  /**
+   * Paths (remote keys) that were detected as conflicts during this run.
+   * Always populated when `conflicts > 0` so callers can surface them in UI
+   * or logs without re-streaming the per-file events.
+   */
+  conflictPaths: string[];
   aborted: boolean;
 }
 
@@ -106,6 +118,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   let bytesDownloaded = 0;
   let filesSkipped = 0;
   let conflicts = 0;
+  const conflictPaths: string[] = [];
 
   // List all remote files (IAM session policy filters at the AWS layer)
   const remoteFiles = await listRemoteFiles(ctx);
@@ -138,6 +151,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
       // If local file has changed since last sync, it's a conflict
       if (journalEntry && journalEntry.hash !== localHash) {
         conflicts++;
+        conflictPaths.push(remoteFile.key);
 
         const resolution = await resolveConflict(
           {
@@ -150,9 +164,23 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
           onConflict,
         );
 
+        emit({
+          type: "conflict",
+          path: remoteFile.key,
+          direction: "pull",
+          resolution,
+        });
+
         if (resolution === "abort") {
           writeJournal(journalSlug, journal);
-          return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: true };
+          return {
+            filesDownloaded,
+            bytesDownloaded,
+            filesSkipped,
+            conflicts,
+            conflictPaths,
+            aborted: true,
+          };
         }
         if (resolution === "keep" || resolution === "skip") {
           filesSkipped++;
@@ -208,7 +236,14 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
 
   writeJournal(journalSlug, journal);
 
-  return { filesDownloaded, bytesDownloaded, filesSkipped, conflicts, aborted: false };
+  return {
+    filesDownloaded,
+    bytesDownloaded,
+    filesSkipped,
+    conflicts,
+    conflictPaths,
+    aborted: false,
+  };
 }
 
 /**
@@ -251,5 +286,9 @@ function defaultConsoleLogger(event: SyncProgressEvent): void {
     }
   } else if (event.type === "error") {
     console.error(`  ✗ ${event.path} — ${event.message}`);
+  } else if (event.type === "conflict") {
+    console.error(
+      `  ⚠ conflict (${event.direction}): ${event.path} — ${event.resolution}`,
+    );
   }
 }

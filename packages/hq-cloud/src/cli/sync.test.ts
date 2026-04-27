@@ -176,8 +176,52 @@ describe("sync", () => {
     });
 
     expect(result.conflicts).toBe(1);
+    expect(result.conflictPaths).toEqual(["docs/handoff.md"]);
     expect(result.filesSkipped).toBeGreaterThanOrEqual(1);
     expect(fs.readFileSync(path.join(companyDocs, "handoff.md"), "utf-8")).toBe("local version");
+  });
+
+  it("emits a conflict event with path + resolution on hash mismatch", async () => {
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local version");
+
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "docs/handoff.md": {
+            hash: "stale-hash",
+            size: 20,
+            syncedAt: new Date(Date.now() - 3600000).toISOString(),
+            direction: "down",
+          },
+        },
+      }),
+    );
+
+    const events: unknown[] = [];
+    await sync({
+      company: "acme",
+      onConflict: "keep",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => events.push(e),
+    });
+
+    const conflicts = events.filter(
+      (e): e is { type: "conflict"; path: string; direction: "pull"; resolution: string } =>
+        typeof e === "object" && e !== null && (e as { type?: string }).type === "conflict",
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({
+      type: "conflict",
+      path: "docs/handoff.md",
+      direction: "pull",
+      resolution: "keep",
+    });
   });
 
   it("aborts on --on-conflict abort", async () => {

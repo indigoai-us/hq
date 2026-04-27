@@ -127,6 +127,7 @@ export type RunnerEvent =
     }
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
+  | ({ type: "conflict"; company: string } & Omit<Extract<SyncProgressEvent, { type: "conflict" }>, "type">)
   | ({
       type: "complete";
       company: string;
@@ -148,6 +149,13 @@ export type RunnerEvent =
       /** Always emitted; 0 when no push phase ran. */
       filesUploaded: number;
       bytesUploaded: number;
+      /**
+       * Conflict file paths aggregated across every company in the run.
+       * Always emitted; empty array when no conflicts were detected. Lets
+       * the menubar UI render a flat list without re-walking per-company
+       * `complete` events.
+       */
+      conflictPaths: Array<{ company: string; path: string; direction: "pull" | "push" }>;
       errors: Array<{ company: string; message: string }>;
     };
 
@@ -519,6 +527,7 @@ export async function runRunner(
   let totalUploaded = 0;
   let totalUploadedBytes = 0;
   const errors: Array<{ company: string; message: string }> = [];
+  const allConflicts: Array<{ company: string; path: string; direction: "pull" | "push" }> = [];
 
   for (const target of plan) {
     const companyLabel = target.slug;
@@ -532,6 +541,14 @@ export async function runRunner(
           path: event.path,
           bytes: event.bytes,
           ...(event.message ? { message: event.message } : {}),
+        });
+      } else if (event.type === "conflict") {
+        emit({
+          type: "conflict",
+          company: companyLabel,
+          path: event.path,
+          direction: event.direction,
+          resolution: event.resolution,
         });
       } else {
         emit({
@@ -548,6 +565,7 @@ export async function runRunner(
         filesUploaded: 0,
         bytesUploaded: 0,
         filesSkipped: 0,
+        conflictPaths: [],
         aborted: false,
       };
       let pullResult: SyncResult = {
@@ -555,6 +573,7 @@ export async function runRunner(
         bytesDownloaded: 0,
         filesSkipped: 0,
         conflicts: 0,
+        conflictPaths: [],
         aborted: false,
       };
 
@@ -589,6 +608,13 @@ export async function runRunner(
         });
       }
 
+      // Concat push + pull conflict paths into a single per-company list.
+      // Both arrays are always present (defaulted to []) so consumers can
+      // treat `conflictPaths` as authoritative without a falsy check.
+      const mergedConflictPaths = [
+        ...pullResult.conflictPaths,
+        ...pushResult.conflictPaths,
+      ];
       emit({
         type: "complete",
         company: companyLabel,
@@ -598,10 +624,17 @@ export async function runRunner(
         bytesUploaded: pushResult.bytesUploaded,
         filesSkipped: pullResult.filesSkipped + pushResult.filesSkipped,
         conflicts: pullResult.conflicts,
+        conflictPaths: mergedConflictPaths,
         // Either phase aborting marks the company aborted — the UI treats
         // `aborted: true` as "sync didn't complete cleanly for this company".
         aborted: pullResult.aborted || pushResult.aborted,
       });
+      for (const p of pullResult.conflictPaths) {
+        allConflicts.push({ company: companyLabel, path: p, direction: "pull" });
+      }
+      for (const p of pushResult.conflictPaths) {
+        allConflicts.push({ company: companyLabel, path: p, direction: "push" });
+      }
       totalDownloaded += pullResult.filesDownloaded;
       totalDownloadedBytes += pullResult.bytesDownloaded;
       totalUploaded += pushResult.filesUploaded;
@@ -626,6 +659,7 @@ export async function runRunner(
     bytesDownloaded: totalDownloadedBytes,
     filesUploaded: totalUploaded,
     bytesUploaded: totalUploadedBytes,
+    conflictPaths: allConflicts,
     errors,
   });
   return 0;

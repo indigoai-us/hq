@@ -52,6 +52,12 @@ export interface ShareResult {
   filesUploaded: number;
   bytesUploaded: number;
   filesSkipped: number;
+  /**
+   * Paths (company-relative) that were detected as push conflicts. Mirrors
+   * `SyncResult.conflictPaths` so push and pull surface conflicts the same
+   * way to runner/UI consumers.
+   */
+  conflictPaths: string[];
   aborted: boolean;
 }
 
@@ -83,6 +89,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   let filesUploaded = 0;
   let bytesUploaded = 0;
   let filesSkipped = 0;
+  const conflictPaths: string[] = [];
 
   // Collect all files to share
   const filesToShare = collectFiles(paths, hqRoot, syncRoot, shouldSync);
@@ -123,6 +130,8 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
       // If remote has changed since our last sync, it's a conflict
       if (journalEntry && journalEntry.hash !== localHash) {
+        conflictPaths.push(relativePath);
+
         // Local has changes — check if remote also changed
         const resolution = await resolveConflict(
           {
@@ -134,8 +143,21 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
           onConflict,
         );
 
+        emit({
+          type: "conflict",
+          path: relativePath,
+          direction: "push",
+          resolution,
+        });
+
         if (resolution === "abort") {
-          return { filesUploaded, bytesUploaded, filesSkipped, aborted: true };
+          return {
+            filesUploaded,
+            bytesUploaded,
+            filesSkipped,
+            conflictPaths,
+            aborted: true,
+          };
         }
         if (resolution === "keep" || resolution === "skip") {
           filesSkipped++;
@@ -179,7 +201,13 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
   writeJournal(ctx.slug, journal);
 
-  return { filesUploaded, bytesUploaded, filesSkipped, aborted: false };
+  return {
+    filesUploaded,
+    bytesUploaded,
+    filesSkipped,
+    conflictPaths,
+    aborted: false,
+  };
 }
 
 /**
@@ -193,6 +221,10 @@ function defaultConsoleLogger(event: SyncProgressEvent): void {
     } else {
       console.log(`  ✓ ${event.path}`);
     }
+  } else if (event.type === "conflict") {
+    console.error(
+      `  ⚠ conflict (${event.direction}): ${event.path} — ${event.resolution}`,
+    );
   } else {
     console.error(`  ✗ ${event.path} — ${event.message}`);
   }

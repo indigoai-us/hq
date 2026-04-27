@@ -276,6 +276,62 @@ describe("share", () => {
     expect(uploadFile).toHaveBeenCalledWith(expect.anything(), testFile, "changed.md");
   });
 
+  it("populates conflictPaths and emits a conflict event when remote drifted from journal", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "drifted.md");
+    fs.writeFileSync(testFile, "local edit");
+
+    // Journal has a stale hash → local diverged. headRemoteFile returning
+    // non-null tells share() the remote also exists; combined with the
+    // hash mismatch this trips the conflict branch.
+    vi.mocked(headRemoteFile).mockResolvedValueOnce({
+      lastModified: new Date(),
+      etag: '"remote-changed"',
+      size: 99,
+    });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "drifted.md": {
+            hash: "stale-hash",
+            size: 10,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const events: unknown[] = [];
+    const result = await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onConflict: "keep",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(result.conflictPaths).toEqual(["drifted.md"]);
+    const conflicts = events.filter(
+      (e): e is { type: "conflict"; path: string; direction: "push"; resolution: string } =>
+        typeof e === "object" && e !== null && (e as { type?: string }).type === "conflict",
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({
+      type: "conflict",
+      path: "drifted.md",
+      direction: "push",
+      resolution: "keep",
+    });
+  });
+
   it("skipUnchanged=false (default) uploads even when hash matches", async () => {
     const companyRoot = path.join(tmpDir, "companies", "acme");
     fs.mkdirSync(companyRoot, { recursive: true });
