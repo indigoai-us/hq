@@ -623,7 +623,12 @@ export async function runRunner(
         filesUploaded: pushResult.filesUploaded,
         bytesUploaded: pushResult.bytesUploaded,
         filesSkipped: pullResult.filesSkipped + pushResult.filesSkipped,
-        conflicts: pullResult.conflicts,
+        // Sourced from the merged path list so push-side conflicts are
+        // counted too — `ShareResult` doesn't expose a numeric counter,
+        // and using `pullResult.conflicts` alone silently dropped any
+        // push conflict from the count while leaving its path in
+        // `conflictPaths`.
+        conflicts: mergedConflictPaths.length,
         conflictPaths: mergedConflictPaths,
         // Either phase aborting marks the company aborted — the UI treats
         // `aborted: true` as "sync didn't complete cleanly for this company".

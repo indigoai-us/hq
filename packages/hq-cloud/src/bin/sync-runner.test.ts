@@ -687,6 +687,11 @@ describe("per-company fanout", () => {
       "docs/handoff.md",
       "notes/scratch.md",
     ]);
+    // The numeric `conflicts` count must include push conflicts too.
+    // Previously it was sourced only from `pullResult.conflicts`, which
+    // dropped any push-side conflict from the count even though its path
+    // was in `conflictPaths`. Authoritative count is the merged-array length.
+    expect(complete.conflicts).toBe(2);
 
     const allComplete = deps.stdout
       .events()
