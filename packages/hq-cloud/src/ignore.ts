@@ -75,6 +75,8 @@ export const DEFAULT_IGNORES = [
   "*.pid",
   ".hq-*",
   "modules.lock",
+  // hq-root identity marker — discovered locally per-machine, never synced.
+  "core.yaml",
 
   // HQ repos directory (managed separately, not synced)
   "repos/",

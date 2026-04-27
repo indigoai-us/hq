@@ -38,6 +38,14 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "companies/indigo/notes.md"))).toBe(true);
   });
 
+  it("permissive mode: HQ-root core.yaml marker is ignored", () => {
+    // core.yaml is the local hq-root identity marker. It must never
+    // round-trip through the bucket — pulling another machine's marker
+    // would corrupt root discovery.
+    const shouldSync = createIgnoreFilter(hqRoot);
+    expect(shouldSync(path.join(hqRoot, "core.yaml"))).toBe(false);
+  });
+
   it("permissive mode: .hq-* internal state is ignored, .hqignore family + .hq/ still sync", () => {
     const shouldSync = createIgnoreFilter(hqRoot);
     // Internal state files that must never round-trip through the bucket.
