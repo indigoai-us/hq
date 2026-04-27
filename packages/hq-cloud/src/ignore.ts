@@ -81,6 +81,9 @@ export const DEFAULT_IGNORES = [
   "modules/modules.yaml",
   // per-company identity file — written locally on first sync, never round-tripped.
   "company.yaml",
+  // auto-generated tool index and policy digest — regenerated locally per-machine.
+  "INDEX.md",
+  "policies/_digest.md",
 
   // HQ repos directory (managed separately, not synced)
   "repos/",

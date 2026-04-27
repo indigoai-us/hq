@@ -61,6 +61,15 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "company.yaml"))).toBe(false);
   });
 
+  it("permissive mode: INDEX.md and policies/_digest.md are ignored", () => {
+    // Both are auto-generated locally — INDEX.md by the tools indexer and
+    // policies/_digest.md by the policies digest builder.
+    const shouldSync = createIgnoreFilter(hqRoot);
+    expect(shouldSync(path.join(hqRoot, "INDEX.md"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "companies/ghq/tools/INDEX.md"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "policies/_digest.md"))).toBe(false);
+  });
+
   it("permissive mode: .hq-* internal state is ignored, .hqignore family + .hq/ still sync", () => {
     const shouldSync = createIgnoreFilter(hqRoot);
     // Internal state files that must never round-trip through the bucket.
