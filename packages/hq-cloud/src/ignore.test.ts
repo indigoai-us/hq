@@ -46,6 +46,21 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "core.yaml"))).toBe(false);
   });
 
+  it("permissive mode: modules/modules.yaml manifest is ignored", () => {
+    // modules.yaml is the local modules-resolution manifest. Per-machine
+    // state, never synced.
+    const shouldSync = createIgnoreFilter(hqRoot);
+    expect(shouldSync(path.join(hqRoot, "modules/modules.yaml"))).toBe(false);
+  });
+
+  it("permissive mode: per-company company.yaml is ignored", () => {
+    // company.yaml is written locally on first sync from the entity context.
+    // Round-tripping it would let one machine's identity overwrite another's.
+    const shouldSync = createIgnoreFilter(hqRoot);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/company.yaml"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "company.yaml"))).toBe(false);
+  });
+
   it("permissive mode: .hq-* internal state is ignored, .hqignore family + .hq/ still sync", () => {
     const shouldSync = createIgnoreFilter(hqRoot);
     // Internal state files that must never round-trip through the bucket.

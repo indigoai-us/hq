@@ -77,6 +77,10 @@ export const DEFAULT_IGNORES = [
   "modules.lock",
   // hq-root identity marker — discovered locally per-machine, never synced.
   "core.yaml",
+  // hq modules manifest — local module-resolution state, never synced.
+  "modules/modules.yaml",
+  // per-company identity file — written locally on first sync, never round-tripped.
+  "company.yaml",
 
   // HQ repos directory (managed separately, not synced)
   "repos/",
