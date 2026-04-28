@@ -15,6 +15,12 @@ import { readJournal, writeJournal, hashFile, updateEntry, getEntry, normalizeEt
 import { createIgnoreFilter } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy, ConflictResolution } from "./conflict.js";
+import {
+  buildConflictId,
+  buildConflictPath,
+  readShortMachineId,
+} from "../lib/conflict-file.js";
+import { appendConflictEntry } from "../lib/conflict-index.js";
 
 /**
  * Per-file events emitted by `sync()` as it progresses.
@@ -212,6 +218,45 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
         direction: "pull",
         resolution,
       });
+
+      // Write `<original>.conflict-<ts>-<machine>.<ext>` mirror + append to
+      // `<hqRoot>/.hq-conflicts/index.json` so the user can later run
+      // `/resolve-conflicts` to walk pending conflicts. Skipped for "abort"
+      // (user gave up) and "overwrite" (cloud bytes are about to replace
+      // local — mirror would be redundant). Best-effort: failure here only
+      // emits an error, doesn't break the sync.
+      if (resolution !== "abort" && resolution !== "overwrite") {
+        try {
+          const detectedAt = new Date().toISOString();
+          const machineId = readShortMachineId();
+          const originalRelative = path.relative(hqRoot, localPath);
+          const conflictRelative = buildConflictPath(
+            originalRelative,
+            detectedAt,
+            machineId,
+          );
+          const conflictAbs = path.join(hqRoot, conflictRelative);
+          await downloadFile(ctx, remoteFile.key, conflictAbs);
+          appendConflictEntry(hqRoot, {
+            id: buildConflictId(originalRelative, detectedAt),
+            originalPath: originalRelative,
+            conflictPath: conflictRelative,
+            detectedAt,
+            side: "pull",
+            machineId,
+            localHash: item.localHash,
+            remoteHash: remoteFile.etag ? normalizeEtag(remoteFile.etag) : "",
+          });
+        } catch (mirrorErr) {
+          emit({
+            type: "error",
+            path: remoteFile.key,
+            message: `conflict mirror write failed: ${
+              mirrorErr instanceof Error ? mirrorErr.message : String(mirrorErr)
+            }`,
+          });
+        }
+      }
 
       if (resolution === "abort") {
         writeJournal(journalSlug, journal);
