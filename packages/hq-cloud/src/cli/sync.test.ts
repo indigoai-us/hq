@@ -384,4 +384,101 @@ describe("sync", () => {
     expect(journal.files["docs/handoff.md"].remoteEtag).toBe("abc123");
     expect(journal.files["knowledge/readme.md"].remoteEtag).toBe("def456");
   });
+
+  // ── Stage-1 plan event ─────────────────────────────────────────────────
+
+  it("emits a plan event before any progress events", async () => {
+    const events: { type: string }[] = [];
+    await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => events.push({ type: e.type }),
+    });
+
+    // Plan must be the first event so consumers can use its totals as
+    // the progress denominator before any per-file events arrive.
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0].type).toBe("plan");
+    const planIndex = events.findIndex((e) => e.type === "plan");
+    const firstProgressIndex = events.findIndex((e) => e.type === "progress");
+    expect(firstProgressIndex).toBeGreaterThan(planIndex);
+  });
+
+  it("plan event totals reflect the upcoming Stage-2 work (all-new case)", async () => {
+    // Both mock remote files are new locally → both counted as downloads,
+    // bytes summed from listRemoteFiles, no conflicts, no skips.
+    const planEvents: unknown[] = [];
+    await sync({
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        if (e.type === "plan") {
+          planEvents.push(e);
+        }
+      },
+    });
+
+    expect(planEvents).toHaveLength(1);
+    expect(planEvents[0]).toMatchObject({
+      type: "plan",
+      filesToDownload: 2,
+      bytesToDownload: 142, // 42 + 100 from the s3 mock
+      filesToUpload: 0, // sync() never plans uploads
+      bytesToUpload: 0,
+      filesToSkip: 0,
+      filesToConflict: 0,
+    });
+  });
+
+  it("plan event counts a 3-way conflict separately from downloads", async () => {
+    // Local edit + journal-tracked + remote ETag drifted → conflict.
+    const companyDocs = path.join(tmpDir, "companies", "acme", "docs");
+    fs.mkdirSync(companyDocs, { recursive: true });
+    fs.writeFileSync(path.join(companyDocs, "handoff.md"), "local edit");
+
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "docs/handoff.md": {
+            hash: "stale-hash-from-pre-edit",
+            size: 20,
+            syncedAt: new Date(Date.now() - 3600000).toISOString(),
+            direction: "down",
+            // Mismatched ETag — listRemoteFiles mock returns "abc123",
+            // we record a stale one so remoteChanged is true.
+            remoteEtag: "stale-remote-etag",
+          },
+        },
+      }),
+    );
+
+    const planEvents: Array<{
+      type: string;
+      filesToDownload?: number;
+      filesToConflict?: number;
+      filesToSkip?: number;
+    }> = [];
+    await sync({
+      company: "acme",
+      onConflict: "keep",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        if (e.type === "plan") planEvents.push(e);
+      },
+    });
+
+    expect(planEvents).toHaveLength(1);
+    // Conflict is counted separately; only the new file is in toDownload.
+    expect(planEvents[0]).toMatchObject({
+      filesToDownload: 1,
+      filesToConflict: 1,
+      filesToSkip: 0,
+    });
+  });
 });

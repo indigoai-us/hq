@@ -575,6 +575,49 @@ describe("per-company fanout", () => {
     ]);
   });
 
+  it("tags Stage-1 plan events with the company slug", async () => {
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_a" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({ uid, slug: "acme" } as unknown as EntityInfo),
+        }),
+      sync: vi.fn().mockImplementation(async (opts: SyncOptions) => {
+        opts.onEvent?.({
+          type: "plan",
+          filesToDownload: 7,
+          bytesToDownload: 4096,
+          filesToUpload: 0,
+          bytesToUpload: 0,
+          filesToSkip: 3,
+          filesToConflict: 1,
+        });
+        return defaultSyncResult({ filesDownloaded: 7, bytesDownloaded: 4096 });
+      }),
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(0);
+    const planEvents = deps.stdout
+      .events()
+      .filter((e): e is Extract<RunnerEvent, { type: "plan" }> =>
+        e.type === "plan",
+      );
+    expect(planEvents).toEqual([
+      {
+        type: "plan",
+        company: "acme",
+        filesToDownload: 7,
+        bytesToDownload: 4096,
+        filesToUpload: 0,
+        bytesToUpload: 0,
+        filesToSkip: 3,
+        filesToConflict: 1,
+      },
+    ]);
+  });
+
   it("tags per-file error events with the company slug", async () => {
     const deps = makeDeps({
       createVaultClient: () =>
