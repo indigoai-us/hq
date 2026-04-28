@@ -7,9 +7,10 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { VaultServiceConfig } from "../types.js";
+import type { VaultServiceConfig, SyncJournal } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { downloadFile, listRemoteFiles } from "../s3.js";
+import type { RemoteFile } from "../s3.js";
 import { readJournal, writeJournal, hashFile, updateEntry, getEntry, normalizeEtag } from "../journal.js";
 import { createIgnoreFilter } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
@@ -25,8 +26,31 @@ import type { ConflictStrategy, ConflictResolution } from "./conflict.js";
  *
  * The human CLI (`hq sync`) leaves `onEvent` undefined and falls through to
  * `defaultConsoleLogger` below, which preserves the existing tty output.
+ *
+ * A single `plan` event is emitted once at the start of every run, before
+ * any `progress`/`conflict`/`error` events. It carries the totals derived
+ * from a Stage-1 classification pass so consumers can render an accurate
+ * progress denominator before transfers begin (the menubar's "Preparing
+ * sync…" pre-pass becomes obsolete once the runner forwards this).
  */
 export type SyncProgressEvent =
+  | {
+      type: "plan";
+      /** Files this run intends to download (pull-only; 0 from share). */
+      filesToDownload: number;
+      bytesToDownload: number;
+      /** Files this run intends to upload (push-only; 0 from sync). */
+      filesToUpload: number;
+      bytesToUpload: number;
+      /** Files classified as no-op (ignored, unchanged, local-only on pull). */
+      filesToSkip: number;
+      /**
+       * Files known up-front to be conflicts. Pull-side fills this from the
+       * 3-way merge against the journal; push-side leaves it 0 because
+       * conflict detection requires a remote HEAD that runs in Stage 2.
+       */
+      filesToConflict: number;
+    }
   | { type: "progress"; path: string; bytes: number; message?: string }
   | { type: "error"; path: string; message: string }
   | {
@@ -123,90 +147,91 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   // List all remote files (IAM session policy filters at the AWS layer)
   const remoteFiles = await listRemoteFiles(ctx);
 
-  for (const remoteFile of remoteFiles) {
-    const localPath = path.join(companyRoot, remoteFile.key);
+  // Stage 1: classify every remote file against the journal + local disk.
+  // Hashing happens here (not in the transfer loop) so the plan event below
+  // carries an accurate denominator before any progress events fire.
+  const plan = computePullPlan(
+    remoteFiles,
+    journal,
+    companyRoot,
+    shouldSync,
+    options.personalMode === true,
+  );
 
-    if (options.personalMode === true && remoteFile.key.startsWith("companies/")) {
+  emit({
+    type: "plan",
+    filesToDownload: plan.filesToDownload,
+    bytesToDownload: plan.bytesToDownload,
+    // sync() is pull-only; push counts are sourced from share()'s plan event.
+    filesToUpload: 0,
+    bytesToUpload: 0,
+    filesToSkip: plan.filesToSkip,
+    filesToConflict: plan.filesToConflict,
+  });
+
+  // Stage 2: execute the plan. Per-item branching mirrors the pre-refactor
+  // inline loop; the only structural change is that classification has
+  // already happened (so `localHash` is reused instead of re-hashing).
+  for (const item of plan.items) {
+    if (
+      item.action === "skip-ignored" ||
+      item.action === "skip-personal-mode" ||
+      item.action === "skip-unchanged" ||
+      item.action === "skip-local-only"
+    ) {
       filesSkipped++;
       continue;
     }
 
-    // Apply ignore rules
-    if (!shouldSync(localPath)) {
-      filesSkipped++;
-      continue;
-    }
+    const { remoteFile, localPath } = item;
 
-    // Auto-refresh context if credentials expiring
+    // Auto-refresh context if credentials expiring (kept in execute phase
+    // because Stage 1 is fast — no need to refresh just to classify).
     if (isExpiringSoon(ctx.expiresAt)) {
       ctx = await refreshEntityContext(companyRef, vaultConfig);
     }
 
-    // Check for local conflict
-    const journalEntry = getEntry(journal, remoteFile.key);
+    if (item.action === "conflict") {
+      conflicts++;
+      conflictPaths.push(remoteFile.key);
 
-    if (fs.existsSync(localPath)) {
-      const localHash = hashFile(localPath);
-      const localChanged = !!journalEntry && journalEntry.hash !== localHash;
-      const remoteChanged = !!journalEntry && hasRemoteChanged(remoteFile, journalEntry);
-
-      // A real conflict requires BOTH sides to have moved since the last
-      // sync. If only local changed, push will handle it; pulling here would
-      // clobber the local edit. If only remote changed, fall through to
-      // download. If neither moved, skip.
-      if (localChanged && remoteChanged) {
-        conflicts++;
-        conflictPaths.push(remoteFile.key);
-
-        const resolution = await resolveConflict(
-          {
-            path: remoteFile.key,
-            localHash,
-            remoteModified: remoteFile.lastModified,
-            localModified: fs.statSync(localPath).mtime,
-            direction: "pull",
-          },
-          onConflict,
-        );
-
-        emit({
-          type: "conflict",
+      const resolution = await resolveConflict(
+        {
           path: remoteFile.key,
+          localHash: item.localHash,
+          remoteModified: remoteFile.lastModified,
+          localModified: fs.statSync(localPath).mtime,
           direction: "pull",
-          resolution,
-        });
+        },
+        onConflict,
+      );
 
-        if (resolution === "abort") {
-          writeJournal(journalSlug, journal);
-          return {
-            filesDownloaded,
-            bytesDownloaded,
-            filesSkipped,
-            conflicts,
-            conflictPaths,
-            aborted: true,
-          };
-        }
-        if (resolution === "keep" || resolution === "skip") {
-          filesSkipped++;
-          continue;
-        }
-        // "overwrite" falls through to download
-      } else if (journalEntry && localChanged && !remoteChanged) {
-        // Local-only edit: leave it for the push phase to upload. Pulling
-        // would silently overwrite the user's work.
-        filesSkipped++;
-        continue;
-      } else if (journalEntry && !localChanged && !remoteChanged) {
-        // Neither side moved — nothing to do.
+      emit({
+        type: "conflict",
+        path: remoteFile.key,
+        direction: "pull",
+        resolution,
+      });
+
+      if (resolution === "abort") {
+        writeJournal(journalSlug, journal);
+        return {
+          filesDownloaded,
+          bytesDownloaded,
+          filesSkipped,
+          conflicts,
+          conflictPaths,
+          aborted: true,
+        };
+      }
+      if (resolution === "keep" || resolution === "skip") {
         filesSkipped++;
         continue;
       }
-      // Otherwise (no journal entry, or remote-only changed) fall through
-      // to download.
+      // "overwrite" falls through to download
     }
 
-    // Download
+    // Download (action === "download" or conflict resolved to "overwrite")
     try {
       await downloadFile(ctx, remoteFile.key, localPath);
 
@@ -216,8 +241,10 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
       // drift independently of mtime drift.
       updateEntry(journal, remoteFile.key, hash, stat.size, "down", remoteFile.etag);
 
-      // Attach message from journal entry if present
-      const remoteJournalMessage = (journalEntry as { message?: string } | undefined)?.message;
+      // Attach message from the prior journal entry if present (set by a
+      // previous `share` operation that included a --message).
+      const priorEntry = getEntry(journal, remoteFile.key);
+      const remoteJournalMessage = (priorEntry as { message?: string } | undefined)?.message;
       emit({
         type: "progress",
         path: remoteFile.key,
@@ -288,6 +315,124 @@ function hasRemoteChanged(
 }
 
 /**
+ * Stage-1 classification for a single remote object. Each remote file falls
+ * into exactly one bucket; the executor in `sync()` switches on `action` to
+ * decide what to do. `localHash` is carried on `conflict` items so the
+ * executor can hand it to `resolveConflict` without re-hashing.
+ */
+type PullPlanItem =
+  | { action: "download"; remoteFile: RemoteFile; localPath: string }
+  | { action: "skip-ignored"; remoteFile: RemoteFile; localPath: string }
+  | { action: "skip-personal-mode"; remoteFile: RemoteFile; localPath: string }
+  | { action: "skip-unchanged"; remoteFile: RemoteFile; localPath: string }
+  | { action: "skip-local-only"; remoteFile: RemoteFile; localPath: string }
+  | {
+      action: "conflict";
+      remoteFile: RemoteFile;
+      localPath: string;
+      localHash: string;
+    };
+
+interface PullPlan {
+  items: PullPlanItem[];
+  filesToDownload: number;
+  bytesToDownload: number;
+  filesToSkip: number;
+  filesToConflict: number;
+}
+
+/**
+ * Stage-1 planning pass: classify every remote file into download / skip /
+ * conflict buckets without performing any S3 transfers. Local hashes are
+ * computed here (not in the transfer loop) so the totals returned reflect
+ * the real outcome of the upcoming Stage-2 execution rather than an
+ * upper-bound guess.
+ *
+ * Pure function: no S3 calls, no journal writes, no event emission. The
+ * caller (`sync()`) is responsible for emitting the resulting plan event
+ * before iterating `items`.
+ */
+function computePullPlan(
+  remoteFiles: RemoteFile[],
+  journal: SyncJournal,
+  companyRoot: string,
+  shouldSync: (filePath: string) => boolean,
+  personalMode: boolean,
+): PullPlan {
+  const items: PullPlanItem[] = [];
+
+  for (const remoteFile of remoteFiles) {
+    const localPath = path.join(companyRoot, remoteFile.key);
+
+    if (personalMode && remoteFile.key.startsWith("companies/")) {
+      items.push({ action: "skip-personal-mode", remoteFile, localPath });
+      continue;
+    }
+
+    if (!shouldSync(localPath)) {
+      items.push({ action: "skip-ignored", remoteFile, localPath });
+      continue;
+    }
+
+    const journalEntry = getEntry(journal, remoteFile.key);
+
+    if (fs.existsSync(localPath)) {
+      const localHash = hashFile(localPath);
+      const localChanged = !!journalEntry && journalEntry.hash !== localHash;
+      const remoteChanged =
+        !!journalEntry && hasRemoteChanged(remoteFile, journalEntry);
+
+      // Mirror the original 3-way merge from the inline loop. Tested by
+      // `does NOT flag a pull conflict when only local changed since last
+      // sync` and `detects conflicts with local changes…`.
+      if (localChanged && remoteChanged) {
+        items.push({
+          action: "conflict",
+          remoteFile,
+          localPath,
+          localHash,
+        });
+        continue;
+      }
+      if (journalEntry && localChanged && !remoteChanged) {
+        items.push({ action: "skip-local-only", remoteFile, localPath });
+        continue;
+      }
+      if (journalEntry && !localChanged && !remoteChanged) {
+        items.push({ action: "skip-unchanged", remoteFile, localPath });
+        continue;
+      }
+      // No journal entry, or remote-only changed → fall through to download.
+    }
+
+    items.push({ action: "download", remoteFile, localPath });
+  }
+
+  let filesToDownload = 0;
+  let bytesToDownload = 0;
+  let filesToSkip = 0;
+  let filesToConflict = 0;
+  for (const item of items) {
+    if (item.action === "download") {
+      filesToDownload++;
+      bytesToDownload += item.remoteFile.size;
+    } else if (item.action === "conflict") {
+      filesToConflict++;
+    } else {
+      filesToSkip++;
+    }
+  }
+
+  return {
+    items,
+    filesToDownload,
+    bytesToDownload,
+    filesToSkip,
+    filesToConflict,
+  };
+}
+
+/**
  * Check if an error is an S3 access denied (expected for filtered guests).
  */
 function isAccessDenied(err: unknown): boolean {
@@ -303,7 +448,26 @@ function isAccessDenied(err: unknown): boolean {
  * without an `onEvent` see no behavioral change.
  */
 function defaultConsoleLogger(event: SyncProgressEvent): void {
-  if (event.type === "progress") {
+  if (event.type === "plan") {
+    // Terse single line so humans see what's about to happen without
+    // drowning the per-file output that follows. Skip when there's
+    // nothing to do — no signal, no noise.
+    const movement = event.filesToDownload + event.filesToUpload + event.filesToConflict;
+    if (movement > 0) {
+      const parts: string[] = [];
+      if (event.filesToDownload > 0) {
+        parts.push(`${event.filesToDownload} to download (${event.bytesToDownload} bytes)`);
+      }
+      if (event.filesToUpload > 0) {
+        parts.push(`${event.filesToUpload} to upload (${event.bytesToUpload} bytes)`);
+      }
+      if (event.filesToConflict > 0) {
+        parts.push(`${event.filesToConflict} conflict(s)`);
+      }
+      parts.push(`${event.filesToSkip} unchanged`);
+      console.log(`Plan: ${parts.join(", ")}`);
+    }
+  } else if (event.type === "progress") {
     if (event.message) {
       console.log(`  ✓ ${event.path} — "${event.message}"`);
     } else {

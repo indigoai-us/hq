@@ -7,7 +7,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { VaultServiceConfig } from "../types.js";
+import type { VaultServiceConfig, SyncJournal } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { uploadFile, headRemoteFile } from "../s3.js";
 import { readJournal, writeJournal, hashFile, updateEntry, normalizeEtag } from "../journal.js";
@@ -15,6 +15,100 @@ import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
 import type { SyncProgressEvent } from "./sync.js";
+
+/**
+ * Stage-1 classification for a single local file in a push run. Pre-HEAD —
+ * only inputs we can evaluate locally (size limit, journal hash, optional
+ * skip-unchanged) determine the action. Files that pass classification as
+ * `upload` are still subject to a per-file HEAD + 3-way conflict check in
+ * Stage 2 before the actual PUT, so the `filesToUpload` count in the plan
+ * event is an upper bound: it includes files that may turn out to be
+ * conflicts. V1.5 follow-up: replace per-file HEAD with a single LIST so
+ * conflicts can be classified up-front and reported in the plan.
+ */
+type PushPlanItem =
+  | {
+      action: "upload";
+      absolutePath: string;
+      relativePath: string;
+      localHash: string;
+      size: number;
+    }
+  | {
+      action: "skip-size-limit";
+      absolutePath: string;
+      relativePath: string;
+    }
+  | {
+      action: "skip-unchanged";
+      absolutePath: string;
+      relativePath: string;
+    };
+
+interface PushPlan {
+  items: PushPlanItem[];
+  filesToUpload: number;
+  bytesToUpload: number;
+  filesToSkip: number;
+}
+
+/**
+ * Pure Stage-1 pass for push: walk the candidate file list, hash each one,
+ * apply the size-limit and skip-unchanged gates, and return a classified
+ * plan plus aggregate counts. No S3 calls, no journal writes, no event
+ * emission.
+ *
+ * The conflict count is intentionally absent from the returned `PushPlan` —
+ * detecting a push conflict requires a remote HEAD that we defer to Stage 2.
+ * Consumers that want a conflict count get it from the `complete` event.
+ */
+function computePushPlan(
+  filesToShare: { absolutePath: string; relativePath: string }[],
+  journal: SyncJournal,
+  skipUnchanged: boolean,
+): PushPlan {
+  const items: PushPlanItem[] = [];
+
+  for (const { absolutePath, relativePath } of filesToShare) {
+    if (!isWithinSizeLimit(absolutePath)) {
+      items.push({ action: "skip-size-limit", absolutePath, relativePath });
+      continue;
+    }
+
+    const localHash = hashFile(absolutePath);
+
+    if (skipUnchanged) {
+      const existing = journal.files[relativePath];
+      if (existing && existing.hash === localHash) {
+        items.push({ action: "skip-unchanged", absolutePath, relativePath });
+        continue;
+      }
+    }
+
+    const size = fs.statSync(absolutePath).size;
+    items.push({
+      action: "upload",
+      absolutePath,
+      relativePath,
+      localHash,
+      size,
+    });
+  }
+
+  let filesToUpload = 0;
+  let bytesToUpload = 0;
+  let filesToSkip = 0;
+  for (const item of items) {
+    if (item.action === "upload") {
+      filesToUpload++;
+      bytesToUpload += item.size;
+    } else {
+      filesToSkip++;
+    }
+  }
+
+  return { items, filesToUpload, bytesToUpload, filesToSkip };
+}
 
 export interface ShareOptions {
   /** Path(s) to share (files or directories) */
@@ -94,29 +188,44 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   // Collect all files to share
   const filesToShare = collectFiles(paths, hqRoot, syncRoot, shouldSync);
 
-  for (const { absolutePath, relativePath } of filesToShare) {
-    if (!isWithinSizeLimit(absolutePath)) {
+  // Stage 1: classify each file. Pre-HEAD — only inputs we can evaluate
+  // locally (size limit, journal hash, optional skip-unchanged) are
+  // considered. The plan event below carries an upper-bound `filesToUpload`
+  // (true conflicts emerge from the per-file HEAD in Stage 2 and aren't
+  // knowable here). The final `complete` event reports authoritative counts.
+  const plan = computePushPlan(filesToShare, journal, skipUnchanged === true);
+
+  emit({
+    type: "plan",
+    // share() is push-only; pull counts are sourced from sync()'s plan event.
+    filesToDownload: 0,
+    bytesToDownload: 0,
+    filesToUpload: plan.filesToUpload,
+    bytesToUpload: plan.bytesToUpload,
+    filesToSkip: plan.filesToSkip,
+    // Push conflicts require a remote HEAD; we don't yet do that in Stage 1,
+    // so this stays 0. V1.5 (single LIST) will let us classify them up-front.
+    filesToConflict: 0,
+  });
+
+  // Stage 2: execute. Skip items pre-classified as no-ops, then for each
+  // upload candidate run the HEAD + 3-way conflict check + actual PUT.
+  for (const item of plan.items) {
+    if (item.action === "skip-size-limit") {
       emit({
         type: "error",
-        path: relativePath,
+        path: item.relativePath,
         message: "file exceeds size limit",
       });
       filesSkipped++;
       continue;
     }
-
-    // Skip-if-unchanged gate: the hot path for bidirectional Sync Now. When
-    // walking an entire company folder, this is what keeps us from re-uploading
-    // every file every tick. Off by default so `hq share <file>` keeps its
-    // explicit-intent semantics (user named it, user wants it sent).
-    const localHash = hashFile(absolutePath);
-    if (skipUnchanged) {
-      const existing = journal.files[relativePath];
-      if (existing && existing.hash === localHash) {
-        filesSkipped++;
-        continue;
-      }
+    if (item.action === "skip-unchanged") {
+      filesSkipped++;
+      continue;
     }
+
+    const { absolutePath, relativePath, localHash } = item;
 
     // Auto-refresh context if credentials expiring
     if (isExpiringSoon(ctx.expiresAt)) {
@@ -225,7 +334,13 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
  * emitted before `onEvent` was added — tty users see no change.
  */
 function defaultConsoleLogger(event: SyncProgressEvent): void {
-  if (event.type === "progress") {
+  if (event.type === "plan") {
+    if (event.filesToUpload > 0) {
+      console.log(
+        `Plan: ${event.filesToUpload} to upload (${event.bytesToUpload} bytes), ${event.filesToSkip} unchanged`,
+      );
+    }
+  } else if (event.type === "progress") {
     if (event.message) {
       console.log(`  ✓ ${event.path} — "${event.message}"`);
     } else {
@@ -235,7 +350,7 @@ function defaultConsoleLogger(event: SyncProgressEvent): void {
     console.error(
       `  ⚠ conflict (${event.direction}): ${event.path} — ${event.resolution}`,
     );
-  } else {
+  } else if (event.type === "error") {
     console.error(`  ✗ ${event.path} — ${event.message}`);
   }
 }

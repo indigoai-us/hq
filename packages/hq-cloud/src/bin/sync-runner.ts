@@ -125,6 +125,18 @@ export type RunnerEvent =
       type: "fanout-plan";
       companies: Array<{ uid: string; slug: string; name?: string }>;
     }
+  | ({
+      /**
+       * Stage-1 results for a single company's sync/share pass. Emitted once
+       * before any `progress` events for that company arrive — once for the
+       * pull phase (download counts) and once for the push phase (upload
+       * counts) when `--direction both`. Consumers (the menubar) sum the
+       * non-zero fields across all `plan` events seen for a fanout to render
+       * an accurate "X of Y files" denominator before transfers begin.
+       */
+      type: "plan";
+      company: string;
+    } & Omit<Extract<SyncProgressEvent, { type: "plan" }>, "type">)
   | ({ type: "progress"; company: string } & Omit<Extract<SyncProgressEvent, { type: "progress" }>, "type">)
   | ({ type: "error"; company?: string } & Omit<Extract<SyncProgressEvent, { type: "error" }>, "type">)
   | ({ type: "conflict"; company: string } & Omit<Extract<SyncProgressEvent, { type: "conflict" }>, "type">)
@@ -534,7 +546,18 @@ export async function runRunner(
     // Per-company event tagger — shared by push and pull phases so progress
     // rows land on the right company regardless of which phase emitted them.
     const tagAndEmit = (event: SyncProgressEvent): void => {
-      if (event.type === "progress") {
+      if (event.type === "plan") {
+        emit({
+          type: "plan",
+          company: companyLabel,
+          filesToDownload: event.filesToDownload,
+          bytesToDownload: event.bytesToDownload,
+          filesToUpload: event.filesToUpload,
+          bytesToUpload: event.bytesToUpload,
+          filesToSkip: event.filesToSkip,
+          filesToConflict: event.filesToConflict,
+        });
+      } else if (event.type === "progress") {
         emit({
           type: "progress",
           company: companyLabel,
@@ -550,7 +573,7 @@ export async function runRunner(
           direction: event.direction,
           resolution: event.resolution,
         });
-      } else {
+      } else if (event.type === "error") {
         emit({
           type: "error",
           company: companyLabel,

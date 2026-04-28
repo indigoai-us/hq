@@ -508,6 +508,9 @@ describe("share", () => {
       vaultConfig: mockConfig,
       hqRoot: tmpDir,
       onEvent: (e) => {
+        // Only file-level events carry `.path`. The Stage-1 `plan` event is
+        // surfaced separately and tested in its own block.
+        if (e.type === "plan") return;
         events.push({
           type: e.type,
           path: e.path,
@@ -520,5 +523,127 @@ describe("share", () => {
     expect(events).toHaveLength(2);
     expect(events.every((e) => e.type === "progress")).toBe(true);
     expect(events.map((e) => e.path).sort()).toEqual(["a.md", "b.md"]);
+  });
+
+  // ── Stage-1 plan event ─────────────────────────────────────────────────
+
+  it("emits a plan event before any progress events", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "a.md"), "alpha");
+    fs.writeFileSync(path.join(companyRoot, "b.md"), "beta");
+
+    const events: { type: string }[] = [];
+    await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => events.push({ type: e.type }),
+    });
+
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0].type).toBe("plan");
+    const planIndex = events.findIndex((e) => e.type === "plan");
+    const firstProgressIndex = events.findIndex((e) => e.type === "progress");
+    expect(firstProgressIndex).toBeGreaterThan(planIndex);
+  });
+
+  it("plan event reports filesToUpload = candidates and bytesToUpload = sum of file sizes", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "a.md"), "alpha"); // 5 bytes
+    fs.writeFileSync(path.join(companyRoot, "b.md"), "beta!"); // 5 bytes
+
+    const planEvents: Array<{
+      type: string;
+      filesToUpload?: number;
+      bytesToUpload?: number;
+      filesToDownload?: number;
+      bytesToDownload?: number;
+      filesToSkip?: number;
+      filesToConflict?: number;
+    }> = [];
+    await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      onEvent: (e) => {
+        if (e.type === "plan") planEvents.push(e);
+      },
+    });
+
+    expect(planEvents).toHaveLength(1);
+    expect(planEvents[0]).toMatchObject({
+      type: "plan",
+      filesToUpload: 2,
+      bytesToUpload: 10,
+      filesToDownload: 0, // share() is push-only
+      bytesToDownload: 0,
+      filesToSkip: 0,
+      // Push conflicts can't be classified pre-HEAD (V1 limitation);
+      // the complete event reports the authoritative count.
+      filesToConflict: 0,
+    });
+  });
+
+  it("plan event filesToSkip reflects skip-unchanged hits when journal hash matches", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "unchanged.md"), "stable content");
+    fs.writeFileSync(path.join(companyRoot, "changed.md"), "newer content");
+
+    // Pre-seed the journal so unchanged.md matches its hash but
+    // changed.md does not.
+    const crypto = await import("crypto");
+    const unchangedHash = crypto
+      .createHash("sha256")
+      .update("stable content")
+      .digest("hex");
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "unchanged.md": {
+            hash: unchangedHash,
+            size: 14,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+          "changed.md": {
+            hash: "stale-hash",
+            size: 13,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const planEvents: Array<{
+      type: string;
+      filesToUpload?: number;
+      filesToSkip?: number;
+    }> = [];
+    await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      onEvent: (e) => {
+        if (e.type === "plan") planEvents.push(e);
+      },
+    });
+
+    expect(planEvents).toHaveLength(1);
+    expect(planEvents[0]).toMatchObject({
+      filesToUpload: 1,
+      filesToSkip: 1,
+    });
   });
 });
