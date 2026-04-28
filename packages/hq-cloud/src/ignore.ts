@@ -85,6 +85,9 @@ export const DEFAULT_IGNORES = [
   "INDEX.md",
   "policies/_digest.md",
 
+  // Claude Code worktrees — local-only working copies, never synced.
+  "**/.claude/worktrees/",
+
   // HQ repos directory (managed separately, not synced)
   "repos/",
 
