@@ -375,6 +375,9 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     }
   }
 
+  // See cli/sync.ts: stamp lastSync on completion so a no-op share still
+  // ticks the "Last sync" indicator.
+  journal.lastSync = new Date().toISOString();
   writeJournal(ctx.slug, journal);
 
   return {
