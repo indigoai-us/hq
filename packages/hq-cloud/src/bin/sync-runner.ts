@@ -99,8 +99,7 @@ const DEFAULT_COGNITO: CognitoAuthConfig = {
 };
 
 const DEFAULT_VAULT_API_URL =
-  process.env.HQ_VAULT_API_URL ??
-  "https://4nfy67z28h.execute-api.us-east-1.amazonaws.com";
+  process.env.HQ_VAULT_API_URL ?? "https://hqapi.getindigo.ai";
 
 const DEFAULT_HQ_ROOT = path.join(os.homedir(), "hq");
 
