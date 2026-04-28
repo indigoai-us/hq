@@ -346,7 +346,7 @@ export function createDefaultVaultClient(
   };
   return {
     async findCompanyBySlug(slug: string): Promise<VaultEntity | null> {
-      const url = `${apiUrl.replace(/\/$/, "")}/v1/entities/by-slug/company/${encodeURIComponent(
+      const url = `${apiUrl.replace(/\/$/, "")}/entity/by-slug/company/${encodeURIComponent(
         slug,
       )}`;
       const res = await fetch(url, { method: "GET", headers });
@@ -372,7 +372,7 @@ export function createDefaultVaultClient(
       name: string;
       ownerUid?: string;
     }): Promise<VaultEntity> {
-      const url = `${apiUrl.replace(/\/$/, "")}/v1/entities`;
+      const url = `${apiUrl.replace(/\/$/, "")}/entity`;
       const body: Record<string, unknown> = {
         type: "company",
         slug: input.slug,
@@ -391,14 +391,14 @@ export function createDefaultVaultClient(
         // retrying GET if it wants idempotency on collisions.
         throw new ProvisionError(
           1,
-          `Vault POST /v1/entities failed: ${res.status} ${res.statusText} — ${text}`,
+          `Vault POST /entity failed: ${res.status} ${res.statusText} — ${text}`,
         );
       }
       const data = (await res.json()) as { entity?: VaultEntity };
       if (!data.entity) {
         throw new ProvisionError(
           1,
-          `Vault POST /v1/entities returned ${res.status} with no entity body`,
+          `Vault POST /entity returned ${res.status} with no entity body`,
         );
       }
       return data.entity;
