@@ -38,6 +38,15 @@ export const DEFAULT_COGNITO: CognitoAuthConfig = {
   port: process.env.HQ_COGNITO_CALLBACK_PORT
     ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
     : 8765,
+  // Skip Cognito's Hosted UI — go straight to Google OAuth. The Cognito
+  // /oauth2/authorize endpoint honors `identity_provider` and performs an
+  // internal redirect, so the user never sees the (un-styleable) Hosted UI.
+  // Set HQ_COGNITO_IDENTITY_PROVIDER="" to fall back to the IdP picker for
+  // accounts that use email+password (admin-created users without Google).
+  identityProvider:
+    process.env.HQ_COGNITO_IDENTITY_PROVIDER !== undefined
+      ? process.env.HQ_COGNITO_IDENTITY_PROVIDER || undefined
+      : "Google",
 };
 
 export const DEFAULT_VAULT_API_URL =
