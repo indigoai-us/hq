@@ -102,3 +102,30 @@ export interface VaultServiceConfig {
   /** AWS region for S3 client (defaults to entity region or us-east-1) */
   region?: string;
 }
+
+// ── Conflict index (consumed by /resolve-conflicts) ─────────────────────────
+//
+// Restored from feat/lineage-conflict-tracking (83bf5fa1) so the producer
+// can write `.conflict-<ts>-<machine>.<ext>` mirror files + append to
+// `<hqRoot>/.hq-conflicts/index.json` whenever the hash-comparison detector
+// flags a conflict that doesn't get overwritten or aborted.
+
+export interface ConflictIndexEntry {
+  id: string;
+  originalPath: string;
+  conflictPath: string;
+  detectedAt: string;
+  side: "push" | "pull";
+  machineId: string;
+  localHash: string;
+  remoteHash: string;
+  /** S3 VersionId when known (present for VersionId-aware buckets). */
+  remoteVersionId?: string;
+  /** Last-known parent VersionId from journal, when known. */
+  lastKnownVersionId?: string | null;
+}
+
+export interface ConflictIndex {
+  version: 1;
+  conflicts: ConflictIndexEntry[];
+}
