@@ -271,6 +271,27 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
       }
       if (resolution === "keep" || resolution === "skip") {
         filesSkipped++;
+        // Stamp the journal with the new baseline so the same conflict
+        // doesn't re-fire on every subsequent sync. After "keep", local
+        // wins — the user has accepted that the cloud version we just
+        // mirrored is what cloud is at this etag, and they don't want
+        // it. Recording (current localHash + current remoteEtag) tells
+        // the next sync "no change on either side" until something new
+        // diverges. Without this, both `localChanged` and `remoteChanged`
+        // stay true forever and the conflict is sticky.
+        try {
+          const stat = fs.statSync(localPath);
+          updateEntry(
+            journal,
+            remoteFile.key,
+            item.localHash,
+            stat.size,
+            "down",
+            remoteFile.etag,
+          );
+        } catch {
+          // best-effort — sync continues even if stat fails
+        }
         continue;
       }
       // "overwrite" falls through to download
