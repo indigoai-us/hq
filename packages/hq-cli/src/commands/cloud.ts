@@ -24,6 +24,8 @@ import {
   readJournal,
   getJournalPath,
   type ConflictStrategy,
+  type EntityContext,
+  type SyncProgressEvent,
 } from "@indigoai-us/hq-cloud";
 
 import {
@@ -59,35 +61,119 @@ export function registerCloudCommands(program: Command): void {
       "--on-conflict <strategy>",
       "Conflict strategy: overwrite | keep | abort (omit for interactive)",
     )
+    .option(
+      "--creds-from-stdin",
+      "Read a pre-vended EntityContext as JSON from stdin instead of vending " +
+        "via the cached Cognito session. Use when the caller (e.g. AppBar HQ " +
+        "Sync) has its own STS pipeline (`/sts/vend-child` with task scope) " +
+        "and just needs share()'s upload mechanics. The caller is responsible " +
+        "for vending credentials with enough TTL for the run.",
+    )
+    .option(
+      "--json",
+      "Emit each share()-level event as a JSON Lines record on stderr (one " +
+        "JSON object per line) instead of human-readable console output. A " +
+        "synthetic `{type:\"complete\",...}` line is appended at the end with " +
+        "the final ShareResult. Subprocess callers parse these to render their " +
+        "own UI (e.g. AppBar Tauri events).",
+    )
     .action(
       async (
         paths: string[],
         options: CommonSyncOptions & {
           message?: string;
           onConflict?: ConflictStrategy;
+          credsFromStdin?: boolean;
+          json?: boolean;
         },
       ) => {
+        const jsonMode = options.json === true;
+        // Suppress the human banner/result output in JSON mode — the parent
+        // process renders its own UI from the stderr ndjson stream.
+        const log = (msg: string): void => {
+          if (!jsonMode) console.log(msg);
+        };
+        const emitJson = (event: Record<string, unknown>): void => {
+          process.stderr.write(JSON.stringify(event) + "\n");
+        };
+
         try {
           const targetPaths =
             paths && paths.length > 0 ? paths : [process.cwd()];
 
-          console.log(chalk.bold("\nHQ Sync — Push"));
-          console.log(`  HQ root:  ${options.hqRoot}`);
-          console.log(`  Company:  ${options.company ?? "(from .hq/config.json)"}`);
-          console.log(`  Paths:    ${targetPaths.join(", ")}\n`);
+          log(chalk.bold("\nHQ Sync — Push"));
+          log(`  HQ root:  ${options.hqRoot}`);
+          log(
+            `  Company:  ${options.company ?? "(from .hq/config.json or stdin)"}`,
+          );
+          log(`  Paths:    ${targetPaths.join(", ")}\n`);
 
-          const accessToken = await ensureCognitoToken();
+          // Resolve credentials. Two paths:
+          //   1. --creds-from-stdin: parse JSON EntityContext from stdin (the
+          //      AppBar shell-out contract — vend-child upstream, pipe in here).
+          //   2. default: vend via cached Cognito session (the human CLI path).
+          let entityContext: EntityContext | undefined;
+          let vaultConfig: ReturnType<typeof buildVaultConfig> | undefined;
+
+          if (options.credsFromStdin) {
+            if (process.stdin.isTTY) {
+              throw new Error(
+                "--creds-from-stdin requires JSON on stdin, but stdin is a " +
+                  "TTY. Pipe the EntityContext JSON via subprocess stdin " +
+                  "(e.g. `echo '{...}' | hq sync push --creds-from-stdin ...`).",
+              );
+            }
+            const raw = await readAllStdin();
+            try {
+              entityContext = JSON.parse(raw) as EntityContext;
+            } catch (e) {
+              throw new Error(
+                `--creds-from-stdin: failed to parse stdin as JSON: ${
+                  e instanceof Error ? e.message : String(e)
+                }`,
+              );
+            }
+          } else {
+            const accessToken = await ensureCognitoToken();
+            vaultConfig = buildVaultConfig(accessToken);
+          }
+
+          // In JSON mode, forward every share() event verbatim to stderr as
+          // ndjson. In human mode, share()'s defaultConsoleLogger handles the
+          // rendering (no onEvent → falls through to stdout/stderr printing).
+          const onEvent = jsonMode
+            ? (event: SyncProgressEvent): void =>
+                emitJson(event as unknown as Record<string, unknown>)
+            : undefined;
+
           const result = await share({
             paths: targetPaths,
             company: options.company,
             message: options.message,
             onConflict: options.onConflict,
-            vaultConfig: buildVaultConfig(accessToken),
+            vaultConfig,
+            entityContext,
             hqRoot: options.hqRoot,
+            onEvent,
           });
 
+          if (jsonMode) {
+            // Synthetic terminal event so subprocess consumers can read final
+            // counts without summing per-file events. Distinguished from
+            // SyncProgressEvent by `type:"complete"` (not in the share()
+            // event schema — added at the CLI seam).
+            emitJson({
+              type: "complete",
+              filesUploaded: result.filesUploaded,
+              bytesUploaded: result.bytesUploaded,
+              filesSkipped: result.filesSkipped,
+              conflictPaths: result.conflictPaths,
+              aborted: result.aborted,
+            });
+          }
+
           if (result.aborted) {
-            console.log(
+            log(
               chalk.yellow(
                 `\n⚠ Push aborted (${result.filesUploaded} uploaded, ${result.filesSkipped} skipped)`,
               ),
@@ -95,16 +181,21 @@ export function registerCloudCommands(program: Command): void {
             process.exit(1);
           }
 
-          console.log(
+          log(
             chalk.green(
               `\n✓ Pushed ${result.filesUploaded} file(s) (${formatBytes(result.bytesUploaded)}, ${result.filesSkipped} skipped)`,
             ),
           );
         } catch (err) {
-          console.error(
-            chalk.red("\n✗ Push failed:"),
-            err instanceof Error ? err.message : String(err),
-          );
+          const message = err instanceof Error ? err.message : String(err);
+          if (jsonMode) {
+            // In JSON mode, the parent process is parsing stderr for ndjson —
+            // human-formatted error lines would corrupt the stream. Emit a
+            // structured `fatal` event instead and let the parent surface it.
+            emitJson({ type: "fatal", message });
+          } else {
+            console.error(chalk.red("\n✗ Push failed:"), message);
+          }
           process.exit(1);
         }
       },
@@ -235,4 +326,20 @@ function formatBytes(bytes: number): string {
   );
   const value = bytes / Math.pow(1024, exponent);
   return `${value.toFixed(value >= 100 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+}
+
+/**
+ * Read all of stdin as a UTF-8 string. Used by `--creds-from-stdin` to
+ * receive a JSON-serialized EntityContext from the parent process (e.g.
+ * AppBar HQ Sync). Returns the empty string when stdin closes immediately.
+ *
+ * Caller is expected to detect TTY first — this function will block forever
+ * waiting for stdin to close if invoked interactively.
+ */
+async function readAllStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
