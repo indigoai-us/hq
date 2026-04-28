@@ -1,3 +1,0 @@
-interface:
-  display_name: "Registry"
-  short_description: "Check, update, or sync a company's resource registry — the shared inventory of persistent repos/apps/services."
