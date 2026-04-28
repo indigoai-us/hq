@@ -22,12 +22,36 @@ vi.mock("../s3.js", () => ({
 
 import { share } from "./share.js";
 import { headRemoteFile, uploadFile } from "../s3.js";
+import type { EntityContext } from "../types.js";
 
 const mockConfig: VaultServiceConfig = {
   apiUrl: "https://vault-api.test",
   authToken: "test-jwt-token",
   region: "us-east-1",
 };
+
+/**
+ * Build a pre-vended EntityContext as if a caller (e.g. AppBar) had already
+ * called `/sts/vend-child` and is passing the result into share() via the
+ * subprocess stdin contract. `expiresAt` defaults to 15min in the future
+ * to model a healthy first-push window; tests can override it to model
+ * an "expiring soon" credential.
+ */
+function makeEntityContext(overrides: Partial<EntityContext> = {}): EntityContext {
+  return {
+    uid: "cmp_01ABCDEF",
+    slug: "acme",
+    bucketName: "hq-vault-acme-123",
+    region: "us-east-1",
+    credentials: {
+      accessKeyId: "ASIA_PRE_VENDED",
+      secretAccessKey: "pre-vended-secret",
+      sessionToken: "pre-vended-session",
+    },
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    ...overrides,
+  };
+}
 
 const mockEntity = {
   uid: "cmp_01ABCDEF",
@@ -586,6 +610,133 @@ describe("share", () => {
       // the complete event reports the authoritative count.
       filesToConflict: 0,
     });
+  });
+
+  // ── Pre-vended entityContext path (AppBar shell-out contract) ──────────
+  //
+  // share() accepts a fully-resolved EntityContext from callers that vend
+  // their own STS credentials (e.g. AppBar HQ Sync calls /sts/vend-child
+  // before invoking `hq sync push --creds-from-stdin`). When entityContext
+  // is supplied, share() must skip its own resolveEntityContext flow
+  // entirely — no /entity lookup, no /sts/vend, no auto-refresh.
+
+  it("uses entityContext directly without calling vault-service when provided", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "from-appbar.md");
+    fs.writeFileSync(testFile, "first push");
+
+    // Replace the default fetch mock with one that throws if called — proves
+    // that the entityContext path doesn't touch vault-service at all.
+    const fetchMock = vi.fn(async () => {
+      throw new Error(
+        "fetch called during share() with entityContext — should never happen",
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const ctx = makeEntityContext();
+    const result = await share({
+      paths: [testFile],
+      entityContext: ctx,
+      hqRoot: tmpDir,
+    });
+
+    expect(result.filesUploaded).toBe(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    // The S3 upload sees the pre-vended credentials, not freshly-vended ones.
+    // (uploadFile is mocked, so we just verify it was called with our ctx.)
+    expect(uploadFile).toHaveBeenCalledWith(ctx, testFile, "from-appbar.md");
+  });
+
+  it("falls back to entityContext.slug when company is not specified", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "no-company-arg.md");
+    fs.writeFileSync(testFile, "data");
+
+    // No company arg, no .hq/config.json — only entityContext.slug to anchor on.
+    const result = await share({
+      paths: [testFile],
+      entityContext: makeEntityContext({ slug: "acme" }),
+      hqRoot: tmpDir,
+    });
+
+    expect(result.filesUploaded).toBe(1);
+    // Confirms the relative-path scoping landed under acme even without an
+    // explicit company arg.
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.anything(),
+      testFile,
+      "no-company-arg.md",
+    );
+  });
+
+  it("does NOT auto-refresh when entityContext is expiring soon (no vending source)", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "race.md");
+    fs.writeFileSync(testFile, "racing the clock");
+
+    // Force a fetch error if any /sts/vend* call is made — this is the
+    // critical assertion: the auto-refresh branch must be unreachable on
+    // the pre-vended path because we have no Cognito token to re-vend with.
+    const fetchMock = vi.fn(async () => {
+      throw new Error(
+        "share() must not vend when using entityContext — caller owns TTL",
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Credentials expiring in 30s — well within the 2-min refresh threshold.
+    const expiringCtx = makeEntityContext({
+      expiresAt: new Date(Date.now() + 30 * 1000).toISOString(),
+    });
+
+    const result = await share({
+      paths: [testFile],
+      entityContext: expiringCtx,
+      hqRoot: tmpDir,
+    });
+
+    expect(result.filesUploaded).toBe(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    // The original (still-valid-for-30s) credentials must have been used as-is.
+    expect(uploadFile).toHaveBeenCalledWith(expiringCtx, testFile, "race.md");
+  });
+
+  it("throws when both vaultConfig and entityContext are provided (ambiguous)", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "ambiguous.md"), "x");
+
+    await expect(
+      share({
+        paths: [path.join(companyRoot, "ambiguous.md")],
+        company: "acme",
+        vaultConfig: mockConfig,
+        entityContext: makeEntityContext(),
+        hqRoot: tmpDir,
+      }),
+    ).rejects.toThrow(/exactly one of/i);
+  });
+
+  it("throws when neither vaultConfig nor entityContext is provided", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    fs.writeFileSync(path.join(companyRoot, "needs-creds.md"), "x");
+
+    // Both vaultConfig and entityContext are optional in the type signature
+    // (a future discriminated-union refactor could enforce exactly-one at
+    // compile time); for now the contract is enforced at runtime and tested
+    // here.
+    await expect(
+      share({
+        paths: [path.join(companyRoot, "needs-creds.md")],
+        company: "acme",
+        hqRoot: tmpDir,
+      }),
+    ).rejects.toThrow(/either `vaultConfig`.*or `entityContext`/i);
   });
 
   it("plan event filesToSkip reflects skip-unchanged hits when journal hash matches", async () => {

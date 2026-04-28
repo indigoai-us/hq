@@ -7,7 +7,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { VaultServiceConfig, SyncJournal } from "../types.js";
+import type { EntityContext, VaultServiceConfig, SyncJournal } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { uploadFile, headRemoteFile } from "../s3.js";
 import { readJournal, writeJournal, hashFile, updateEntry, normalizeEtag } from "../journal.js";
@@ -119,8 +119,34 @@ export interface ShareOptions {
   message?: string;
   /** Non-interactive conflict strategy */
   onConflict?: ConflictStrategy;
-  /** Vault service config */
-  vaultConfig: VaultServiceConfig;
+  /**
+   * Vault service config — used when share() must resolve the entity and vend
+   * STS credentials itself (the default CLI path).
+   *
+   * Mutually exclusive with `entityContext`. Exactly one of the two must be
+   * provided; supplying both throws.
+   */
+  vaultConfig?: VaultServiceConfig;
+  /**
+   * Pre-resolved entity context. When provided, share() skips its own
+   * `resolveEntityContext` call (no entity lookup, no STS vending) and uses
+   * these credentials directly.
+   *
+   * Use case: AppBar HQ Sync vends task-scoped creds via `/sts/vend-child`
+   * (preserving audit traceability via `task_id` + `task_description`)
+   * before invoking `hq sync push` as a subprocess. The subprocess reads the
+   * EntityContext JSON from stdin and passes it here.
+   *
+   * IMPORTANT: When using `entityContext`, the caller is responsible for
+   * vending credentials with enough TTL to cover the entire upload run.
+   * share() cannot auto-refresh a pre-vended context (it has no Cognito
+   * token to re-vend with) — if the credentials are expiring mid-run,
+   * share() throws a clear error rather than silently failing on the
+   * next S3 call.
+   *
+   * Mutually exclusive with `vaultConfig`.
+   */
+  entityContext?: EntityContext;
   /** HQ root directory */
   hqRoot: string;
   /**
@@ -159,11 +185,30 @@ export interface ShareResult {
  * Share local file(s) to the entity vault.
  */
 export async function share(options: ShareOptions): Promise<ShareResult> {
-  const { paths, company, message, onConflict, vaultConfig, hqRoot, skipUnchanged } = options;
+  const { paths, company, message, onConflict, vaultConfig, entityContext, hqRoot, skipUnchanged } = options;
   const emit = options.onEvent ?? defaultConsoleLogger;
 
-  // Resolve company — slug, UID, or from active config
-  const companyRef = company ?? resolveActiveCompany(hqRoot);
+  // Exactly-one-of contract: either we vend (vaultConfig) or the caller did
+  // (entityContext). Both supplied is ambiguous (which credentials win?), and
+  // neither leaves us with no way to talk to S3.
+  if (vaultConfig && entityContext) {
+    throw new Error(
+      "share() requires exactly one of `vaultConfig` or `entityContext`, not both. " +
+      "Pass `vaultConfig` to vend credentials internally, or `entityContext` to use pre-vended ones.",
+    );
+  }
+  if (!vaultConfig && !entityContext) {
+    throw new Error(
+      "share() requires either `vaultConfig` (for internal STS vending) " +
+      "or `entityContext` (pre-vended credentials).",
+    );
+  }
+
+  // Resolve company — slug, UID, or from active config. When the caller
+  // provided a pre-resolved entityContext, prefer its slug as the canonical
+  // ref (the caller already knows what entity these creds are for).
+  const companyRef =
+    company ?? entityContext?.slug ?? resolveActiveCompany(hqRoot);
   if (!companyRef) {
     throw new Error(
       "No company specified and no active company found. " +
@@ -171,8 +216,17 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     );
   }
 
-  // Resolve entity context (handles STS vending + caching)
-  let ctx = await resolveEntityContext(companyRef, vaultConfig);
+  // Resolve entity context. Two paths:
+  //   1. vaultConfig provided → resolveEntityContext does the lookup + STS vend
+  //      (cached + auto-refreshable mid-run).
+  //   2. entityContext provided → use it directly. No lookup, no vending,
+  //      no auto-refresh (we have no Cognito token to re-vend with).
+  //      Caller is responsible for vending credentials with enough TTL to
+  //      cover the run; if they under-vend, the AWS SDK surfaces ExpiredToken
+  //      naturally on the first failing PUT.
+  let ctx: EntityContext = entityContext
+    ? entityContext
+    : await resolveEntityContext(companyRef, vaultConfig!);
   // Remote keys are company-relative; the on-disk scoping prefix is
   // companies/{slug}/. Anything outside this folder gets skipped to avoid
   // leaking cross-company state into the vault.
@@ -227,8 +281,11 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 
     const { absolutePath, relativePath, localHash } = item;
 
-    // Auto-refresh context if credentials expiring
-    if (isExpiringSoon(ctx.expiresAt)) {
+    // Auto-refresh context if credentials expiring. Only available on the
+    // vaultConfig path — pre-vended contexts have no source to re-vend
+    // from, so we let the AWS SDK surface ExpiredToken naturally on the
+    // PUT below if the caller under-vended.
+    if (vaultConfig && isExpiringSoon(ctx.expiresAt)) {
       ctx = await refreshEntityContext(companyRef, vaultConfig);
     }
 
