@@ -374,7 +374,7 @@ describe("createDefaultVaultClient", () => {
     expect(out).toEqual(entity);
     // Verify request shape
     const call = fetchSpy.mock.calls[0];
-    expect(call[0]).toBe(`${apiUrl}/v1/entities`);
+    expect(call[0]).toBe(`${apiUrl}/entity`);
     expect((call[1] as RequestInit)?.method).toBe("POST");
     const body = JSON.parse(((call[1] as RequestInit)?.body as string) ?? "{}");
     expect(body).toEqual({ type: "company", slug: "indigo", name: "Indigo" });
