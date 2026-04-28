@@ -14,8 +14,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "prepack": "tsc",
-    "test": "vitest run",
-    "test:containers": "vitest run test/container.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@indigoai-us/hq-cloud": "^5.1.9",
