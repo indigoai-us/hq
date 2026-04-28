@@ -649,4 +649,75 @@ describe("provisionCompany", () => {
       ownerUid: undefined,
     });
   });
+
+  it("skipInitialSync=true — runner is NOT called; result has initial_sync.skipped", async () => {
+    setupValid();
+    const entity: VaultEntity = {
+      uid: "cmp_01H",
+      type: "company",
+      slug: "indigo",
+      name: "Indigo",
+      bucketName: "hq-vault-cmp-01H",
+    };
+    const vaultClient = makeVaultClient({
+      findCompanyBySlug: vi.fn().mockResolvedValue(null),
+      createCompanyEntity: vi.fn().mockResolvedValue(entity),
+    });
+    const runInitialSync = vi.fn();
+
+    const result = await provisionCompany({
+      slug: "indigo",
+      hqRoot: tmpRoot,
+      vaultApiUrl,
+      vaultClient,
+      resolveAccessToken: async () => accessToken,
+      runInitialSync,
+      skipInitialSync: true,
+      log: () => {},
+    });
+
+    expect(runInitialSync).not.toHaveBeenCalled();
+    expect(result.initial_sync).toEqual({ skipped: true });
+    expect(result.ok).toBe(true);
+    expect(result.cloud_uid).toBe("cmp_01H");
+    expect(result.manifest_patched).toBe(true);
+    expect(result.config_written).toBe(true);
+  });
+
+  it("skipInitialSync=true — manifest + .hq/config.json are STILL written", async () => {
+    setupValid();
+    const entity: VaultEntity = {
+      uid: "cmp_SKIP",
+      type: "company",
+      slug: "indigo",
+      name: "Indigo",
+      bucketName: "hq-vault-cmp-SKIP",
+    };
+    const vaultClient = makeVaultClient({
+      findCompanyBySlug: vi.fn().mockResolvedValue(null),
+      createCompanyEntity: vi.fn().mockResolvedValue(entity),
+    });
+    await provisionCompany({
+      slug: "indigo",
+      hqRoot: tmpRoot,
+      vaultApiUrl,
+      vaultClient,
+      resolveAccessToken: async () => accessToken,
+      runInitialSync: vi.fn(),
+      skipInitialSync: true,
+      log: () => {},
+    });
+    // Manifest patched on disk
+    const m = yaml.load(fs.readFileSync(manifestPath(tmpRoot), "utf-8")) as {
+      companies: Record<string, Record<string, unknown>>;
+    };
+    expect(m.companies.indigo.cloud_uid).toBe("cmp_SKIP");
+    expect(m.companies.indigo.bucket_name).toBe("hq-vault-cmp-SKIP");
+    // .hq/config.json written
+    const c = JSON.parse(
+      fs.readFileSync(companyConfigPath(tmpRoot, "indigo"), "utf-8"),
+    );
+    expect(c.companyUid).toBe("cmp_SKIP");
+    expect(c.bucketName).toBe("hq-vault-cmp-SKIP");
+  });
 });

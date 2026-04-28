@@ -74,10 +74,12 @@ export interface ProvisionResult {
   manifest_patched: boolean;
   config_written: boolean;
   initial_sync: {
-    ok: boolean;
+    ok?: boolean;
     files_uploaded?: number;
     bytes_uploaded?: number;
     error?: string;
+    /** True if the caller passed --skip-initial-sync; ok/files/bytes will be absent. */
+    skipped?: boolean;
   };
 }
 
@@ -88,6 +90,15 @@ export interface ProvisionCompanyOptions {
   ownerUid?: string;
   hqRoot: string;
   vaultApiUrl: string;
+  /**
+   * Skip the initial-sync step. The vault entity, manifest patch, and
+   * `.hq/config.json` write still happen; the post-provision `share()` call
+   * is no-op'd. Use this when the caller has its own upload pipeline (e.g.
+   * AppBar HQ Sync's `first_push_company` with STS-vended credentials and
+   * Tauri progress events) and would otherwise double-upload the same files.
+   * When true, `initial_sync` in the result is `{ skipped: true }`.
+   */
+  skipInitialSync?: boolean;
   /** Injected vault HTTP client (override for tests). */
   vaultClient?: VaultClient;
   /** Injected access-token resolver (override for tests). */
@@ -510,40 +521,47 @@ export async function provisionCompany(
   });
   log(`wrote companies/${options.slug}/.hq/config.json`);
 
-  // Step 8: trigger initial sync (failure ⇒ exit 3 with cloud_uid populated)
-  const runner = options.runInitialSync ?? defaultRunInitialSync;
+  // Step 8: trigger initial sync (failure ⇒ exit 3 with cloud_uid populated).
+  // Skipped when caller passed --skip-initial-sync (e.g. AppBar HQ Sync, which
+  // owns its own STS-credentialed upload pipeline + Tauri progress events).
   let initialSync: ProvisionResult["initial_sync"];
-  try {
-    log(`triggering initial sync via share()`);
-    const sync = await runner({
-      slug: options.slug,
-      hqRoot: options.hqRoot,
-      accessToken,
-      vaultApiUrl: options.vaultApiUrl,
-    });
-    initialSync = {
-      ok: true,
-      files_uploaded: sync.filesUploaded,
-      bytes_uploaded: sync.bytesUploaded,
-    };
-    log(
-      `initial sync complete — files=${sync.filesUploaded} bytes=${sync.bytesUploaded}`,
-    );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log(`initial sync failed: ${msg}`);
-    throw new ProvisionError(3, `Initial sync failed: ${msg}`, {
-      ok: false,
-      company_slug: options.slug,
-      cloud_uid: cloudUid,
-      bucket_name: bucketName,
-      vault_api_url: options.vaultApiUrl,
-      kms_key_id: kmsKeyId,
-      created_entity: createdEntity,
-      manifest_patched: true,
-      config_written: true,
-      initial_sync: { ok: false, error: msg },
-    });
+  if (options.skipInitialSync) {
+    log(`skipping initial sync (--skip-initial-sync)`);
+    initialSync = { skipped: true };
+  } else {
+    const runner = options.runInitialSync ?? defaultRunInitialSync;
+    try {
+      log(`triggering initial sync via share()`);
+      const sync = await runner({
+        slug: options.slug,
+        hqRoot: options.hqRoot,
+        accessToken,
+        vaultApiUrl: options.vaultApiUrl,
+      });
+      initialSync = {
+        ok: true,
+        files_uploaded: sync.filesUploaded,
+        bytes_uploaded: sync.bytesUploaded,
+      };
+      log(
+        `initial sync complete — files=${sync.filesUploaded} bytes=${sync.bytesUploaded}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`initial sync failed: ${msg}`);
+      throw new ProvisionError(3, `Initial sync failed: ${msg}`, {
+        ok: false,
+        company_slug: options.slug,
+        cloud_uid: cloudUid,
+        bucket_name: bucketName,
+        vault_api_url: options.vaultApiUrl,
+        kms_key_id: kmsKeyId,
+        created_entity: createdEntity,
+        manifest_patched: true,
+        config_written: true,
+        initial_sync: { ok: false, error: msg },
+      });
+    }
   }
 
   return {
@@ -593,6 +611,12 @@ export function registerCloudProvisionCommands(program: Command): void {
       `Vault API URL (default: ${DEFAULT_VAULT_API_URL})`,
       DEFAULT_VAULT_API_URL,
     )
+    .option(
+      "--skip-initial-sync",
+      "Skip the post-provision share() initial sync. Use when the caller " +
+        "(e.g. AppBar HQ Sync) has its own upload pipeline. Result includes " +
+        "{ initial_sync: { skipped: true } } when set.",
+    )
     .action(
       async (
         slug: string,
@@ -601,6 +625,7 @@ export function registerCloudProvisionCommands(program: Command): void {
           owner?: string;
           hqRoot: string;
           vaultApiUrl: string;
+          skipInitialSync?: boolean;
         },
       ) => {
         try {
@@ -610,6 +635,7 @@ export function registerCloudProvisionCommands(program: Command): void {
             ownerUid: options.owner,
             hqRoot: options.hqRoot,
             vaultApiUrl: options.vaultApiUrl,
+            skipInitialSync: options.skipInitialSync,
           });
           // Final stdout line — single JSON document for downstream consumers
           process.stdout.write(JSON.stringify(result) + "\n");
