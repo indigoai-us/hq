@@ -33,7 +33,7 @@ const program = new Command();
 program
   .name("hq")
   .description("HQ management CLI — modules, packages, and cloud sync")
-  .version("5.5.0");
+  .version("5.8.3");
 
 // Module management subcommand group
 const modulesCmd = program
