@@ -335,6 +335,11 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
     }
   }
 
+  // Stamp lastSync on every successful run so the menubar's "Last sync · X ago"
+  // ticks even when nothing transferred. updateEntry only fires on actual
+  // downloads; without this, a no-op sync leaves lastSync at the time of the
+  // last file change, which is misleading.
+  journal.lastSync = new Date().toISOString();
   writeJournal(journalSlug, journal);
 
   return {

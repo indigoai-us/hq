@@ -255,6 +255,22 @@ describe("sync", () => {
     expect(result.aborted).toBe(true);
   });
 
+  it("stamps journal.lastSync on every successful run, even when nothing transferred", async () => {
+    // First run downloads both remote files and stamps lastSync.
+    await sync({ company: "acme", vaultConfig: mockConfig, hqRoot: tmpDir });
+    const firstStamp = JSON.parse(fs.readFileSync(journalPath, "utf-8")).lastSync as string;
+    expect(firstStamp).not.toBe("");
+
+    // Second run: same remote, same local — Stage-2 plan is all-skip, so
+    // updateEntry never fires. lastSync must still advance, otherwise the
+    // menubar shows a stale "Last sync · X ago".
+    await new Promise((r) => setTimeout(r, 5));
+    const result = await sync({ company: "acme", vaultConfig: mockConfig, hqRoot: tmpDir });
+    expect(result.filesDownloaded).toBe(0);
+    const secondStamp = JSON.parse(fs.readFileSync(journalPath, "utf-8")).lastSync as string;
+    expect(new Date(secondStamp).getTime()).toBeGreaterThan(new Date(firstStamp).getTime());
+  });
+
   it("journalSlug: 'personal' routes journal I/O to sync-journal.personal.json", async () => {
     const result = await sync({
       company: "acme",

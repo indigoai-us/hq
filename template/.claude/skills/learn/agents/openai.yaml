@@ -1,3 +1,0 @@
-interface:
-  display_name: "Learn"
-  short_description: "Capture and classify learnings as structured policy files. Deduplicates automatically."

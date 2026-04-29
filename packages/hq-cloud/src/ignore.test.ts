@@ -70,6 +70,14 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "policies/_digest.md"))).toBe(false);
   });
 
+  it("permissive mode: .claude/worktrees/ is ignored", () => {
+    const shouldSync = createIgnoreFilter(hqRoot);
+    expect(shouldSync(path.join(hqRoot, ".claude/worktrees/foo/file.ts"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/.claude/worktrees/bar/x.md"))).toBe(false);
+    // The .claude/ dir itself (settings, commands, skills) still syncs.
+    expect(shouldSync(path.join(hqRoot, ".claude/settings.json"))).toBe(true);
+  });
+
   it("permissive mode: .hq-* internal state is ignored, .hqignore family + .hq/ still sync", () => {
     const shouldSync = createIgnoreFilter(hqRoot);
     // Internal state files that must never round-trip through the bucket.

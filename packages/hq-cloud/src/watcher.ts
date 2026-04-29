@@ -126,6 +126,9 @@ export class SyncWatcher {
       }
     }
 
+    // See cli/sync.ts: stamp lastSync on every flush so the indicator
+    // ticks even when all changes were re-queued or no-op.
+    journal.lastSync = new Date().toISOString();
     writeJournal(this.ctx.slug, journal);
     this.processing = false;
 

@@ -1,3 +1,0 @@
-interface:
-  display_name: "Run"
-  short_description: "Run an HQ worker skill inline. Executes workers in the current context (no sub-agent isolation)."
