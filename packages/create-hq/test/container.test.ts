@@ -1,13 +1,14 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
+import { fetchTemplate } from "../src/fetch-template.js";
 
 const TEST_DIR = path.resolve(__dirname);
 const REPO_ROOT = path.resolve(TEST_DIR, "../../..");
 const PKG_DIR = path.resolve(REPO_ROOT, "packages/create-hq");
 const DOCKER_DIR = path.join(TEST_DIR, "docker");
-const TEMPLATE_DIR = path.join(REPO_ROOT, "template");
 const SMOKE_SCRIPT = path.join(TEST_DIR, "smoke-test.sh");
 
 function exec(cmd: string, opts?: { cwd?: string; timeout?: number }): string {
@@ -37,15 +38,38 @@ function execSafe(
 }
 
 let tarballPath = "";
+let templateDir = "";
 
 describe("container smoke tests", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     // Build create-hq and pack tarball
     exec("npm run build", { cwd: PKG_DIR });
     const packOutput = exec("npm pack", { cwd: PKG_DIR }).trim();
     const tarballName = packOutput.split("\n").pop()!;
     tarballPath = path.join(PKG_DIR, tarballName);
     expect(fs.existsSync(tarballPath)).toBe(true);
+
+    // Fetch the hq-core scaffold to a host-side temp dir for `--local-template`.
+    // The repo's old `template/` subdirectory was removed when the scaffold was
+    // split into its own repo (indigoai-us/hq-core). Fetching once on the host
+    // lets blank-slate containers run without GitHub auth, and dogfoods the
+    // real fetchTemplate path that end users hit on `npx create-hq`.
+    templateDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-hq-smoke-template-"));
+    await fetchTemplate(templateDir);
+
+    // Pre-flight regression guard: refuse to run smoke tests against an empty
+    // or malformed scaffold. Without this, a missing/empty template dir causes
+    // every `dir-exists:*` assertion inside the container to fail with the
+    // unhelpful "Assertion failed" message — exactly the silent regression
+    // that hit CI when `template/` was deleted.
+    expect(
+      fs.existsSync(path.join(templateDir, "core.yaml")),
+      "Fetched hq-core template missing core.yaml — fetchTemplate likely failed"
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(templateDir, ".claude", "CLAUDE.md")),
+      "Fetched hq-core template missing .claude/CLAUDE.md"
+    ).toBe(true);
 
     // Build Docker images (use cache)
     exec(
@@ -56,7 +80,7 @@ describe("container smoke tests", () => {
       `docker build -f ${DOCKER_DIR}/Dockerfile.pre-deps -t create-hq-test:pre-deps ${DOCKER_DIR}`,
       { timeout: 120_000 }
     );
-  }, 180_000); // 3 min for build + docker
+  }, 240_000); // 4 min: build + tarball fetch + docker
 
   it(
     "smoke-test.sh passes in blank-slate container",
@@ -64,7 +88,7 @@ describe("container smoke tests", () => {
       const { stdout, stderr, exitCode } = execSafe(
         `docker run --rm ` +
           `-v "${tarballPath}:/opt/create-hq/create-hq.tgz:ro" ` +
-          `-v "${TEMPLATE_DIR}:/opt/create-hq/template:ro" ` +
+          `-v "${templateDir}:/opt/create-hq/template:ro" ` +
           `-v "${SMOKE_SCRIPT}:/opt/create-hq/smoke-test.sh:ro" ` +
           `create-hq-test:blank bash /opt/create-hq/smoke-test.sh --image blank-slate`
       );
@@ -98,7 +122,7 @@ describe("container smoke tests", () => {
       const { stdout, stderr, exitCode } = execSafe(
         `docker run --rm ` +
           `-v "${tarballPath}:/opt/create-hq/create-hq.tgz:ro" ` +
-          `-v "${TEMPLATE_DIR}:/opt/create-hq/template:ro" ` +
+          `-v "${templateDir}:/opt/create-hq/template:ro" ` +
           `-v "${SMOKE_SCRIPT}:/opt/create-hq/smoke-test.sh:ro" ` +
           `create-hq-test:pre-deps bash /opt/create-hq/smoke-test.sh --image pre-deps`
       );
@@ -126,10 +150,13 @@ describe("container smoke tests", () => {
     120_000
   );
 
-  // Cleanup tarball after all tests
+  // Cleanup tarball + fetched template dir after all tests
   afterAll(() => {
     if (tarballPath && fs.existsSync(tarballPath)) {
       fs.unlinkSync(tarballPath);
+    }
+    if (templateDir && fs.existsSync(templateDir)) {
+      fs.rmSync(templateDir, { recursive: true, force: true });
     }
   });
 });
