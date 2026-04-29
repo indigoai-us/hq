@@ -32,14 +32,21 @@ import {
  * and hq-cli's `DEFAULT_COGNITO`. All three tools share the same pool so a
  * single sign-in works across installer, CLI, and create-hq.
  *
+ * Defaults point at the shared `vault-indigo-hq-prod` Cognito pool (canonical
+ * post-2026-04-25 cutover). The legacy `hq-vault-dev` pool is no longer the
+ * fallback — it remains reachable only via explicit `HQ_COGNITO_DOMAIN` env
+ * override for staging tests. Mirrors `packages/hq-cli/src/utils/cognito-session.ts`
+ * and `packages/hq-cloud/src/bin/sync-runner.ts` so all three callers stay
+ * drift-free.
+ *
  * Port 8765 matches hq-cli (not hq-installer's 53682) — Cognito App Client
  * callback URLs must list every port we use, and we're standardizing on 8765
  * for all Node-based callers.
  */
 export const DEFAULT_COGNITO: CognitoAuthConfig = {
   region: process.env.AWS_REGION ?? "us-east-1",
-  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "hq-vault-dev",
-  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "4mmujmjq3srakdueg656b9m0mp",
+  userPoolDomain: process.env.HQ_COGNITO_DOMAIN ?? "vault-indigo-hq-prod",
+  clientId: process.env.HQ_COGNITO_CLIENT_ID ?? "7acei2c8v870enheptb1j5foln",
   port: process.env.HQ_COGNITO_CALLBACK_PORT
     ? Number(process.env.HQ_COGNITO_CALLBACK_PORT)
     : 8765,
