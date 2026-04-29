@@ -3,9 +3,11 @@ on:
   push:
     paths:
       - 'packages/create-hq/**'
+      - 'packages/hq-cloud/**'
   pull_request:
     paths:
       - 'packages/create-hq/**'
+      - 'packages/hq-cloud/**'
 
 jobs:
   test:
@@ -15,11 +17,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # --ignore-scripts prevents npm ascending to the workspace root and
-      # running its prepare script (husky), which isn't installed in the child.
-      - run: npm install --ignore-scripts
-        working-directory: packages/create-hq
-      - run: npm test
-        working-directory: packages/create-hq
+      # Install at the workspace root so create-hq's tsc can resolve
+      # `@indigoai-us/hq-cloud` via the workspace symlink. Then build hq-cloud
+      # first so its `dist/` exists for create-hq's import. Mirrors ci.yml's
+      # working pattern. The previous in-package `npm install --ignore-scripts`
+      # produced a TS2307 ("Cannot find module '@indigoai-us/hq-cloud'") in CI
+      # because the registry copy's types weren't picked up correctly under
+      # the parent workspace config.
+      - run: npm ci
+      - run: npm run build -w packages/hq-cloud
+      - run: npm test -w packages/create-hq
         env:
           GH_TOKEN: ${{ github.token }}

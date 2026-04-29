@@ -1,6 +1,6 @@
 {
   "name": "create-hq",
-  "version": "10.11.0",
+  "version": "10.12.0",
   "description": "Create a new HQ by Indigo — Personal OS for AI Workers",
   "bin": {
     "create-hq": "./dist/index.js"

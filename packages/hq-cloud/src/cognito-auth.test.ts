@@ -100,6 +100,105 @@ describe("isExpiring — expiresAt shape tolerance", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Stale-pool detection — decodeAccessTokenClientId + getValidAccessToken
+// self-evicts cached tokens minted by a different App Client (e.g. dev pool
+// tokens left over from before the 2026-04-25 cutover).
+// ---------------------------------------------------------------------------
+
+/** Build a minimal unsigned JWT carrying the given claims. Cognito's real */
+/** tokens are RS256-signed; we don't verify here so the signature can be     */
+/** anything — only the base64url-encoded payload matters.                    */
+function makeAccessToken(claims: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" }))
+    .toString("base64")
+    .replace(/=+$/, "");
+  const payload = Buffer.from(JSON.stringify(claims))
+    .toString("base64")
+    .replace(/=+$/, "");
+  return `${header}.${payload}.signature`;
+}
+
+const DEV_CLIENT = "4mmujmjq3srakdueg656b9m0mp";
+const PROD_CLIENT = "7acei2c8v870enheptb1j5foln";
+
+const baseConfig = {
+  region: "us-east-1",
+  userPoolDomain: "vault-indigo-hq-prod",
+  clientId: PROD_CLIENT,
+};
+
+describe("decodeAccessTokenClientId", () => {
+  it("returns the client_id claim from a well-formed JWT", async () => {
+    const { decodeAccessTokenClientId } = await importModule();
+    const token = makeAccessToken({ client_id: DEV_CLIENT, sub: "abc" });
+    expect(decodeAccessTokenClientId(token)).toBe(DEV_CLIENT);
+  });
+
+  it("returns null when client_id is absent", async () => {
+    const { decodeAccessTokenClientId } = await importModule();
+    const token = makeAccessToken({ sub: "abc" });
+    expect(decodeAccessTokenClientId(token)).toBeNull();
+  });
+
+  it("returns null when the token has fewer than two segments", async () => {
+    const { decodeAccessTokenClientId } = await importModule();
+    expect(decodeAccessTokenClientId("not-a-jwt")).toBeNull();
+  });
+
+  it("returns null when the payload isn't valid JSON", async () => {
+    const { decodeAccessTokenClientId } = await importModule();
+    expect(decodeAccessTokenClientId("aaa.bbb.ccc")).toBeNull();
+  });
+});
+
+describe("getValidAccessToken stale-pool detection", () => {
+  it("evicts a cached token whose client_id mismatches the current config", async () => {
+    const { saveCachedTokens, loadCachedTokens, getValidAccessToken } =
+      await importModule();
+    const devToken = makeAccessToken({ client_id: DEV_CLIENT, sub: "abc" });
+    saveCachedTokens({
+      ...baseTokens,
+      accessToken: devToken,
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    });
+    expect(loadCachedTokens()).not.toBeNull();
+
+    await expect(
+      getValidAccessToken(baseConfig, { interactive: false }),
+    ).rejects.toThrow(/No valid HQ session/);
+
+    expect(loadCachedTokens()).toBeNull();
+  });
+
+  it("keeps a cached token whose client_id matches", async () => {
+    const { saveCachedTokens, getValidAccessToken } = await importModule();
+    const prodToken = makeAccessToken({ client_id: PROD_CLIENT, sub: "abc" });
+    saveCachedTokens({
+      ...baseTokens,
+      accessToken: prodToken,
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    });
+    const access = await getValidAccessToken(baseConfig, {
+      interactive: false,
+    });
+    expect(access).toBe(prodToken);
+  });
+
+  it("keeps a cached token when client_id can't be decoded (back-compat)", async () => {
+    const { saveCachedTokens, getValidAccessToken } = await importModule();
+    saveCachedTokens({
+      ...baseTokens,
+      accessToken: "opaque-non-jwt",
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    });
+    const access = await getValidAccessToken(baseConfig, {
+      interactive: false,
+    });
+    expect(access).toBe("opaque-non-jwt");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Round-trip: writers emit epoch-ms, readers read epoch-ms
 // ---------------------------------------------------------------------------
 

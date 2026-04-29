@@ -120,6 +120,33 @@ export function isExpiring(tokens: CognitoTokens, bufferSeconds = 60): boolean {
   return expiresAt - Date.now() < bufferSeconds * 1000;
 }
 
+/**
+ * Decode the `client_id` claim from a Cognito access token (no signature
+ * verification — we only need to identify which App Client minted it).
+ * Returns null when the token can't be parsed.
+ *
+ * Used by `getValidAccessToken` to detect stale cached sessions that target
+ * a different Cognito App Client. The canonical case is a pre-2026-04-25
+ * cache file holding a `hq-vault-dev` token after the user upgraded to a
+ * post-cutover CLI: the access token stays "non-expiring" for an hour but
+ * the prod vault API rejects it with 401, and the dev refresh token can't
+ * be exchanged at the prod token endpoint. Detecting the mismatch and
+ * forcing a re-login is the only safe self-heal.
+ */
+export function decodeAccessTokenClientId(accessToken: string): string | null {
+  try {
+    const parts = accessToken.split(".");
+    if (parts.length < 2) return null;
+    const payloadB64 = parts[1];
+    const padded = payloadB64 + "=".repeat((4 - (payloadB64.length % 4)) % 4);
+    const json = Buffer.from(padded, "base64").toString("utf-8");
+    const claims = JSON.parse(json) as { client_id?: unknown };
+    return typeof claims.client_id === "string" ? claims.client_id : null;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // PKCE
 // ---------------------------------------------------------------------------
@@ -375,7 +402,22 @@ export async function getValidAccessToken(
   options: { interactive?: boolean } = {},
 ): Promise<string> {
   const interactive = options.interactive ?? true;
-  const cached = loadCachedTokens();
+  let cached = loadCachedTokens();
+
+  // Stale-pool detection: if the cached access token was issued by a
+  // different Cognito App Client than the one we're talking to now, drop the
+  // cache and re-authenticate. Without this, a user holding a pre-cutover
+  // dev-pool token would either keep using a token the prod API rejects
+  // with 401, or attempt a refresh against the prod token endpoint with a
+  // dev refresh token (InvalidGrant). See `decodeAccessTokenClientId` for
+  // the full rationale.
+  if (cached) {
+    const cachedClientId = decodeAccessTokenClientId(cached.accessToken);
+    if (cachedClientId !== null && cachedClientId !== config.clientId) {
+      clearCachedTokens();
+      cached = null;
+    }
+  }
 
   if (cached && !isExpiring(cached)) return cached.accessToken;
 

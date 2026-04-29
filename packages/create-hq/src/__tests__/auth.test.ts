@@ -56,10 +56,10 @@ function makeTokens(idPayload: Record<string, unknown>): CognitoTokens {
 // ─── DEFAULT_COGNITO ───────────────────────────────────────────────────────
 
 describe("DEFAULT_COGNITO", () => {
-  it("matches hq-installer and hq-cli pool (hq-vault-dev, us-east-1)", () => {
+  it("matches hq-installer and hq-cli pool (vault-indigo-hq-prod, us-east-1)", () => {
     expect(DEFAULT_COGNITO.region).toBe("us-east-1");
-    expect(DEFAULT_COGNITO.userPoolDomain).toBe("hq-vault-dev");
-    expect(DEFAULT_COGNITO.clientId).toBe("4mmujmjq3srakdueg656b9m0mp");
+    expect(DEFAULT_COGNITO.userPoolDomain).toBe("vault-indigo-hq-prod");
+    expect(DEFAULT_COGNITO.clientId).toBe("7acei2c8v870enheptb1j5foln");
   });
 
   it("forces Google as the identity provider", () => {
