@@ -459,12 +459,20 @@ export async function runRunner(
   }
 
   // ---- auth -------------------------------------------------------------
-  let accessToken: string;
+  // Resolve the access token up-front to surface auth-error early (before any
+  // protocol events). Long-running multi-company syncs can outlast Cognito's
+  // 60-min access token TTL, so the vaultConfig captures a *getter* — every
+  // vault request resolves the latest token via getValidAccessToken, which
+  // re-reads `~/.hq/cognito-tokens.json` and refreshes on demand. Without
+  // this, a captured string goes stale mid-fanout (e.g. personal sync runs
+  // last → STS expires after 13 min → refreshEntityContext → fetchEntity →
+  // 401 against API Gateway's JWT authorizer because the captured token
+  // expired while the menubar was happily rotating the on-disk token).
+  const getAccessToken =
+    deps.getAccessToken ??
+    (() => getValidAccessToken(DEFAULT_COGNITO, { interactive: false }));
   try {
-    const getAccessToken =
-      deps.getAccessToken ??
-      (() => getValidAccessToken(DEFAULT_COGNITO, { interactive: false }));
-    accessToken = await getAccessToken();
+    await getAccessToken();
   } catch (err) {
     emit({
       type: "auth-error",
@@ -476,7 +484,7 @@ export async function runRunner(
   // ---- vault client -----------------------------------------------------
   const vaultConfig: VaultServiceConfig = {
     apiUrl: DEFAULT_VAULT_API_URL,
-    authToken: accessToken,
+    authToken: getAccessToken,
     region: DEFAULT_COGNITO.region,
   };
   const client =

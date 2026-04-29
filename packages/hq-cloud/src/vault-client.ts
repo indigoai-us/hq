@@ -212,11 +212,21 @@ async function sleep(ms: number): Promise<void> {
 
 export class VaultClient {
   private readonly apiUrl: string;
-  private readonly authToken: string;
+  private readonly getAuthToken: () => Promise<string>;
 
   constructor(config: VaultServiceConfig) {
     this.apiUrl = config.apiUrl.replace(/\/+$/, "");
-    this.authToken = config.authToken;
+    // Normalize string|getter into a single async getter so the request path
+    // doesn't have to branch. Static strings still work — they just produce a
+    // getter that returns the same value forever (suitable for short-lived
+    // tools and tests). Long-running callers pass a getter that re-reads
+    // `~/.hq/cognito-tokens.json` via `getValidAccessToken`, which is what
+    // makes the request layer self-heal across token refreshes.
+    const tok = config.authToken;
+    this.getAuthToken =
+      typeof tok === "function"
+        ? async () => tok()
+        : async () => tok;
   }
 
   // -- Membership operations ------------------------------------------------
@@ -436,7 +446,7 @@ export class VaultClient {
       }
 
       const headers: Record<string, string> = {
-        Authorization: `Bearer ${this.authToken}`,
+        Authorization: `Bearer ${await this.getAuthToken()}`,
         Accept: "application/json",
       };
 

@@ -97,8 +97,17 @@ export interface VaultCredentials {
 export interface VaultServiceConfig {
   /** Vault API base URL (e.g. https://vault-api.example.com) */
   apiUrl: string;
-  /** Cognito JWT token for authentication */
-  authToken: string;
+  /**
+   * Cognito JWT token for authentication. Either a static string OR an async
+   * getter that returns the current token on every call. Long-running consumers
+   * (e.g. `hq-sync-runner`'s multi-company fanout) MUST pass a getter — a
+   * captured string can outlive the 60-min Cognito access token TTL, which
+   * causes mid-flight `refreshEntityContext` calls to 401 against
+   * API Gateway's JWT authorizer even though `~/.hq/cognito-tokens.json` was
+   * refreshed under them by another process (e.g. the menubar). The getter
+   * lets every request resolve the latest token via `getValidAccessToken`.
+   */
+  authToken: string | (() => string | Promise<string>);
   /** AWS region for S3 client (defaults to entity region or us-east-1) */
   region?: string;
 }

@@ -693,3 +693,97 @@ describe("VaultClient identity bootstrap", () => {
     expect(JSON.parse(init.body as string)).toEqual({ personUid: "prs_x" });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Refreshable authToken getter
+//
+// Regression for the personal-sync 401: a captured `authToken` string can
+// outlive Cognito's 60-min access token TTL during long multi-company
+// fanouts, causing mid-flight `refreshEntityContext` calls to 401. The
+// getter form lets every request resolve the latest token from disk.
+// ---------------------------------------------------------------------------
+
+describe("authToken getter (refreshable token)", () => {
+  // Response bodies can only be read once, so each mock call needs a fresh
+  // Response. Using mockImplementation (not mockResolvedValue) ensures a new
+  // Response instance per request — same pattern as the retry tests above.
+  function alwaysOk(body: unknown): void {
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve(jsonResponse(200, body)),
+    );
+  }
+
+  it("calls the getter on every request", async () => {
+    const getter = vi.fn(async () => "first-token");
+    const c = new VaultClient({
+      apiUrl: "https://vault.test.example.com",
+      authToken: getter,
+    });
+
+    alwaysOk({ members: [] });
+
+    await c.listMembersOfCompany("cmp_abc");
+    await c.listMembersOfCompany("cmp_abc");
+    await c.listMembersOfCompany("cmp_abc");
+
+    expect(getter).toHaveBeenCalledTimes(3);
+  });
+
+  it("picks up a rotated token without recreating the client", async () => {
+    let current = "stale-token";
+    const c = new VaultClient({
+      apiUrl: "https://vault.test.example.com",
+      authToken: async () => current,
+    });
+
+    alwaysOk({ members: [] });
+
+    await c.listMembersOfCompany("cmp_abc");
+    const [, firstInit] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect((firstInit.headers as Record<string, string>).Authorization).toBe(
+      "Bearer stale-token",
+    );
+
+    // Simulate the menubar refreshing ~/.hq/cognito-tokens.json mid-flight.
+    current = "fresh-token";
+
+    await c.listMembersOfCompany("cmp_abc");
+    const [, secondInit] = fetchSpy.mock.calls[1] as [string, RequestInit];
+    expect((secondInit.headers as Record<string, string>).Authorization).toBe(
+      "Bearer fresh-token",
+    );
+  });
+
+  it("supports a sync getter (returns plain string, not a promise)", async () => {
+    const c = new VaultClient({
+      apiUrl: "https://vault.test.example.com",
+      authToken: () => "sync-token",
+    });
+
+    alwaysOk({ members: [] });
+    await c.listMembersOfCompany("cmp_abc");
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer sync-token",
+    );
+  });
+
+  it("static-string authToken still works (back-compat)", async () => {
+    const c = new VaultClient({
+      apiUrl: "https://vault.test.example.com",
+      authToken: "static-token",
+    });
+
+    alwaysOk({ members: [] });
+    await c.listMembersOfCompany("cmp_abc");
+    await c.listMembersOfCompany("cmp_abc");
+
+    const calls = fetchSpy.mock.calls as [string, RequestInit][];
+    for (const [, init] of calls) {
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        "Bearer static-token",
+      );
+    }
+  });
+});
