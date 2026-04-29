@@ -794,7 +794,10 @@ describe("per-company fanout", () => {
     });
 
     const code = await runRunner(["--companies"], deps);
-    expect(code).toBe(0); // whole fanout still returns 0
+    // Exit 2 on partial fanout (one company errored). The fanout completed
+    // — beta still synced — but the rollup carries `partial: true` and a
+    // non-zero exit signals automated monitors that the run wasn't clean.
+    expect(code).toBe(2);
 
     // Error event for acme (company-level) with path sentinel "(company)"
     // — error-class events route to stderr.
@@ -819,6 +822,95 @@ describe("per-company fanout", () => {
       );
     expect(betaComplete).toBeDefined();
     expect(betaComplete?.filesDownloaded).toBe(1);
+  });
+
+  /**
+   * Regression test for the rollup-bug from the personal-sync 401 incident.
+   *
+   * Setup: company "personal" has 3 files queued for download. The first two
+   * arrive (emitting `progress` events) and then the sync function throws on
+   * the third (mid-stream 401). Before the fix, the runner's `all-complete`
+   * reported `filesDownloaded: 0` for the whole run because the throwing
+   * company never emitted a clean `complete` and the rollup only summed
+   * companies that did. The fix: walk every company, sum partial counts
+   * captured from progress events, flip `partial: true`, exit non-zero.
+   */
+  it("aborted-mid-stream company contributes its partial counts to all-complete", async () => {
+    const deps = makeDeps({
+      createVaultClient: () =>
+        makeVaultStub({
+          memberships: [{ companyUid: "cmp_personal" }],
+          entityGet: (uid: string) =>
+            Promise.resolve({
+              uid,
+              slug: "personal",
+            } as unknown as EntityInfo),
+        }),
+      sync: vi
+        .fn<(opts: SyncOptions) => Promise<SyncResult>>()
+        .mockImplementationOnce(async (opts: SyncOptions) => {
+          // Two files land before the throw — these counts must show up in
+          // the rollup even though the sync function never returns cleanly.
+          opts.onEvent?.({ type: "progress", path: "notes/a.md", bytes: 100 });
+          opts.onEvent?.({ type: "progress", path: "notes/b.md", bytes: 250 });
+          throw new Error("401 Unauthorized — token expired");
+        }),
+    });
+
+    const code = await runRunner(["--companies"], deps);
+    expect(code).toBe(2);
+
+    // 1) The aborted company emits a `complete` event with aborted=true
+    //    and the partial counts that the progress stream captured. Without
+    //    this, consumers walking the `complete` event stream would never
+    //    see the 350 bytes that hit disk.
+    const completeEvents = deps.stdout
+      .events()
+      .filter(
+        (e): e is Extract<RunnerEvent, { type: "complete" }> =>
+          e.type === "complete",
+      );
+    expect(completeEvents).toHaveLength(1);
+    expect(completeEvents[0]).toMatchObject({
+      company: "personal",
+      filesDownloaded: 2,
+      bytesDownloaded: 350,
+      filesUploaded: 0,
+      bytesUploaded: 0,
+      aborted: true,
+    });
+
+    // 2) The all-complete rollup includes the partial counts and is flagged
+    //    `partial: true` with a per-company breakdown. Before the fix this
+    //    was `filesDownloaded: 0` and there was no `partial` field at all.
+    const all = deps.stdout
+      .events()
+      .find(
+        (e): e is Extract<RunnerEvent, { type: "all-complete" }> =>
+          e.type === "all-complete",
+      );
+    expect(all).toBeDefined();
+    expect(all).toMatchObject({
+      companiesAttempted: 1,
+      filesDownloaded: 2,
+      bytesDownloaded: 350,
+      filesUploaded: 0,
+      bytesUploaded: 0,
+      partial: true,
+      errors: [
+        { company: "personal", message: "401 Unauthorized — token expired" },
+      ],
+    });
+    expect(all?.companies).toEqual([
+      {
+        company: "personal",
+        status: "errored",
+        filesDownloaded: 2,
+        bytesDownloaded: 350,
+        filesUploaded: 0,
+        bytesUploaded: 0,
+      },
+    ]);
   });
 });
 
@@ -860,6 +952,25 @@ describe("all-complete aggregate", () => {
       bytesUploaded: 0,
       conflictPaths: [],
       errors: [],
+      partial: false,
+      companies: [
+        {
+          company: "acme",
+          status: "complete",
+          filesDownloaded: 3,
+          bytesDownloaded: 100,
+          filesUploaded: 0,
+          bytesUploaded: 0,
+        },
+        {
+          company: "beta",
+          status: "complete",
+          filesDownloaded: 4,
+          bytesDownloaded: 250,
+          filesUploaded: 0,
+          bytesUploaded: 0,
+        },
+      ],
     });
   });
 
@@ -879,7 +990,8 @@ describe("all-complete aggregate", () => {
     });
 
     const code = await runRunner(["--companies"], deps);
-    expect(code).toBe(0);
+    // Exit 2 — partial fanout (acme errored, beta clean).
+    expect(code).toBe(2);
     const all = deps.stdout
       .events()
       .find((e) => e.type === "all-complete") as Extract<RunnerEvent, { type: "all-complete" }>;
@@ -887,6 +999,7 @@ describe("all-complete aggregate", () => {
     expect(all.errors).toEqual([
       { company: "acme", message: "acme failed" },
     ]);
+    expect(all.partial).toBe(true);
   });
 });
 
@@ -1047,6 +1160,12 @@ describe("--direction", () => {
       ["--companies", "--direction", "both"],
       deps,
     );
+    // A clean conflict-abort (push returned aborted: true, no exception)
+    // exits 0 — nothing threw, the user's --on-conflict abort policy just
+    // decided to skip pull. The all-complete event carries `partial: true`
+    // for monitors that want to see "didn't complete cleanly", but the exit
+    // code stays 0 so the Tauri menubar's Sentry alert doesn't fire on what
+    // is normal user-policy behavior.
     expect(code).toBe(0);
     expect(shareSpy).toHaveBeenCalledTimes(1);
     expect(syncSpy).not.toHaveBeenCalled();
@@ -1055,6 +1174,15 @@ describe("--direction", () => {
       .events()
       .find((e) => e.type === "complete") as Extract<RunnerEvent, { type: "complete" }>;
     expect(complete.aborted).toBe(true);
+
+    const all = deps.stdout
+      .events()
+      .find((e) => e.type === "all-complete") as Extract<RunnerEvent, { type: "all-complete" }>;
+    expect(all.partial).toBe(true);
+    expect(all.companies[0]).toMatchObject({
+      company: "acme",
+      status: "aborted",
+    });
   });
 
   it("direction=push: passes skipUnchanged and company root path to share()", async () => {
@@ -1131,6 +1259,25 @@ describe("--direction", () => {
       bytesUploaded: 125,
       conflictPaths: [],
       errors: [],
+      partial: false,
+      companies: [
+        {
+          company: "acme",
+          status: "complete",
+          filesDownloaded: 3,
+          bytesDownloaded: 100,
+          filesUploaded: 1,
+          bytesUploaded: 50,
+        },
+        {
+          company: "beta",
+          status: "complete",
+          filesDownloaded: 4,
+          bytesDownloaded: 250,
+          filesUploaded: 2,
+          bytesUploaded: 75,
+        },
+      ],
     });
   });
 
