@@ -36,10 +36,14 @@ export function registerGroupsCommand(program: Command): void {
     .description("Create a new group")
     .requiredOption("--name <name>", "Human-readable group name")
     .option("--description <desc>", "Optional description")
-    .action(async (groupId: string, opts: { name: string; description?: string }) => {
+    .action(async (rawGroupId: string, opts: { name: string; description?: string }) => {
       try {
+        // Auto-prepend `grp_` when the caller passes a bare id (`core` →
+        // `grp_core`); the server does the same as a defense-in-depth
+        // backstop. The post-prepend form must still match GROUP_ID_PATTERN.
+        const groupId = rawGroupId.startsWith("grp_") ? rawGroupId : `grp_${rawGroupId}`;
         if (!GROUP_ID_PATTERN.test(groupId)) {
-          console.error(chalk.red(`Invalid group id '${groupId}': must match grp_<alphanumeric>`));
+          console.error(chalk.red(`Invalid group id '${rawGroupId}': resulting id '${groupId}' must match grp_<alphanumeric, underscore, hyphen>`));
           process.exit(1);
         }
 
