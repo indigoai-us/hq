@@ -500,8 +500,23 @@ function walkDir(
 }
 
 function isWithin(parent: string, child: string): boolean {
-  const rel = path.relative(parent, child);
+  // Canonicalize both ends so the comparison survives case-insensitive
+  // filesystems (macOS APFS, Windows NTFS): `path.relative('/Users/x/hq',
+  // '/Users/x/HQ/foo')` returns `'../HQ/foo'`, which would falsely report
+  // `child` as outside `parent`. `realpathSync.native` resolves to the
+  // on-disk canonical case so the relative path lands inside.
+  const parentCanon = realpathSafe(parent);
+  const childCanon = realpathSafe(child);
+  const rel = path.relative(parentCanon, childCanon);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function realpathSafe(p: string): string {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
+    return p;
+  }
 }
 
 /**

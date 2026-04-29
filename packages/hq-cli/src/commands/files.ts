@@ -38,12 +38,29 @@ export function registerFilesCommand(program: Command): void {
         const companySlug = files.opts().company as string | undefined;
         const companyUid = await getCompanyUid(token, companySlug);
 
-        const res = await vaultApiFetch({
+        let res = await vaultApiFetch({
           token,
           path: `/files/${encodeURIComponent(companyUid)}/acl/grant`,
           method: "POST",
           body: { prefix: canonicalPrefix, granteeType, granteeId, permission: opts.permission },
         });
+
+        // No ACL row exists yet for this prefix. Auto-create one with this
+        // grant as its first entry, then report success — saves the caller
+        // from needing a separate "create" step.
+        let autoCreated = false;
+        if (res.status === 404) {
+          res = await vaultApiFetch({
+            token,
+            path: `/files/${encodeURIComponent(companyUid)}/acl`,
+            method: "POST",
+            body: {
+              prefix: canonicalPrefix,
+              entries: [{ granteeType, granteeId, permission: opts.permission }],
+            },
+          });
+          autoCreated = res.ok;
+        }
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({})) as Record<string, string>;
@@ -63,9 +80,10 @@ export function registerFilesCommand(program: Command): void {
           process.exit(1);
         }
 
-        const data = await res.json() as { acl?: { prefix?: string } };
-        const printedPrefix = data.acl?.prefix ?? canonicalPrefix;
-        console.log(chalk.green(`Granted ${opts.permission} on ${printedPrefix} to ${granteeId}`));
+        const data = await res.json() as { acl?: { path?: string; prefix?: string } };
+        const printedPrefix = data.acl?.path ?? data.acl?.prefix ?? canonicalPrefix;
+        const verb = autoCreated ? "Created ACL and granted" : "Granted";
+        console.log(chalk.green(`${verb} ${opts.permission} on ${printedPrefix} to ${granteeId}`));
       } catch (err) {
         console.error(chalk.red("Error:"), err instanceof Error ? err.message : String(err));
         process.exit(1);
@@ -162,7 +180,10 @@ export function registerFilesCommand(program: Command): void {
           acl: {
             itemType: string;
             companyUid: string;
-            prefix: string;
+            // Server returns `path` (the FileAcl field name); older builds
+            // used `prefix`. Read both so the CLI works against either.
+            path?: string;
+            prefix?: string;
             creatorUid: string;
             open?: boolean;
             entries: Array<{
@@ -180,8 +201,9 @@ export function registerFilesCommand(program: Command): void {
 
         const acl = data.acl;
         const aclStatus = acl.open ? "open" : "restricted";
+        const aclPrefix = acl.path ?? acl.prefix ?? canonicalPrefix;
 
-        console.log(chalk.green(`ACL for ${acl.prefix} (${aclStatus})`));
+        console.log(chalk.green(`ACL for ${aclPrefix} (${aclStatus})`));
         console.log(`Creator: ${acl.creatorUid}`);
         if (acl.effectivePermission) {
           console.log(`Your effective permission: ${acl.effectivePermission}`);
