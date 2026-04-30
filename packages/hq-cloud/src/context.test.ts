@@ -303,3 +303,84 @@ describe("isExpiringSoon", () => {
     expect(isExpiringSoon(past)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Refreshable authToken getter
+//
+// Regression for the personal-sync 401: a long-running `hq-sync-runner` run
+// captures vaultConfig.authToken as a string at startup, then `refreshEntityContext`
+// fires ~13 min into the personal-company sync (STS expiry) and uses that
+// stale string against API Gateway's JWT authorizer → 401. The getter form
+// lets every fetchEntity / postVend call resolve the latest token from disk.
+// ---------------------------------------------------------------------------
+
+describe("authToken getter is invoked per-request (regression: personal-sync 401)", () => {
+  beforeEach(() => {
+    clearContextCache();
+    vi.restoreAllMocks();
+  });
+
+  it("calls the getter on entity fetch AND on vend (every request)", async () => {
+    setupFetchMock();
+    const getter = vi.fn(async () => "fresh-token");
+
+    await resolveEntityContext("cmp_01ABCDEF", {
+      apiUrl: "https://vault-api.test",
+      authToken: getter,
+    });
+
+    // Two upstream requests: fetchEntity (UID looks like a UID) + postVend.
+    expect(getter).toHaveBeenCalledTimes(2);
+  });
+
+  it("picks up a rotated token between resolveEntityContext and refreshEntityContext", async () => {
+    const fetchMock = setupFetchMock();
+    let current = "stale-token";
+    const cfg = {
+      apiUrl: "https://vault-api.test",
+      authToken: async () => current,
+    };
+
+    await resolveEntityContext("cmp_01ABCDEF", cfg);
+
+    // fetchEntity + vend during initial resolution — both used "stale-token"
+    const initialAuth = (fetchMock.mock.calls as [string, RequestInit][]).map(
+      ([, init]) =>
+        (init.headers as Record<string, string>).Authorization,
+    );
+    expect(initialAuth.every((a) => a === "Bearer stale-token")).toBe(true);
+
+    // Simulate the on-disk token rotating mid-flight.
+    current = "fresh-token";
+
+    await refreshEntityContext("cmp_01ABCDEF", cfg);
+
+    // The post-refresh calls must use the new token. Without the per-request
+    // getter, refreshEntityContext would still send "Bearer stale-token" and
+    // 401 against the gateway.
+    const allCalls = fetchMock.mock.calls as [string, RequestInit][];
+    const postRefreshCalls = allCalls.slice(initialAuth.length);
+    expect(postRefreshCalls.length).toBeGreaterThan(0);
+    for (const [, init] of postRefreshCalls) {
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        "Bearer fresh-token",
+      );
+    }
+  });
+
+  it("static-string authToken still works (back-compat)", async () => {
+    const fetchMock = setupFetchMock();
+    await resolveEntityContext("cmp_01ABCDEF", {
+      apiUrl: "https://vault-api.test",
+      authToken: "static-token",
+    });
+
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const [, init] of calls) {
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        "Bearer static-token",
+      );
+    }
+  });
+});

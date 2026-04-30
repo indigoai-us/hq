@@ -138,12 +138,25 @@ interface VendResponse {
   expiresAt: string;
 }
 
+/**
+ * Resolve the current bearer token from a VaultServiceConfig. Accepts either
+ * a static string (back-compat with short-lived tools) or an async getter
+ * (long-running callers like `hq-sync-runner` pass `() => getValidAccessToken(...)`
+ * so each request picks up token refreshes that landed in
+ * `~/.hq/cognito-tokens.json` since the run started).
+ */
+async function resolveAuthToken(config: VaultServiceConfig): Promise<string> {
+  return typeof config.authToken === "function"
+    ? config.authToken()
+    : config.authToken;
+}
+
 async function fetchEntity(
   uid: string,
   config: VaultServiceConfig,
 ): Promise<EntityResponse> {
   const res = await fetch(`${config.apiUrl}/entity/${uid}`, {
-    headers: { Authorization: `Bearer ${config.authToken}` },
+    headers: { Authorization: `Bearer ${await resolveAuthToken(config)}` },
   });
   if (!res.ok) {
     const body = await res.text();
@@ -159,7 +172,7 @@ async function fetchEntityBySlug(
   config: VaultServiceConfig,
 ): Promise<EntityResponse> {
   const res = await fetch(`${config.apiUrl}/entity/by-slug/${type}/${slug}`, {
-    headers: { Authorization: `Bearer ${config.authToken}` },
+    headers: { Authorization: `Bearer ${await resolveAuthToken(config)}` },
   });
   if (!res.ok) {
     const body = await res.text();
@@ -180,7 +193,7 @@ async function postVend(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.authToken}`,
+      Authorization: `Bearer ${await resolveAuthToken(config)}`,
     },
     body: JSON.stringify({ ...body, durationSeconds: DEFAULT_SESSION_DURATION_SECONDS }),
   });
