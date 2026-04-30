@@ -26,7 +26,6 @@ const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_TIMEOUT = 300_000;
 // 100k tokens: conservative default for a small e2e suite (5-10 tests × ~10k tokens each).
 // Haiku 4.5 at this budget costs ~$0.18 per run (80/20 input/output split).
-// TODO: refine based on actual spike.sh measurements — see tests/e2e/SPIKE.md#cost-benchmarks
 const DEFAULT_TOKEN_BUDGET = 100_000;
 
 let cumulativeInputTokens = 0;
