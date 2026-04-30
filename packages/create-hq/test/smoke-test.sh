@@ -83,6 +83,16 @@ if [ ! -f "$TARBALL" ]; then
   exit 1
 fi
 
+# Pre-flight guard for the mounted template. Docker silently auto-creates an
+# empty dir at the mount point if the host path does not exist, which would
+# cause every dir-exists/file-exists assertion below to fail with the unhelpful
+# "Assertion failed" message. Catch the empty-mount case explicitly here.
+if [ ! -f "$TEMPLATE_DIR/core.yaml" ] || [ ! -f "$TEMPLATE_DIR/.claude/CLAUDE.md" ]; then
+  echo "FATAL: Mounted template at ${TEMPLATE_DIR} is missing core.yaml or .claude/CLAUDE.md."
+  echo "The orchestrator must mount a populated hq-core scaffold (see run-smoke-tests.sh Step 1.5)."
+  exit 1
+fi
+
 echo "Installing create-hq from local tarball (user-local)..."
 # Install locally to a temp dir — non-root can't install globally
 INSTALL_DIR="/tmp/create-hq-install"

@@ -15,7 +15,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PKG_DIR="$REPO_ROOT/packages/create-hq"
 DOCKER_DIR="$SCRIPT_DIR/docker"
 RESULTS_DIR="$SCRIPT_DIR/results"
-TEMPLATE_DIR="$REPO_ROOT/template"
+
+# Allow override (e.g. for offline runs against a checked-out hq-core).
+# Default: fetched fresh per-run from indigoai-us/hq-core (see Step 1.5 below).
+TEMPLATE_DIR="${TEMPLATE_DIR:-}"
 
 IMAGES=("blank-slate" "pre-deps")
 IMAGE_RESULTS=()
@@ -36,6 +39,45 @@ TARBALL_NAME=$(npm pack 2>&1 | tail -1)
 TARBALL_PATH="$PKG_DIR/$TARBALL_NAME"
 echo "Packed: $TARBALL_NAME"
 echo ""
+
+# --- Step 1.5: Fetch hq-core scaffold for --local-template ---
+# The repo's old `template/` subdirectory was removed when the scaffold was
+# split into its own repo (indigoai-us/hq-core). Mounting a non-existent path
+# silently produces an empty container-side dir, which is what was breaking
+# CI before this fix. Fetch a fresh hq-core tarball into a host-side temp
+# dir each run so smoke tests exercise the actual current scaffold layout.
+TEMPLATE_FETCHED=false
+if [ -z "$TEMPLATE_DIR" ]; then
+  echo "=== Step 1.5: Fetching hq-core scaffold ==="
+  TEMPLATE_DIR="$(mktemp -d -t create-hq-smoke-template.XXXXXX)"
+  TEMPLATE_FETCHED=true
+  TMP_TAR="$(mktemp -t hq-core-tarball.XXXXXX)"
+  if ! gh api repos/indigoai-us/hq-core/tarball/HEAD > "$TMP_TAR"; then
+    echo "FATAL: failed to fetch hq-core tarball via gh CLI (set GH_TOKEN or run 'gh auth login')."
+    rm -f "$TMP_TAR"
+    rm -rf "$TEMPLATE_DIR"
+    exit 1
+  fi
+  tar -xzf "$TMP_TAR" -C "$TEMPLATE_DIR" --strip-components=1
+  rm -f "$TMP_TAR"
+  echo "Fetched scaffold to: $TEMPLATE_DIR"
+  echo ""
+fi
+
+# Pre-flight regression guard. Refuse to run smoke tests against an empty or
+# malformed scaffold directory — that is the failure mode that caused the
+# CI red after `template/` was deleted but the test paths weren't updated.
+if [ ! -f "$TEMPLATE_DIR/core.yaml" ] || [ ! -f "$TEMPLATE_DIR/.claude/CLAUDE.md" ]; then
+  echo "FATAL: TEMPLATE_DIR=$TEMPLATE_DIR is missing core.yaml or .claude/CLAUDE.md."
+  echo "       Either fetchTemplate produced an empty scaffold, or the hq-core layout has changed."
+  [ "$TEMPLATE_FETCHED" = true ] && rm -rf "$TEMPLATE_DIR"
+  exit 1
+fi
+
+# Cleanup fetched template on exit (do not delete a user-supplied dir)
+if [ "$TEMPLATE_FETCHED" = true ]; then
+  trap 'rm -rf "$TEMPLATE_DIR"' EXIT
+fi
 
 # --- Step 2: Build Docker images ---
 echo "=== Step 2: Building Docker images ==="
