@@ -154,20 +154,35 @@ export function registerFilesCommand(program: Command): void {
         const companySlug = files.opts().company as string | undefined;
         const companyUid = await getCompanyUid(token, companySlug);
 
-        const res = await vaultApiFetch({
-          token,
-          path: `/files/${encodeURIComponent(companyUid)}/acl`,
-          query: { prefix: canonicalPrefix },
-        });
+        // Fetch the prefix's own ACL row (creator, open flag, effective
+        // permission) and the inherited/descendant tree in parallel so the
+        // user sees every grant that affects this prefix in one shot.
+        const [aclRes, treeRes] = await Promise.all([
+          vaultApiFetch({
+            token,
+            path: `/files/${encodeURIComponent(companyUid)}/acl`,
+            query: { prefix: canonicalPrefix },
+          }),
+          vaultApiFetch({
+            token,
+            path: `/files/${encodeURIComponent(companyUid)}/acl/tree`,
+            query: { prefix: canonicalPrefix },
+          }),
+        ]);
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({})) as Record<string, string>;
+        async function readErrorBody(res: Response): Promise<Record<string, string>> {
+          return (await res.json().catch(() => ({}))) as Record<string, string>;
+        }
+
+        // Auth/server failures from either call are treated identically — bail
+        // out with a single message rather than printing a half-rendered view.
+        for (const res of [aclRes, treeRes]) {
+          if (res.ok || res.status === 404) continue;
+          const body = await readErrorBody(res);
           if (res.status === 401) {
             console.error(chalk.red("Not authenticated — please run `hq login`"));
           } else if (res.status === 403) {
             console.error(chalk.red("Not authorized to view this file prefix's ACL"));
-          } else if (res.status === 404) {
-            console.error(chalk.red(`No ACL record exists for '${canonicalPrefix}'`));
           } else if (res.status >= 500) {
             console.error(chalk.red(`Server error: ${body.error ?? res.statusText}`));
           } else {
@@ -176,7 +191,14 @@ export function registerFilesCommand(program: Command): void {
           process.exit(1);
         }
 
-        const data = await res.json() as {
+        type AclEntry = {
+          granteeType: string;
+          granteeId: string;
+          permission: string;
+          grantedBy: string;
+          grantedAt: string;
+        };
+        type AclResponse = {
           acl: {
             itemType: string;
             companyUid: string;
@@ -186,60 +208,98 @@ export function registerFilesCommand(program: Command): void {
             prefix?: string;
             creatorUid: string;
             open?: boolean;
-            entries: Array<{
-              granteeType: string;
-              granteeId: string;
-              permission: string;
-              grantedBy: string;
-              grantedAt: string;
-            }>;
+            entries: AclEntry[];
             effectivePermission?: string | null;
             createdAt: string;
             updatedAt: string;
           };
         };
+        type TreeResponse = {
+          prefix: string;
+          direct: AclEntry[];
+          inherited: Array<AclEntry & { sourcePrefix: string }>;
+          children: Array<AclEntry & { sourcePrefix: string }>;
+        };
 
-        const acl = data.acl;
-        const aclStatus = acl.open ? "open" : "restricted";
-        const aclPrefix = acl.path ?? acl.prefix ?? canonicalPrefix;
+        const acl = aclRes.ok ? (await aclRes.json() as AclResponse).acl : null;
+        const tree = treeRes.ok ? (await treeRes.json()) as TreeResponse : null;
+
+        // No own row AND nothing inherited or granted below — original
+        // "no ACL record" exit path.
+        if (!acl && (!tree || (tree.inherited.length === 0 && tree.children.length === 0))) {
+          console.error(chalk.red(`No ACL record exists for '${canonicalPrefix}'`));
+          process.exit(1);
+        }
+
+        const aclPrefix = acl?.path ?? acl?.prefix ?? tree?.prefix ?? canonicalPrefix;
+        const aclStatus = acl?.open ? "open" : "restricted";
 
         console.log(chalk.green(`ACL for ${aclPrefix} (${aclStatus})`));
-        console.log(`Creator: ${acl.creatorUid}`);
-        if (acl.effectivePermission) {
-          console.log(`Your effective permission: ${acl.effectivePermission}`);
-        }
-
-        if (acl.entries.length === 0) {
-          if (acl.open) {
-            console.log(chalk.gray("Open ACL — all active members have read access."));
-          } else {
-            console.log(chalk.gray("No explicit grants — only creator has access."));
+        if (acl) {
+          console.log(`Creator: ${acl.creatorUid}`);
+          if (acl.effectivePermission) {
+            console.log(`Your effective permission: ${acl.effectivePermission}`);
           }
-          return;
+        } else {
+          console.log(chalk.gray(
+            "No direct ACL row — access flows from the inherited/descendant grants below.",
+          ));
         }
 
-        console.log("Entries:");
-        const TYPE_W = Math.max(4, ...acl.entries.map((e) => e.granteeType.length));
-        const GRANTEE_W = Math.max(7, ...acl.entries.map((e) => e.granteeId.length));
-        const PERM_W = Math.max(10, ...acl.entries.map((e) => e.permission.length));
-        const BY_W = Math.max(10, ...acl.entries.map((e) => e.grantedBy.length));
-        const tableHeader = [
-          "TYPE".padEnd(TYPE_W),
-          "GRANTEE".padEnd(GRANTEE_W),
-          "PERMISSION".padEnd(PERM_W),
-          "GRANTED_BY".padEnd(BY_W),
-          "GRANTED_AT",
-        ].join("  ");
-        console.log(chalk.bold(tableHeader));
-        for (const e of acl.entries) {
-          const grantedAt = e.grantedAt.slice(0, 10);
-          console.log([
-            e.granteeType.padEnd(TYPE_W),
-            e.granteeId.padEnd(GRANTEE_W),
-            e.permission.padEnd(PERM_W),
-            e.grantedBy.padEnd(BY_W),
-            grantedAt,
-          ].join("  "));
+        function printEntryTable(
+          rows: Array<AclEntry & { sourcePrefix?: string }>,
+          showSource: boolean,
+        ): void {
+          const TYPE_W = Math.max(4, ...rows.map((e) => e.granteeType.length));
+          const GRANTEE_W = Math.max(7, ...rows.map((e) => e.granteeId.length));
+          const PERM_W = Math.max(10, ...rows.map((e) => e.permission.length));
+          const BY_W = Math.max(10, ...rows.map((e) => e.grantedBy.length));
+          const SRC_W = showSource
+            ? Math.max(6, ...rows.map((e) => (e.sourcePrefix ?? "").length))
+            : 0;
+          const headerCols = [
+            "TYPE".padEnd(TYPE_W),
+            "GRANTEE".padEnd(GRANTEE_W),
+            "PERMISSION".padEnd(PERM_W),
+            "GRANTED_BY".padEnd(BY_W),
+            "GRANTED_AT",
+          ];
+          if (showSource) headerCols.splice(4, 0, "SOURCE".padEnd(SRC_W));
+          console.log(chalk.bold(headerCols.join("  ")));
+          for (const e of rows) {
+            const grantedAt = e.grantedAt.slice(0, 10);
+            const cols = [
+              e.granteeType.padEnd(TYPE_W),
+              e.granteeId.padEnd(GRANTEE_W),
+              e.permission.padEnd(PERM_W),
+              e.grantedBy.padEnd(BY_W),
+              grantedAt,
+            ];
+            if (showSource) cols.splice(4, 0, (e.sourcePrefix ?? "").padEnd(SRC_W));
+            console.log(cols.join("  "));
+          }
+        }
+
+        const directEntries = acl?.entries ?? tree?.direct ?? [];
+        if (directEntries.length === 0) {
+          if (acl?.open) {
+            console.log(chalk.gray("Open ACL — all active members have read access."));
+          } else if (acl) {
+            console.log(chalk.gray("No explicit grants on this prefix — only creator has access."));
+          }
+        } else {
+          console.log("\nDirect entries (granted on this prefix):");
+          printEntryTable(directEntries, false);
+        }
+
+        if (tree && tree.inherited.length > 0) {
+          console.log("\nInherited (granted on an ancestor prefix):");
+          printEntryTable(tree.inherited, true);
+        }
+
+        if (tree && tree.children.length > 0) {
+          console.log("\nGranted on descendant prefixes (do not affect this prefix's access):");
+          printEntryTable(tree.children, true);
         }
       } catch (err) {
         console.error(chalk.red("Error:"), err instanceof Error ? err.message : String(err));
