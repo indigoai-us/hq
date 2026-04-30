@@ -37,8 +37,19 @@
  * of requiring per-event capture calls in the menubar.
  *
  * Exit code:
- *   0 — event stream describes the outcome (including setup-needed)
- *   1 — argv parse error or unrecoverable pre-sync failure
+ *   0 — event stream describes the outcome. The runner finished its protocol
+ *       without any company throwing. Includes setup-needed, auth-error, and
+ *       runs where every company completed OR cleanly returned `aborted: true`
+ *       (a `--on-conflict abort` policy decision is not an error).
+ *   1 — argv parse error or unrecoverable pre-sync failure.
+ *   2 — at least one company threw mid-stream (e.g. mid-fanout 401, network
+ *       reset, S3 5xx after retries). The all-complete event carries
+ *       `partial: true` and per-company partial counts captured from
+ *       `progress` events before the throw, so consumers parsing ndjson see
+ *       what actually transferred. This is distinct from exit 0 with
+ *       `partial: true` (clean conflict-aborts) — exit 2 is "something
+ *       unexpected happened", which the Tauri menubar converts to a Sentry
+ *       alert. Conflict-aborts intentionally do NOT alert.
  */
 
 import * as os from "os";
@@ -168,6 +179,36 @@ export type RunnerEvent =
        */
       conflictPaths: Array<{ company: string; path: string; direction: "pull" | "push" }>;
       errors: Array<{ company: string; message: string }>;
+      /**
+       * True when at least one company in the fanout did not complete cleanly
+       * — either it returned `aborted: true` (e.g. conflict-abort) or its sync
+       * function threw mid-stream (e.g. mid-fanout 401). When `partial: true`,
+       * the totals above include partial counts captured from `progress` events
+       * before the abort, NOT just companies that emitted a clean `complete`.
+       *
+       * Automated monitors should check this field — `errors.length > 0` alone
+       * isn't sufficient because a `aborted: true` return doesn't push to
+       * `errors` (it's a clean conflict-abort, not an exception).
+       */
+      partial: boolean;
+      /**
+       * Per-company breakdown of the fanout. Always present, one entry per
+       * planned company, in fanout order. Lets consumers reconcile per-company
+       * partial counts with the aggregate without re-walking `complete` /
+       * `error` event streams. The `status` field is the canonical signal:
+       * - "complete" — sync returned cleanly, `aborted: false`
+       * - "aborted"  — sync returned cleanly with `aborted: true` (conflict-abort)
+       * - "errored"  — sync threw mid-stream; counts are sourced from progress
+       *                events seen before the throw
+       */
+      companies: Array<{
+        company: string;
+        status: "complete" | "aborted" | "errored";
+        filesDownloaded: number;
+        bytesDownloaded: number;
+        filesUploaded: number;
+        bytesUploaded: number;
+      }>;
     };
 
 /**
@@ -533,17 +574,56 @@ export async function runRunner(
   const shareFn = deps.share ?? defaultShare;
   const doPush = parsed.direction === "push" || parsed.direction === "both";
   const doPull = parsed.direction === "pull" || parsed.direction === "both";
-  let totalDownloaded = 0;
-  let totalDownloadedBytes = 0;
-  let totalUploaded = 0;
-  let totalUploadedBytes = 0;
   const errors: Array<{ company: string; message: string }> = [];
   const allConflicts: Array<{ company: string; path: string; direction: "pull" | "push" }> = [];
 
+  // Per-company state, keyed by the company label (slug or UID-fallback) so
+  // both `progress` (which streams) and `complete`/throw (which lands once)
+  // can update the same row. The rollup at the bottom of the function walks
+  // every entry — this is the source of truth that closes the bug where an
+  // aborted company's partial counts were dropped from `all-complete`.
+  //
+  // We seed `direction` from the parsed flag so we know whether a `progress`
+  // event without a clear phase should bump downloaded or uploaded counters.
+  // For `direction: "both"` runs we lean on the path of the in-flight phase
+  // — push runs first and sets `phaseRef.current = "push"` while shareFn runs,
+  // pull sets it to "pull". The closure shared by tagAndEmit reads `.current`
+  // at event time, so progress events route to the right column.
+  type CompanyStatus = "complete" | "aborted" | "errored";
+  interface CompanyState {
+    company: string;
+    status: CompanyStatus;
+    filesDownloaded: number;
+    bytesDownloaded: number;
+    filesUploaded: number;
+    bytesUploaded: number;
+  }
+  const stateByCompany = new Map<string, CompanyState>();
+
   for (const target of plan) {
     const companyLabel = target.slug;
+    const state: CompanyState = {
+      company: companyLabel,
+      // Default to "errored" so a throw before any complete-or-clean-abort
+      // path (the original bug) leaves the entry flagged as not-clean. The
+      // success/clean-abort paths overwrite this before the loop body exits.
+      status: "errored",
+      filesDownloaded: 0,
+      bytesDownloaded: 0,
+      filesUploaded: 0,
+      bytesUploaded: 0,
+    };
+    stateByCompany.set(companyLabel, state);
+
+    // Which phase is currently emitting `progress` events. Mutable closure so
+    // tagAndEmit (defined once below) reads the latest value when each event
+    // fires. "pull" is the default for back-compat with pull-only runs.
+    let activePhase: "pull" | "push" = doPush && !doPull ? "push" : "pull";
+
     // Per-company event tagger — shared by push and pull phases so progress
     // rows land on the right company regardless of which phase emitted them.
+    // Also updates `state` for `progress` events so the rollup has accurate
+    // partial counts even if the sync function throws before returning.
     const tagAndEmit = (event: SyncProgressEvent): void => {
       if (event.type === "plan") {
         emit({
@@ -557,6 +637,13 @@ export async function runRunner(
           filesToConflict: event.filesToConflict,
         });
       } else if (event.type === "progress") {
+        if (activePhase === "push") {
+          state.filesUploaded += 1;
+          state.bytesUploaded += event.bytes;
+        } else {
+          state.filesDownloaded += 1;
+          state.bytesDownloaded += event.bytes;
+        }
         emit({
           type: "progress",
           company: companyLabel,
@@ -604,6 +691,7 @@ export async function runRunner(
       // point with `skipUnchanged` so we don't re-upload files that haven't
       // changed since the last sync.
       if (doPush) {
+        activePhase = "push";
         pushResult = await shareFn({
           paths: [path.join(parsed.hqRoot, "companies", target.slug)],
           company: target.uid,
@@ -619,6 +707,7 @@ export async function runRunner(
       // the user has local edits + remote drift; blindly pulling would erase
       // whichever side `--on-conflict abort` just protected.
       if (doPull && !pushResult.aborted) {
+        activePhase = "pull";
         pullResult = await syncFn({
           company: target.uid,
           vaultConfig,
@@ -637,6 +726,20 @@ export async function runRunner(
         ...pullResult.conflictPaths,
         ...pushResult.conflictPaths,
       ];
+      const aborted = pullResult.aborted || pushResult.aborted;
+
+      // Overwrite the progress-derived counts with the authoritative numbers
+      // from the sync/share return values. The `progress` stream over-counts
+      // when the inner walker emits a progress row for a file it then skips
+      // due to a journal hit — a clean return value is the source of truth.
+      // For the throw case below this overwrite never runs, so `state` keeps
+      // its progress-derived counts (which is exactly what we want there).
+      state.filesDownloaded = pullResult.filesDownloaded;
+      state.bytesDownloaded = pullResult.bytesDownloaded;
+      state.filesUploaded = pushResult.filesUploaded;
+      state.bytesUploaded = pushResult.bytesUploaded;
+      state.status = aborted ? "aborted" : "complete";
+
       emit({
         type: "complete",
         company: companyLabel,
@@ -654,7 +757,7 @@ export async function runRunner(
         conflictPaths: mergedConflictPaths,
         // Either phase aborting marks the company aborted — the UI treats
         // `aborted: true` as "sync didn't complete cleanly for this company".
-        aborted: pullResult.aborted || pushResult.aborted,
+        aborted,
       });
       for (const p of pullResult.conflictPaths) {
         allConflicts.push({ company: companyLabel, path: p, direction: "pull" });
@@ -662,13 +765,28 @@ export async function runRunner(
       for (const p of pushResult.conflictPaths) {
         allConflicts.push({ company: companyLabel, path: p, direction: "push" });
       }
-      totalDownloaded += pullResult.filesDownloaded;
-      totalDownloadedBytes += pullResult.bytesDownloaded;
-      totalUploaded += pushResult.filesUploaded;
-      totalUploadedBytes += pushResult.bytesUploaded;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       errors.push({ company: companyLabel, message });
+      // `state.status` was seeded as "errored" at loop entry — the throw
+      // path leaves it there, and `state.files{Down,Up}loaded` reflects the
+      // partial counts captured from `progress` events before the throw.
+      // Emit a `complete` event with `aborted: true` and those partial
+      // counts so consumers walking the `complete` event stream see every
+      // company in the fanout uniformly. This is the fix for the misleading
+      // rollup — see file header `Exit code: 2` doc.
+      emit({
+        type: "complete",
+        company: companyLabel,
+        filesDownloaded: state.filesDownloaded,
+        bytesDownloaded: state.bytesDownloaded,
+        filesUploaded: state.filesUploaded,
+        bytesUploaded: state.bytesUploaded,
+        filesSkipped: 0,
+        conflicts: 0,
+        conflictPaths: [],
+        aborted: true,
+      });
       emit({
         type: "error",
         company: companyLabel,
@@ -677,6 +795,43 @@ export async function runRunner(
       });
       // Continue — one company's failure shouldn't abort the whole fanout.
     }
+  }
+
+  // Walk every per-company entry — the map holds one row per planned company,
+  // including ones that aborted via thrown exception. This is the fix for the
+  // bug where `all-complete` reported `filesDownloaded: 0` for an aborted
+  // personal-sync that had already emitted thousands of `progress` events:
+  // the rollup used to only sum companies that emitted a clean `complete`,
+  // which silently dropped partials when the sync function threw.
+  let totalDownloaded = 0;
+  let totalDownloadedBytes = 0;
+  let totalUploaded = 0;
+  let totalUploadedBytes = 0;
+  let partial = false;
+  const companies: Array<{
+    company: string;
+    status: CompanyStatus;
+    filesDownloaded: number;
+    bytesDownloaded: number;
+    filesUploaded: number;
+    bytesUploaded: number;
+  }> = [];
+  for (const target of plan) {
+    const s = stateByCompany.get(target.slug);
+    if (!s) continue; // unreachable — every plan entry seeds the map
+    totalDownloaded += s.filesDownloaded;
+    totalDownloadedBytes += s.bytesDownloaded;
+    totalUploaded += s.filesUploaded;
+    totalUploadedBytes += s.bytesUploaded;
+    if (s.status !== "complete") partial = true;
+    companies.push({
+      company: s.company,
+      status: s.status,
+      filesDownloaded: s.filesDownloaded,
+      bytesDownloaded: s.bytesDownloaded,
+      filesUploaded: s.filesUploaded,
+      bytesUploaded: s.bytesUploaded,
+    });
   }
 
   emit({
@@ -688,8 +843,15 @@ export async function runRunner(
     bytesUploaded: totalUploadedBytes,
     conflictPaths: allConflicts,
     errors,
+    partial,
+    companies,
   });
-  return 0;
+  // Exit 2 only when something actually threw (`errors.length > 0`). A clean
+  // conflict-abort sets `partial: true` in the JSON but exits 0 — the Tauri
+  // menubar's non-zero-exit Sentry capture would otherwise fire for normal
+  // user-policy outcomes. Consumers that want to flag any non-clean outcome
+  // (clean-abort + thrown-error) read `partial` from the JSON.
+  return errors.length > 0 ? 2 : 0;
 }
 
 // ---------------------------------------------------------------------------
