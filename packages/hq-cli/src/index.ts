@@ -27,6 +27,7 @@ import { registerSecretsCommand } from "./commands/secrets.js";
 import { registerRunCommand } from "./commands/run.js";
 import { registerGroupsCommand } from "./commands/groups.js";
 import { registerFilesCommand } from "./commands/files.js";
+import { registerMembersCommand } from "./commands/members.js";
 
 initSentry();
 
@@ -101,6 +102,9 @@ registerGroupsCommand(program);
 
 // Files ACL management (subcommand group — hq files share|unshare|acl)
 registerFilesCommand(program);
+
+// Membership management (subcommand group — hq members invite|list|revoke)
+registerMembersCommand(program);
 
 // Onboarding (top-level — Cognito + vault-service provisioning)
 registerOnboardCommand(program);
