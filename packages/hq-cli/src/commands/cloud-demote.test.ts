@@ -366,4 +366,36 @@ describe("demoteCompany — safety check", () => {
       }),
     ).rejects.toBeInstanceOf(ProvisionError);
   });
+
+  it("--force on a slug missing from the manifest throws code 2 (no silent no-op)", async () => {
+    seedManifest(tmpRoot, { other: { name: "Other" } });
+    seedCompanyDir(tmpRoot, "acme", "cloud: true\n");
+    await expect(
+      demoteCompany({
+        slug: "acme",
+        hqRoot: tmpRoot,
+        vaultApiUrl: "https://v",
+        force: true,
+      }),
+    ).rejects.toMatchObject({
+      code: 2,
+      message: expect.stringMatching(/not found.*manifest/i),
+    });
+  });
+
+  it("--force when company directory is missing throws code 2 (no silent no-op)", async () => {
+    seedManifest(tmpRoot); // seeds acme entry
+    // No seedCompanyDir — directory is missing.
+    await expect(
+      demoteCompany({
+        slug: "acme",
+        hqRoot: tmpRoot,
+        vaultApiUrl: "https://v",
+        force: true,
+      }),
+    ).rejects.toMatchObject({
+      code: 2,
+      message: expect.stringMatching(/does not exist/i),
+    });
+  });
 });

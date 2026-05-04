@@ -40,6 +40,7 @@ import {
   companyDirPath,
   createDefaultVaultClient,
   manifestPath,
+  validateManifestAndDir,
   validateSlug,
   type VaultClient,
 } from "./cloud-provision.js";
@@ -147,13 +148,18 @@ export async function demoteCompany(
   options: DemoteCompanyOptions,
 ): Promise<DemoteResult> {
   validateSlug(options.slug);
+  // Fails with code 2 if the manifest is missing/malformed, the slug is not
+  // present under `.companies`, or `companies/<slug>/` doesn't exist on disk.
+  // Without this, a `--force` demote against a missing or renamed slug would
+  // be a silent no-op (all helpers return false but we'd still report ok=true).
+  validateManifestAndDir(options.hqRoot, options.slug);
 
   let cloudWasDeleted: boolean | null = null;
 
   if (!options.force) {
     const accessToken = options.resolveAccessToken
       ? await options.resolveAccessToken()
-      : "";
+      : await ensureCognitoToken();
     const client =
       options.vaultClient ??
       createDefaultVaultClient(options.vaultApiUrl, accessToken);
@@ -249,9 +255,6 @@ export function registerCloudDemoteCommands(program: Command): void {
             hqRoot: options.hqRoot,
             vaultApiUrl: options.vaultApiUrl,
             force: options.force,
-            resolveAccessToken: options.force
-              ? undefined
-              : async () => ensureCognitoToken(),
           });
           process.stdout.write(JSON.stringify(result) + "\n");
           process.exit(0);
