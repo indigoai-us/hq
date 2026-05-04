@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.10.0] — 2026-05-04
+
+### Added
+
+- **`hq cloud demote company <slug>` subcommand** — inverse of
+  `hq cloud provision company`. Converts a cloud-backed company back to local-only
+  after its entity has been soft-tombstoned in hq-console (Settings → Delete company).
+  Removes `companies/<slug>/.hq/config.json`, flips `cloud: true → false` in
+  `companies/<slug>/company.yaml`, and strips `cloud_uid` + `bucket_name` from
+  `companies/manifest.yaml`. Default safety check verifies the cloud entity is
+  `deleted=true`; `--force` skips the check (used by AppBar HQ Sync's Path A after
+  it has already verified). All side-effects atomic + idempotent. Exit codes mirror
+  `cloud provision` (0 ok, 1 vault HTTP, 2 validation).
+
 ## [5.9.0] — 2026-05-04
 
 ### Added
@@ -22,16 +36,6 @@
   parse `.env.schema` files and drive the resolver graph. The `hq()` resolver is
   implemented as a varlock plugin registered at runtime; varlock is not exposed as a
   public API surface.
-
-- **`hq cloud demote company <slug>` subcommand** — inverse of
-  `hq cloud provision company`. Converts a cloud-backed company back to local-only
-  after its entity has been soft-tombstoned in hq-console (Settings → Delete company).
-  Removes `companies/<slug>/.hq/config.json`, flips `cloud: true → false` in
-  `companies/<slug>/company.yaml`, and strips `cloud_uid` + `bucket_name` from
-  `companies/manifest.yaml`. Default safety check verifies the cloud entity is
-  `deleted=true`; `--force` skips the check (used by AppBar HQ Sync's Path A after
-  it has already verified). All side-effects atomic + idempotent. Exit codes mirror
-  `cloud provision` (0 ok, 1 vault HTTP, 2 validation).
 
 ### Changed
 
