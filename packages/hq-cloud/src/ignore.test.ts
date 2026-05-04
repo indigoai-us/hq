@@ -110,6 +110,32 @@ describe("createIgnoreFilter", () => {
     expect(shouldSync(path.join(hqRoot, "personal/journal/2026-04-26.md"))).toBe(false);
   });
 
+  it("allowlist mode: directory entries match dir-suffix include patterns (walker descent)", () => {
+    // Regression: walkDir tests directory entries without a trailing slash
+    // when deciding whether to descend. The `ignore` lib only matches
+    // dir-suffix patterns like `companies/*/knowledge/` against paths that
+    // end with `/`. Without the dual-form check in createIgnoreFilter, the
+    // walker sees `companies/indigo/knowledge` -> not allowed -> never
+    // descends -> entire subtree silently lost. Files inside the subtree
+    // alone work because `ignore` walks ancestors internally; the bug only
+    // bites the descent decision.
+    fs.writeFileSync(
+      path.join(hqRoot, ".hqinclude"),
+      "companies/*/knowledge/\ncompanies/*/projects/\n.claude/\n",
+    );
+    const shouldSync = createIgnoreFilter(hqRoot);
+    // Bare directory paths (what walkDir hands the filter) must be allowed.
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/knowledge"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/projects"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, ".claude"))).toBe(true);
+    // Files inside still resolve correctly.
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/knowledge/x.md"))).toBe(true);
+    expect(shouldSync(path.join(hqRoot, ".claude/settings.json"))).toBe(true);
+    // Non-allowlisted siblings stay excluded — privacy guarantee intact.
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/data"))).toBe(false);
+    expect(shouldSync(path.join(hqRoot, "companies/indigo/workers"))).toBe(false);
+  });
+
   it("allowlist mode: exclusion layers still subtract on top", () => {
     // Even when a subtree is allowlisted, default ignores like node_modules/
     // and .env must still apply. Otherwise an allowlisted subdir would sync

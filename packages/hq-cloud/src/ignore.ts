@@ -135,7 +135,22 @@ export function createIgnoreFilter(hqRoot: string): (filePath: string) => boolea
     const relative = path.relative(hqRoot, filePath);
     if (!relative || relative.startsWith("..")) return true; // outside HQ root
     if (ig.ignores(relative)) return false;
-    if (includeMatcher && !includeMatcher.ignores(relative)) return false;
+    if (includeMatcher) {
+      // Allowlist patterns like `companies/*/knowledge/` only match candidate
+      // paths that end with `/` (the trailing-slash pattern is dir-only in
+      // gitignore semantics). Walkers like `walkDir` test directory entries
+      // without a trailing slash, which silently fails the allowlist check
+      // and prevents descent into the entire subtree. Try both forms so a
+      // dir-suffix include pattern matches both the dir entry (descent) and
+      // files inside (already handled by `ignore`'s parent-walk). We only
+      // do this for the include matcher — applying it to `ig` would risk
+      // over-excluding bare-name files that happen to match a dir-suffix
+      // pattern in an exclusion layer.
+      const withSlash = relative.endsWith("/") ? relative : relative + "/";
+      if (!includeMatcher.ignores(relative) && !includeMatcher.ignores(withSlash)) {
+        return false;
+      }
+    }
     return true;
   };
 }
