@@ -56,8 +56,24 @@ export type SyncProgressEvent =
        * conflict detection requires a remote HEAD that runs in Stage 2.
        */
       filesToConflict: number;
+      /**
+       * Remote keys this run intends to delete from S3 (push-only with
+       * `propagateDeletes`; 0 from sync). A key is scheduled for deletion when
+       * its journal entry exists, the local file is gone, and the key falls
+       * within the share scope. The bucket has versioning enabled so the
+       * delete is soft (a delete-marker is written; prior versions remain
+       * recoverable).
+       */
+      filesToDelete: number;
     }
-  | { type: "progress"; path: string; bytes: number; message?: string }
+  | {
+      type: "progress";
+      path: string;
+      bytes: number;
+      message?: string;
+      /** True when this event reports a remote DeleteObject (no upload). */
+      deleted?: boolean;
+    }
   | { type: "error"; path: string; message: string }
   | {
       type: "conflict";
@@ -173,6 +189,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
     bytesToUpload: 0,
     filesToSkip: plan.filesToSkip,
     filesToConflict: plan.filesToConflict,
+    filesToDelete: 0,
   });
 
   // Stage 2: execute the plan. Per-item branching mirrors the pre-refactor

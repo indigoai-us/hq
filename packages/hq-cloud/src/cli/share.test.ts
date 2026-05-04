@@ -21,7 +21,7 @@ vi.mock("../s3.js", () => ({
 }));
 
 import { share } from "./share.js";
-import { headRemoteFile, uploadFile } from "../s3.js";
+import { deleteRemoteFile, headRemoteFile, uploadFile } from "../s3.js";
 import type { EntityContext } from "../types.js";
 
 const mockConfig: VaultServiceConfig = {
@@ -796,5 +796,242 @@ describe("share", () => {
       filesToUpload: 1,
       filesToSkip: 1,
     });
+  });
+
+  // ── Delete propagation (propagateDeletes) ──────────────────────────────────
+  //
+  // The bug: when a user deletes a local file, the next pull re-downloads it
+  // from S3 because the remote object is still listable and the pull plan
+  // can't tell "never synced" from "synced then deleted". The fix is to
+  // propagate local deletes to S3 on the push side. The vault buckets have
+  // versioning enabled, so DeleteObject is soft (a delete-marker becomes the
+  // current version; prior object versions remain recoverable).
+
+  it("propagateDeletes: deletes journal-tracked files whose local copy is gone", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    // Only "kept.md" exists locally; "gone.md" was previously synced and then
+    // deleted by the user.
+    fs.writeFileSync(path.join(companyRoot, "kept.md"), "still here");
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "kept.md": {
+            hash: "irrelevant-not-checked-here",
+            size: 10,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+            remoteEtag: "kept-etag",
+          },
+          "gone.md": {
+            hash: "irrelevant-not-checked-here",
+            size: 7,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+            remoteEtag: "gone-etag",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      propagateDeletes: true,
+    });
+
+    expect(result.filesDeleted).toBe(1);
+    expect(deleteRemoteFile).toHaveBeenCalledTimes(1);
+    expect(deleteRemoteFile).toHaveBeenCalledWith(expect.anything(), "gone.md");
+
+    // Journal entry for the gone file is removed; the kept entry stays.
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["gone.md"]).toBeUndefined();
+    expect(journal.files["kept.md"]).toBeDefined();
+  });
+
+  it("propagateDeletes: emits a `progress` event with deleted:true and bytes from the journal", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "removed.md": {
+            hash: "h",
+            size: 42,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const events: Array<{ type: string; path?: string; bytes?: number; deleted?: boolean }> = [];
+    await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      propagateDeletes: true,
+      onEvent: (e) => events.push(e as { type: string }),
+    });
+
+    const planEvent = events.find((e) => e.type === "plan") as { filesToDelete?: number } | undefined;
+    expect(planEvent?.filesToDelete).toBe(1);
+
+    const deleteProgress = events.find(
+      (e) => e.type === "progress" && e.deleted === true,
+    );
+    expect(deleteProgress).toMatchObject({
+      type: "progress",
+      path: "removed.md",
+      bytes: 42,
+      deleted: true,
+    });
+  });
+
+  it("propagateDeletes=false (default): missing local files do NOT trigger a remote delete", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "gone.md": {
+            hash: "h",
+            size: 7,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      // propagateDeletes omitted ⇒ defaults to false
+    });
+
+    expect(result.filesDeleted).toBe(0);
+    expect(deleteRemoteFile).not.toHaveBeenCalled();
+    // Journal entry survives so the next opt-in run can still propagate.
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["gone.md"]).toBeDefined();
+  });
+
+  it("propagateDeletes: scope is constrained to the supplied paths — sibling deletes are not swept", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(path.join(companyRoot, "in-scope"), { recursive: true });
+    fs.mkdirSync(path.join(companyRoot, "other"), { recursive: true });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "in-scope/gone.md": {
+            hash: "h",
+            size: 1,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+          "other/also-gone.md": {
+            hash: "h",
+            size: 1,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    const result = await share({
+      paths: [path.join(companyRoot, "in-scope")],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      propagateDeletes: true,
+    });
+
+    expect(result.filesDeleted).toBe(1);
+    expect(deleteRemoteFile).toHaveBeenCalledTimes(1);
+    expect(deleteRemoteFile).toHaveBeenCalledWith(
+      expect.anything(),
+      "in-scope/gone.md",
+    );
+
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["in-scope/gone.md"]).toBeUndefined();
+    // Sibling tree's journal entry is untouched — `hq share <subtree>` must
+    // not act on files outside the named scope.
+    expect(journal.files["other/also-gone.md"]).toBeDefined();
+  });
+
+  it("propagateDeletes: a failed DeleteObject leaves the journal entry intact for retry", async () => {
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+
+    const journalPath = path.join(stateDir, "sync-journal.acme.json");
+    fs.writeFileSync(
+      journalPath,
+      JSON.stringify({
+        version: "1",
+        lastSync: new Date().toISOString(),
+        files: {
+          "flaky.md": {
+            hash: "h",
+            size: 5,
+            syncedAt: new Date().toISOString(),
+            direction: "up",
+          },
+        },
+      }),
+    );
+
+    vi.mocked(deleteRemoteFile).mockRejectedValueOnce(new Error("S3 down"));
+
+    const events: Array<{ type: string; path?: string; message?: string }> = [];
+    const result = await share({
+      paths: [companyRoot],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      skipUnchanged: true,
+      propagateDeletes: true,
+      onEvent: (e) => events.push(e as { type: string }),
+    });
+
+    expect(result.filesDeleted).toBe(0);
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toMatchObject({ path: "flaky.md", message: expect.stringContaining("S3 down") });
+
+    // Entry survives — next run will retry the delete.
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    expect(journal.files["flaky.md"]).toBeDefined();
   });
 });

@@ -72,6 +72,7 @@ function defaultShareResult(overrides: Partial<ShareResult> = {}): ShareResult {
     filesUploaded: 0,
     bytesUploaded: 0,
     filesSkipped: 0,
+    filesDeleted: 0,
     conflictPaths: [],
     aborted: false,
     ...overrides,
@@ -592,6 +593,7 @@ describe("per-company fanout", () => {
           bytesToUpload: 0,
           filesToSkip: 3,
           filesToConflict: 1,
+          filesToDelete: 0,
         });
         return defaultSyncResult({ filesDownloaded: 7, bytesDownloaded: 4096 });
       }),
@@ -614,6 +616,7 @@ describe("per-company fanout", () => {
         bytesToUpload: 0,
         filesToSkip: 3,
         filesToConflict: 1,
+        filesToDelete: 0,
       },
     ]);
   });

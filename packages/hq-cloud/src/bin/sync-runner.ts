@@ -643,6 +643,7 @@ export async function runRunner(
           bytesToUpload: event.bytesToUpload,
           filesToSkip: event.filesToSkip,
           filesToConflict: event.filesToConflict,
+          filesToDelete: event.filesToDelete,
         });
       } else if (event.type === "progress") {
         if (activePhase === "push") {
@@ -682,6 +683,7 @@ export async function runRunner(
         filesUploaded: 0,
         bytesUploaded: 0,
         filesSkipped: 0,
+        filesDeleted: 0,
         conflictPaths: [],
         aborted: false,
       };
@@ -707,6 +709,11 @@ export async function runRunner(
           hqRoot: parsed.hqRoot,
           onConflict: parsed.onConflict,
           skipUnchanged: true,
+          // Local deletes propagate to S3 as soft deletes (versioning is on
+          // — DeleteObject writes a delete-marker, prior versions remain
+          // recoverable). Without this, a deleted file resurfaces on the
+          // next pull because the remote object is still listable.
+          propagateDeletes: true,
           onEvent: tagAndEmit,
         });
       }

@@ -9,8 +9,8 @@ import * as fs from "fs";
 import * as path from "path";
 import type { EntityContext, VaultServiceConfig, SyncJournal } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
-import { uploadFile, headRemoteFile } from "../s3.js";
-import { readJournal, writeJournal, hashFile, updateEntry, normalizeEtag } from "../journal.js";
+import { uploadFile, headRemoteFile, deleteRemoteFile } from "../s3.js";
+import { readJournal, writeJournal, hashFile, updateEntry, removeEntry, normalizeEtag } from "../journal.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
 import type { ConflictStrategy } from "./conflict.js";
@@ -166,12 +166,36 @@ export interface ShareOptions {
    * hash matches the last-sync state (e.g. to re-heal a bucket).
    */
   skipUnchanged?: boolean;
+  /**
+   * When true, journal entries whose local file is gone trigger a remote
+   * `DeleteObject`. Only entries whose key falls under one of the supplied
+   * `paths` (after resolution to absolute paths under `companies/{slug}/`)
+   * are considered, so `hq share <file>` can never sweep deletes outside
+   * the named scope.
+   *
+   * Vault buckets have versioning enabled, so the delete is soft: a
+   * delete-marker becomes the current version and prior object versions
+   * remain recoverable indefinitely. The pull-side `listRemoteFiles` skips
+   * objects whose current version is a delete-marker (default
+   * `ListObjectsV2` behavior), so a deletion stops the next pull from
+   * re-downloading the file on this and any other machine.
+   *
+   * Default false to preserve `hq share <file>` semantics — only the
+   * full-tree bidirectional runner opts in.
+   */
+  propagateDeletes?: boolean;
 }
 
 export interface ShareResult {
   filesUploaded: number;
   bytesUploaded: number;
   filesSkipped: number;
+  /**
+   * Number of remote `DeleteObject` calls that succeeded this run. Always 0
+   * when `propagateDeletes` is false. The corresponding journal entries are
+   * removed in the same pass so the next sync sees the key as truly gone.
+   */
+  filesDeleted: number;
   /**
    * Paths (company-relative) that were detected as push conflicts. Mirrors
    * `SyncResult.conflictPaths` so push and pull surface conflicts the same
@@ -185,7 +209,7 @@ export interface ShareResult {
  * Share local file(s) to the entity vault.
  */
 export async function share(options: ShareOptions): Promise<ShareResult> {
-  const { paths, company, message, onConflict, vaultConfig, entityContext, hqRoot, skipUnchanged } = options;
+  const { paths, company, message, onConflict, vaultConfig, entityContext, hqRoot, skipUnchanged, propagateDeletes } = options;
   const emit = options.onEvent ?? defaultConsoleLogger;
 
   // Exactly-one-of contract: either we vend (vaultConfig) or the caller did
@@ -237,6 +261,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   let filesUploaded = 0;
   let bytesUploaded = 0;
   let filesSkipped = 0;
+  let filesDeleted = 0;
   const conflictPaths: string[] = [];
 
   // Collect all files to share
@@ -249,6 +274,17 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   // knowable here). The final `complete` event reports authoritative counts.
   const plan = computePushPlan(filesToShare, journal, skipUnchanged === true);
 
+  // Delete-propagation plan: walk journal entries whose key falls under the
+  // requested scope; any whose local file is gone is a candidate for a
+  // remote DeleteObject. Only computed when the caller opts in — `hq share
+  // <file>` must never sweep deletes outside the explicit path list.
+  const deleteScopeRoots = propagateDeletes === true
+    ? resolveDeleteScopeRoots(paths, hqRoot, syncRoot)
+    : [];
+  const deletePlan = propagateDeletes === true
+    ? computeDeletePlan(journal, syncRoot, deleteScopeRoots)
+    : [];
+
   emit({
     type: "plan",
     // share() is push-only; pull counts are sourced from sync()'s plan event.
@@ -260,6 +296,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     // Push conflicts require a remote HEAD; we don't yet do that in Stage 1,
     // so this stays 0. V1.5 (single LIST) will let us classify them up-front.
     filesToConflict: 0,
+    filesToDelete: deletePlan.length,
   });
 
   // Stage 2: execute. Skip items pre-classified as no-ops, then for each
@@ -329,6 +366,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
             filesUploaded,
             bytesUploaded,
             filesSkipped,
+            filesDeleted,
             conflictPaths,
             aborted: true,
           };
@@ -375,6 +413,36 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     }
   }
 
+  // Stage 3: propagate deletes. Each call writes a delete-marker (versioning
+  // is enabled on the bucket) and removes the corresponding journal entry so
+  // the next sync sees the key as truly gone on this machine. A failed
+  // DeleteObject leaves both the journal entry and the remote object intact
+  // — the next run will retry.
+  for (const relativePath of deletePlan) {
+    if (vaultConfig && isExpiringSoon(ctx.expiresAt)) {
+      ctx = await refreshEntityContext(companyRef, vaultConfig);
+    }
+    try {
+      const entry = journal.files[relativePath];
+      const size = entry?.size ?? 0;
+      await deleteRemoteFile(ctx, relativePath);
+      removeEntry(journal, relativePath);
+      filesDeleted++;
+      emit({
+        type: "progress",
+        path: relativePath,
+        bytes: size,
+        deleted: true,
+      });
+    } catch (err) {
+      emit({
+        type: "error",
+        path: relativePath,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // See cli/sync.ts: stamp lastSync on completion so a no-op share still
   // ticks the "Last sync" indicator.
   journal.lastSync = new Date().toISOString();
@@ -384,6 +452,7 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     filesUploaded,
     bytesUploaded,
     filesSkipped,
+    filesDeleted,
     conflictPaths,
     aborted: false,
   };
@@ -401,7 +470,9 @@ function defaultConsoleLogger(event: SyncProgressEvent): void {
       );
     }
   } else if (event.type === "progress") {
-    if (event.message) {
+    if (event.deleted) {
+      console.log(`  ✗ ${event.path} (deleted)`);
+    } else if (event.message) {
       console.log(`  ✓ ${event.path} — "${event.message}"`);
     } else {
       console.log(`  ✓ ${event.path}`);
@@ -535,4 +606,64 @@ function hasRemoteChanged(
   }
   const syncedAt = new Date(entry.syncedAt).getTime();
   return remote.lastModified.getTime() > syncedAt;
+}
+
+/**
+ * Resolve each user-supplied share path to a directory under `syncRoot`,
+ * returning the company-relative prefix that constrains delete propagation.
+ * Files (non-directories) and paths outside the company root are dropped —
+ * a delete sweep keyed off a single file or a sibling tree would surprise
+ * users who expected deletes to mirror the targeted scope.
+ *
+ * Returns `[""]` (whole-tree) when any input path resolves to `syncRoot`
+ * itself; this is the bidirectional-runner case.
+ */
+function resolveDeleteScopeRoots(
+  paths: string[],
+  hqRoot: string,
+  syncRoot: string,
+): string[] {
+  const prefixes = new Set<string>();
+  for (const p of paths) {
+    const absolutePath = path.isAbsolute(p) ? p : path.resolve(hqRoot, p);
+    if (!fs.existsSync(absolutePath)) continue;
+    if (!isWithin(syncRoot, absolutePath)) continue;
+    const stat = fs.statSync(absolutePath);
+    if (!stat.isDirectory()) continue;
+    const rel = path.relative(syncRoot, absolutePath);
+    if (rel === "" || rel === ".") {
+      return [""];
+    }
+    prefixes.add(rel.split(path.sep).join("/"));
+  }
+  return Array.from(prefixes);
+}
+
+/**
+ * Walk every journal key in `scopeRoots` whose local file is missing from
+ * disk, and return the keys to delete. A key is in-scope when it matches
+ * (or sits beneath) one of the resolved prefixes. Empty `scopeRoots` ⇒
+ * empty plan (caller didn't opt in).
+ */
+function computeDeletePlan(
+  journal: SyncJournal,
+  syncRoot: string,
+  scopeRoots: string[],
+): string[] {
+  if (scopeRoots.length === 0) return [];
+  const out: string[] = [];
+  for (const relativeKey of Object.keys(journal.files)) {
+    const inScope = scopeRoots.some(
+      (root) =>
+        root === "" ||
+        relativeKey === root ||
+        relativeKey.startsWith(`${root}/`),
+    );
+    if (!inScope) continue;
+    const localPath = path.join(syncRoot, relativeKey);
+    if (!fs.existsSync(localPath)) {
+      out.push(relativeKey);
+    }
+  }
+  return out;
 }
