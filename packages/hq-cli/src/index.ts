@@ -12,6 +12,7 @@ import { registerListCommand } from "./commands/list.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerCloudCommands } from "./commands/cloud.js";
 import { registerCloudProvisionCommands } from "./commands/cloud-provision.js";
+import { registerCloudDemoteCommands } from "./commands/cloud-demote.js";
 import { registerLoginCommand } from "./commands/login.js";
 import { registerLogoutCommand } from "./commands/logout.js";
 import { registerWhoamiCommand } from "./commands/whoami.js";
@@ -78,6 +79,7 @@ const cloudCmd = program
   );
 
 registerCloudProvisionCommands(cloudCmd);
+registerCloudDemoteCommands(cloudCmd);
 
 // Team commands (top-level)
 registerTeamSyncCommand(program);
