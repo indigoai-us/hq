@@ -23,6 +23,7 @@ import { registerPackageListCommand } from "./commands/pkg-list.js";
 import { registerTeamSyncCommand } from "./commands/team-sync.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerSecretsCommand } from "./commands/secrets.js";
+import { registerRunCommand } from "./commands/run.js";
 import { registerGroupsCommand } from "./commands/groups.js";
 import { registerFilesCommand } from "./commands/files.js";
 
@@ -89,6 +90,9 @@ registerAuthCommands(program);
 
 // Secrets management (subcommand group — hq secrets set|get|list|delete|exec|generate-link|cache)
 registerSecretsCommand(program);
+
+// Schema-driven dev runner — hq run [options] -- <cmd>
+registerRunCommand(program);
 
 // Groups management (subcommand group — hq groups create|delete|add|remove|list|members)
 registerGroupsCommand(program);
