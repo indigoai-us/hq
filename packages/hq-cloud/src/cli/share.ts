@@ -513,7 +513,7 @@ function collectFiles(
   paths: string[],
   hqRoot: string,
   syncRoot: string,
-  filter: (p: string) => boolean,
+  filter: (p: string, isDir?: boolean) => boolean,
 ): { absolutePath: string; relativePath: string }[] {
   const results: { absolutePath: string; relativePath: string }[] = [];
 
@@ -532,6 +532,7 @@ function collectFiles(
 
     const stat = fs.statSync(absolutePath);
     if (stat.isDirectory()) {
+      if (!filter(absolutePath, true)) continue;
       results.push(...walkDir(absolutePath, syncRoot, filter));
     } else if (stat.isFile()) {
       const relativePath = path.relative(syncRoot, absolutePath);
@@ -547,7 +548,7 @@ function collectFiles(
 function walkDir(
   dir: string,
   syncRoot: string,
-  filter: (p: string) => boolean,
+  filter: (p: string, isDir?: boolean) => boolean,
 ): { absolutePath: string; relativePath: string }[] {
   const results: { absolutePath: string; relativePath: string }[] = [];
   if (!fs.existsSync(dir)) return results;
@@ -555,9 +556,12 @@ function walkDir(
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const absolutePath = path.join(dir, entry.name);
-    if (!filter(absolutePath)) continue;
+    const isDir = entry.isDirectory();
+    // Pass the dir hint so dir-only ignore/include patterns (`foo/`)
+    // resolve correctly for the descent decision.
+    if (!filter(absolutePath, isDir)) continue;
 
-    if (entry.isDirectory()) {
+    if (isDir) {
       results.push(...walkDir(absolutePath, syncRoot, filter));
     } else if (entry.isFile()) {
       results.push({

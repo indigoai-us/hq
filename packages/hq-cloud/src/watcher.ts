@@ -28,7 +28,7 @@ export class SyncWatcher {
   private watcher: FSWatcher | null = null;
   private hqRoot: string;
   private ctx: EntityContext;
-  private shouldSync: (filePath: string) => boolean;
+  private shouldSync: (filePath: string, isDir?: boolean) => boolean;
   private pendingChanges = new Map<string, PendingChange>();
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private processing = false;
@@ -43,7 +43,10 @@ export class SyncWatcher {
     if (this.watcher) return;
 
     this.watcher = watch(this.hqRoot, {
-      ignored: (filePath: string) => !this.shouldSync(filePath),
+      // Forward chokidar's stats hint so dir-only gitignore patterns
+      // (`foo/`) match directory entries during the descent decision.
+      ignored: (filePath: string, stats?: fs.Stats) =>
+        !this.shouldSync(filePath, stats?.isDirectory()),
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
