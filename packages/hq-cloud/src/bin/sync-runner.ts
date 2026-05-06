@@ -78,6 +78,7 @@ import type {
 import { share as defaultShare } from "../cli/share.js";
 import type { ShareOptions, ShareResult } from "../cli/share.js";
 import type { ConflictStrategy } from "../cli/conflict.js";
+import type { UploadAuthor } from "../s3.js";
 
 /**
  * Sync direction for a run.
@@ -490,6 +491,22 @@ export async function runRunner(
   const client =
     deps.createVaultClient?.(vaultConfig) ?? new VaultClient(vaultConfig);
 
+  // ---- resolve identity claims -----------------------------------------
+  // Read the cached idToken claims once. Two consumers downstream:
+  //   1. The claim-dance (only fires in `--companies` mode for setup-needed
+  //      invitees).
+  //   2. The S3 upload author (every share() call stamps `Metadata['created-by']`
+  //      with `claims.email` so the hq-console vault UI's CREATED BY column
+  //      attributes the file to the syncing user).
+  // Resolved here (not inside `parsed.companies`) so single-company runs also
+  // get author attribution. `null` is fine — share() simply omits the metadata.
+  const getClaims = deps.getIdTokenClaims ?? defaultGetIdTokenClaims;
+  const claims = getClaims();
+  const uploadAuthor: UploadAuthor | undefined =
+    claims?.sub && claims?.email
+      ? { userSub: claims.sub, email: claims.email }
+      : undefined;
+
   // ---- resolve targets --------------------------------------------------
   let memberships: Pick<Membership, "companyUid">[];
   try {
@@ -497,8 +514,6 @@ export async function runRunner(
       // Before giving up on memberships, run the claim-dance: new users signed
       // in via the tray may have email-keyed invites waiting for them. Without
       // this, an invited user would see "setup-needed" on every tray click.
-      const getClaims = deps.getIdTokenClaims ?? defaultGetIdTokenClaims;
-      const claims = getClaims();
       if (claims) {
         await runClaimDance(client, claims, stderr);
       }
@@ -715,6 +730,7 @@ export async function runRunner(
           // next pull because the remote object is still listable.
           propagateDeletes: true,
           onEvent: tagAndEmit,
+          ...(uploadAuthor ? { author: uploadAuthor } : {}),
         });
       }
 

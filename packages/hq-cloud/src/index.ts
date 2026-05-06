@@ -20,7 +20,7 @@ export {
   headRemoteFile,
 } from "./s3.js";
 
-export type { RemoteFile } from "./s3.js";
+export type { RemoteFile, UploadAuthor } from "./s3.js";
 
 export {
   readJournal,

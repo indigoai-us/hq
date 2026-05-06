@@ -23,9 +23,11 @@ import {
   sync,
   readJournal,
   getJournalPath,
+  loadCachedTokens,
   type ConflictStrategy,
   type EntityContext,
   type SyncProgressEvent,
+  type UploadAuthor,
 } from "@indigoai-us/hq-cloud";
 
 import {
@@ -146,6 +148,14 @@ export function registerCloudCommands(program: Command): void {
                 emitJson(event as unknown as Record<string, unknown>)
             : undefined;
 
+          // Stamp every uploaded object's S3 user metadata with the syncing
+          // user's Cognito identity (`Metadata['created-by']`). The hq-console
+          // vault UI's CREATED BY column reads this back via HEAD; without it,
+          // every row renders `—`. Resolved best-effort from the cached
+          // idToken — pre-vended `--creds-from-stdin` paths still get author
+          // attribution as long as the caller is logged in locally.
+          const author = resolveUploadAuthorFromCache();
+
           const result = await share({
             paths: targetPaths,
             company: options.company,
@@ -155,6 +165,7 @@ export function registerCloudCommands(program: Command): void {
             entityContext,
             hqRoot: options.hqRoot,
             onEvent,
+            ...(author ? { author } : {}),
           });
 
           if (jsonMode) {
@@ -342,4 +353,33 @@ async function readAllStdin(): Promise<string> {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/**
+ * Resolve the syncing user's `UploadAuthor` (sub + email) from the cached
+ * Cognito idToken. Returns `undefined` when no tokens are cached or the
+ * token is missing the required claims — share() then skips the metadata
+ * stamp gracefully (not an error).
+ *
+ * We deliberately decode the JWT here instead of verifying it: Cognito
+ * already verified at issuance, and we only use the public claims to
+ * label the upload's S3 user metadata (no auth decision rides on it).
+ */
+function resolveUploadAuthorFromCache(): UploadAuthor | undefined {
+  const tokens = loadCachedTokens();
+  if (!tokens?.idToken) return undefined;
+  const parts = tokens.idToken.split(".");
+  if (parts.length !== 3) return undefined;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json = Buffer.from(padded, "base64").toString("utf-8");
+    const claims = JSON.parse(json) as { sub?: string; email?: string };
+    if (claims.sub && claims.email) {
+      return { userSub: claims.sub, email: claims.email };
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }

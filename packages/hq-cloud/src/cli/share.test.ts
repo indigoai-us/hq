@@ -481,6 +481,54 @@ describe("share", () => {
     expect(journal.files["fresh.md"].remoteEtag).toBe("new-upload-etag");
   });
 
+  it("forwards UploadAuthor to uploadFile when present (created-by metadata)", async () => {
+    // Regression: hq-console vault UI's CREATED BY column was always blank
+    // because the sync engine never stamped Metadata['created-by'] on PUT.
+    // share() now accepts an `author` and threads it to s3.uploadFile so
+    // every synced file lands in S3 with the syncer's identity attached.
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "attribution.md");
+    fs.writeFileSync(testFile, "attributed content");
+
+    await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+      author: { userSub: "abc-123", email: "alice@example.com" },
+    });
+
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.anything(),
+      testFile,
+      "attribution.md",
+      { userSub: "abc-123", email: "alice@example.com" },
+    );
+  });
+
+  it("omits author arg when not provided (back-compat)", async () => {
+    // share() must remain a 3-arg call to uploadFile when no author is
+    // configured — older test stubs and external integrations rely on it.
+    const companyRoot = path.join(tmpDir, "companies", "acme");
+    fs.mkdirSync(companyRoot, { recursive: true });
+    const testFile = path.join(companyRoot, "no-author.md");
+    fs.writeFileSync(testFile, "anonymous");
+
+    await share({
+      paths: [testFile],
+      company: "acme",
+      vaultConfig: mockConfig,
+      hqRoot: tmpDir,
+    });
+
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.anything(),
+      testFile,
+      "no-author.md",
+    );
+  });
+
   it("skipUnchanged=false (default) uploads even when hash matches", async () => {
     const companyRoot = path.join(tmpDir, "companies", "acme");
     fs.mkdirSync(companyRoot, { recursive: true });
