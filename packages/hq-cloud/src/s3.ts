@@ -34,13 +34,75 @@ function buildClient(ctx: EntityContext): S3Client {
   });
 }
 
+/**
+ * Author identity stamped onto S3 user-defined metadata at upload time. The
+ * vault UI's "CREATED BY" column reads `Metadata['created-by']` back via
+ * HEAD; uploads without an author leave that column blank.
+ */
+export interface UploadAuthor {
+  /** Cognito sub — stable join key for per-member rollups. */
+  userSub: string;
+  /** Email for human display. */
+  email: string;
+}
+
+/**
+ * S3 user metadata is ASCII-only (lowercased on read, capped at 2 KB total).
+ * Values that fail the printable-ASCII test or would push the keys over the
+ * cap are elided rather than throwing — partial attribution beats none. The
+ * shape mirrors `hq-console/src/lib/s3-vault.ts buildAuthorMetadata` so the
+ * read path on the consumer side stays a single check against
+ * `Metadata['created-by']`.
+ */
+function buildAuthorMetadata(
+  author: UploadAuthor,
+  createdAt: string,
+): Record<string, string> {
+  const meta: Record<string, string> = {};
+  const sub = author.userSub.trim();
+  if (sub && /^[\x20-\x7E]+$/.test(sub)) {
+    meta["created-by-sub"] = sub;
+  }
+  const email = author.email.trim();
+  if (email && /^[\x20-\x7E]+$/.test(email)) {
+    meta["created-by"] = email;
+  }
+  if (createdAt && /^[\x20-\x7E]+$/.test(createdAt)) {
+    meta["created-at"] = createdAt;
+  }
+  return meta;
+}
+
 export async function uploadFile(
   ctx: EntityContext,
   localPath: string,
   key: string,
+  author?: UploadAuthor,
 ): Promise<{ etag: string }> {
   const client = buildClient(ctx);
   const body = fs.readFileSync(localPath);
+
+  // Preserve the original `created-at` across re-uploads when the object
+  // already exists with author metadata — same convention the hq-console
+  // upload route uses, so the NEW-pill ageing window doesn't reset on every
+  // sync tick. HEAD failure (NoSuchKey, perm, transient 5xx) falls through
+  // to "now", which is correct for a first upload.
+  let createdAt = new Date().toISOString();
+  if (author) {
+    try {
+      const head = await client.send(
+        new HeadObjectCommand({ Bucket: ctx.bucketName, Key: key }),
+      );
+      const existing = head.Metadata?.["created-at"];
+      if (typeof existing === "string" && existing.length > 0) {
+        createdAt = existing;
+      }
+    } catch {
+      // Object doesn't exist yet, or HEAD denied — keep `now`.
+    }
+  }
+
+  const Metadata = author ? buildAuthorMetadata(author, createdAt) : undefined;
 
   const response = await client.send(
     new PutObjectCommand({
@@ -48,6 +110,7 @@ export async function uploadFile(
       Key: key,
       Body: body,
       ContentType: getMimeType(key),
+      ...(Metadata && Object.keys(Metadata).length > 0 ? { Metadata } : {}),
     }),
   );
 

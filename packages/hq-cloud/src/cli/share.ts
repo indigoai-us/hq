@@ -10,6 +10,7 @@ import * as path from "path";
 import type { EntityContext, VaultServiceConfig, SyncJournal } from "../types.js";
 import { resolveEntityContext, isExpiringSoon, refreshEntityContext } from "../context.js";
 import { uploadFile, headRemoteFile, deleteRemoteFile } from "../s3.js";
+import type { UploadAuthor } from "../s3.js";
 import { readJournal, writeJournal, hashFile, updateEntry, removeEntry, normalizeEtag } from "../journal.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "../ignore.js";
 import { resolveConflict } from "./conflict.js";
@@ -184,6 +185,14 @@ export interface ShareOptions {
    * full-tree bidirectional runner opts in.
    */
   propagateDeletes?: boolean;
+  /**
+   * Identity stamped onto each uploaded object's S3 user metadata
+   * (`created-by`, `created-by-sub`, `created-at`). The hq-console vault UI
+   * reads `Metadata['created-by']` for its "CREATED BY" column; uploads
+   * without an author leave that column blank for every file synced via
+   * this engine. The runner pipes Cognito idToken claims through here.
+   */
+  author?: UploadAuthor;
 }
 
 export interface ShareResult {
@@ -383,7 +392,9 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
     try {
       const stat = fs.statSync(absolutePath);
 
-      const { etag } = await uploadFile(ctx, absolutePath, relativePath);
+      const { etag } = options.author
+        ? await uploadFile(ctx, absolutePath, relativePath, options.author)
+        : await uploadFile(ctx, absolutePath, relativePath);
 
       // Update journal with optional message; capture the post-upload ETag
       // so the next sync can distinguish "remote moved since we last wrote"

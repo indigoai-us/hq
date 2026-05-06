@@ -15,6 +15,7 @@ import type { EntityContext } from "./types.js";
 import { createIgnoreFilter, isWithinSizeLimit } from "./ignore.js";
 import { readJournal, writeJournal, hashFile, updateEntry } from "./journal.js";
 import { uploadFile, deleteRemoteFile } from "./s3.js";
+import type { UploadAuthor } from "./s3.js";
 
 const DEBOUNCE_MS = 2000;
 
@@ -28,14 +29,16 @@ export class SyncWatcher {
   private watcher: FSWatcher | null = null;
   private hqRoot: string;
   private ctx: EntityContext;
+  private author?: UploadAuthor;
   private shouldSync: (filePath: string, isDir?: boolean) => boolean;
   private pendingChanges = new Map<string, PendingChange>();
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private processing = false;
 
-  constructor(hqRoot: string, ctx: EntityContext) {
+  constructor(hqRoot: string, ctx: EntityContext, author?: UploadAuthor) {
     this.hqRoot = hqRoot;
     this.ctx = ctx;
+    this.author = author;
     this.shouldSync = createIgnoreFilter(hqRoot);
   }
 
@@ -116,7 +119,9 @@ export class SyncWatcher {
           const existing = journal.files[relativePath];
           if (existing && existing.hash === hash) continue;
 
-          const { etag } = await uploadFile(this.ctx, change.absolutePath, relativePath);
+          const { etag } = this.author
+            ? await uploadFile(this.ctx, change.absolutePath, relativePath, this.author)
+            : await uploadFile(this.ctx, change.absolutePath, relativePath);
           updateEntry(journal, relativePath, hash, stat.size, "up", etag);
         }
       } catch (err) {
