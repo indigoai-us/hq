@@ -78,3 +78,46 @@ export async function getCompanyUid(
   }
   return resolveCompanyFromMemberships(token);
 }
+
+interface PersonEntity {
+  uid: string;
+  type: string;
+  createdAt?: string;
+}
+
+// Same selection rule as the backend's `resolveCallerPersonUid`: ascending by
+// createdAt, tie-break by uid ascending. Returns the `prs_*` UID.
+export async function resolveCallerPersonUid(token: string): Promise<string> {
+  const res = await vaultApiFetch({
+    token,
+    path: '/entity/by-type/person',
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch person entity — run `hq login` and try again");
+  }
+  const data = (await res.json()) as { entities: PersonEntity[] };
+  const persons = (data.entities ?? []).filter((e) => e.type === 'person');
+  if (persons.length === 0) {
+    throw new Error('No person entity found for the caller. Sign in to HQ once to provision one.');
+  }
+  persons.sort((a, b) => {
+    const ac = a.createdAt ?? '';
+    const bc = b.createdAt ?? '';
+    if (ac !== bc) return ac < bc ? -1 : 1;
+    return a.uid < b.uid ? -1 : 1;
+  });
+  return persons[0].uid;
+}
+
+// Resolves the scope UID (cmp_* or prs_*) for a secrets command. Precedence:
+// `--personal` → caller's canonical person entity; else `--company <slug>` →
+// resolved company UID; else fallback to single active company membership.
+export async function getEntityUid(
+  token: string,
+  opts: { personal?: boolean; companySlug?: string },
+): Promise<string> {
+  if (opts.personal) {
+    return resolveCallerPersonUid(token);
+  }
+  return getCompanyUid(token, opts.companySlug);
+}

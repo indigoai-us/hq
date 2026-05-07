@@ -10,9 +10,40 @@ import {
   clearAllCache,
 } from "../utils/secrets-cache.js";
 import { SECRET_NAME_PATTERN, GROUP_ID_PATTERN } from "./_patterns.js";
-import { vaultApiFetch, getCompanyUid } from "../utils/vault-api.js";
+import {
+  vaultApiFetch,
+  getCompanyUid,
+  getEntityUid,
+} from "../utils/vault-api.js";
 export type { VaultApiOptions } from "../utils/vault-api.js";
-export { vaultApiFetch, getCompanyUid };
+export { vaultApiFetch, getCompanyUid, getEntityUid };
+
+interface SecretsScopeOpts {
+  company?: string;
+  personal?: boolean;
+}
+
+function scopeOpts(opts: SecretsScopeOpts): {
+  personal: boolean;
+  companySlug: string | undefined;
+} {
+  if (opts.personal && opts.company) {
+    console.error(
+      chalk.red("Error: --personal cannot be combined with --company."),
+    );
+    process.exit(1);
+  }
+  return { personal: !!opts.personal, companySlug: opts.company };
+}
+
+function rejectIfPersonal(opts: SecretsScopeOpts, action: string): void {
+  if (opts.personal) {
+    console.error(
+      chalk.red(`Error: ${action} is not supported with --personal.`),
+    );
+    process.exit(1);
+  }
+}
 
 function shellSingleQuote(value: string): string {
   return "'" + value.replace(/'/g, "'\\''") + "'";
@@ -125,7 +156,11 @@ export function registerSecretsCommand(program: Command): void {
   const secrets = program
     .command("secrets")
     .description("Manage secrets in HQ vault (SSM Parameter Store)")
-    .option("--company <slug>", "Company slug (resolves to companyUid)");
+    .option("--company <slug>", "Company slug (resolves to companyUid)")
+    .option(
+      "--personal",
+      "Operate on the caller's personal vault (no sharing)",
+    );
 
   secrets
     .command("set <name>")
@@ -164,8 +199,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const res = await vaultApiFetch({
           token,
@@ -200,8 +237,10 @@ export function registerSecretsCommand(program: Command): void {
     .action(async (name: string, opts: { reveal?: boolean }) => {
       try {
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const query: Record<string, string> = {};
         if (opts.reveal) {
@@ -283,8 +322,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const query: Record<string, string> = {};
         if (normalizedPrefix) {
@@ -364,8 +405,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const res = await vaultApiFetch({
           token,
@@ -427,8 +470,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const revealed = await Promise.all(
           keys.map(async (key) => {
@@ -518,8 +563,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const revealed = await Promise.all(
           keys.map(async (key) => {
@@ -568,6 +615,8 @@ export function registerSecretsCommand(program: Command): void {
     .option("--expires <duration>", "Token expiry duration (e.g. 24h, 2d, 30m)", "24h")
     .action(async (name: string, opts: { expires: string }) => {
       try {
+        rejectIfPersonal(secrets.opts(), "generate-link");
+
         if (!SECRET_NAME_PATTERN.test(name)) {
           console.error(chalk.red(`Invalid secret name '${name}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_API_KEY or DEV/MY_KEY)`));
           process.exit(1);
@@ -586,8 +635,10 @@ export function registerSecretsCommand(program: Command): void {
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const res = await vaultApiFetch({
           token,
@@ -632,6 +683,8 @@ export function registerSecretsCommand(program: Command): void {
     .requiredOption("--permission <level>", "Permission level: read | write | admin")
     .action(async (path: string, opts: { with: string; permission: string }) => {
       try {
+        rejectIfPersonal(secrets.opts(), "share");
+
         if (!SECRET_NAME_PATTERN.test(path)) {
           console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
           process.exit(1);
@@ -651,8 +704,10 @@ export function registerSecretsCommand(program: Command): void {
         const granteeId = opts.with;
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const res = await vaultApiFetch({
           token,
@@ -695,6 +750,8 @@ export function registerSecretsCommand(program: Command): void {
     .requiredOption("--from <principal>", "Email address or group id to remove")
     .action(async (path: string, opts: { from: string }) => {
       try {
+        rejectIfPersonal(secrets.opts(), "unshare");
+
         if (!SECRET_NAME_PATTERN.test(path)) {
           console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
           process.exit(1);
@@ -709,8 +766,10 @@ export function registerSecretsCommand(program: Command): void {
         const granteeId = opts.from;
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const res = await vaultApiFetch({
           token,
@@ -751,14 +810,18 @@ export function registerSecretsCommand(program: Command): void {
     .description("Show the ACL (access control list) for a secret path")
     .action(async (path: string) => {
       try {
+        rejectIfPersonal(secrets.opts(), "acl");
+
         if (!SECRET_NAME_PATTERN.test(path)) {
           console.error(chalk.red(`Invalid secret path '${path}': must match ^[A-Z][A-Z0-9_]*(/[A-Z][A-Z0-9_]+)*$ (e.g. MY_KEY or PROD/DB_PASSWORD)`));
           process.exit(1);
         }
 
         const token = await ensureCognitoToken();
-        const companySlug = secrets.opts().company as string | undefined;
-        const companyUid = await getCompanyUid(token, companySlug);
+        const companyUid = await getEntityUid(
+          token,
+          scopeOpts(secrets.opts()),
+        );
 
         const secretPath = path;
         const res = await vaultApiFetch({
